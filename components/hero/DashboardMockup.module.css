@@ -1,0 +1,222 @@
+.mockup {
+  width: 100%;
+  max-width: 460px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+
+/* Glow effect */
+.mockup::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+  height: 120px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 92, 53, 0.18) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Top bar */
+.topBar {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.accent { color: var(--accent); }
+
+.topRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sandboxBadge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--amber-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.tab {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s;
+  cursor: default;
+}
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* Body */
+.body {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.section {}
+
+.sectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.keyLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.keyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.keyVal {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #B0BACE;
+}
+
+.copyBtn {
+  font-size: 10px;
+  color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+/* Vendors */
+.vendorRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.vendorRow + .vendorRow {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.vendorName {
+  font-size: 12px;
+  color: #C0CAE0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dotGreen { font-size: 8px; color: var(--green); }
+.dotMuted { font-size: 8px; color: #374151; }
+
+.status {
+  font-size: 10px;
+  font-weight: 600;
+}
+.active { color: var(--green); }
+.off    { color: #374151; }
+
+/* Tax */
+.taxRow {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.taxLabel  { font-size: 11px; font-weight: 600; color: var(--accent); }
+.taxAmount { font-size: 11px; font-weight: 500; color: #FF8C72; }
+
+/* Go live */
+.goLive {
+  width: 100%;
+  padding: 10px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.goLive:hover { background: rgba(255, 92, 53, 0.16); }

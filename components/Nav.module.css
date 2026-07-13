@@ -1,0 +1,88 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  background: rgba(7, 9, 15, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.header.scrolled {
+  background: rgba(7, 9, 15, 0.92);
+  border-bottom-color: var(--border);
+}
+
+.nav { width: 100%; }
+
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+/* ── Logo — replace font-family below with your custom font ── */
+.logo {
+  font-family: 'Space Grotesk', sans-serif; /* ← your font here */
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.logo:hover { opacity: 0.8; }
+.accent { color: var(--accent); }
+
+.links {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.links a {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+.links a:hover { color: var(--text); }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ghost {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+.ghost:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+
+.fill {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.fill:hover { opacity: 0.88; }
+
+@media (max-width: 768px) {
+  .wrap { padding: 0 20px; }
+  .links { display: none; }
+}

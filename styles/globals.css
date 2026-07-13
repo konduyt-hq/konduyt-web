@@ -1,0 +1,114 @@
+/* ─── Google Fonts ─── */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+/* ─── Design Tokens ─── */
+:root {
+  /* Background layers */
+  --bg:          #07090F;
+  --surface:     #0D1120;
+  --surface-2:   #131928;
+  --surface-3:   #1A2235;
+
+  /* Text */
+  --text:        #EDF0F7;
+  --text-muted:  #8892A4;
+  --text-dim:    #4B5569;
+
+  /* Brand */
+  --accent:      #FF5C35;
+  --accent-bg:   rgba(255, 92, 53, 0.10);
+  --accent-dim:  rgba(255, 92, 53, 0.06);
+  --accent-border: rgba(255, 92, 53, 0.25);
+
+  /* Status */
+  --green:       #22C55E;
+  --green-bg:    rgba(34, 197, 94, 0.10);
+  --amber:       #F59E0B;
+  --amber-bg:    rgba(245, 158, 11, 0.10);
+  --red:         #EF4444;
+  --red-bg:      rgba(239, 68, 68, 0.10);
+
+  /* Borders */
+  --border:      rgba(255, 255, 255, 0.07);
+  --border-2:    rgba(255, 255, 255, 0.12);
+
+  /* Fonts */
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'Courier New', 'Consolas', monospace;
+
+  /* Spacing */
+  --radius:      14px;
+  --radius-sm:   8px;
+  --radius-xs:   5px;
+
+  /* Shadows */
+  --shadow:      0 32px 80px rgba(0, 0, 0, 0.45);
+  --shadow-sm:   0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img, video { display: block; max-width: 100%; }
+button { cursor: pointer; font-family: var(--font-body); }
+a { color: inherit; text-decoration: none; }
+ul, ol { list-style: none; }
+input, textarea, select { font-family: var(--font-body); }
+
+/* ─── Utility classes ─── */
+.font-display  { font-family: var(--font-display); }
+.font-mono     { font-family: var(--font-mono); }
+
+.text-accent   { color: var(--accent); }
+.text-muted    { color: var(--text-muted); }
+.text-green    { color: var(--green); }
+.text-amber    { color: var(--amber); }
+.text-red      { color: var(--red); }
+
+.bg-surface    { background: var(--surface); }
+.bg-surface-2  { background: var(--surface-2); }
+
+.border-base   { border: 1px solid var(--border); }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar               { width: 6px; height: 6px; }
+::-webkit-scrollbar-track         { background: transparent; }
+::-webkit-scrollbar-thumb         { background: var(--surface-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover   { background: var(--surface-2); }
+
+/* ─── Focus ─── */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

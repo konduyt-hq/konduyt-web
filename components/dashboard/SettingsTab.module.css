@@ -1,0 +1,97 @@
+.wrap { display: grid; gap: 32px; }
+
+.section {}
+.sectionTitle {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+  font-size: 14px; color: var(--text); margin-bottom: 10px;
+}
+.sectionTitle.danger { color: var(--red); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+.dangerCard { border-color: rgba(239, 68, 68, 0.25); background: rgba(239, 68, 68, 0.04); }
+
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field:last-of-type { margin-bottom: 0; }
+.field label { font-size: 12px; font-weight: 500; color: var(--text); }
+.field input {
+  padding: 9px 12px; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 13px; outline: none; width: 100%;
+  transition: border-color 0.15s;
+}
+.field input:focus { border-color: rgba(255,92,53,.5); }
+
+.saveBtn {
+  font-size: 13px; font-weight: 600; color: #fff;
+  background: var(--accent); border: none;
+  padding: 9px 20px; border-radius: var(--radius-sm);
+  margin-top: 14px; transition: opacity 0.15s;
+}
+.saveBtn:hover { opacity: 0.88; }
+
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* Jurisdiction */
+.jurisdictionRow { display: flex; align-items: center; justify-content: space-between; }
+.jurisdictionName { font-size: 14px; font-weight: 600; color: var(--text); }
+.jurisdictionNote { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.freeBadge {
+  font-size: 10px; font-weight: 700; color: var(--green);
+  background: var(--green-bg); padding: 3px 8px; border-radius: 4px;
+}
+.addJurisdiction {
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  background: none; border: none; display: flex; align-items: center; gap: 8px;
+}
+.addJurisdiction:hover { color: var(--text); }
+.globalBadge {
+  font-size: 10px; font-weight: 700; color: var(--amber);
+  background: var(--amber-bg); padding: 2px 6px; border-radius: 3px;
+}
+
+/* Team */
+.memberRow { display: flex; align-items: center; justify-content: space-between; }
+.memberLeft { display: flex; align-items: center; gap: 10px; }
+.memberAvatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.memberName { font-size: 13px; font-weight: 600; color: var(--text); }
+.memberEmail { font-size: 11px; color: var(--text-muted); }
+.ownerBadge {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  background: var(--surface-2); padding: 3px 8px; border-radius: 4px;
+}
+.inviteBtn {
+  font-size: 13px; color: var(--accent); background: none; border: none; font-weight: 500;
+}
+.inviteBtn:hover { text-decoration: underline; }
+
+/* Billing */
+.billingRow { display: flex; align-items: center; justify-content: space-between; }
+.planName { font-size: 14px; font-weight: 600; color: var(--text); }
+.planNote { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.upgradeLink { font-size: 13px; color: var(--accent); font-weight: 600; }
+.upgradeLink:hover { text-decoration: underline; }
+
+/* Danger */
+.dangerNote { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px; }
+.deleteConfirmRow { display: flex; gap: 10px; flex-wrap: wrap; }
+.deleteInput {
+  flex: 1; min-width: 200px; padding: 9px 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px; outline: none;
+}
+.deleteInput:focus { border-color: rgba(239,68,68,0.6); }
+.deleteBtn {
+  font-size: 13px; font-weight: 600; color: var(--red);
+  background: var(--red-bg); border: 1px solid rgba(239,68,68,0.3);
+  padding: 9px 18px; border-radius: var(--radius-sm); transition: background 0.15s;
+}
+.deleteBtn:hover:not(:disabled) { background: rgba(239,68,68,0.15); }
+.deleteBtn:disabled { opacity: 0.4; cursor: not-allowed; }
