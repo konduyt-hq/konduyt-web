@@ -1,0 +1,15 @@
+{
+  "name": "Konduyt",
+  "short_name": "Konduyt",
+  "description": "Payment infrastructure for developers. One integration, every payment method.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07090F",
+  "theme_color": "#FF5C35",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "categories": ["finance", "developer tools", "productivity"],
+  "screenshots": []
+}
