@@ -1,138 +1,60 @@
 import Nav from '../../components/Nav'
 import Footer from '../../components/Footer'
 import Link from 'next/link'
-import styles from './page.module.css'
 
-export const metadata = {
-  title: 'Pricing',
-  description: 'Local is free. Global is paid. Enterprise is custom.',
-}
+export const metadata = { title: 'Pricing', description: 'Local is free. Global is paid. Enterprise is custom.' }
 
-const LOCAL_FEATURES = [
-  'Unlimited vendors',
-  'Unlimited transactions',
-  'Full SDK access',
-  'Unified dashboard',
-  'Production mode',
-  'Tax calculation',
-  'Tax filing guidance',
-  'Automated reconciliation',
-  'Konduyt Watchdog™',
-  'API monitoring',
-  'Webhook monitoring',
-  'Tax change monitoring',
-  'Outage detection',
-  'Audit history',
-  'One jurisdiction',
-]
-
-const GLOBAL_EXTRAS = [
-  'Unlimited jurisdictions',
-  'Multi-country tax engine',
-  'Cross-border reconciliation',
-  'Multi-currency reporting',
-  'Global payment operations',
-]
+const LOCAL = ['Unlimited vendors','Unlimited transactions','SDK access','Unified dashboard','Production mode','Tax calculation','Tax filing guidance','Automated reconciliation','Konduyt Watchdog','API monitoring','Outage detection','Audit history','1 jurisdiction']
+const GLOBAL = ['Unlimited jurisdictions','Multi-country tax guidance','Cross-border reconciliation','Multi-currency reporting']
 
 export default function PricingPage() {
   return (
     <>
       <Nav />
-
-      <main className={styles.main}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>
-            Local is free.<br />
-            Global is paid.<br />
-            Enterprise is custom.
+      <main style={{maxWidth:'1100px',margin:'0 auto',padding:'80px 32px 100px'}}>
+        <div style={{textAlign:'center',marginBottom:'64px'}}>
+          <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'clamp(32px,5vw,52px)',lineHeight:1.15,letterSpacing:'-.025em'}}>
+            Local is free.<br/>Global is paid.<br/>Enterprise is custom.
           </h1>
-          <p className={styles.sub}>
-            Every business deserves world-class payment infrastructure in its home market.
-            We charge only when your business becomes global.
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'16px',marginBottom:'64px'}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'14px',padding:'28px'}}>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'18px',marginBottom:'12px'}}>Local</div>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'36px',marginBottom:'10px'}}>$0 <span style={{fontSize:'13px',fontWeight:400,color:'var(--text-muted)'}}>/ forever</span></div>
+            <p style={{fontSize:'13px',color:'var(--text-muted)',marginBottom:'20px',lineHeight:1.6}}>For businesses operating in one country.</p>
+            <Link href="/signup" style={{display:'block',padding:'12px',background:'var(--surface-2)',color:'var(--text)',textAlign:'center',fontSize:'14px',fontWeight:600,borderRadius:'8px',border:'1px solid var(--border)',textDecoration:'none',marginBottom:'20px'}}>Start for free</Link>
+            <ul style={{listStyle:'none',display:'grid',gap:'8px',borderTop:'1px solid var(--border)',paddingTop:'20px'}}>
+              {LOCAL.map(f=><li key={f} style={{fontSize:'13px',color:'var(--text-muted)',display:'flex',gap:'8px'}}><span style={{color:'var(--text-dim)'}}>✓</span>{f}</li>)}
+            </ul>
+          </div>
+          <div style={{background:'var(--surface)',border:'1px solid var(--accent)',borderRadius:'14px',padding:'28px',position:'relative'}}>
+            <div style={{position:'absolute',top:'-12px',left:'50%',transform:'translateX(-50%)',background:'var(--accent)',color:'#fff',fontSize:'11px',fontWeight:700,padding:'3px 12px',borderRadius:'100px',whiteSpace:'nowrap'}}>Most popular</div>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'18px',marginBottom:'12px'}}>Global</div>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'36px',marginBottom:'10px'}}>$49 <span style={{fontSize:'13px',fontWeight:400,color:'var(--text-muted)'}}>/ month</span></div>
+            <p style={{fontSize:'13px',color:'var(--text-muted)',marginBottom:'20px',lineHeight:1.6}}>For businesses operating across multiple countries.</p>
+            <Link href="/signup" style={{display:'block',padding:'12px',background:'var(--accent)',color:'#fff',textAlign:'center',fontSize:'14px',fontWeight:600,borderRadius:'8px',textDecoration:'none',marginBottom:'8px'}}>Start 30-day free trial</Link>
+            <p style={{fontSize:'11px',color:'var(--text-muted)',textAlign:'center',marginBottom:'20px'}}>No credit card needed</p>
+            <ul style={{listStyle:'none',display:'grid',gap:'8px',borderTop:'1px solid var(--border)',paddingTop:'20px'}}>
+              <li style={{fontSize:'12px',fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:'.06em'}}>Everything in Local, plus:</li>
+              {GLOBAL.map(f=><li key={f} style={{fontSize:'13px',color:'var(--text-muted)',display:'flex',gap:'8px'}}><span style={{color:'var(--accent)'}}>✓</span>{f}</li>)}
+            </ul>
+          </div>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'14px',padding:'28px'}}>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'18px',marginBottom:'12px'}}>Enterprise</div>
+            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'36px',marginBottom:'10px'}}>Custom</div>
+            <p style={{fontSize:'13px',color:'var(--text-muted)',marginBottom:'20px',lineHeight:1.6}}>For organizations whose needs do not fit the standard product.</p>
+            <a href="mailto:teamkonduyt@gmail.com" style={{display:'block',padding:'12px',background:'var(--surface-2)',color:'var(--text)',textAlign:'center',fontSize:'14px',fontWeight:600,borderRadius:'8px',border:'1px solid var(--border)',textDecoration:'none',marginBottom:'20px'}}>Email us</a>
+            <ul style={{listStyle:'none',display:'grid',gap:'8px',borderTop:'1px solid var(--border)',paddingTop:'20px'}}>
+              {['Custom vendor integrations','One invoice for many projects','Migration assistance','Dedicated support','SLA contracts'].map(f=><li key={f} style={{fontSize:'13px',color:'var(--text-muted)',display:'flex',gap:'8px'}}><span style={{color:'var(--text-dim)'}}>✓</span>{f}</li>)}
+            </ul>
+          </div>
+        </div>
+        <div style={{textAlign:'center',padding:'32px',border:'1px solid var(--border)',borderRadius:'14px',background:'var(--surface)'}}>
+          <p style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:'16px',fontStyle:'italic',color:'var(--text-muted)',maxWidth:'600px',margin:'0 auto',lineHeight:1.7}}>
+            Every business deserves world-class payment infrastructure in its home market.<br/>We charge only when your business becomes global.
           </p>
         </div>
-
-        <div className={styles.grid}>
-
-          {/* LOCAL */}
-          <div className={styles.card}>
-            <div className={styles.tier}>Local</div>
-            <div className={styles.price}>
-              <span className={styles.priceAmount}>$0</span>
-              <span className={styles.pricePer}>/ forever</span>
-            </div>
-            <p className={styles.tierDesc}>For businesses operating in one country.</p>
-            <Link href="/signup" className={styles.ctaSecondary}>Start for free</Link>
-            <ul className={styles.features}>
-              {LOCAL_FEATURES.map(f => (
-                <li key={f} className={styles.feature}>
-                  <span className={styles.check}>✓</span> {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* GLOBAL */}
-          <div className={`${styles.card} ${styles.featured}`}>
-            <div className={styles.featuredBadge}>Most popular</div>
-            <div className={styles.tier}>Global</div>
-            <div className={styles.price}>
-              <span className={styles.priceAmount}>$49</span>
-              <span className={styles.pricePer}>/ month per project</span>
-            </div>
-            <p className={styles.tierDesc}>For businesses operating across multiple countries.</p>
-            <Link href="/signup" className={styles.ctaPrimary}>Start 30-day free trial</Link>
-            <p className={styles.trialNote}>No credit card needed for trial</p>
-            <ul className={styles.features}>
-              <li className={styles.featureGroup}>Everything in Local, plus:</li>
-              {GLOBAL_EXTRAS.map(f => (
-                <li key={f} className={styles.feature}>
-                  <span className={styles.checkAccent}>✓</span> {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* ENTERPRISE */}
-          <div className={styles.card}>
-            <div className={styles.tier}>Enterprise</div>
-            <div className={styles.price}>
-              <span className={styles.priceAmount}>Custom</span>
-            </div>
-            <p className={styles.tierDesc}>
-              For organizations whose needs don't fit the standard product.
-            </p>
-            <a href="mailto:enterprise@konduyt.dev" className={styles.ctaSecondary}>
-              Let's talk
-            </a>
-            <ul className={styles.features}>
-              {[
-                'Custom payment provider integration',
-                'One invoice covering many projects',
-                'Migration assistance',
-                'Dedicated engineering support',
-                'SLA contracts',
-                'Procurement & compliance',
-              ].map(f => (
-                <li key={f} className={styles.feature}>
-                  <span className={styles.check}>✓</span> {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-        </div>
-
-        {/* Philosophy */}
-        <div className={styles.philosophy}>
-          <p>
-            Every business deserves world-class payment infrastructure in its home market.
-            We charge only when your business becomes global.
-          </p>
-        </div>
-
       </main>
-
       <Footer />
     </>
   )
