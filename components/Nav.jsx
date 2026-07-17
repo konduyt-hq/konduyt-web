@@ -15,9 +15,9 @@ const LogoMark = () => (
 )
 
 export default function Nav() {
-  const [scrolled, setScrolled]   = useState(false)
-  const [loggedIn, setLoggedIn]   = useState(false)
-  const [checked, setChecked]     = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(false)
+  const [checked,  setChecked]  = useState(false)
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20)
@@ -26,47 +26,29 @@ export default function Nav() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setLoggedIn(!!data.session)
-      setChecked(true)
-    })
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setLoggedIn(!!session)
-    })
-    return () => listener.subscription.unsubscribe()
+    supabase.auth.getSession().then(({ data }) => { setLoggedIn(!!data.session); setChecked(true) })
+    const { data: l } = supabase.auth.onAuthStateChange((_e, s) => setLoggedIn(!!s))
+    return () => l.subscription.unsubscribe()
   }, [])
 
   return (
     <header className={`${styles.header} ${scrolled ? styles.scrolled : ''}`}>
       <nav className={styles.nav} aria-label="Main navigation">
         <div className={styles.wrap}>
-
           <Link href="/" className={styles.logo} aria-label="Konduyt home">
-            <LogoMark />
-            KONDU<span className={styles.accent}>Y</span>T
+            <LogoMark /><span style={{letterSpacing:'0.05em'}}>KONDU<span className={styles.accent}>Y</span>T</span>
           </Link>
-
           <ul className={styles.links} role="list">
             <li><Link href="/docs">Docs</Link></li>
             <li><Link href="/pricing">Pricing</Link></li>
             <li><a href="https://github.com/konduyt-hq" rel="noopener noreferrer" target="_blank">GitHub</a></li>
           </ul>
-
           <div className={styles.actions}>
-            {checked && (
-              loggedIn ? (
-                <Link href="/dashboard" className={styles.fill}>
-                  Go to Console →
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login" className={styles.ghost}>Log in</Link>
-                  <Link href="/signup" className={styles.fill}>Sign up free</Link>
-                </>
-              )
+            {checked && (loggedIn
+              ? <Link href="/dashboard" className={styles.fill}>Go to Console →</Link>
+              : <><Link href="/login" className={styles.ghost}>Log in</Link><Link href="/signup" className={styles.fill}>Sign up free</Link></>
             )}
           </div>
-
         </div>
       </nav>
     </header>
