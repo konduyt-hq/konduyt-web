@@ -1,7 +1,6 @@
 import Nav from '../components/Nav'
 import RotatingPill from '../components/hero/RotatingPill'
 import VendorCircles from '../components/hero/VendorCircles'
-import DashboardMockup from '../components/hero/DashboardMockup'
 import PainSection from '../components/PainSection'
 import UniverseSection from '../components/UniverseSection'
 import Footer from '../components/Footer'
@@ -21,51 +20,43 @@ export default function HomePage() {
       <Nav />
       <main id="main">
 
-        {/* HERO */}
+        {/* HERO — compact so universe section is immediately visible */}
         <section className={styles.hero} aria-labelledby="hero-heading">
-          <div className={styles.heroLeft}>
-            <div className={styles.label} aria-hidden="true">
-              <span className={styles.labelDot} />
-              Payment Infrastructure
-            </div>
-            <h1 className={styles.heading} id="hero-heading">
-              Each one. A different<br /><RotatingPill /> headache.
-            </h1>
-            <p className={styles.sub}>
-              One integration for your website, app, or marketplace.<br />
-              We show you exactly what taxes you owe and where to pay them.
-            </p>
-            <div className={styles.ctaWrap}>
-              <Link href="/signup" className={styles.ctaPrimary}>Sign up free →</Link>
-              <Link href="/docs" className={styles.ctaSecondary}>View docs</Link>
-              <InstallButton />
-            </div>
-            <VendorCircles />
+          <div className={styles.label} aria-hidden="true">
+            <span className={styles.labelDot} />
+            Payment Infrastructure
           </div>
-          <div className={styles.heroRight}>
-            <DashboardMockup />
+          <h1 className={styles.heading} id="hero-heading">
+            Each one. A different <RotatingPill /> headache.
+          </h1>
+          <p className={styles.sub}>
+            One integration for your website, app, or marketplace.{' '}
+            We show you exactly what taxes you owe and where to pay them.
+          </p>
+          <div className={styles.ctaWrap}>
+            <Link href="/signup" className={styles.ctaPrimary}>Sign up free →</Link>
+            <Link href="/docs" className={styles.ctaSecondary}>View docs</Link>
+            <InstallButton />
           </div>
         </section>
 
+        {/* CHOOSE YOUR UNIVERSE — immediately visible on load */}
+        <UniverseSection />
+
         {/* VENDOR STRIP */}
-        <div className={styles.strip} aria-label="Compatible payment providers">
+        <div className={styles.strip}>
           <div className={styles.stripInner}>
             <span className={styles.stripLabel}>Works with</span>
-            <div className={styles.stripVendors} role="list">
+            <div className={styles.stripVendors}>
               {ALL_VENDORS.map((v, i) => (
-                <span key={v} className={styles.stripName} role="listitem" style={{ opacity: i > 9 ? 0.4 : 1 }}>{v}</span>
+                <span key={v} className={styles.stripName} style={{ opacity: i > 9 ? 0.4 : 1 }}>{v}</span>
               ))}
-              <span className={styles.stripMore} role="listitem">+ many more</span>
+              <span className={styles.stripMore}>+ many more</span>
             </div>
           </div>
         </div>
 
-        {/* CHOOSE YOUR UNIVERSE — prominent */}
-        <UniverseSection />
-
-        {/* PAIN SECTION */}
         <PainSection />
-
       </main>
       <Footer />
     </>
