@@ -1,18 +1,12 @@
 import '../styles/globals.css'
+import '../styles/clerk-theme.css'
 import { ClerkProvider } from '@clerk/nextjs'
 
 export const metadata = {
   title: { default: 'Konduyt — Payment Infrastructure for Developers', template: '%s | Konduyt' },
   description: 'One SDK for every payment method. Stripe, PayPal, M-Pesa, Flutterwave, Razorpay and many others — unified with built-in tax guidance. Free forever in your home country.',
-  keywords: ['payment SDK','payment API','payment infrastructure','M-Pesa','Stripe','PayPal','Flutterwave','Razorpay','GrabPay','PIX','Paystack','tax calculation','developer payments','Africa payments'],
   metadataBase: new URL('https://konduyt.dev'),
-  openGraph: {
-    type: 'website', url: 'https://konduyt.dev',
-    title: 'Konduyt — Payment Infrastructure for Developers',
-    description: 'One SDK for every payment method. Free forever in your home country.',
-    siteName: 'Konduyt',
-    images: [{ url: '/og.png', width: 1200, height: 630 }],
-  },
+  openGraph: { type: 'website', url: 'https://konduyt.dev', title: 'Konduyt — Payment Infrastructure for Developers', description: 'One SDK for every payment method. Free forever in your home country.', siteName: 'Konduyt', images: [{ url: '/og.png', width: 1200, height: 630 }] },
   twitter: { card: 'summary_large_image', site: '@konduyt', images: ['/og.png'] },
   robots: { index: true, follow: true },
   icons: { icon: '/favicon.svg', apple: '/favicon.svg' },
