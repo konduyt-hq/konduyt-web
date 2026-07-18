@@ -1,0 +1,21 @@
+/* Clerk component dark theme — imported in layout.jsx */
+.cl-rootBox { width: 100%; max-width: 420px; }
+.cl-card { background: #0D1120 !important; border: 1px solid rgba(255,255,255,.07) !important; border-radius: 14px !important; box-shadow: 0 32px 80px rgba(0,0,0,.4) !important; }
+.cl-headerTitle { font-family: 'Space Grotesk',sans-serif !important; font-weight: 700 !important; color: #EDF0F7 !important; }
+.cl-headerSubtitle { color: #8892A4 !important; }
+.cl-socialButtonsBlockButton { background: #131928 !important; border: 1px solid rgba(255,255,255,.07) !important; color: #EDF0F7 !important; border-radius: 8px !important; }
+.cl-socialButtonsBlockButton:hover { background: #1A2235 !important; }
+.cl-formFieldInput { background: #131928 !important; border: 1px solid rgba(255,255,255,.07) !important; color: #EDF0F7 !important; border-radius: 8px !important; }
+.cl-formFieldInput:focus { border-color: rgba(255,92,53,.5) !important; box-shadow: 0 0 0 2px rgba(255,92,53,.15) !important; }
+.cl-formButtonPrimary { background: #FF5C35 !important; font-weight: 600 !important; border-radius: 8px !important; }
+.cl-formButtonPrimary:hover { opacity: .88 !important; }
+.cl-footerActionLink { color: #FF5C35 !important; }
+.cl-footerActionText { color: #8892A4 !important; }
+.cl-dividerLine { background: rgba(255,255,255,.07) !important; }
+.cl-dividerText { color: #8892A4 !important; }
+.cl-formFieldLabel { color: #EDF0F7 !important; }
+.cl-identityPreviewText { color: #EDF0F7 !important; }
+.cl-internal-b3fm6y { background: #07090F !important; }
+.cl-userButtonPopoverCard { background: #0D1120 !important; border: 1px solid rgba(255,255,255,.07) !important; }
+.cl-userButtonPopoverActionButton { color: #EDF0F7 !important; }
+.cl-userButtonPopoverActionButton:hover { background: #131928 !important; }
