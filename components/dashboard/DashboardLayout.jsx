@@ -1,88 +1,69 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { useParams, usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useClerk } from '@clerk/nextjs'
 import styles from './DashboardLayout.module.css'
 
 export default function DashboardLayout({ children, org, project }) {
   const router   = useRouter()
   const pathname = usePathname()
+  const { signOut } = useClerk()
   const [live, setLive] = useState(false)
 
+  const orgId     = org?.id     || ''
+  const projectId = project?.id || ''
+
   const tabs = [
-    { label: 'Integration',   href: `/dashboard/${org?.id}/${project?.id}` },
-    { label: 'Transactions',  href: `/dashboard/${org?.id}/${project?.id}/transactions` },
-    { label: 'Settings',      href: `/dashboard/${org?.id}/${project?.id}/settings` },
+    { label: 'Integration',  href: '/dashboard/' + orgId + '/' + projectId },
+    { label: 'Transactions', href: '/dashboard/' + orgId + '/' + projectId + '/transactions' },
+    { label: 'Settings',     href: '/dashboard/' + orgId + '/' + projectId + '/settings' },
   ]
 
   function isActive(href) {
-    if (href === `/dashboard/${org?.id}/${project?.id}`) {
-      return pathname === href
-    }
+    if (href === '/dashboard/' + orgId + '/' + projectId) return pathname === href
     return pathname.startsWith(href)
+  }
+
+  async function handleSignOut() {
+    await signOut()
+    router.push('/')
   }
 
   return (
     <div className={styles.shell}>
-
-      {/* Top bar */}
       <header className={styles.topbar}>
         <div className={styles.topLeft}>
-          <Link href="/dashboard" className={styles.logo}>
+          <Link href="/" className={styles.logo}>
             KONDU<span>Y</span>T
           </Link>
-
           {project && (
-            <div className={styles.projectPicker}>
+            <Link href={'/dashboard/' + orgId} className={styles.projectPicker}>
               <span className={styles.projectName}>{project.name}</span>
               <span className={styles.chevron}>▾</span>
-            </div>
+            </Link>
           )}
         </div>
-
         <div className={styles.topRight}>
-          {/* Sandbox / Live toggle */}
           <div className={styles.modeToggle}>
-            <button
-              className={`${styles.modeBtn} ${!live ? styles.modeBtnActive : ''}`}
-              onClick={() => setLive(false)}
-            >
-              Sandbox
-            </button>
-            <button
-              className={`${styles.modeBtn} ${live ? styles.modeBtnActiveLive : ''}`}
-              onClick={() => setLive(true)}
-            >
-              Live
-            </button>
+            <button className={styles.modeBtn + (!live ? ' ' + styles.modeBtnActive : '')} onClick={() => setLive(false)}>Sandbox</button>
+            <button className={styles.modeBtn + (live  ? ' ' + styles.modeBtnActiveLive : '')} onClick={() => setLive(true)}>Live</button>
           </div>
-
-          <button className={styles.upgradeBtn} onClick={() => router.push('/pricing')}>
-            Upgrade →
-          </button>
-
-          <div className={styles.avatar} title="Account">IK</div>
+          <Link href="/pricing" className={styles.upgradeBtn}>Upgrade →</Link>
+          <button onClick={handleSignOut} className={styles.signOutBtn} title="Sign out">↩</button>
         </div>
       </header>
 
-      {/* Tabs */}
       <nav className={styles.tabs} aria-label="Dashboard sections">
         {tabs.map(tab => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`${styles.tab} ${isActive(tab.href) ? styles.tabActive : ''}`}
-          >
+          <Link key={tab.href} href={tab.href}
+            className={styles.tab + (isActive(tab.href) ? ' ' + styles.tabActive : '')}>
             {tab.label}
           </Link>
         ))}
       </nav>
 
-      {/* Page content */}
-      <main className={styles.content}>
-        {children}
-      </main>
-
+      <main className={styles.content}>{children}</main>
     </div>
   )
 }
