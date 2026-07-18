@@ -1,34 +1,35 @@
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: var(--accent-bg);
+  gap: 10px;
   border-radius: 100px;
-  padding: 3px 18px 3px 10px;
+  padding: 6px 20px 6px 12px;
   vertical-align: middle;
   margin: 0 4px;
+  transition: background 0.35s ease, border-color 0.35s ease;
 }
 
 .dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--accent);
   flex-shrink: 0;
-  animation: pulse 2s ease-in-out infinite;
+  animation: breathe 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1);    opacity: 1;    }
-  50%       { transform: scale(0.78); opacity: 0.55; }
+@keyframes breathe {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(0.75); opacity: 0.6; }
 }
 
+/* White text — always readable regardless of vendor color */
 .word {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  font-size: inherit;   /* inherits from h1 */
-  color: var(--accent);
-  min-width: 180px;     /* prevents layout shift for "Flutterwave" */
+  font-size: inherit;
+  color: #ffffff;
+  min-width: 170px;
   display: inline-block;
   transition: opacity 0.28s ease;
+  text-align: left;
 }
