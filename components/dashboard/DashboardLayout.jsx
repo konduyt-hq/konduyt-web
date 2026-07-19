@@ -13,15 +13,17 @@ export default function DashboardLayout({ children, org, project }) {
 
   const orgId     = org?.id     || ''
   const projectId = project?.id || ''
+  const base      = '/dashboard/' + orgId + '/' + projectId
 
   const tabs = [
-    { label: 'Integration',  href: '/dashboard/' + orgId + '/' + projectId },
-    { label: 'Transactions', href: '/dashboard/' + orgId + '/' + projectId + '/transactions' },
-    { label: 'Settings',     href: '/dashboard/' + orgId + '/' + projectId + '/settings' },
+    { label: 'Integration',  href: base },
+    { label: 'Transactions', href: base + '/transactions' },
+    { label: 'People',       href: base + '/people' },
+    { label: 'Settings',     href: base + '/settings' },
   ]
 
   function isActive(href) {
-    if (href === '/dashboard/' + orgId + '/' + projectId) return pathname === href
+    if (href === base) return pathname === href
     return pathname.startsWith(href)
   }
 
@@ -40,7 +42,7 @@ export default function DashboardLayout({ children, org, project }) {
           {project && (
             <Link href={'/dashboard/' + orgId} className={styles.projectPicker}>
               <span className={styles.projectName}>{project.name}</span>
-              <span className={styles.chevron}>▾</span>
+              <span className={styles.chevron}>v</span>
             </Link>
           )}
         </div>
@@ -49,11 +51,10 @@ export default function DashboardLayout({ children, org, project }) {
             <button className={styles.modeBtn + (!live ? ' ' + styles.modeBtnActive : '')} onClick={() => setLive(false)}>Sandbox</button>
             <button className={styles.modeBtn + (live  ? ' ' + styles.modeBtnActiveLive : '')} onClick={() => setLive(true)}>Live</button>
           </div>
-          <Link href="/pricing" className={styles.upgradeBtn}>Upgrade →</Link>
-          <button onClick={handleSignOut} className={styles.signOutBtn} title="Sign out">↩</button>
+          <Link href="/pricing" className={styles.upgradeBtn}>Upgrade</Link>
+          <button onClick={handleSignOut} className={styles.signOutBtn} title="Sign out">out</button>
         </div>
       </header>
-
       <nav className={styles.tabs} aria-label="Dashboard sections">
         {tabs.map(tab => (
           <Link key={tab.href} href={tab.href}
@@ -62,7 +63,6 @@ export default function DashboardLayout({ children, org, project }) {
           </Link>
         ))}
       </nav>
-
       <main className={styles.content}>{children}</main>
     </div>
   )
