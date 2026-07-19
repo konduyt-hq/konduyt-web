@@ -1,0 +1,31 @@
+.section { padding: 80px 32px; }
+.inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+.eyebrow { display: inline-flex; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-border); padding: 4px 14px; border-radius: 100px; margin-bottom: 16px; }
+.title { font-family: 'Space Grotesk',sans-serif; font-weight: 700; font-size: clamp(22px,3vw,34px); letter-spacing: -.02em; margin-bottom: 18px; }
+.body { font-size: 15px; color: var(--text-muted); line-height: 1.75; margin-bottom: 14px; }
+.note { font-size: 12px; color: var(--text-muted); border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 8px; font-style: italic; }
+
+/* Right */
+.right { display: grid; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.cardLabel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); margin-bottom: 16px; }
+
+/* Signals */
+.signals { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.signal {}
+.signalVal { font-family: 'Space Grotesk',sans-serif; font-weight: 700; font-size: 24px; }
+.signalLabel { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 2px; }
+.signalSub { font-size: 11px; color: var(--text-muted); }
+
+/* Routing */
+.routing { display: grid; gap: 10px; }
+.routeRow { display: grid; gap: 6px; }
+.routeLeft { display: flex; align-items: center; gap: 8px; }
+.routeDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.routeName { font-size: 13px; font-weight: 600; color: var(--text); }
+.routeNote { font-size: 11px; color: var(--text-muted); }
+.routeBar { height: 4px; background: rgba(255,255,255,.06); border-radius: 2px; overflow: hidden; }
+.routeFill { height: 100%; border-radius: 2px; transition: width .4s ease; }
+
+@media(max-width:900px){ .inner{grid-template-columns:1fr; gap:40px;} .section{padding:56px 20px;} }
+@media(max-width:480px){ .signals{grid-template-columns:1fr 1fr;} }
