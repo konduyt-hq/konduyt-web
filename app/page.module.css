@@ -1,52 +1,58 @@
-.hero {
-  max-width: 700px; margin: 0 auto;
-  padding: 52px 32px 40px; text-align: center;
-}
-.label {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--accent); border: 1px solid var(--accent-border);
-  background: var(--accent-dim); padding: 4px 12px; border-radius: 100px; margin-bottom: 20px;
-}
-.labelDot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent); animation: blink 2s ease-in-out infinite;
-}
-@keyframes blink{ 0%,100%{opacity:1}50%{opacity:0.4} }
+/* HERO */
+.hero { max-width: 780px; margin: 0 auto; padding: 88px 32px 72px; text-align: center; }
+.heroBadge { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-border); background: var(--accent-dim); padding: 4px 12px; border-radius: 100px; margin-bottom: 28px; }
+.heroTitle { font-family: 'Space Grotesk',sans-serif; font-weight: 700; font-size: clamp(36px,5vw,64px); line-height: 1.1; letter-spacing: -.03em; color: var(--text); margin-bottom: 22px; }
+.heroSub { font-size: 16px; color: var(--text-muted); line-height: 1.7; max-width: 540px; margin: 0 auto 36px; }
+.heroCTAs { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.ctaPrimary { font-size: 14px; font-weight: 600; color: #fff; background: var(--accent); padding: 12px 24px; border-radius: 100px; text-decoration: none; transition: opacity .15s; white-space: nowrap; }
+.ctaPrimary:hover { opacity: .88; }
+.ctaSecondary { font-size: 14px; font-weight: 500; color: var(--text-muted); background: transparent; border: 1px solid var(--border); padding: 12px 20px; border-radius: 100px; text-decoration: none; transition: border-color .15s, color .15s; white-space: nowrap; }
+.ctaSecondary:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
 
-/* Font size changed to match E2B small text — 13px, uppercase, letter-spaced */
-.heading {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(237,240,247,0.72);
-  line-height: 2.2;
-  margin-bottom: 16px;
-}
+/* TRUST BAR */
+.trustBar { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: rgba(13,17,32,.6); padding: 14px 32px; }
+.trustInner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; justify-content: center; }
+.trustLabel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); flex-shrink: 0; }
+.trustVendors { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.trustVendor { font-family: 'Space Grotesk',sans-serif; font-weight: 600; font-size: 12px; color: rgba(255,255,255,.28); transition: color .2s; cursor: default; }
+.trustVendor:hover { color: rgba(255,255,255,.6); }
+.trustMore { font-family: 'Space Grotesk',sans-serif; font-weight: 600; font-size: 12px; color: rgba(255,255,255,.12); }
 
-.sub {
-  font-size: 13px; color: var(--text-muted); line-height: 1.7;
-  max-width: 460px; margin: 0 auto; letter-spacing: 0.04em;
+/* PROBLEM */
+.problem { padding: 72px 32px; }
+.problemInner { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+.problemTitle { font-family: 'Space Grotesk',sans-serif; font-weight: 700; font-size: clamp(22px,3vw,34px); letter-spacing: -.02em; line-height: 1.2; color: var(--text); }
+.problemBody { font-size: 15px; color: var(--text-muted); line-height: 1.75; margin-bottom: 16px; }
+.problemSolution { font-size: 15px; color: var(--text); line-height: 1.75; border-left: 2px solid var(--accent); padding-left: 14px; }
+
+/* PRICING */
+.pricing { padding: 72px 32px; background: var(--surface); border-top: 1px solid var(--border); }
+.pricingInner { max-width: 800px; margin: 0 auto; text-align: center; }
+.pricingTitle { font-family: 'Space Grotesk',sans-serif; font-weight: 700; font-size: clamp(22px,3.5vw,36px); margin-bottom: 10px; }
+.pricingSub { font-size: 15px; color: var(--text-muted); margin-bottom: 36px; }
+.pricingCards { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 28px; }
+.pricingCard { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 22px 20px; text-align: center; }
+.pricingTier { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); margin-bottom: 8px; }
+.pricingPrice { font-family: 'Space Grotesk',sans-serif; font-weight: 700; font-size: 28px; color: var(--text); margin-bottom: 6px; }
+.pricingPrice span { font-size: 14px; font-weight: 400; color: var(--text-muted); }
+.pricingNote { font-size: 12px; color: var(--text-muted); }
+.pricingLink { font-size: 14px; color: var(--accent); font-weight: 600; }
+.pricingLink:hover { text-decoration: underline; }
+
+/* FINAL CTA */
+.finalCTA { padding: 96px 32px; text-align: center; }
+.finalInner { max-width: 580px; margin: 0 auto; }
+.finalTitle { font-family: 'Space Grotesk',sans-serif; font-weight: 700; font-size: clamp(28px,4vw,48px); letter-spacing: -.025em; margin-bottom: 14px; line-height: 1.15; }
+.finalSub { font-size: 15px; color: var(--text-muted); margin-bottom: 32px; }
+.finalActions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+@media(max-width:768px){
+  .hero{padding:56px 20px 48px;}
+  .problem{padding:48px 20px;}
+  .problemInner{grid-template-columns:1fr;gap:28px;}
+  .pricing{padding:56px 20px;}
+  .pricingCards{grid-template-columns:1fr;max-width:280px;margin:0 auto 28px;}
+  .finalCTA{padding:64px 20px;}
+  .trustBar{padding:12px 20px;}
 }
-.strip {
-  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-  background: rgba(13,17,32,.6); padding: 14px 32px;
-}
-.stripInner {
-  max-width: 1200px; margin: 0 auto; display: flex; align-items: center;
-  gap: 24px; flex-wrap: wrap; justify-content: center;
-}
-.stripLabel {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .1em; color: var(--text-muted); flex-shrink: 0;
-}
-.stripVendors { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; justify-content: center; }
-.stripName {
-  font-family: 'Space Grotesk',sans-serif; font-weight: 600; font-size: 12px;
-  color: rgba(255,255,255,.25); transition: color .2s; cursor: default;
-}
-.stripName:hover { color: rgba(255,255,255,.6); }
-.stripMore { font-family: 'Space Grotesk',sans-serif; font-weight: 600; font-size: 12px; color: rgba(255,255,255,.12); }
-@media(max-width:768px){ .hero{padding:40px 20px 32px;} .strip{padding:12px 20px;} }
+@media(max-width:480px){ .heroCTAs,.finalActions{flex-direction:column;align-items:center;} }
