@@ -1,11 +1,8 @@
 import Nav from '../components/Nav'
 import RotatingPill from '../components/hero/RotatingPill'
-import VendorCircles from '../components/hero/VendorCircles'
 import PainSection from '../components/PainSection'
 import UniverseSection from '../components/UniverseSection'
 import Footer from '../components/Footer'
-import InstallButton from '../components/InstallButton'
-import Link from 'next/link'
 import styles from './page.module.css'
 
 const ALL_VENDORS = [
@@ -19,8 +16,6 @@ export default function HomePage() {
     <>
       <Nav />
       <main id="main">
-
-        {/* HERO — compact so universe section is immediately visible */}
         <section className={styles.hero} aria-labelledby="hero-heading">
           <div className={styles.label} aria-hidden="true">
             <span className={styles.labelDot} />
@@ -30,20 +25,11 @@ export default function HomePage() {
             Each one. A different <RotatingPill /> headache.
           </h1>
           <p className={styles.sub}>
-            One integration for your website, app, or marketplace.{' '}
+            One integration for your website, app, or marketplace.
             We show you exactly what taxes you owe and where to pay them.
           </p>
-          <div className={styles.ctaWrap}>
-            <Link href="/signup" className={styles.ctaPrimary}>Sign up free →</Link>
-            <Link href="/docs" className={styles.ctaSecondary}>View docs</Link>
-            <InstallButton />
-          </div>
         </section>
-
-        {/* CHOOSE YOUR UNIVERSE — immediately visible on load */}
         <UniverseSection />
-
-        {/* VENDOR STRIP */}
         <div className={styles.strip}>
           <div className={styles.stripInner}>
             <span className={styles.stripLabel}>Works with</span>
@@ -55,7 +41,6 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-
         <PainSection />
       </main>
       <Footer />
