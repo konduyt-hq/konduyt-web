@@ -4,12 +4,13 @@ import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
 import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import PeopleTab from '../../../../../components/dashboard/PeopleTab'
 
-export default function Page() {
-  const params  = useParams()
+export default function PeoplePage() {
+  const { orgId, projectId } = useParams()
   const { isLoaded, isSignedIn } = useAuth()
-  const api     = useApi()
-  const router  = useRouter()
+  const api = useApi()
+  const router = useRouter()
   const [org, setOrg]         = useState(null)
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -17,25 +18,23 @@ export default function Page() {
   useEffect(() => {
     if (!isLoaded) return
     if (!isSignedIn) { router.push('/login'); return }
-    const promises = [api.get('/orgs/' + params.orgId)]
-    if (params.projectId) promises.push(api.get('/projects/project/' + params.projectId))
-    Promise.all(promises)
-      .then(([o, p]) => { setOrg(o); if (p) setProject(p) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    Promise.all([
+      api.get('/projects/project/' + projectId),
+      api.get('/orgs/' + orgId),
+    ]).then(([p,o]) => { setProject(p); setOrg(o) })
+     .catch(console.error).finally(() => setLoading(false))
   }, [isLoaded, isSignedIn])
 
-  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#07090F', color:'rgba(237,240,247,0.4)' }}>Loading...</div>
+  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#07090F',color:'rgba(237,240,247,0.4)'}}>Loading...</div>
 
   return (
     <BuildLayout org={org} project={project}>
-      <div style={{ maxWidth:'720px' }}>
-        <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'8px' }}>People</h1>
-        <p style={{ fontSize:'14px', color:'rgba(237,240,247,0.5)', lineHeight:1.65, marginBottom:'32px' }}>Employees, contractors, freelancers, and affiliates. Add people and pay them directly through connected providers.</p>
-        
-        <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'40px', textAlign:'center', color:'rgba(237,240,247,0.35)', fontSize:'13px' }}>
-          No data yet. Start processing transactions to see data here.
-        </div>
+      <div style={{maxWidth:'900px'}}>
+        <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',color:'#EDF0F7',marginBottom:'6px'}}>People</h1>
+        <p style={{fontSize:'14px',color:'rgba(237,240,247,0.5)',marginBottom:'28px',lineHeight:1.65}}>
+          Employees, contractors, freelancers, affiliates. Pay anyone, anywhere. Create public payment links for tips and memberships.
+        </p>
+        <PeopleTab projectId={projectId} />
       </div>
     </BuildLayout>
   )
