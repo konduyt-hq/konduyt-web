@@ -3,33 +3,40 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import DashboardLayout from '../../../../../components/dashboard/DashboardLayout'
-import TransactionsTab from '../../../../../components/dashboard/TransactionsTab'
+import BuildLayout from '../../../../../components/layouts/BuildLayout'
 
-export default function TransactionsPage() {
-  const router = useRouter()
-  const { orgId, projectId } = useParams()
+export default function Page() {
+  const params  = useParams()
   const { isLoaded, isSignedIn } = useAuth()
-  const api = useApi()
-  const [project, setProject] = useState(null)
+  const api     = useApi()
+  const router  = useRouter()
   const [org, setOrg]         = useState(null)
+  const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!isLoaded) return
     if (!isSignedIn) { router.push('/login'); return }
-    Promise.all([
-      api.get('/projects/project/' + projectId),
-      api.get('/orgs/' + orgId),
-    ]).then(([p, o]) => { setProject(p); setOrg(o) })
-      .catch(e => console.error(e))
+    const promises = [api.get('/orgs/' + params.orgId)]
+    if (params.projectId) promises.push(api.get('/projects/project/' + params.projectId))
+    Promise.all(promises)
+      .then(([o, p]) => { setOrg(o); if (p) setProject(p) })
+      .catch(console.error)
       .finally(() => setLoading(false))
-  }, [isLoaded, isSignedIn, projectId, orgId])
+  }, [isLoaded, isSignedIn])
 
-  if (!isLoaded || loading) return <Loading />
-  return <DashboardLayout org={org} project={project}><TransactionsTab projectId={projectId} /></DashboardLayout>
-}
+  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#07090F', color:'rgba(237,240,247,0.4)' }}>Loading...</div>
 
-function Loading() {
-  return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', color:'var(--text-muted)', background:'var(--bg)' }}>Loading...</div>
+  return (
+    <BuildLayout org={org} project={project}>
+      <div style={{ maxWidth:'720px' }}>
+        <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'8px' }}>Transactions</h1>
+        <p style={{ fontSize:'14px', color:'rgba(237,240,247,0.5)', lineHeight:1.65, marginBottom:'32px' }}>Every payment processed through this project. Filter by status, vendor, or date. Export for reconciliation.</p>
+        
+        <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'40px', textAlign:'center', color:'rgba(237,240,247,0.35)', fontSize:'13px' }}>
+          No data yet. Start processing transactions to see data here.
+        </div>
+      </div>
+    </BuildLayout>
+  )
 }
