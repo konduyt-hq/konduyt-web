@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 const STATUS_COLORS = { success:'#22C55E', failed:'#EF4444', pending:'#F59E0B', refunded:'#8892A4' }
 
@@ -58,7 +58,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{maxWidth:'960px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'24px',flexWrap:'wrap',gap:'12px'}}>
           <div>
@@ -118,6 +118,6 @@ export default function TransactionsPage() {
           </table>
         </div>
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
