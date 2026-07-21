@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 export default function AnalyticsPage() {
   const { orgId, projectId } = useParams()
@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
   const successRate = totalTxns > 0 ? ((totalSuccess/totalTxns)*100).toFixed(1) : '—'
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{maxWidth:'860px'}}>
         <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',color:'#EDF0F7',marginBottom:'24px'}}>Analytics</h1>
 
@@ -87,6 +87,6 @@ export default function AnalyticsPage() {
           })}
         </div>
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
