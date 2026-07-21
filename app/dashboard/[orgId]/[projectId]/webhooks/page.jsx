@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 const ALL_EVENTS = ['payment.success','payment.failed','payment.refunded','vendor.degraded','vendor.recovered']
 
@@ -47,7 +47,7 @@ export default function WebhooksPage() {
   }
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{maxWidth:'720px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'24px',gap:'12px'}}>
           <div>
@@ -112,6 +112,6 @@ export default function WebhooksPage() {
           <pre style={{fontFamily:'monospace',fontSize:'12px',color:'rgba(200,212,232,0.85)',lineHeight:1.7,overflow:'auto',margin:0}}>{JSON.stringify({event:"payment.success",data:{transaction_id:"txn_4f6e247a",amount:2000,currency:"KES",vendor:"mpesa",status:"success",customer_email:"user@example.com"}},null,2)}</pre>
         </div>
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
