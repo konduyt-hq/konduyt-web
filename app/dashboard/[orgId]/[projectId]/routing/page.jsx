@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 const MODES = [
   { id:'fastest',   label:'Always Fastest',          desc:'Route to the provider with the lowest average settlement time for this currency.', icon:'⚡' },
@@ -49,7 +49,7 @@ export default function SmartRoutingPage() {
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#07090F', color:'rgba(237,240,247,0.4)' }}>Loading...</div>
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{ maxWidth:'720px' }}>
 
         <div style={{ marginBottom:'32px' }}>
@@ -148,6 +148,6 @@ export default function SmartRoutingPage() {
         </div>
 
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
