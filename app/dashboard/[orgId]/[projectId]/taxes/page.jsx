@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 const GUIDANCE = {
   KE: { authority:'Kenya Revenue Authority', portal:'https://itax.kra.go.ke', form:'VAT Return (VAT3)', deadline:'20th of the following month', steps:['Log into iTax at itax.kra.go.ke','Navigate to Returns → File Return → VAT','Enter your output tax amount from Konduyt','Submit and download the acknowledgement','Pay via M-Pesa Paybill 572572 or bank transfer'] },
@@ -43,7 +43,7 @@ export default function TaxesPage() {
   const guidance = GUIDANCE[jurisdiction] || GUIDANCE.KE
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{maxWidth:'720px'}}>
         <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',color:'#EDF0F7',marginBottom:'8px'}}>Taxes</h1>
         <p style={{fontSize:'14px',color:'rgba(237,240,247,0.5)',lineHeight:1.65,marginBottom:'28px'}}>
@@ -104,6 +104,6 @@ export default function TaxesPage() {
           </div>
         </div>
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
