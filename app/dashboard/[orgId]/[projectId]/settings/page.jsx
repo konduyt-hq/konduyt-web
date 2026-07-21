@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 export default function SettingsPage() {
   const { orgId, projectId } = useParams()
@@ -59,7 +59,7 @@ export default function SettingsPage() {
   ]
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{maxWidth:'580px'}}>
         <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',color:'#EDF0F7',marginBottom:'28px'}}>Project settings</h1>
 
@@ -118,6 +118,6 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
