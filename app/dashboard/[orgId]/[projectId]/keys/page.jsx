@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 export default function KeysPage() {
   const { orgId, projectId } = useParams()
@@ -44,7 +44,7 @@ export default function KeysPage() {
   if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#07090F',color:'rgba(237,240,247,0.4)'}}>Loading...</div>
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{maxWidth:'680px'}}>
         <div style={{marginBottom:'32px'}}>
           <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',color:'#EDF0F7',marginBottom:'8px'}}>API Keys</h1>
@@ -92,6 +92,6 @@ export default function KeysPage() {
           </div>
         )}
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
