@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/BuildLayout'
+import BuildLayout from '../../../../../components/layouts/ProjectLayout'
 
 export default function CustomersPage() {
   const { orgId, projectId } = useParams()
@@ -32,7 +32,7 @@ export default function CustomersPage() {
   )
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{maxWidth:'800px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'24px',gap:'12px',flexWrap:'wrap'}}>
           <div>
@@ -69,6 +69,6 @@ export default function CustomersPage() {
           </table>
         </div>
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
