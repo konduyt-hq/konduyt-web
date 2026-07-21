@@ -42,7 +42,7 @@ export default function ProjectOverview() {
   ]
 
   return (
-    <BuildLayout org={org} project={project}>
+    <ProjectLayout org={org} project={project}>
       <div style={{ maxWidth:'900px' }}>
 
         {/* Header */}
@@ -104,6 +104,6 @@ export default function ProjectOverview() {
         </div>
 
       </div>
-    </BuildLayout>
+    </ProjectLayout>
   )
 }
