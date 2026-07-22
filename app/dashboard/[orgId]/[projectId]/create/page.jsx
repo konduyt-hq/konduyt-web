@@ -6,14 +6,14 @@ import { useApi } from '../../../../../lib/useApi'
 import ProjectLayout from '../../../../../components/layouts/ProjectLayout'
 
 const OFFER_TYPES = [
-  { id:'payment_link', icon:'⇗', title:'Payment Link', desc:'Share a link and get paid instantly. Works anywhere — social, email, WhatsApp, your website.', available:true },
-  { id:'subscription',  icon:'↻', title:'Subscription',  desc:'Charge a recurring monthly or yearly fee. Perfect for newsletters, courses, communities.',  available:false },
-  { id:'product',       icon:'◻', title:'Digital Product', desc:'Sell files, templates, guides, or any digital download.',                                  available:false },
-  { id:'donation',      icon:'♡', title:'Donation Page', desc:'Let your audience support you with any amount they choose.',                                  available:false },
-  { id:'invoice',       icon:'▤', title:'Invoice',       desc:'Send a bill to a specific customer. Track payment status.',                                   available:false },
+  { id:'payment_link', icon:'⇗', title:'Payment Link',    desc:'Share a link, get paid. Works anywhere.', color:'#F59E0B', available:true },
+  { id:'product',      icon:'◻', title:'Digital Product', desc:'Sell a file, template, or guide.',         color:'#22C55E', available:false },
+  { id:'service',      icon:'◎', title:'Service',         desc:'Consultations, coaching, bookings.',       color:'#0BA4DB', available:false },
+  { id:'subscription', icon:'↻', title:'Subscription',    desc:'Recurring monthly or yearly income.',      color:'#635BFF', available:false },
+  { id:'donation',     icon:'♡', title:'Donation',        desc:'Let supporters pay what they choose.',     color:'#EF4444', available:false },
 ]
 
-const CURRENCIES = ['KES','USD','NGN','GHS','ZAR','EUR','GBP']
+const CURRENCIES = ['KES','USD','NGN','GHS','GBP','EUR','ZAR','INR','BRL']
 
 export default function CreatePage() {
   const { orgId, projectId } = useParams()
@@ -22,12 +22,10 @@ export default function CreatePage() {
   const router = useRouter()
   const [org, setOrg]         = useState(null)
   const [project, setProject] = useState(null)
-  const [step, setStep]       = useState('choose')  // choose | configure | done
-  const [selectedType, setSelectedType] = useState(null)
-  const [form, setForm]       = useState({ title:'', description:'', amount:'', currency:'KES', interval:'' })
+  const [selected, setSelected] = useState('payment_link')
+  const [form, setForm]       = useState({ title:'', description:'', price:'', currency:'KES', handle:'' })
   const [saving, setSaving]   = useState(false)
-  const [created, setCreated] = useState(null)
-  const [copied, setCopied]   = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -35,140 +33,86 @@ export default function CreatePage() {
     Promise.all([
       api.get('/projects/project/' + projectId),
       api.get('/orgs/' + orgId),
-    ]).then(([p,o]) => { setProject(p); setOrg(o) }).catch(console.error)
+    ]).then(([p,o]) => { setProject(p); setOrg(o) }).catch(console.error).finally(()=>setLoading(false))
   }, [isLoaded, isSignedIn])
 
-  function selectType(type) {
-    if (!type.available) return
-    setSelectedType(type); setStep('configure')
-  }
-
   async function create(e) {
-    e.preventDefault(); setSaving(true)
+    e.preventDefault()
+    if (!form.title.trim()) return
+    setSaving(true)
     try {
-      const payload = {
-        type:        selectedType.id,
+      const offer = await api.post('/offers/' + projectId, {
+        type:        selected,
         title:       form.title,
-        description: form.description || undefined,
-        amount:      form.amount ? parseFloat(form.amount) : undefined,
+        description: form.description || null,
+        price:       form.price ? parseFloat(form.price) : null,
         currency:    form.currency,
-        interval:    selectedType.id === 'subscription' ? form.interval : undefined,
-      }
-      const offer = await api.post('/creator/' + projectId + '/offers', payload)
-      setCreated(offer); setStep('done')
+        handle:      form.handle || null,
+      })
+      router.push('/dashboard/' + orgId + '/' + projectId + '/sales')
     } catch (e) { alert(e.message) } finally { setSaving(false) }
   }
 
-  function copy() {
-    navigator.clipboard.writeText(created?.url || '')
-    setCopied(true); setTimeout(()=>setCopied(false), 2000)
-  }
-
-  const base = '/dashboard/' + orgId + '/' + projectId
+  const selectedType = OFFER_TYPES.find(t => t.id === selected)
 
   return (
     <ProjectLayout org={org} project={project}>
-      <div style={{ maxWidth:'640px' }}>
+      <div style={{ maxWidth:'720px' }}>
+        <div style={{ marginBottom:'28px' }}>
+          <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'6px' }}>Create</h1>
+          <p style={{ fontSize:'14px', color:'rgba(237,240,247,0.5)' }}>What do you want to sell?</p>
+        </div>
 
-        {/* Step: Choose what to sell */}
-        {step === 'choose' && (
-          <>
-            <div style={{ marginBottom:'28px' }}>
-              <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'6px' }}>What do you want to sell?</h1>
-              <p style={{ fontSize:'14px', color:'rgba(237,240,247,0.5)' }}>Choose how you want to earn.</p>
-            </div>
-            <div style={{ display:'grid', gap:'10px' }}>
-              {OFFER_TYPES.map(opt => (
-                <button key={opt.id} onClick={() => selectType(opt)} disabled={!opt.available}
-                  style={{ display:'flex', alignItems:'center', gap:'16px', padding:'18px 20px', background:'#0D1120', border:'1px solid', borderColor: opt.available?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.04)', borderRadius:'12px', textAlign:'left', cursor: opt.available?'pointer':'default', opacity: opt.available?1:0.5, transition:'border-color .15s', width:'100%' }}>
-                  <div style={{ width:'44px', height:'44px', borderRadius:'10px', background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', color:'#F59E0B', flexShrink:0 }}>
-                    {opt.icon}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'4px' }}>
-                      <span style={{ fontSize:'15px', fontWeight:700, color:'#EDF0F7' }}>{opt.title}</span>
-                      {!opt.available && <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 6px', borderRadius:'4px', background:'rgba(245,158,11,0.1)', color:'#F59E0B' }}>SOON</span>}
-                    </div>
-                    <div style={{ fontSize:'13px', color:'rgba(237,240,247,0.5)', lineHeight:1.55 }}>{opt.desc}</div>
-                  </div>
-                  {opt.available && <span style={{ color:'rgba(237,240,247,0.3)', fontSize:'16px', flexShrink:0 }}>→</span>}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+        {/* Type selector */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:'8px', marginBottom:'24px' }}>
+          {OFFER_TYPES.map(t => (
+            <button key={t.id} onClick={() => t.available && setSelected(t.id)} style={{ padding:'12px 8px', background: selected===t.id?'rgba(245,158,11,0.12)':'#0D1120', border:'1px solid', borderColor:selected===t.id?'rgba(245,158,11,0.4)':'rgba(255,255,255,0.06)', borderRadius:'10px', cursor:t.available?'pointer':'not-allowed', textAlign:'center', opacity:t.available?1:0.45, transition:'all .15s', position:'relative' }}>
+              <div style={{ fontSize:'18px', marginBottom:'4px' }}>{t.icon}</div>
+              <div style={{ fontSize:'11px', fontWeight:600, color:selected===t.id?'#F59E0B':'#EDF0F7' }}>{t.title}</div>
+              {!t.available && <div style={{ fontSize:'9px', fontWeight:700, color:'#F59E0B', marginTop:'3px' }}>SOON</div>}
+            </button>
+          ))}
+        </div>
 
-        {/* Step: Configure the offer */}
-        {step === 'configure' && selectedType && (
-          <>
-            <div style={{ marginBottom:'24px' }}>
-              <button onClick={()=>setStep('choose')} style={{ fontSize:'12px', color:'rgba(237,240,247,0.4)', background:'none', border:'none', cursor:'pointer', marginBottom:'12px', padding:0 }}>← Back</button>
-              <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'4px' }}>
-                {selectedType.icon} {selectedType.title}
-              </h1>
-              <p style={{ fontSize:'14px', color:'rgba(237,240,247,0.5)' }}>{selectedType.desc}</p>
+        {/* Form */}
+        {selectedType?.available && (
+          <form onSubmit={create} style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'14px', padding:'22px', display:'grid', gap:'16px' }}>
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:600, color:'rgba(237,240,247,0.55)', textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:'7px' }}>Title *</label>
+              <input required value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="e.g. 1-hour strategy session, UI kit, Beat pack vol.2..."
+                style={{ width:'100%', padding:'11px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', color:'#EDF0F7', fontSize:'14px', outline:'none', boxSizing:'border-box' }} />
             </div>
-            <form onSubmit={create} style={{ display:'grid', gap:'16px' }}>
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:600, color:'rgba(237,240,247,0.55)', textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:'7px' }}>Description (optional)</label>
+              <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="What does the buyer get? Be specific."
+                rows={3} style={{ width:'100%', padding:'11px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', color:'#EDF0F7', fontSize:'14px', outline:'none', resize:'vertical', boxSizing:'border-box', fontFamily:'inherit' }} />
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
               <div>
-                <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Title *</label>
-                <input required value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="e.g. My Photography Preset Pack"
-                  style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#EDF0F7', fontSize:'15px', outline:'none', boxSizing:'border-box' }} />
+                <label style={{ fontSize:'12px', fontWeight:600, color:'rgba(237,240,247,0.55)', textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:'7px' }}>Price (blank = buyer chooses)</label>
+                <input type="number" min="0" step="any" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder="500"
+                  style={{ width:'100%', padding:'11px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', color:'#EDF0F7', fontSize:'14px', outline:'none', boxSizing:'border-box' }} />
               </div>
               <div>
-                <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Description</label>
-                <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Tell customers what they're getting..."
-                  rows={3} style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#EDF0F7', fontSize:'14px', outline:'none', resize:'vertical', boxSizing:'border-box' }} />
+                <label style={{ fontSize:'12px', fontWeight:600, color:'rgba(237,240,247,0.55)', textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:'7px' }}>Currency</label>
+                <select value={form.currency} onChange={e=>setForm(f=>({...f,currency:e.target.value}))}
+                  style={{ width:'100%', padding:'11px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', color:'#EDF0F7', fontSize:'14px', outline:'none', boxSizing:'border-box' }}>
+                  {CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'12px' }}>
-                <div>
-                  <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Price (leave blank = customer chooses)</label>
-                  <input type="number" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))} placeholder="0.00" min="0" step="0.01"
-                    style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#EDF0F7', fontSize:'15px', outline:'none', boxSizing:'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Currency</label>
-                  <select value={form.currency} onChange={e=>setForm(f=>({...f,currency:e.target.value}))}
-                    style={{ width:'100%', padding:'12px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#EDF0F7', fontSize:'14px', outline:'none', boxSizing:'border-box' }}>
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+            </div>
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:600, color:'rgba(237,240,247,0.55)', textTransform:'uppercase', letterSpacing:'.06em', display:'block', marginBottom:'7px' }}>Link handle (optional — auto-generated if blank)</label>
+              <div style={{ display:'flex', alignItems:'center', gap:'0', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'9px', overflow:'hidden' }}>
+                <span style={{ padding:'11px 10px 11px 14px', fontSize:'13px', color:'rgba(237,240,247,0.4)', whiteSpace:'nowrap' }}>konduyt.dev/pay/</span>
+                <input value={form.handle} onChange={e=>setForm(f=>({...f,handle:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,'')}))} placeholder="your-name"
+                  style={{ flex:1, padding:'11px 14px 11px 0', background:'none', border:'none', color:'#EDF0F7', fontSize:'14px', outline:'none' }} />
               </div>
-              <button type="submit" disabled={saving||!form.title} style={{ padding:'14px', background:'#F59E0B', color:'#fff', border:'none', borderRadius:'100px', fontSize:'15px', fontWeight:700, cursor:'pointer', opacity:saving||!form.title?0.5:1, marginTop:'4px' }}>
-                {saving ? 'Creating...' : `Create ${selectedType.title}`}
-              </button>
-            </form>
-          </>
-        )}
-
-        {/* Step: Done — share it */}
-        {step === 'done' && created && (
-          <div>
-            <div style={{ textAlign:'center', marginBottom:'28px' }}>
-              <div style={{ fontSize:'40px', marginBottom:'12px' }}>🎉</div>
-              <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'6px' }}>Your offer is live</h1>
-              <p style={{ fontSize:'14px', color:'rgba(237,240,247,0.5)' }}>Share this link and start earning.</p>
             </div>
-
-            <div style={{ background:'#0D1120', border:'1px solid rgba(245,158,11,0.3)', borderRadius:'14px', padding:'24px', textAlign:'center', marginBottom:'20px' }}>
-              <div style={{ fontSize:'15px', fontWeight:700, color:'#EDF0F7', marginBottom:'8px' }}>{created.title}</div>
-              {created.amount && <div style={{ fontSize:'22px', fontWeight:700, color:'#F59E0B', marginBottom:'12px' }}>{created.currency} {created.amount.toLocaleString()}</div>}
-              <div style={{ fontFamily:'monospace', fontSize:'14px', color:'#F59E0B', marginBottom:'16px', wordBreak:'break-all' }}>{created.url}</div>
-              <button onClick={copy} style={{ fontSize:'14px', fontWeight:700, padding:'12px 28px', background:'#F59E0B', color:'#fff', border:'none', borderRadius:'100px', cursor:'pointer' }}>
-                {copied ? '✓ Copied!' : 'Copy link'}
-              </button>
-            </div>
-
-            <div style={{ display:'grid', gap:'10px' }}>
-              <button onClick={()=>{setStep('choose');setForm({title:'',description:'',amount:'',currency:'KES',interval:''});setCreated(null)}}
-                style={{ padding:'12px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'100px', color:'rgba(237,240,247,0.7)', fontSize:'13px', fontWeight:600, cursor:'pointer' }}>
-                Create another
-              </button>
-              <button onClick={()=>router.push(base+'/sales')}
-                style={{ padding:'12px', background:'none', border:'none', color:'rgba(237,240,247,0.4)', fontSize:'13px', cursor:'pointer' }}>
-                View all sales →
-              </button>
-            </div>
-          </div>
+            <button type="submit" disabled={saving||!form.title.trim()} style={{ padding:'14px', background:'#F59E0B', color:'#fff', border:'none', borderRadius:'100px', fontSize:'14px', fontWeight:600, cursor:'pointer', opacity:(saving||!form.title.trim())?0.5:1, marginTop:'4px' }}>
+              {saving ? 'Creating...' : 'Create ' + selectedType.title + ' →'}
+            </button>
+          </form>
         )}
       </div>
     </ProjectLayout>
