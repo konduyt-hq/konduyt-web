@@ -1,539 +1,353 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import Nav from '../../components/Nav'
-import Footer from '../../components/Footer'
 
-const SECTIONS = {
-  quickstart: {
-    title: 'Quick Start',
-    content: `
-## Install in under 5 minutes
-
-### 1. Sign up and create a project
-
-Sign up at konduyt.dev, create a project, and get your API keys from the Integration tab.
-
-### 2. Add the SDK
-
-**JavaScript (CDN — no npm needed):**
-\`\`\`html
-<script src="https://cdn.konduyt.dev/v1/konduyt.js"></script>
-\`\`\`
-
-**Python:**
-\`\`\`bash
-pip install konduyt
-\`\`\`
-
-**PHP:**
-\`\`\`bash
-composer require konduyt/sdk
-\`\`\`
-
-### 3. Initialize and charge
-
-\`\`\`javascript
-const konduyt = new Konduyt({ publishableKey: 'pk_live_...' })
-
-konduyt.checkout({
-  amount: 2000,
-  currency: 'KES',
-  theme: { color: '#FF5C35', buttonText: 'Pay now' }
-})
-
-konduyt.on('payment.success', (txn) => {
-  console.log('Paid!', txn.transaction_id)
-})
-\`\`\`
-
-That is it. Konduyt shows your customer the cheapest available payment method first, processes the payment, calculates tax, and calls your webhook.
-    `
-  },
-  javascript: {
-    title: 'JavaScript SDK',
-    content: `
-## JavaScript SDK (CDN)
-
-No npm install. No node_modules. Works in any browser, Chromebook, or lightweight setup.
-
-### Installation
-\`\`\`html
-<script src="https://cdn.konduyt.dev/v1/konduyt.js"></script>
-\`\`\`
-
-### Initialize
-\`\`\`javascript
-const konduyt = new Konduyt({
-  publishableKey: 'pk_live_...'  // from your project dashboard
-})
-\`\`\`
-
-### konduyt.checkout(options)
-Launch the Konduyt payment sheet. Konduyt picks the cheapest vendor automatically.
-
-\`\`\`javascript
-konduyt.checkout({
-  amount: 2000,        // in smallest currency unit (e.g. cents, kobo)
-  currency: 'KES',     // ISO 4217 currency code
-  theme: {
-    color: '#FF5C35',        // your brand color
-    logo: 'https://...',     // your logo URL
-    buttonText: 'Pay now'    // CTA text
-  }
-})
-\`\`\`
-
-### konduyt.on(event, handler)
-Listen for payment events. These fire when the payment status changes.
-
-\`\`\`javascript
-konduyt.on('payment.success', (txn) => {
-  // Save to your database, redirect user
-  db.save(txn)
-  window.location = '/success'
-})
-
-konduyt.on('payment.failed', (txn) => {
-  // Show error to user
-  alert('Payment failed: ' + txn.error.message)
-})
-
-konduyt.on('payment.refunded', (txn) => {
-  // Update your records
-  db.updateRefund(txn)
-})
-\`\`\`
-
-### konduyt.tax(options)
-Calculate tax for a transaction before charging.
-
-\`\`\`javascript
-const tax = await konduyt.tax({
-  amount: 2000,
-  currency: 'KES',
-  jurisdiction: 'KE'
-})
-
-console.log(tax.total_owed)    // e.g. 320
-console.log(tax.where_to_pay)  // e.g. "itax.kra.go.ke"
-console.log(tax.deadline)      // e.g. "20th of following month"
-\`\`\`
-
-### Transaction response object
-Every successful charge returns this unified shape regardless of vendor:
-
-\`\`\`json
-{
-  "status": "success",
-  "transaction_id": "txn_4f6e247a",
-  "amount": 2000,
-  "currency": "KES",
-  "vendor": "mpesa",
-  "vendor_reference": "MPE123456",
-  "tax": {
-    "amount_owed": 320,
-    "jurisdiction": "KE",
-    "where_to_pay": "itax.kra.go.ke",
-    "deadline": "20th of following month"
-  },
-  "timestamp": "2026-07-17T10:30:00Z"
-}
-\`\`\`
-    `
-  },
-  python: {
-    title: 'Python SDK',
-    content: `
-## Python SDK
-
-### Installation
-\`\`\`bash
-pip install konduyt
-\`\`\`
-
-### Initialize
-\`\`\`python
-from konduyt import Konduyt
-
-kd = Konduyt(secret_key='sk_live_...')
-\`\`\`
-
-### Charge
-\`\`\`python
-result = kd.charge(
-    amount=2000,
-    currency='KES',
-    vendor='mpesa',              # optional — Konduyt auto-picks if omitted
-    customer_phone='+254712345678',
-    customer_email='user@example.com'
-)
-
-if result.status == 'success':
-    print(result.transaction_id)
-elif result.status == 'failed':
-    print(result.error['message'])
-\`\`\`
-
-### Tax calculation
-\`\`\`python
-tax = kd.tax(amount=2000, currency='KES', jurisdiction='KE')
-print(f"Tax owed: {tax.total_owed} {tax.currency}")
-print(f"File at: {tax.where_to_pay}")
-\`\`\`
-
-### Webhook handler (Flask example)
-\`\`\`python
-from flask import Flask, request
-from konduyt import Konduyt
-
-app = Flask(__name__)
-kd = Konduyt(secret_key='sk_live_...')
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    event = request.json
-    if event['event'] == 'payment.success':
-        txn = event['data']
-        db.save(txn)
-    return {'ok': True}
-\`\`\`
-    `
-  },
-  php: {
-    title: 'PHP SDK',
-    content: `
-## PHP SDK
-
-### Installation
-\`\`\`bash
-composer require konduyt/sdk
-\`\`\`
-
-### Initialize
-\`\`\`php
-require 'vendor/autoload.php';
-
-$konduyt = new Konduyt\\Client([
-    'secret_key' => 'sk_live_...'
-]);
-\`\`\`
-
-### Charge
-\`\`\`php
-$result = $konduyt->charge([
-    'amount'           => 2000,
-    'currency'         => 'KES',
-    'vendor'           => 'mpesa',
-    'customer_phone'   => '+254712345678',
-    'customer_email'   => 'user@example.com',
-]);
-
-if ($result->status === 'success') {
-    echo $result->transaction_id;
-}
-\`\`\`
-
-### Tax calculation
-\`\`\`php
-$tax = $konduyt->tax([
-    'amount'       => 2000,
-    'currency'     => 'KES',
-    'jurisdiction' => 'KE'
-]);
-
-echo "Tax owed: " . $tax->total_owed . " " . $tax->currency;
-echo "File at: " . $tax->where_to_pay;
-\`\`\`
-    `
-  },
-  mobile: {
-    title: 'Mobile (Kotlin & Dart)',
-    content: `
-## Mobile SDKs
-
-### Kotlin (Android)
-
-**build.gradle:**
-\`\`\`gradle
-implementation 'dev.konduyt:sdk:1.0.0'
-\`\`\`
-
-**Usage:**
-\`\`\`kotlin
-val konduyt = Konduyt(publishableKey = "pk_live_...")
-
-konduyt.checkout(
-    amount   = 2000,
-    currency = "KES",
-    theme    = KonduytTheme(color = "#FF5C35", buttonText = "Pay now")
-) { result ->
-    when (result.status) {
-        "success" -> println("Paid: " + result.transactionId)
-        "failed"  -> println("Failed: " + result.error?.message)
-    }
-}
-\`\`\`
-
----
-
-### Dart (Flutter)
-
-**pubspec.yaml:**
-\`\`\`yaml
-dependencies:
-  konduyt: ^1.0.0
-\`\`\`
-
-**Usage:**
-\`\`\`dart
-import 'package:konduyt/konduyt.dart';
-
-final kd = Konduyt(publishableKey: 'pk_live_...');
-
-final result = await kd.checkout(
-  amount:   2000,
-  currency: 'KES',
-  theme:    KonduytTheme(color: '#FF5C35', buttonText: 'Pay now'),
-);
-
-if (result.status == 'success') {
-  print('Paid: ' + result.transactionId);
-}
-\`\`\`
-    `
-  },
-  webhooks: {
-    title: 'Webhook Events',
-    content: `
-## Webhook Events
-
-Konduyt calls your webhook URL when payment status changes. Add your handlers using \`konduyt.on()\` in JavaScript, or set up an HTTP endpoint for server-side events.
-
-### Event list
-
-| Event | When it fires |
-|---|---|
-| \`payment.success\` | Payment completed successfully |
-| \`payment.failed\` | Payment failed (includes failover result) |
-| \`payment.refunded\` | Payment was refunded |
-| \`vendor.degraded\` | A vendor's performance dropped — Konduyt switched to backup |
-| \`vendor.recovered\` | A vendor recovered — routing switched back |
-
-### Event payload shape
-
-\`\`\`json
-{
-  "event": "payment.success",
-  "data": {
-    "transaction_id":   "txn_4f6e247a",
-    "amount":           2000,
-    "currency":         "KES",
-    "vendor":           "mpesa",
-    "vendor_reference": "MPE123456",
-    "customer_email":   "user@example.com",
-    "customer_phone":   "+254712345678",
-    "tax": {
-      "amount_owed":  320,
-      "jurisdiction": "KE"
-    },
-    "timestamp": "2026-07-17T10:30:00Z"
-  }
-}
-\`\`\`
-
-### Configuring webhooks
-
-Set your webhook URLs in the Integration tab of your project dashboard under Step 5 — Configure webhooks.
-    `
-  },
-  errors: {
-    title: 'Error Codes',
-    content: `
-## Error Codes
-
-Konduyt normalizes error codes across all vendors. You always get the same code regardless of which vendor processed the transaction.
-
-| Code | Meaning | What to do |
-|---|---|---|
-| \`insufficient_funds\` | Customer cannot cover the amount | Ask customer to use a different payment method |
-| \`customer_declined\` | Customer cancelled the payment | Show a friendly message and retry option |
-| \`vendor_unavailable\` | Vendor is down — failover attempted | Konduyt already tried a backup. If this persists, check your dashboard. |
-| \`invalid_credentials\` | Your vendor API key is wrong | Go to Integration tab and reconnect the vendor |
-| \`invalid_amount\` | Amount is zero, negative, or too large | Check your charge() call |
-| \`unsupported_currency\` | Vendor does not support this currency | Choose a different vendor for this currency |
-| \`timeout\` | Vendor took too long to respond | Retry the transaction |
-| \`kyc_required\` | You have not completed identity verification | Complete KYC in your dashboard |
-| \`jurisdiction_locked\` | This jurisdiction requires Global plan | Upgrade at konduyt.dev/pricing |
-
-### Error object shape
-
-\`\`\`json
-{
-  "status": "failed",
-  "error": {
-    "code":              "insufficient_funds",
-    "message":           "Customer has insufficient funds",
-    "vendor":            "mpesa",
-    "vendor_error_code": "1032",
-    "failover_attempted": true,
-    "failover_vendor":    "stripe",
-    "failover_result":    "success"
-  }
-}
-\`\`\`
-    `
-  },
-  tax: {
-    title: 'Tax Guidance',
-    content: `
-## Tax Guidance
-
-Konduyt calculates what you owe and shows you exactly where and how to pay. We do not file on your behalf — you stay in control.
-
-### Supported jurisdictions
-
-| Country | Tax type | Rate | Authority |
-|---|---|---|---|
-| Kenya | VAT + DST | 16% + 1.5% | KRA iTax |
-| Nigeria | VAT | 7.5% | FIRS |
-| Ghana | VAT | 15% | GRA |
-| More coming | — | — | — |
-
-### How to pay — Kenya example
-
-1. Log into iTax at itax.kra.go.ke
-2. Navigate to Returns → File Return → VAT
-3. Enter your output tax amount from the Konduyt dashboard
-4. Submit and download the acknowledgement receipt
-5. Pay any balance via M-Pesa PayBill 572572 or bank
-
-Your Transactions tab shows the exact amount owed per jurisdiction and links directly to the correct portal.
-
-### Tax API endpoint
-
-\`\`\`bash
-POST https://konduyt-api.onrender.com/tax/calculate
-Content-Type: application/json
-
-{
-  "amount": 2000,
-  "currency": "KES",
-  "jurisdiction": "KE",
-  "transaction_type": "services"
-}
-\`\`\`
-
-Response:
-\`\`\`json
-{
-  "total_owed": 320,
-  "currency": "KES",
-  "jurisdiction": "KE",
-  "country": "Kenya",
-  "taxes": [{
-    "name": "Value Added Tax",
-    "abbreviation": "VAT",
-    "rate": 0.16,
-    "amount_owed": 320,
-    "filing_deadline": "20th of the following month",
-    "where_to_pay": "https://itax.kra.go.ke"
-  }]
-}
-\`\`\`
-    `
-  },
+const SECTIONS = [
+  { id: 'getting-started', label: 'Getting Started' },
+  { id: 'sdk',             label: 'SDK Guide' },
+  { id: 'api-reference',   label: 'API Reference' },
+  { id: 'connectors',      label: 'Connector Guide' },
+  { id: 'webhooks',        label: 'Webhooks' },
+  { id: 'errors',          label: 'Error Reference' },
+  { id: 'changelog',       label: 'Changelog' },
+]
+
+function Code({ children, lang = 'bash' }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <div style={{ position: 'relative', marginTop: '12px', marginBottom: '20px' }}>
+      <pre style={{ background: '#0D1120', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px', padding: '16px', fontFamily: 'monospace', fontSize: '13px', color: '#C8D4E8', overflowX: 'auto', lineHeight: 1.7, margin: 0 }}>
+        <code>{children}</code>
+      </pre>
+      <button
+        onClick={() => { navigator.clipboard.writeText(children); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+        style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '11px', fontWeight: 600, color: copied ? '#22C55E' : 'rgba(237,240,247,0.4)', background: 'rgba(255,255,255,0.06)', border: 'none', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer' }}
+      >
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
+    </div>
+  )
 }
 
-function renderContent(content) {
-  const lines = content.split('\n')
-  const elements = []
-  let i = 0
-  while (i < lines.length) {
-    const line = lines[i]
-    if (line.startsWith('### ')) {
-      elements.push(<h3 key={i} style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'16px',marginTop:'28px',marginBottom:'10px'}}>{line.slice(4)}</h3>)
-    } else if (line.startsWith('## ')) {
-      elements.push(<h2 key={i} style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',marginBottom:'14px',marginTop:'8px'}}>{line.slice(3)}</h2>)
-    } else if (line.startsWith('```')) {
-      const lang = line.slice(3)
-      const codeLines = []
-      i++
-      while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++ }
-      elements.push(
-        <pre key={i} style={{background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'8px',padding:'16px',overflow:'auto',fontFamily:'Courier New,monospace',fontSize:'13px',color:'#C8D4E8',lineHeight:1.65,marginBottom:'16px'}}>
-          <code>{codeLines.join('\n')}</code>
-        </pre>
-      )
-    } else if (line.startsWith('| ')) {
-      const tableLines = []
-      while (i < lines.length && lines[i].startsWith('| ')) { tableLines.push(lines[i]); i++ }
-      const headers = tableLines[0].split('|').filter(c => c.trim() && !c.includes('---')).map(c => c.trim())
-      const rows = tableLines.slice(2).map(row => row.split('|').filter(c => c.trim()).map(c => c.trim()))
-      elements.push(
-        <div key={i} style={{overflowX:'auto',marginBottom:'16px'}}>
-          <table style={{width:'100%',borderCollapse:'collapse',fontSize:'14px'}}>
-            <thead><tr>{headers.map((h,j) => <th key={j} style={{textAlign:'left',padding:'8px 12px',borderBottom:'1px solid var(--border)',color:'var(--text)',fontWeight:600,fontSize:'12px',textTransform:'uppercase',letterSpacing:'.06em'}}>{h}</th>)}</tr></thead>
-            <tbody>{rows.map((row,j) => <tr key={j}>{row.map((cell,k) => <td key={k} style={{padding:'8px 12px',borderBottom:'1px solid rgba(255,255,255,.04)',color:'var(--text-muted)',fontSize:'13px'}}>{cell}</td>)}</tr>)}</tbody>
-          </table>
-        </div>
-      )
-      continue
-    } else if (line.trim()) {
-      elements.push(<p key={i} style={{fontSize:'15px',color:'var(--text-muted)',lineHeight:1.7,marginBottom:'12px'}}>{line}</p>)
-    }
-    i++
-  }
-  return elements
+function Section({ title, children }) {
+  return (
+    <div style={{ marginBottom: '48px' }}>
+      <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '18px', color: '#EDF0F7', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>{title}</h2>
+      {children}
+    </div>
+  )
 }
+
+function Sub({ title, children }) {
+  return (
+    <div style={{ marginBottom: '28px' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#EDF0F7', marginBottom: '10px' }}>{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function P({ children }) {
+  return <p style={{ fontSize: '14px', color: 'rgba(237,240,247,0.65)', lineHeight: 1.75, marginBottom: '12px' }}>{children}</p>
+}
+
+function Badge({ children, color = '#FF5C35' }) {
+  return <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: color + '18', color, fontFamily: 'monospace', marginRight: '6px' }}>{children}</span>
+}
+
+const ERRORS = [
+  { code: 'invalid_key',          http: 401, type: 'auth',       cause: 'API key missing or malformed',      fix: 'Check key format: pk_... or sk_...' },
+  { code: 'unauthorized',         http: 403, type: 'auth',       cause: 'Key does not have permission',      fix: 'Use a secret key for server operations' },
+  { code: 'payment_failed',       http: 402, type: 'provider',   cause: 'Provider declined the payment',     fix: 'Check customer details. Do not retry immediately.' },
+  { code: 'provider_unavailable', http: 503, type: 'provider',   cause: 'Provider API is down',              fix: 'Retryable. Konduyt will auto-retry with another provider.' },
+  { code: 'provider_timeout',     http: 504, type: 'provider',   cause: 'Provider did not respond in time',  fix: 'Retryable. Use the same Idempotency-Key when retrying.' },
+  { code: 'no_provider_connected',http: 400, type: 'config',     cause: 'No providers connected to project', fix: 'Go to Connections and connect a provider.' },
+  { code: 'invalid_amount',       http: 400, type: 'validation', cause: 'Amount is zero, negative, or invalid', fix: 'Amount must be a positive number.' },
+  { code: 'invalid_currency',     http: 400, type: 'validation', cause: 'Currency code not recognised',      fix: 'Use a valid ISO 4217 currency code (KES, USD, NGN).' },
+  { code: 'not_found',            http: 404, type: 'resource',   cause: 'Resource does not exist',           fix: 'Verify the ID is correct and belongs to your project.' },
+  { code: 'too_many_requests',    http: 429, type: 'rate_limit', cause: 'Too many requests',                 fix: 'Retryable. Back off and retry with exponential delay.' },
+  { code: 'idempotency_conflict', http: 409, type: 'idempotency', cause: 'Same key, different payload',      fix: 'Generate a new Idempotency-Key for different operations.' },
+  { code: 'internal_error',       http: 500, type: 'internal',   cause: 'Unexpected server error',           fix: 'Retryable. If persistent, contact support with request_id.' },
+]
 
 export default function DocsPage() {
-  const [active, setActive] = useState('quickstart')
-  const section = SECTIONS[active]
+  const [active, setActive] = useState('getting-started')
 
   return (
-    <>
+    <div style={{ minHeight: '100vh', background: '#07090F', fontFamily: 'Inter,sans-serif' }}>
       <Nav />
-      <div style={{maxWidth:'1100px',margin:'0 auto',padding:'48px 32px 100px',display:'grid',gridTemplateColumns:'220px 1fr',gap:'48px',alignItems:'start'}}>
+
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 32px', display: 'grid', gridTemplateColumns: '200px 1fr', gap: '48px', alignItems: 'start' }}>
 
         {/* Sidebar */}
-        <nav style={{position:'sticky',top:'80px'}}>
-          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'11px',letterSpacing:'.1em',textTransform:'uppercase',color:'var(--text-muted)',marginBottom:'14px'}}>SDK Reference</div>
-          <ul style={{listStyle:'none',display:'grid',gap:'2px'}}>
-            {Object.entries(SECTIONS).map(([key, s]) => (
-              <li key={key}>
-                <button
-                  onClick={() => setActive(key)}
-                  style={{
-                    width:'100%',textAlign:'left',padding:'8px 12px',borderRadius:'6px',
-                    fontSize:'14px',fontWeight: active===key ? 600 : 400,
-                    color: active===key ? 'var(--text)' : 'var(--text-muted)',
-                    background: active===key ? 'var(--surface)' : 'transparent',
-                    border: active===key ? '1px solid var(--border)' : '1px solid transparent',
-                    cursor:'pointer',transition:'all .15s',
-                  }}
-                >
-                  {s.title}
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <div style={{marginTop:'24px',paddingTop:'24px',borderTop:'1px solid var(--border)'}}>
-            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'11px',letterSpacing:'.1em',textTransform:'uppercase',color:'var(--text-muted)',marginBottom:'14px'}}>Resources</div>
-            <ul style={{listStyle:'none',display:'grid',gap:'4px'}}>
-              <li><a href="https://konduyt-api.onrender.com/docs" target="_blank" rel="noopener" style={{fontSize:'13px',color:'var(--accent)',display:'block',padding:'6px 12px'}}>Live API reference →</a></li>
-              <li><a href="https://github.com/konduyt-hq/konduyt-sdk" target="_blank" rel="noopener" style={{fontSize:'13px',color:'var(--text-muted)',display:'block',padding:'6px 12px'}}>GitHub →</a></li>
-            </ul>
+        <nav style={{ position: 'sticky', top: '24px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(237,240,247,0.3)', marginBottom: '12px' }}>Documentation</div>
+          {SECTIONS.map(s => (
+            <button key={s.id} onClick={() => setActive(s.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: '6px', border: 'none', background: active === s.id ? 'rgba(255,92,53,0.1)' : 'transparent', color: active === s.id ? '#FF5C35' : 'rgba(237,240,247,0.5)', fontSize: '13px', fontWeight: active === s.id ? 600 : 400, cursor: 'pointer', borderLeft: active === s.id ? '2px solid #FF5C35' : '2px solid transparent', marginBottom: '2px' }}>
+              {s.label}
+            </button>
+          ))}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <a href="https://konduyt-api.onrender.com/docs" target="_blank" rel="noopener" style={{ fontSize: '12px', color: '#FF5C35', textDecoration: 'none', fontWeight: 600 }}>API Reference →</a>
           </div>
         </nav>
 
         {/* Content */}
         <main>
-          <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'28px',marginBottom:'24px',color:'var(--text)'}}>{section.title}</div>
-          {renderContent(section.content)}
+
+          {active === 'getting-started' && (
+            <div>
+              <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '26px', color: '#EDF0F7', marginBottom: '8px' }}>Getting Started</h1>
+              <P>Accept your first payment in under 10 minutes.</P>
+              <Section title="1. Create a project">
+                <P>Sign up at konduyt.dev/signup. Create an organization. Create a project. Every payment belongs to a project.</P>
+              </Section>
+              <Section title="2. Connect a provider">
+                <P>Go to <strong style={{color:'#EDF0F7'}}>Connections</strong> in your project. Connect Stripe, M-Pesa, Paystack, or any other supported provider. Enter your credentials — Konduyt validates them immediately.</P>
+              </Section>
+              <Section title="3. Get your API keys">
+                <P>Go to <strong style={{color:'#EDF0F7'}}>Developers</strong> → API Keys. You have four keys — use test keys during development, live keys in production.</P>
+                <Code>{`pk_test_...   # publishable — safe in browser
+sk_test_...   # secret — server only, never expose
+pk_live_...   # publishable live
+sk_live_...   # secret live`}</Code>
+              </Section>
+              <Section title="4. Accept your first payment">
+                <Code>{`<!-- In your HTML -->
+<script src="https://cdn.konduyt.dev/v1/konduyt.js"></script>
+<script>
+  const konduyt = new KonduytClient({ publishableKey: 'pk_test_...' })
+
+  document.getElementById('pay-btn').onclick = async () => {
+    const result = await konduyt
+      .on('payment.success', txn => console.log('Paid:', txn.transaction_id))
+      .on('payment.failed',  err => console.error('Failed:', err.error.message))
+      .checkout({
+        amount:   2000,
+        currency: 'KES',
+        theme: { brandName: 'My Store', color: '#FF5C35' },
+      })
+  }
+</script>`}</Code>
+                <P>Konduyt selects the best provider automatically and shows the checkout sheet. The developer writes zero provider-specific code.</P>
+              </Section>
+            </div>
+          )}
+
+          {active === 'sdk' && (
+            <div>
+              <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '26px', color: '#EDF0F7', marginBottom: '8px' }}>SDK Guide</h1>
+              <P>Two SDKs. One boundary. Client SDK runs in the browser. Server SDK runs on your server.</P>
+              <Section title="Client SDK">
+                <Sub title="Installation">
+                  <Code>{`npm install @konduyt/sdk
+# or via CDN:
+<script src="https://cdn.konduyt.dev/v1/konduyt.js"></script>`}</Code>
+                </Sub>
+                <Sub title="Initialization">
+                  <Code>{`import { KonduytClient } from '@konduyt/sdk'
+const konduyt = new KonduytClient({ publishableKey: 'pk_test_...' })`}</Code>
+                </Sub>
+                <Sub title="Provider recommendation">
+                  <Code>{`const rec = await konduyt.recommend({ currency: 'KES' })
+// { recommended: 'mpesa', reason: '99.1% success rate · 1.50% fee', score: 0.94 }`}</Code>
+                </Sub>
+                <Sub title="Events">
+                  <Code>{`konduyt
+  .on('checkout.opened',   ({ amount }) => showSpinner())
+  .on('payment.started',   ({ vendor })  => console.log('Paying via', vendor))
+  .on('payment.success',   txn  => saveToDatabase(txn.transaction_id))
+  .on('payment.failed',    err  => showError(err.error.message))
+  .on('provider.changed',  e    => console.log('Switched to', e.to))
+  .on('tax.calculated',    tax  => showTaxBanner(tax.total_owed))`}</Code>
+                </Sub>
+              </Section>
+              <Section title="Server SDK">
+                <Sub title="Installation">
+                  <Code>{`const { KonduytServer } = require('@konduyt/sdk/server')
+const konduyt = new KonduytServer({ secretKey: process.env.KONDUYT_SECRET_KEY })`}</Code>
+                </Sub>
+                <Sub title="List transactions">
+                  <Code>{`const { transactions } = await konduyt.payments.list(projectId, { status: 'success', limit: '50' })`}</Code>
+                </Sub>
+                <Sub title="Issue a refund">
+                  <Code>{`await konduyt.payments.refund(projectId, transactionId)`}</Code>
+                </Sub>
+                <Sub title="Calculate tax">
+                  <Code>{`const tax = await konduyt.tax.calculate({ amount: 50000, currency: 'KES', jurisdiction: 'KE' })
+// { total_owed: 8000, taxes: [{ name: 'VAT', rate: 0.16, amount_owed: 8000, filing_deadline: '20th of next month' }] }`}</Code>
+                </Sub>
+                <Sub title="People management">
+                  <Code>{`// Server SDK only — never expose via publishable key
+const person = await konduyt.people.create(projectId, {
+  name: 'Jane Doe', role: 'contractor',
+  vendor: 'mpesa', amount: 15000, currency: 'KES',
+})`}</Code>
+                </Sub>
+              </Section>
+            </div>
+          )}
+
+          {active === 'api-reference' && (
+            <div>
+              <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '26px', color: '#EDF0F7', marginBottom: '8px' }}>API Reference</h1>
+              <P>All endpoints available at <code style={{color:'#FF5C35'}}>https://konduyt-api.onrender.com/v1/</code></P>
+              <P>Authentication: include your secret key as a Bearer token for server endpoints. Publishable key in the request body for checkout endpoints.</P>
+              <Code>{`Authorization: Bearer sk_live_...`}</Code>
+              <Section title="Idempotency">
+                <P>Include <code style={{color:'#FF5C35'}}>Idempotency-Key: unique-uuid</code> on all POST requests that create or move money. The same key within 24 hours returns the stored response — no duplicate charge.</P>
+                <Code>{`curl -X POST https://konduyt-api.onrender.com/v1/transactions/{project_id}/charge \\
+  -H "Authorization: Bearer sk_live_..." \\
+  -H "Idempotency-Key: 4f8b7e2d-a9b4-4d61-9d18-7f2d3c8f91ab" \\
+  -H "Content-Type: application/json" \\
+  -d '{"amount": 2000, "currency": "KES", "customer_email": "user@example.com"}'`}</Code>
+              </Section>
+              <a href="https://konduyt-api.onrender.com/docs" target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: 'rgba(255,92,53,0.1)', border: '1px solid rgba(255,92,53,0.3)', borderRadius: '100px', color: '#FF5C35', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+                Open interactive API docs →
+              </a>
+            </div>
+          )}
+
+          {active === 'connectors' && (
+            <div>
+              <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '26px', color: '#EDF0F7', marginBottom: '8px' }}>Connector Guide</h1>
+              <P>Every payment provider plugs into the same connector framework. You interact with Konduyt — never directly with Stripe, M-Pesa, or any specific provider.</P>
+              {[
+                { name:'Stripe', region:'Global cards', creds:['Secret Key (sk_live_...)'], features:['Cards','Refunds','Subscriptions','3DS'], sandbox:'Use sk_test_... keys. Test card: 4242424242424242', link:'https://dashboard.stripe.com/apikeys' },
+                { name:'M-Pesa', region:'East Africa (KES)', creds:['Consumer Key','Consumer Secret','Shortcode','Passkey'], features:['STK Push','B2C payouts','Async confirmation'], sandbox:'Safaricom sandbox available. Phone: 254708374149', link:'https://developer.safaricom.co.ke' },
+                { name:'Paystack', region:'West Africa (NGN, GHS, KES)', creds:['Secret Key (sk_live_...)'], features:['Card','Bank transfer','Mobile money','Refunds'], sandbox:'Use sk_test_... keys. Card: 4084084084084081', link:'https://dashboard.paystack.com' },
+              ].map(c => (
+                <Section key={c.name} title={c.name}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                    <div style={{ background: '#0D1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '14px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(237,240,247,0.3)', marginBottom: '8px' }}>Required credentials</div>
+                      {c.creds.map(cr => <div key={cr} style={{ fontSize: '13px', color: '#EDF0F7', marginBottom: '4px' }}>· {cr}</div>)}
+                      <a href={c.link} target="_blank" rel="noopener" style={{ fontSize: '12px', color: '#FF5C35', textDecoration: 'none', display: 'block', marginTop: '10px', fontWeight: 600 }}>Where to find them →</a>
+                    </div>
+                    <div style={{ background: '#0D1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '14px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(237,240,247,0.3)', marginBottom: '8px' }}>Features</div>
+                      {c.features.map(f => <div key={f} style={{ fontSize: '13px', color: 'rgba(237,240,247,0.7)', marginBottom: '4px' }}>✓ {f}</div>)}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'rgba(237,240,247,0.5)', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', borderLeft: '2px solid #F59E0B' }}>
+                    <strong style={{ color: '#F59E0B' }}>Sandbox:</strong> {c.sandbox}
+                  </div>
+                </Section>
+              ))}
+            </div>
+          )}
+
+          {active === 'webhooks' && (
+            <div>
+              <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '26px', color: '#EDF0F7', marginBottom: '8px' }}>Webhooks</h1>
+              <P>Konduyt sends signed HTTP POST requests to your endpoint when payment events occur.</P>
+              <Section title="Event types">
+                {['payment.created','payment.processing','payment.succeeded','payment.failed','payment.cancelled','refund.requested','refund.succeeded','refund.failed','webhook.verified'].map(e => (
+                  <div key={e} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <code style={{ fontSize: '12px', color: '#FF5C35', fontFamily: 'monospace' }}>{e}</code>
+                  </div>
+                ))}
+              </Section>
+              <Section title="Signature verification">
+                <P>Every webhook includes <code style={{color:'#FF5C35'}}>X-Konduyt-Signature</code> and <code style={{color:'#FF5C35'}}>X-Konduyt-Timestamp</code>. Verify before processing.</P>
+                <Code>{`import hmac, hashlib, time
+
+def verify_webhook(body: bytes, signature: str, secret: str, timestamp: str) -> bool:
+    # Reject events older than 5 minutes (replay attack protection)
+    if abs(time.time() - int(timestamp)) > 300:
+        return False
+    signed = f"{timestamp}.{body.decode()}"
+    expected = "sha256=" + hmac.new(secret.encode(), signed.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)`}</Code>
+              </Section>
+              <Section title="Retry policy">
+                <P>Failed deliveries are retried with exponential backoff: 1 minute, 5 minutes, 30 minutes, 2 hours. After 5 failed attempts, the delivery is moved to the dead-letter queue. Use the dashboard to replay any delivery.</P>
+              </Section>
+            </div>
+          )}
+
+          {active === 'errors' && (
+            <div>
+              <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '26px', color: '#EDF0F7', marginBottom: '8px' }}>Error Reference</h1>
+              <P>Every error from the Konduyt API returns the same structure with a <code style={{color:'#FF5C35'}}>request_id</code> for tracing and a <code style={{color:'#FF5C35'}}>retryable</code> flag.</P>
+              <Code>{`{
+  "error": {
+    "code":          "payment_failed",
+    "type":          "provider_error",
+    "message":       "Payment declined by M-Pesa.",
+    "provider":      "mpesa",
+    "request_id":    "req_4f6e247ab3c1",
+    "retryable":     false,
+    "documentation": "https://konduyt.dev/docs/errors/payment_failed"
+  }
+}`}</Code>
+              <Section title="All error codes">
+                <div style={{ background: '#0D1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#131928' }}>
+                        {['Code','HTTP','Type','Cause','Fix'].map(h => (
+                          <th key={h} style={{ textAlign: 'left', padding: '10px 14px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'rgba(237,240,247,0.35)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ERRORS.map(e => (
+                        <tr key={e.code} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                          <td style={{ padding: '10px 14px', fontFamily: 'monospace', fontSize: '12px', color: '#FF5C35' }}>{e.code}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '12px', color: 'rgba(237,240,247,0.5)' }}>{e.http}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '11px', color: 'rgba(237,240,247,0.45)' }}>{e.type}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '12px', color: 'rgba(237,240,247,0.7)' }}>{e.cause}</td>
+                          <td style={{ padding: '10px 14px', fontSize: '12px', color: '#22C55E' }}>{e.fix}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Section>
+            </div>
+          )}
+
+          {active === 'changelog' && (
+            <div>
+              <h1 style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: '26px', color: '#EDF0F7', marginBottom: '8px' }}>Changelog</h1>
+              {[
+                { date: 'July 2026', version: '1.0.0', type: 'release', items: [
+                  'Payment Connector Framework — provider-agnostic architecture',
+                  'Transaction Ledger — immutable, append-only financial history',
+                  'Payment State Machine — legal transition enforcement',
+                  'Intelligence Layer — automatic provider selection with explanation',
+                  'Provider Health tracking — real-time success rate and latency',
+                  'Idempotency keys — safe retries with payload fingerprinting',
+                  'Standardized error responses with request IDs and retryable flag',
+                  'Webhook HMAC signing — replay and test from dashboard',
+                  'Reconciliation Service — background verification against providers',
+                  'Client SDK + Server SDK separation with hard capability boundary',
+                  'API versioning — all routes at /v1/ with backward compat',
+                  'Developer Logs page — unified activity view with error detail',
+                ]},
+              ].map(entry => (
+                <div key={entry.version} style={{ marginBottom: '32px', background: '#0D1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, color: '#EDF0F7' }}>v{entry.version}</span>
+                    <span style={{ fontSize: '12px', color: 'rgba(237,240,247,0.4)' }}>{entry.date}</span>
+                    <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: 'rgba(34,197,94,0.1)', color: '#22C55E' }}>RELEASE</span>
+                  </div>
+                  <div style={{ padding: '14px 18px' }}>
+                    {entry.items.map((item, i) => (
+                      <div key={i} style={{ fontSize: '13px', color: 'rgba(237,240,247,0.7)', padding: '5px 0', borderBottom: i < entry.items.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                        · {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
         </main>
       </div>
-      <Footer />
-    </>
+    </div>
   )
 }
