@@ -3,18 +3,20 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
-import BuildLayout from '../../../../../components/layouts/ProjectLayout'
+import ProjectLayout from '../../../../../components/layouts/ProjectLayout'
+import EmptyState from '../../../../../components/ui/EmptyState'
 
 export default function CustomersPage() {
   const { orgId, projectId } = useParams()
   const { isLoaded, isSignedIn } = useAuth()
   const api = useApi()
   const router = useRouter()
-  const [org, setOrg]           = useState(null)
-  const [project, setProject]   = useState(null)
+  const [org, setOrg]         = useState(null)
+  const [project, setProject] = useState(null)
   const [customers, setCustomers] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
+  const [selected, setSelected]   = useState(null)
+  const [loading, setLoading]     = useState(true)
+  const [search, setSearch]       = useState('')
 
   useEffect(() => {
     if (!isLoaded) return
@@ -22,52 +24,115 @@ export default function CustomersPage() {
     Promise.all([
       api.get('/projects/project/' + projectId),
       api.get('/orgs/' + orgId),
-      api.get('/transactions/' + projectId + '/customers'),
-    ]).then(([p,o,c]) => { setProject(p); setOrg(o); setCustomers(c) })
-     .catch(console.error).finally(() => setLoading(false))
+    ]).then(([p,o]) => { setProject(p); setOrg(o) }).catch(console.error)
+    loadCustomers()
   }, [isLoaded, isSignedIn])
 
-  const filtered = customers.filter(c =>
-    !search || c.email?.toLowerCase().includes(search.toLowerCase())
-  )
+  async function loadCustomers(q = '') {
+    setLoading(true)
+    try {
+      const d = await api.get('/creator/' + projectId + '/customers' + (q?'?search='+q:''))
+      setCustomers(d.customers || [])
+    } catch (e) {
+      // Fallback: derive from transactions
+      try {
+        const d = await api.get('/transactions/' + projectId + '/customers')
+        setCustomers(d.map(c => ({ ...c, id: c.email, name: null, total_spent: c.total_paid, total_orders: c.txn_count })))
+      } catch (err) { console.error(err) }
+    } finally { setLoading(false) }
+  }
+
+  const base = '/dashboard/' + orgId + '/' + projectId
 
   return (
     <ProjectLayout org={org} project={project}>
-      <div style={{maxWidth:'800px'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'24px',gap:'12px',flexWrap:'wrap'}}>
-          <div>
-            <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',color:'#EDF0F7',marginBottom:'4px'}}>Customers</h1>
-            <p style={{fontSize:'13px',color:'rgba(237,240,247,0.45)'}}>{customers.length} unique customers</p>
+      <div style={{ maxWidth:'860px', display:'grid', gridTemplateColumns: selected?'1fr 320px':'1fr', gap:'20px' }}>
+        {/* Customer list */}
+        <div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px', gap:'12px', flexWrap:'wrap' }}>
+            <div>
+              <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'4px' }}>Customers</h1>
+              <p style={{ fontSize:'13px', color:'rgba(237,240,247,0.45)' }}>{customers.length} total · sorted by lifetime value</p>
+            </div>
+            <input value={search} onChange={e=>{setSearch(e.target.value);loadCustomers(e.target.value)}} placeholder="Search by name or email..."
+              style={{ padding:'8px 12px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', color:'#EDF0F7', fontSize:'12px', outline:'none', width:'220px' }} />
           </div>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by email..." style={{padding:'8px 12px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:'8px',color:'#EDF0F7',fontSize:'12px',outline:'none',width:'220px'}} />
-        </div>
-        <div style={{background:'#0D1120',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'12px',overflow:'hidden'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr style={{background:'#131928'}}>
-              {['Customer','Payments','Total paid','Currencies','Last payment'].map(h=>(
-                <th key={h} style={{textAlign:'left',padding:'10px 14px',fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'rgba(237,240,247,0.35)',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>{h}</th>
+
+          {loading ? (
+            <div style={{ padding:'40px', textAlign:'center', color:'rgba(237,240,247,0.4)', fontSize:'13px' }}>Loading...</div>
+          ) : customers.length === 0 ? (
+            <EmptyState icon="⊙" title="No customers yet" desc="Share a payment link with your audience. When someone pays, they'll appear here." actions={[{label:'Create a payment link', href: base+'/create'}]} />
+          ) : (
+            <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', overflow:'hidden' }}>
+              {customers.map((c, i) => (
+                <div key={c.id||c.email} onClick={() => setSelected(selected?.id===c.id?null:c)}
+                  style={{ display:'flex', alignItems:'center', gap:'12px', padding:'14px 16px', borderBottom:i<customers.length-1?'1px solid rgba(255,255,255,0.03)':'none', cursor:'pointer', background:selected?.id===c.id?'rgba(245,158,11,0.05)':'transparent', transition:'background .12s' }}>
+                  <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:700, color:'#F59E0B', flexShrink:0 }}>
+                    {(c.name||c.email||'?')[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:'13px', fontWeight:600, color:'#EDF0F7' }}>{c.name||c.email}</div>
+                    {c.name && <div style={{ fontSize:'11px', color:'rgba(237,240,247,0.4)' }}>{c.email}</div>}
+                  </div>
+                  <div style={{ textAlign:'right', flexShrink:0 }}>
+                    <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'14px', color:'#F59E0B' }}>KES {(c.total_spent||0).toLocaleString()}</div>
+                    <div style={{ fontSize:'11px', color:'rgba(237,240,247,0.4)' }}>{c.total_orders||0} purchase{(c.total_orders||0)!==1?'s':''}</div>
+                  </div>
+                </div>
               ))}
-            </tr></thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={5} style={{padding:'40px',textAlign:'center',color:'rgba(237,240,247,0.35)',fontSize:'13px'}}>Loading...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} style={{padding:'40px',textAlign:'center',color:'rgba(237,240,247,0.35)',fontSize:'13px'}}>No customers yet.</td></tr>
-              ) : filtered.sort((a,b)=>b.total_paid-a.total_paid).map(c=>(
-                <tr key={c.email} style={{borderBottom:'1px solid rgba(255,255,255,0.03)'}}>
-                  <td style={{padding:'11px 14px'}}>
-                    <div style={{fontSize:'13px',fontWeight:500,color:'#EDF0F7'}}>{c.email}</div>
-                    {c.phone && <div style={{fontSize:'11px',color:'rgba(237,240,247,0.4)'}}>{c.phone}</div>}
-                  </td>
-                  <td style={{padding:'11px 14px',fontSize:'13px',color:'rgba(237,240,247,0.7)'}}>{c.txn_count}</td>
-                  <td style={{padding:'11px 14px',fontSize:'13px',fontWeight:600,color:'#22C55E'}}>KES {c.total_paid?.toLocaleString()}</td>
-                  <td style={{padding:'11px 14px',fontSize:'12px',color:'rgba(237,240,247,0.5)'}}>{c.currencies?.join(', ')}</td>
-                  <td style={{padding:'11px 14px',fontSize:'12px',color:'rgba(237,240,247,0.4)'}}>{c.last_payment?new Date(c.last_payment).toLocaleDateString():'—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
+
+        {/* Customer profile panel */}
+        {selected && (
+          <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'12px', padding:'20px', height:'fit-content', position:'sticky', top:'20px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+              <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'15px', color:'#EDF0F7' }}>Profile</div>
+              <button onClick={()=>setSelected(null)} style={{ background:'none', border:'none', color:'rgba(237,240,247,0.4)', fontSize:'18px', cursor:'pointer', lineHeight:1 }}>×</button>
+            </div>
+
+            <div style={{ textAlign:'center', marginBottom:'16px' }}>
+              <div style={{ width:'56px', height:'56px', borderRadius:'50%', background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'22px', fontWeight:700, color:'#F59E0B', margin:'0 auto 8px' }}>
+                {(selected.name||selected.email||'?')[0].toUpperCase()}
+              </div>
+              <div style={{ fontSize:'14px', fontWeight:700, color:'#EDF0F7' }}>{selected.name||'Customer'}</div>
+              <div style={{ fontSize:'12px', color:'rgba(237,240,247,0.45)' }}>{selected.email}</div>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'16px' }}>
+              {[
+                { label:'Total spent',  value:'KES '+(selected.total_spent||0).toLocaleString(), color:'#F59E0B' },
+                { label:'Purchases',    value:(selected.total_orders||0).toString(),              color:'#EDF0F7' },
+                { label:'First order',  value:selected.first_order_at?new Date(selected.first_order_at).toLocaleDateString():'—', color:'rgba(237,240,247,0.6)' },
+                { label:'Last order',   value:selected.last_order_at?new Date(selected.last_order_at).toLocaleDateString():'—',  color:'rgba(237,240,247,0.6)' },
+              ].map(s => (
+                <div key={s.label} style={{ background:'rgba(255,255,255,0.04)', borderRadius:'8px', padding:'10px 12px' }}>
+                  <div style={{ fontSize:'10px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.3)', marginBottom:'4px' }}>{s.label}</div>
+                  <div style={{ fontSize:'13px', fontWeight:600, color:s.color }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {selected.notes && (
+              <div style={{ fontSize:'13px', color:'rgba(237,240,247,0.6)', padding:'10px', background:'rgba(255,255,255,0.03)', borderRadius:'8px', lineHeight:1.55, marginBottom:'12px' }}>
+                {selected.notes}
+              </div>
+            )}
+
+            {selected.purchases?.length > 0 && (
+              <div>
+                <div style={{ fontSize:'11px', fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'rgba(237,240,247,0.3)', marginBottom:'8px' }}>Purchase history</div>
+                {selected.purchases.map(p => (
+                  <div key={p.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ fontSize:'12px', color:'rgba(237,240,247,0.6)' }}>{p.created_at?new Date(p.created_at).toLocaleDateString():''}</div>
+                    <div style={{ fontSize:'13px', fontWeight:600, color:'#F59E0B' }}>{p.currency} {p.amount?.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </ProjectLayout>
   )
