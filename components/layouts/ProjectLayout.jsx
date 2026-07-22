@@ -46,7 +46,9 @@ export default function ProjectLayout({ children, org, project }) {
     {
       label: 'Developer',
       items: [
-        { label: 'Developers', href: base + '/developers', icon: '⌗' },
+        { label: 'Developers',      href: base + '/developers',      icon: '⌗' },
+        { label: 'Logs',             href: base + '/logs',            icon: '◳' },
+        { label: 'Reconciliation',   href: base + '/reconciliation',  icon: '↔' },
       ]
     },
     {
