@@ -5,12 +5,19 @@ import { useAuth } from '@clerk/nextjs'
 import { useApi } from '../../../../../lib/useApi'
 import ProjectLayout from '../../../../../components/layouts/ProjectLayout'
 
-const JURISDICTIONS = [
-  {code:'KE',name:'Kenya'},{code:'NG',name:'Nigeria'},{code:'GH',name:'Ghana'},
-  {code:'US',name:'United States'},{code:'GB',name:'United Kingdom'},
-  {code:'IN',name:'India'},{code:'BR',name:'Brazil'},{code:'SG',name:'Singapore'},
-  {code:'ZA',name:'South Africa'},{code:'EG',name:'Egypt'},
+const TABS_BUILD   = ['General','Danger']
+const TABS_CREATOR = ['Profile','Payout Accounts','Tax Information','General','Danger']
+const TABS_PAYROLL = ['General','Danger']
+
+const SOCIAL_FIELDS = [
+  { key:'website',   label:'Website',   placeholder:'https://yoursite.com' },
+  { key:'twitter',   label:'Twitter / X', placeholder:'https://twitter.com/yourhandle' },
+  { key:'instagram', label:'Instagram', placeholder:'https://instagram.com/yourhandle' },
+  { key:'youtube',   label:'YouTube',   placeholder:'https://youtube.com/@yourchannel' },
+  { key:'tiktok',    label:'TikTok',    placeholder:'https://tiktok.com/@yourhandle' },
 ]
+
+const ACCENT_COLORS = ['#F59E0B','#FF5C35','#22C55E','#0BA4DB','#635BFF','#EC4899','#EF4444','#EDF0F7']
 
 export default function SettingsPage() {
   const { orgId, projectId } = useParams()
@@ -19,12 +26,11 @@ export default function SettingsPage() {
   const router = useRouter()
   const [org, setOrg]         = useState(null)
   const [project, setProject] = useState(null)
-  const [form, setForm]       = useState({ name:'', website:'', jurisdiction:'KE' })
-  const [loading, setLoading] = useState(true)
+  const [tab, setTab]         = useState('General')
+  const [profile, setProfile] = useState(null)
+  const [profileForm, setProfileForm] = useState({ username:'', display_name:'', bio:'', website:'', twitter:'', instagram:'', youtube:'', tiktok:'', contact_email:'', show_contact:false, accent_color:'#F59E0B' })
   const [saving, setSaving]   = useState(false)
-  const [saved, setSaved]     = useState(false)
-  const [goingLive, setGoingLive] = useState(false)
-  const [tab, setTab]         = useState('general')
+  const [msg, setMsg]         = useState(null)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -34,146 +40,175 @@ export default function SettingsPage() {
       api.get('/orgs/' + orgId),
     ]).then(([p,o]) => {
       setProject(p); setOrg(o)
-      setForm({ name:p.name||'', website:p.website||'', jurisdiction:p.jurisdiction||'KE' })
-    }).catch(console.error).finally(()=>setLoading(false))
+      if (p.mode === 'creator') {
+        setTab('Profile')
+        api.get('/creator/' + projectId + '/profile').then(prof => {
+          setProfile(prof)
+          setProfileForm({ username:prof.username||'', display_name:prof.display_name||'', bio:prof.bio||'', website:prof.social?.website||'', twitter:prof.social?.twitter||'', instagram:prof.social?.instagram||'', youtube:prof.social?.youtube||'', tiktok:prof.social?.tiktok||'', contact_email:prof.contact_email||'', show_contact:prof.show_contact||false, accent_color:prof.accent_color||'#F59E0B' })
+        }).catch(() => {})
+      }
+    }).catch(console.error)
   }, [isLoaded, isSignedIn])
 
-  async function save(e) {
-    e.preventDefault(); setSaving(true)
+  async function saveProfile(e) {
+    e.preventDefault(); setSaving(true); setMsg(null)
     try {
-      const p = await api.patch('/projects/project/' + projectId, form)
-      setProject(p); setSaved(true); setTimeout(()=>setSaved(false), 2500)
-    } catch (e) { alert(e.message) } finally { setSaving(false) }
+      if (profile) {
+        const updated = await api.patch('/creator/' + projectId + '/profile', profileForm)
+        setProfile(updated)
+      } else {
+        const created = await api.post('/creator/' + projectId + '/profile', profileForm)
+        setProfile(created)
+      }
+      setMsg({ type:'ok', text:'Profile saved. Your page is live at konduyt.dev/@' + profileForm.username })
+    } catch (e) { setMsg({ type:'err', text: e.message || 'Save failed' }) } finally { setSaving(false) }
   }
-
-  async function goLive() {
-    if (!confirm('This will enable real payment processing. Make sure you have tested your integration in sandbox mode first. Continue?')) return
-    setGoingLive(true)
-    try {
-      await api.post('/projects/project/' + projectId + '/go-live', {})
-      const p = await api.get('/projects/project/' + projectId)
-      setProject(p)
-      alert('Live mode enabled. Get your new production keys from the Developers tab.')
-    } catch (e) { alert(e.message) } finally { setGoingLive(false) }
-  }
-
-  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#07090F',color:'rgba(237,240,247,0.4)'}}>Loading...</div>
 
   const mode = project?.mode || 'build'
-
-  const tabs = [
-    { id:'general',  label:'General' },
-    { id:'team',     label:'Team' },
-    ...(mode==='build'   ? [{id:'developer', label:'Developer'}] : []),
-    ...(mode==='creator' ? [{id:'creator',   label:'Creator'}]   : []),
-    ...(mode==='payroll' ? [{id:'payroll',   label:'Payroll'}]   : []),
-    { id:'danger',   label:'Danger zone' },
-  ]
+  const tabs = mode === 'creator' ? TABS_CREATOR : TABS_BUILD
 
   return (
     <ProjectLayout org={org} project={project}>
-      <div style={{maxWidth:'640px'}}>
-        <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:'22px',color:'#EDF0F7',marginBottom:'24px'}}>Settings</h1>
+      <div style={{ maxWidth:'680px' }}>
+        <h1 style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'22px', color:'#EDF0F7', marginBottom:'20px' }}>Settings</h1>
 
-        {/* Tabs */}
-        <div style={{display:'flex',gap:'0',marginBottom:'24px',background:'#0D1120',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'10px',padding:'4px',width:'fit-content',flexWrap:'wrap'}}>
-          {tabs.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{fontSize:'13px',fontWeight:tab===t.id?600:400,padding:'7px 16px',borderRadius:'7px',border:'none',background:tab===t.id?'rgba(255,255,255,0.08)':'transparent',color:tab===t.id?'#EDF0F7':'rgba(237,240,247,0.45)',cursor:'pointer',transition:'all .15s'}}>
-              {t.label}
+        {/* Tab nav */}
+        <div style={{ display:'flex', gap:'0', marginBottom:'24px', background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'4px', width:'fit-content', flexWrap:'wrap' }}>
+          {tabs.map(t => (
+            <button key={t} onClick={()=>setTab(t)} style={{ fontSize:'13px', fontWeight:tab===t?600:400, padding:'7px 16px', borderRadius:'7px', border:'none', background:tab===t?'rgba(255,255,255,0.08)':'transparent', color:tab===t?'#EDF0F7':'rgba(237,240,247,0.45)', cursor:'pointer' }}>
+              {t}
             </button>
           ))}
         </div>
 
-        {/* General tab */}
-        {tab==='general' && (
-          <form onSubmit={save} style={{display:'grid',gap:'12px'}}>
-            <div style={{background:'#0D1120',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'12px',overflow:'hidden',marginBottom:'4px'}}>
-              {[
-                { key:'name',         label:'Project name',  placeholder:'My App',             type:'text' },
-                { key:'website',      label:'Website',       placeholder:'https://myapp.com',  type:'url'  },
-              ].map((f,i)=>(
-                <div key={f.key} style={{padding:'14px 18px',borderBottom:'1px solid rgba(255,255,255,0.04)',display:'flex',alignItems:'center',gap:'16px'}}>
-                  <label style={{fontSize:'13px',fontWeight:500,color:'rgba(237,240,247,0.65)',width:'130px',flexShrink:0}}>{f.label}</label>
-                  <input type={f.type} value={form[f.key]||''} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder}
-                    style={{flex:1,padding:'8px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:'6px',color:'#EDF0F7',fontSize:'13px',outline:'none'}} />
-                </div>
-              ))}
-              <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:'16px'}}>
-                <label style={{fontSize:'13px',fontWeight:500,color:'rgba(237,240,247,0.65)',width:'130px',flexShrink:0}}>Home jurisdiction</label>
-                <select value={form.jurisdiction} onChange={e=>setForm(p=>({...p,jurisdiction:e.target.value}))}
-                  style={{flex:1,padding:'8px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:'6px',color:'#EDF0F7',fontSize:'13px',outline:'none'}}>
-                  {JURISDICTIONS.map(j=><option key={j.code} value={j.code}>{j.name} ({j.code})</option>)}
-                </select>
+        {/* Profile tab (creator only) */}
+        {tab === 'Profile' && mode === 'creator' && (
+          <form onSubmit={saveProfile} style={{ display:'grid', gap:'16px' }}>
+            <div style={{ background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:'10px', padding:'14px 16px', fontSize:'13px', color:'rgba(237,240,247,0.65)', lineHeight:1.6 }}>
+              Your public profile is at <strong style={{ color:'#F59E0B' }}>konduyt.dev/@{profileForm.username || 'username'}</strong>.
+              Customers see your name, bio, and all your active offers here.
+            </div>
+
+            {/* Username */}
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Username *</label>
+              <div style={{ position:'relative' }}>
+                <span style={{ position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)', fontSize:'14px', color:'rgba(237,240,247,0.4)' }}>@</span>
+                <input required value={profileForm.username} onChange={e=>setProfileForm(f=>({...f,username:e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,'')}))}
+                  placeholder="yourname" maxLength={30} disabled={!!profile}
+                  style={{ width:'100%', padding:'11px 14px 11px 32px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#EDF0F7', fontSize:'14px', outline:'none', boxSizing:'border-box', opacity:profile?0.6:1 }} />
+              </div>
+              {profile && <div style={{ fontSize:'11px', color:'rgba(237,240,247,0.3)', marginTop:'4px' }}>Username cannot be changed after creation.</div>}
+            </div>
+
+            {/* Display name */}
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Display name</label>
+              <input value={profileForm.display_name} onChange={e=>setProfileForm(f=>({...f,display_name:e.target.value}))} placeholder="Your name or brand name"
+                style={{ width:'100%', padding:'11px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#EDF0F7', fontSize:'14px', outline:'none', boxSizing:'border-box' }} />
+            </div>
+
+            {/* Bio */}
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Bio</label>
+              <textarea value={profileForm.bio} onChange={e=>setProfileForm(f=>({...f,bio:e.target.value}))} placeholder="Tell your customers what you do or create..."
+                rows={3} maxLength={280} style={{ width:'100%', padding:'11px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', color:'#EDF0F7', fontSize:'14px', outline:'none', resize:'vertical', boxSizing:'border-box' }} />
+              <div style={{ fontSize:'11px', color:'rgba(237,240,247,0.3)', marginTop:'4px' }}>{profileForm.bio.length}/280</div>
+            </div>
+
+            {/* Accent color */}
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'8px' }}>Brand color</label>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                {ACCENT_COLORS.map(c => (
+                  <button key={c} type="button" onClick={()=>setProfileForm(f=>({...f,accent_color:c}))}
+                    style={{ width:'32px', height:'32px', borderRadius:'50%', background:c, border:`2px solid ${profileForm.accent_color===c?'#EDF0F7':'transparent'}`, cursor:'pointer', flexShrink:0, outline:'none' }} />
+                ))}
               </div>
             </div>
-            <button type="submit" disabled={saving} style={{padding:'11px',background:'#FF5C35',color:'#fff',border:'none',borderRadius:'100px',fontSize:'13px',fontWeight:600,cursor:'pointer',opacity:saving?0.6:1}}>
-              {saved?'Saved!':saving?'Saving...':'Save changes'}
+
+            {/* Social links */}
+            <div>
+              <label style={{ fontSize:'12px', fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', color:'rgba(237,240,247,0.5)', display:'block', marginBottom:'10px' }}>Social links</label>
+              <div style={{ display:'grid', gap:'8px' }}>
+                {SOCIAL_FIELDS.map(f => (
+                  <input key={f.key} value={profileForm[f.key]} onChange={e=>setProfileForm(p=>({...p,[f.key]:e.target.value}))}
+                    placeholder={f.placeholder}
+                    style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', color:'#EDF0F7', fontSize:'13px', outline:'none', boxSizing:'border-box' }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'16px', display:'grid', gap:'10px' }}>
+              <div style={{ fontSize:'13px', fontWeight:600, color:'#EDF0F7' }}>Contact email</div>
+              <input value={profileForm.contact_email} onChange={e=>setProfileForm(f=>({...f,contact_email:e.target.value}))} placeholder="you@example.com" type="email"
+                style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', color:'#EDF0F7', fontSize:'13px', outline:'none', boxSizing:'border-box' }} />
+              <label style={{ display:'flex', alignItems:'center', gap:'10px', cursor:'pointer', fontSize:'13px', color:'rgba(237,240,247,0.65)' }}>
+                <input type="checkbox" checked={profileForm.show_contact} onChange={e=>setProfileForm(f=>({...f,show_contact:e.target.checked}))} style={{ accentColor:'#F59E0B' }} />
+                Show contact email on your public profile
+              </label>
+            </div>
+
+            {msg && (
+              <div style={{ padding:'12px 14px', borderRadius:'8px', fontSize:'13px', background:msg.type==='ok'?'rgba(34,197,94,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='ok'?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)'}`, color:msg.type==='ok'?'#22C55E':'#EF4444' }}>
+                {msg.text}
+              </div>
+            )}
+
+            <button type="submit" disabled={saving} style={{ padding:'12px', background:'#F59E0B', color:'#fff', border:'none', borderRadius:'100px', fontSize:'14px', fontWeight:600, cursor:'pointer', opacity:saving?0.6:1 }}>
+              {saving ? 'Saving…' : profile ? 'Save profile' : 'Create profile'}
             </button>
 
-            {/* Live mode */}
-            {!project?.live_mode ? (
-              <div style={{background:'rgba(34,197,94,0.05)',border:'1px solid rgba(34,197,94,0.18)',borderRadius:'12px',padding:'18px',marginTop:'8px'}}>
-                <div style={{fontSize:'13px',fontWeight:700,color:'#22C55E',marginBottom:'6px'}}>Go live</div>
-                <div style={{fontSize:'12px',color:'rgba(237,240,247,0.55)',lineHeight:1.65,marginBottom:'14px'}}>
-                  Currently in sandbox mode — no real money moves. When you are ready, enable live mode to process real payments.
-                </div>
-                <button onClick={goLive} disabled={goingLive} style={{fontSize:'12px',fontWeight:600,color:'#fff',background:'#22C55E',border:'none',padding:'9px 18px',borderRadius:'100px',cursor:'pointer',opacity:goingLive?0.6:1}}>
-                  {goingLive?'Enabling...':'Enable live mode'}
-                </button>
-              </div>
-            ) : (
-              <div style={{background:'rgba(34,197,94,0.05)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:'10px',padding:'14px',display:'flex',gap:'10px',alignItems:'center'}}>
-                <span style={{color:'#22C55E',fontSize:'16px'}}>●</span>
-                <div style={{fontSize:'13px',fontWeight:600,color:'#22C55E'}}>Live mode active — real payments are being processed.</div>
-              </div>
+            {profile && (
+              <a href={`https://konduyt.dev/@${profile.username}`} target="_blank" rel="noopener"
+                style={{ textAlign:'center', fontSize:'13px', color:'rgba(237,240,247,0.45)', textDecoration:'none', display:'block' }}>
+                View your public profile →
+              </a>
             )}
           </form>
         )}
 
-        {/* Team tab */}
-        {tab==='team' && (
-          <div style={{background:'#0D1120',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'12px',padding:'20px'}}>
-            <div style={{fontSize:'13px',fontWeight:600,color:'#EDF0F7',marginBottom:'6px'}}>Team members</div>
-            <div style={{fontSize:'13px',color:'rgba(237,240,247,0.5)',marginBottom:'18px',lineHeight:1.65}}>Invite teammates to collaborate on this project. Managed at the organization level.</div>
-            <a href={'/dashboard/'+orgId+'/members'} style={{fontSize:'13px',fontWeight:600,color:'#FF5C35',textDecoration:'none'}}>Manage organization members →</a>
+        {/* General tab */}
+        {tab === 'General' && (
+          <div style={{ display:'grid', gap:'16px' }}>
+            <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'16px' }}>
+              <div style={{ fontSize:'13px', fontWeight:600, color:'#EDF0F7', marginBottom:'8px' }}>Project name</div>
+              <div style={{ fontSize:'14px', color:'rgba(237,240,247,0.6)' }}>{project?.name}</div>
+            </div>
+            <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'16px' }}>
+              <div style={{ fontSize:'13px', fontWeight:600, color:'#EDF0F7', marginBottom:'8px' }}>Mode</div>
+              <div style={{ fontSize:'14px', color:'rgba(237,240,247,0.6)', textTransform:'capitalize' }}>{project?.mode}</div>
+            </div>
+            <div style={{ background:'#0D1120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'16px' }}>
+              <div style={{ fontSize:'13px', fontWeight:600, color:'#EDF0F7', marginBottom:'8px' }}>Environment</div>
+              <div style={{ fontSize:'14px', color: project?.live_mode?'#22C55E':'#F59E0B' }}>{project?.live_mode ? '● Live' : '○ Sandbox'}</div>
+            </div>
           </div>
         )}
 
-        {/* Developer tab */}
-        {tab==='developer' && (
-          <div style={{background:'#0D1120',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'12px',padding:'20px'}}>
-            <div style={{fontSize:'13px',fontWeight:600,color:'#EDF0F7',marginBottom:'6px'}}>Developer settings</div>
-            <div style={{fontSize:'13px',color:'rgba(237,240,247,0.5)',marginBottom:'18px',lineHeight:1.65}}>API configuration, key management, and webhook settings.</div>
-            <a href={'/dashboard/'+orgId+'/'+projectId+'/developers'} style={{fontSize:'13px',fontWeight:600,color:'#FF5C35',textDecoration:'none'}}>Go to Developers →</a>
-          </div>
-        )}
-
-        {/* Creator tab */}
-        {tab==='creator' && (
-          <div style={{background:'#0D1120',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'12px',padding:'20px'}}>
-            <div style={{fontSize:'13px',fontWeight:600,color:'#EDF0F7',marginBottom:'6px'}}>Creator settings</div>
-            <div style={{fontSize:'13px',color:'rgba(237,240,247,0.5)',marginBottom:'6px',lineHeight:1.65}}>Profile, branding, and creator-specific configuration.</div>
-            <div style={{fontSize:'11px',fontWeight:700,padding:'3px 10px',borderRadius:'100px',background:'rgba(245,158,11,0.1)',color:'#F59E0B',display:'inline-block',letterSpacing:'.04em'}}>IN DEVELOPMENT</div>
-          </div>
-        )}
-
-        {/* Payroll tab */}
-        {tab==='payroll' && (
-          <div style={{background:'#0D1120',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'12px',padding:'20px'}}>
-            <div style={{fontSize:'13px',fontWeight:600,color:'#EDF0F7',marginBottom:'6px'}}>Payroll settings</div>
-            <div style={{fontSize:'13px',color:'rgba(237,240,247,0.5)',marginBottom:'6px',lineHeight:1.65}}>Pay cycles, default currencies, and compliance configuration.</div>
-            <div style={{fontSize:'11px',fontWeight:700,padding:'3px 10px',borderRadius:'100px',background:'rgba(34,197,94,0.1)',color:'#22C55E',display:'inline-block',letterSpacing:'.04em'}}>IN DEVELOPMENT</div>
-          </div>
-        )}
-
-        {/* Danger zone */}
-        {tab==='danger' && (
-          <div style={{background:'rgba(239,68,68,0.04)',border:'1px solid rgba(239,68,68,0.15)',borderRadius:'12px',padding:'20px'}}>
-            <div style={{fontSize:'13px',fontWeight:600,color:'#EF4444',marginBottom:'6px'}}>Danger zone</div>
-            <div style={{fontSize:'13px',color:'rgba(237,240,247,0.5)',lineHeight:1.65,marginBottom:'16px'}}>These actions are irreversible. Make sure you understand the consequences before proceeding.</div>
-            <button onClick={()=>alert('Contact teamkonduyt@gmail.com to delete this project.')} style={{fontSize:'13px',fontWeight:600,color:'#EF4444',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',padding:'9px 18px',borderRadius:'100px',cursor:'pointer'}}>
-              Delete project
+        {/* Danger tab */}
+        {tab === 'Danger' && (
+          <div style={{ background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:'12px', padding:'20px' }}>
+            <div style={{ fontSize:'14px', fontWeight:700, color:'#EF4444', marginBottom:'6px' }}>Danger Zone</div>
+            <div style={{ fontSize:'13px', color:'rgba(237,240,247,0.6)', marginBottom:'14px', lineHeight:1.6 }}>
+              These actions are permanent. Contact support before proceeding.
+            </div>
+            <button style={{ fontSize:'13px', fontWeight:600, color:'#EF4444', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', padding:'10px 18px', borderRadius:'100px', cursor:'pointer' }}>
+              Archive project
             </button>
+          </div>
+        )}
+
+        {/* Payout Accounts + Tax tabs — placeholder for now */}
+        {(tab === 'Payout Accounts') && (
+          <div style={{ textAlign:'center', padding:'40px', color:'rgba(237,240,247,0.4)', fontSize:'13px', background:'#0D1120', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.06)' }}>
+            Manage your payout accounts in the <a href="../accounts" style={{ color:'#F59E0B', textDecoration:'none', fontWeight:600 }}>Money Destinations</a> page.
+          </div>
+        )}
+        {tab === 'Tax Information' && (
+          <div style={{ textAlign:'center', padding:'40px', color:'rgba(237,240,247,0.4)', fontSize:'13px', background:'#0D1120', borderRadius:'12px', border:'1px solid rgba(255,255,255,0.06)' }}>
+            Tax information and filing guidance are in the <a href="../taxes" style={{ color:'#F59E0B', textDecoration:'none', fontWeight:600 }}>Taxes</a> page.
           </div>
         )}
       </div>
