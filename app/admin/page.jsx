@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth, useUser } from '@clerk/nextjs'
+import { useAuth, useUser } from '../../lib/auth-context'
 
 const ADMIN_EMAILS = ['nziokaian067@gmail.com', 'ian@konduyt.dev']
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com'
