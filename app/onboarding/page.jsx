@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth } from '../../lib/auth-context'
 import { useApi } from '../../lib/useApi'
 import styles from './page.module.css'
 
