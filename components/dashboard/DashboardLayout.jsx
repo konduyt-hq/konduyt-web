@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useClerk } from '@clerk/nextjs'
+import { useClerk } from '../../lib/auth-context'
 import styles from './DashboardLayout.module.css'
 
 export default function DashboardLayout({ children, org, project }) {
