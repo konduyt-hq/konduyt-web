@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth, UserButton } from '@clerk/nextjs'
+import { useAuth } from '../../lib/auth-context'
 
 /**
  * ProjectLayout — Unified adaptive layout for all three KONDUYT products.
@@ -142,6 +142,41 @@ function payrollNav(base) {
   ]
 }
 
+
+function UserMenu({ user, logout }) {
+  const [open, setOpen] = useState(false)
+  const router = useRouter()
+
+  function handleLogout() {
+    logout()
+    router.push('/login')
+  }
+
+  return (
+    <div style={{ position:'relative', padding:'4px 8px' }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ display:'flex', alignItems:'center', gap:'8px', background:'none', border:'none', cursor:'pointer', padding:0, width:'100%' }}>
+        <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:'rgba(255,92,53,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:700, color:'#FF5C35', flexShrink:0 }}>
+          {(user?.name || user?.email || 'U')[0].toUpperCase()}
+        </div>
+        <div style={{ flex:1, minWidth:0, textAlign:'left' }}>
+          <div style={{ fontSize:'11px', fontWeight:600, color:'rgba(237,240,247,0.7)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {user?.name || user?.email || 'Account'}
+          </div>
+        </div>
+      </button>
+      {open && (
+        <div style={{ position:'absolute', bottom:'100%', left:0, right:0, background:'#131928', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', padding:'4px', marginBottom:'4px', zIndex:50 }}>
+          <button onClick={handleLogout}
+            style={{ width:'100%', textAlign:'left', padding:'8px 10px', background:'none', border:'none', color:'rgba(237,240,247,0.6)', fontSize:'12px', cursor:'pointer', borderRadius:'6px' }}>
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NavItem({ item, accent, pathname }) {
   const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href + '/') && item.href.split('/').length >= 6)
   const isExact  = pathname === item.href
@@ -172,6 +207,7 @@ export default function ProjectLayout({ org, project, children }) {
   const pathname  = usePathname()
   const { orgId } = (pathname?.match(/\/dashboard\/([^\/]+)/) || [])
   const mode      = project?.mode || 'build'
+  const { user, logout } = useAuth()
   const modeStyle = MODE_COLORS[mode] || MODE_COLORS.build
   const { accent } = modeStyle
 
@@ -246,10 +282,7 @@ export default function ProjectLayout({ org, project, children }) {
               </div>
             </Link>
           )}
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'4px 8px' }}>
-            <UserButton afterSignOutUrl="/" />
-            <span style={{ fontSize:'11px', color:'rgba(237,240,247,0.3)' }}>Account</span>
-          </div>
+          <UserMenu user={user} logout={logout} />
         </div>
       </aside>
 
