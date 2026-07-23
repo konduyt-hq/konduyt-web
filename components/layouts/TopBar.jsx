@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useClerk } from '@clerk/nextjs'
+import { useClerk } from '../../lib/auth-context'
 import { useRouter, useParams, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 
