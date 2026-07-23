@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth } from '../lib/auth-context'
 import styles from './Nav.module.css'
 
 const LogoMark = () => (
