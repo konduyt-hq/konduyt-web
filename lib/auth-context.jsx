@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com'
+const API       = process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com'
 const TOKEN_KEY = 'konduyt_token'
 
 const AuthContext = createContext({
@@ -22,7 +22,6 @@ export function AuthProvider({ children }) {
     const stored = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null
     if (!stored) { setIsLoaded(true); return }
 
-    // Verify token is still valid
     fetch(`${API}/v1/auth/me`, {
       headers: { Authorization: `Bearer ${stored}` }
     })
@@ -38,21 +37,24 @@ export function AuthProvider({ children }) {
     setUser(user)
   }, [])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const stored = localStorage.getItem(TOKEN_KEY)
+    // Tell backend to revoke the token (adds jti to denylist)
+    if (stored) {
+      try {
+        await fetch(`${API}/v1/auth/logout`, {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${stored}` },
+        })
+      } catch {}
+    }
     localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setUser(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{
-      isLoaded,
-      isSignedIn: !!token && !!user,
-      user,
-      token,
-      login,
-      logout,
-    }}>
+    <AuthContext.Provider value={{ isLoaded, isSignedIn: !!token && !!user, user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
