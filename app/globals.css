@@ -62,6 +62,18 @@
     padding:56px 0 90px;
     align-items:start;
   }
+  .hero-eyebrow{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:6px 14px;
+    margin-bottom:22px;
+  }
   h1{
     font-size:52px;
     line-height:1.12;

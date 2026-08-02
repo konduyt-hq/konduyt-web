@@ -118,6 +118,7 @@ export default function Home() {
         {/* HERO */}
         <div className="hero-grid">
           <div>
+            <span className="hero-eyebrow">Payment infrastructure</span>
             <h1>One integration.<br />Every payment<br />provider.</h1>
             <div className="copy">
               <p>Every payment provider has a different API. Konduyt gives you one.</p>
