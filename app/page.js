@@ -255,6 +255,31 @@ export default function Home() {
           </div>
         </div>
 
+        {/* IN THE WORKS */}
+        <section className="works">
+          <div className="works-head">
+            <span className="works-eyebrow">In the works</span>
+            <h2 className="works-title">More of Konduyt, coming soon</h2>
+            <p className="works-sub">Built on the same infrastructure. Same keys, same integration.</p>
+          </div>
+          <div className="works-cards">
+            <div className="works-card">
+              <div className="works-card-top">
+                <span className="works-card-name"><span className="wc-brand">KONDUYT</span>creators</span>
+                <span className="works-badge">Coming soon</span>
+              </div>
+              <p className="works-card-desc">Payments, payouts and analytics built for creators — turn an audience into recurring revenue without stitching together tools.</p>
+            </div>
+            <div className="works-card">
+              <div className="works-card-top">
+                <span className="works-card-name"><span className="wc-brand">KONDUYT</span>payroll</span>
+                <span className="works-badge">Coming soon</span>
+              </div>
+              <p className="works-card-desc">Pay teams and contractors across borders and providers, on schedule, from the same Konduyt account you already run.</p>
+            </div>
+          </div>
+        </section>
+
         {/* FOOTER */}
         <footer className="site-footer">
           <div className="footer-brand">
