@@ -184,6 +184,114 @@ async fn main() {
     println!("{:?}", payment);
 }`,
   },
+  {
+    id: 'csharp',
+    label: 'C#',
+    filename: 'Program.cs',
+    extra: true,
+    logo: (
+      <svg className="lgo" viewBox="0 0 128 128">
+        <path fill="#9B4F96" d="M115.4 30.7L67.1 2.9c-1.3-.8-2.9-1.2-4.6-1.2s-3.3.4-4.6 1.2L9.7 30.7C7 32.3 5 35.7 5 38.8v55.5c0 1.6.5 3.3 1.4 4.9l108.8-62.8c-.9-1.6-2.4-2.9-3.8-3.7z" />
+        <path fill="#68217A" d="M10.7 95.3c.5.8 1.2 1.5 1.9 1.9l48.3 27.9c1.3.8 2.9 1.2 4.6 1.2s3.3-.4 4.6-1.2l48.3-27.9c2.7-1.6 4.7-5 4.7-8.1V38.8c0-1.6-.5-3.3-1.4-4.9L10.7 95.3z" />
+        <path fill="#fff" d="M85.3 76.1C81.1 83.5 73.1 88.5 64 88.5c-13.5 0-24.5-11-24.5-24.5s11-24.5 24.5-24.5c9.1 0 17.1 5 21.3 12.5l13-7.5c-6.8-11.9-19.6-20-34.3-20-21.8 0-39.5 17.7-39.5 39.5s17.7 39.5 39.5 39.5c14.6 0 27.4-8 34.2-19.8l-12.9-7.6zM97 66.2l.9-4.3h-4.2v-4.7h5.1L100 51h4.9l-1.2 6.2h3.8L108.7 51h4.8l-1.2 6.2h2.4v4.7h-3.3l-.9 4.3h4.2v4.7h-5.1l-1.2 6h-4.9l1.2-6h-3.8l-1.2 6h-4.8l1.2-6h-2.4v-4.7h3.3zm4.8 0h3.8l.9-4.3h-3.8l-.9 4.3z" />
+      </svg>
+    ),
+    code: `using Konduyt;
+
+var konduyt = new KonduytClient("${KEYS.secret}");
+
+var payment = await konduyt.Payments.CreateAsync(new PaymentParams
+{
+    Amount = 5000,
+    Currency = "KES",
+    Provider = "mpesa",
+    Customer = new Customer { Email = "customer@example.com" }
+});
+
+Console.WriteLine(payment);`,
+  },
+  {
+    id: 'java',
+    label: 'Java',
+    filename: 'Main.java',
+    extra: true,
+    logo: (
+      <svg className="lgo" viewBox="0 0 128 128">
+        <path fill="#0074BD" d="M47.6 98.3s-4.9 2.9 3.5 3.8c10.2 1.2 15.4 1 26.6-1.1 0 0 3 1.8 7.1 3.4-25.2 10.8-57-.6-37.2-6.1zM44.5 84.2s-5.5 4.1 2.9 4.9c10.9 1.1 19.5 1.2 34.4-1.7 0 0 2 2.1 5.2 3.2-30.5 8.9-64.5.7-42.5-6.4z" />
+        <path fill="#EA2D2E" d="M70.7 60.2c6.2 7.1-1.6 13.5-1.6 13.5s15.7-8.1 8.5-18.3c-6.7-9.5-11.9-14.2 16-30.4 0 0-44 11-23 35.2z" />
+        <path fill="#0074BD" d="M107.3 108.7s3.6 3-4 5.3c-14.4 4.4-59.8 5.7-72.4.2-4.5-2 4-4.7 6.6-5.3 2.8-.6 4.4-.5 4.4-.5-5-3.5-32.6 6.9-14 9.9 50.8 8.3 92.6-3.7 79-9.6zM49.9 69.6s-23.1 5.5-8.2 7.5c6.3.8 18.9.6 30.6-.4 9.6-.8 19.2-2.5 19.2-2.5s-3.4 1.4-5.8 3.1c-23.5 6.2-68.8 3.3-55.8-3 11-5.4 20-4.8 20-4.8zM91.2 92.9c23.9-12.4 12.9-24.4 5.1-22.7-1.9.4-2.7.7-2.7.7s.7-1.1 2-1.5c15.4-5.4 27.2 15.9-4.9 24.2 0 0 .4-.4.5-.7z" />
+        <path fill="#EA2D2E" d="M77 1.1s13.2 13.2-12.5 33.5c-20.6 16.3-4.7 25.6 0 36.2-12-10.9-20.9-20.5-14.9-29.4C58.4 28.3 82.3 22 77 1.1z" />
+        <path fill="#0074BD" d="M52.3 126.9c22.9 1.5 58.1-.8 59-11.7 0 0-1.6 4.1-18.9 7.4-19.5 3.7-43.6 3.3-57.9.9 0 0 2.9 2.5 17.8 3.4z" />
+      </svg>
+    ),
+    code: `import com.konduyt.Konduyt;
+
+Konduyt konduyt = new Konduyt("${KEYS.secret}");
+
+Payment payment = konduyt.payments().create(
+    PaymentParams.builder()
+        .amount(5000)
+        .currency("KES")
+        .provider("mpesa")
+        .customer(Customer.of("customer@example.com"))
+        .build()
+);
+
+System.out.println(payment);`,
+  },
+  {
+    id: 'kotlin',
+    label: 'Kotlin',
+    filename: 'Main.kt',
+    extra: true,
+    logo: (
+      <svg className="lgo" viewBox="0 0 128 128">
+        <linearGradient id="ktg" x1="15" y1="113" x2="113" y2="15" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#0095D5" />
+          <stop offset="0.3" stopColor="#238AD9" />
+          <stop offset="0.6" stopColor="#557BDE" />
+          <stop offset="0.9" stopColor="#7F52FF" />
+        </linearGradient>
+        <path fill="url(#ktg)" d="M128 128H0V0h128L64 64z" />
+      </svg>
+    ),
+    code: `import com.konduyt.Konduyt
+
+val konduyt = Konduyt("${KEYS.secret}")
+
+val payment = konduyt.payments.create(
+    amount = 5000,
+    currency = "KES",
+    provider = "mpesa",
+    customer = Customer(email = "customer@example.com")
+)
+
+println(payment)`,
+  },
+  {
+    id: 'swift',
+    label: 'Swift',
+    filename: 'main.swift',
+    extra: true,
+    logo: (
+      <svg className="lgo" viewBox="0 0 128 128">
+        <path fill="#F05138" d="M126.3 34.1c0-1.4 0-2.8-.1-4.2 0-1.2-.1-2.3-.2-3.5-.2-2.5-.5-5.1-1.4-7.5-.9-2.4-2.2-4.6-4-6.5-1.7-1.9-3.8-3.3-6.1-4.3-2.4-1-4.9-1.4-7.4-1.6-1.2-.1-2.4-.2-3.6-.2-1.4 0-2.8-.1-4.2-.1H34.1c-1.4 0-2.8 0-4.2.1-1.2 0-2.3.1-3.5.2-1.9.1-3.8.4-5.7 1-2.8.9-5.3 2.4-7.4 4.5-1.5 1.5-2.7 3.3-3.6 5.2-1.2 2.6-1.6 5.4-1.8 8.2-.1 1.2-.2 2.3-.2 3.5 0 1.4-.1 2.8-.1 4.2v59.8c0 1.4 0 2.8.1 4.2 0 1.2.1 2.3.2 3.5.2 2.8.6 5.6 1.8 8.2.9 1.9 2.1 3.7 3.6 5.2 2.1 2.1 4.6 3.6 7.4 4.5 1.9.6 3.8.9 5.7 1 1.2.1 2.3.2 3.5.2 1.4 0 2.8.1 4.2.1h59.8c1.4 0 2.8 0 4.2-.1 1.2 0 2.4-.1 3.6-.2 2.5-.2 5-.6 7.4-1.6 2.3-1 4.4-2.4 6.1-4.3 1.8-1.9 3.1-4.1 4-6.5.9-2.4 1.2-5 1.4-7.5.1-1.2.2-2.3.2-3.5 0-1.4.1-2.8.1-4.2V34.1z" />
+        <path fill="#fff" d="M99.2 81.6c-.1-.2-.2-.4-.4-.6-8.9 5.4-19.6 8.9-30.7 8.9-16.8 0-31.8-8.1-42.2-20.4 4.4 2.7 9.4 4.6 14.8 5.5 11.6 2 23.1-1.3 31.6-8.1-11.5-8.8-21.8-20.3-29.4-29.3-1.6-1.6-2.8-3.5-4.1-5.3 9.6 8.8 24.9 19.8 30.3 22.9C57.5 34.5 47.3 20 47.3 20c9.5 9.6 26 22.7 32.9 26.5 2.3-6.3 4.2-13.1 4.2-20.3 0-1.6-.1-3.1-.3-4.6 4.5 8.2 4.4 18.6 1.4 27.7 12.3 15.4 8.9 32 7.3 28.9z" />
+      </svg>
+    ),
+    code: `import Konduyt
+
+let konduyt = Konduyt(secretKey: "${KEYS.secret}")
+
+let payment = try await konduyt.payments.create(
+    amount: 5000,
+    currency: "KES",
+    provider: "mpesa",
+    customer: Customer(email: "customer@example.com")
+)
+
+print(payment)`,
+  },
 ];
 
 const RESPONSE = `{
@@ -260,7 +368,25 @@ function KeyField({ value }) {
 
 export default function DevPanel() {
   const [activeId, setActiveId] = useState('javascript');
+  const [showMore, setShowMore] = useState(false);
+  const [runState, setRunState] = useState('idle'); // idle | running | done
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
+
+  const visibleLangs = LANGUAGES.filter((l) => !l.extra);
+  const extraLangs = LANGUAGES.filter((l) => l.extra);
+
+  function handleRun() {
+    if (runState === 'running') return;
+    setRunState('running');
+    // Simulate a network round-trip to the payments API
+    setTimeout(() => setRunState('done'), 1400);
+  }
+
+  function selectLang(id) {
+    setActiveId(id);
+    // Reset the sandbox result when the language changes
+    setRunState('idle');
+  }
 
   return (
     <div className="panel">
@@ -291,18 +417,36 @@ export default function DevPanel() {
         {/* 1. Language selector */}
         <div className="step-label">1. Choose your language</div>
         <div className="lang-pills">
-          {LANGUAGES.map((l) => (
+          {visibleLangs.map((l) => (
             <button
               key={l.id}
               type="button"
               className={l.id === activeId ? 'pill active' : 'pill'}
-              onClick={() => setActiveId(l.id)}
+              onClick={() => selectLang(l.id)}
             >
               {l.logo}
               {l.label}
             </button>
           ))}
-          <div className="pill">More ⌄</div>
+          {showMore &&
+            extraLangs.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                className={l.id === activeId ? 'pill active' : 'pill'}
+                onClick={() => selectLang(l.id)}
+              >
+                {l.logo}
+                {l.label}
+              </button>
+            ))}
+          <button
+            type="button"
+            className="pill pill-more"
+            onClick={() => setShowMore((s) => !s)}
+          >
+            {showMore ? 'Less ⌃' : 'More ⌄'}
+          </button>
         </div>
 
         {/* 2. SDK example */}
@@ -324,11 +468,29 @@ export default function DevPanel() {
           <div className="code-box">
             <div className="code-box-head">
               <span>RESPONSE</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span className="status-dot"></span>200 OK
-              </span>
+              {runState === 'done' ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="status-dot"></span>200 OK
+                </span>
+              ) : runState === 'running' ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8a8a92' }}>
+                  <span className="status-dot pending"></span>Sending…
+                </span>
+              ) : (
+                <span style={{ color: '#6a6a72' }}>Awaiting request</span>
+              )}
             </div>
-            <pre className="code-pre">{RESPONSE}</pre>
+            {runState === 'idle' && (
+              <pre className="code-pre code-muted">{`// Click "Run in sandbox" to send
+// a test payment and see the
+// live API response here.`}</pre>
+            )}
+            {runState === 'running' && (
+              <pre className="code-pre code-muted">{`> POST /v1/payments
+> Authorizing test key…
+> Creating payment…`}</pre>
+            )}
+            {runState === 'done' && <pre className="code-pre">{RESPONSE}</pre>}
           </div>
         </div>
 
@@ -339,8 +501,21 @@ export default function DevPanel() {
             justifyContent: 'space-between',
           }}
         >
-          <button className="run-btn" type="button">▶ Run in sandbox</button>
-          <div className="success-line">✓ Payment created successfully</div>
+          <button
+            className="run-btn"
+            type="button"
+            onClick={handleRun}
+            disabled={runState === 'running'}
+          >
+            {runState === 'running'
+              ? '● Running…'
+              : runState === 'done'
+              ? '↻ Run again'
+              : '▶ Run in sandbox'}
+          </button>
+          {runState === 'done' && (
+            <div className="success-line">✓ Payment created successfully</div>
+          )}
         </div>
       </div>
     </div>

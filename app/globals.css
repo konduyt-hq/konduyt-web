@@ -268,6 +268,10 @@
     color:#d4d4d8;
   }
   .status-dot{width:7px; height:7px; border-radius:50%; background:#3ecb6b; display:inline-block;}
+  .status-dot.pending{background:#e0a63a; animation:pulse 1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+  .code-muted{color:#6a6a72 !important;}
+  .pill-more{color:var(--ink);}
   .kw{color:#c586c0;}
   .fn{color:#dcdcaa;}
   .str{color:#ce9178;}
@@ -288,7 +292,9 @@
     cursor:pointer;
     margin-top:16px;
     width:fit-content;
+    transition:opacity .15s ease;
   }
+  .run-btn:disabled{opacity:0.6; cursor:default;}
   .success-line{
     display:flex; align-items:center; gap:8px;
     font-size:13px;
