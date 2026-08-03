@@ -112,8 +112,8 @@ export default function Home() {
             <a href="#">Blog</a>
           </div>
           <div className="nav-right">
-            <a href="#" className="signin">Sign in</a>
-            <button className="btn-start">Start for free</button>
+            <a href="/signup/" className="signin">Sign in</a>
+            <a href="/signup/" className="btn-start" style={{ textDecoration: 'none', display: 'inline-block' }}>Start for free</a>
           </div>
         </nav>
 

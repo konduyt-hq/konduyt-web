@@ -611,3 +611,52 @@
     .docs-content{padding:32px 24px;}
     .docs-search-wrap{max-width:none;}
   }
+
+  /* ---------- AUTH / SIGNUP ---------- */
+  .auth-root{
+    min-height:100vh;
+    background-color:var(--bg);
+    background-image: radial-gradient(rgba(0,0,0,0.13) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 0 0;
+    display:flex; flex-direction:column;
+  }
+  .auth-topbar{padding:18px 24px;}
+  .auth-back{color:var(--ink); text-decoration:none; font-size:14px; font-weight:600;}
+  .auth-center{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:32px 20px 60px;
+  }
+  .auth-card{
+    width:100%; max-width:400px;
+    background:#fff; border:1px solid var(--border);
+    border-radius:18px; padding:36px 32px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.06);
+    text-align:center;
+  }
+  .auth-logo{display:flex; justify-content:center; margin-bottom:20px;}
+  .auth-logo-svg{width:34px; height:44px;}
+  .auth-title{font-size:22px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin-bottom:8px;}
+  .auth-sub{font-size:14.5px; color:var(--text-secondary); line-height:1.6; margin-bottom:26px;}
+  .auth-error{
+    background:#fff5f5; border:1px solid #f0d0d0; color:#a12626;
+    font-size:13.5px; border-radius:10px; padding:11px 14px; margin-bottom:18px; text-align:left;
+  }
+  .auth-btn{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:var(--ink);
+    border:1px solid var(--border); border-radius:11px;
+    padding:13px 18px; font-size:15px; font-weight:600; font-family:inherit;
+    cursor:pointer; margin-bottom:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.05);
+    transition:background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .auth-btn:hover{background:#f7f7f7; border-color:#d8d8d8; box-shadow:0 2px 6px rgba(0,0,0,0.08);}
+  .auth-btn-icon{flex-shrink:0;}
+  .auth-fine{font-size:12px; color:var(--text-secondary); line-height:1.6; margin-top:18px;}
+  .auth-signin{margin-top:24px; font-size:14px; color:var(--text-secondary);}
+  .auth-link{
+    background:none; border:none; padding:0; cursor:pointer;
+    color:var(--ink); font-weight:600; font-size:14px; font-family:inherit;
+    text-decoration:underline;
+  }
