@@ -128,8 +128,8 @@ export default function Home() {
               <p>Your customers pay the way they already know.<br />You keep your payment accounts. We never touch your money.</p>
             </div>
             <div className="cta-row">
-              <button className="btn-primary">Start for free</button>
-              <a href="#" className="link-arrow">View documentation →</a>
+              <a href="/demo/" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>View demo</a>
+              <a href="/docs/" className="link-arrow">View documentation →</a>
             </div>
             <div className="works-with">WORKS WITH</div>
             <div className="vendor-row">
