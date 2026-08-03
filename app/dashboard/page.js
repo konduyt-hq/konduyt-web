@@ -13,15 +13,22 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isNew, setIsNew] = useState(false);
 
   useEffect(() => {
-    // 1. Grab the token from the URL fragment (#token=...) on first load,
-    //    persist it, then clean the URL.
+    // 1. Grab the token (and is-new flag) from the URL fragment on first load,
+    //    persist the token, then clean the URL.
     let token = null;
     if (window.location.hash.startsWith('#token=')) {
-      token = decodeURIComponent(window.location.hash.slice('#token='.length));
+      // Fragment looks like: #token=<jwt>&new=1
+      const frag = window.location.hash.slice(1); // drop leading '#'
+      const params = new URLSearchParams(frag);
+      token = params.get('token');
+      const isNew = params.get('new') === '1';
       try {
-        sessionStorage.setItem(TOKEN_KEY, token);
+        if (token) sessionStorage.setItem(TOKEN_KEY, token);
+        // Store the first-time flag so the (future) tab routing can read it.
+        sessionStorage.setItem('kdu_is_new', isNew ? '1' : '0');
       } catch (e) {}
       // Remove the token from the visible URL.
       window.history.replaceState(null, '', window.location.pathname);
@@ -46,6 +53,9 @@ export default function Dashboard() {
       })
       .then((u) => {
         setUser(u);
+        try {
+          setIsNew(sessionStorage.getItem('kdu_is_new') === '1');
+        } catch (e) {}
         setStatus('ready');
       })
       .catch(() => {
@@ -148,10 +158,11 @@ export default function Dashboard() {
           </div>
 
           <div className="dash-welcome">
-            <h1 className="dash-title">You&apos;re in.</h1>
+            <h1 className="dash-title">{isNew ? 'Welcome to Konduyt.' : 'Welcome back.'}</h1>
             <p className="dash-sub">
-              Authentication works end to end. This is a placeholder dashboard —
-              workspaces and projects come next.
+              {isNew
+                ? 'Your account is set up. Next, connect a payment provider to start accepting payments — that step comes in the console tabs (coming soon).'
+                : 'Authentication works end to end. This is a placeholder console — workspaces and integrations come next.'}
             </p>
           </div>
 
