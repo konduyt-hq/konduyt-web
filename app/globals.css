@@ -647,12 +647,22 @@
     background:#fff; color:var(--ink);
     border:1px solid var(--border); border-radius:11px;
     padding:13px 18px; font-size:15px; font-weight:600; font-family:inherit;
-    cursor:pointer; margin-bottom:12px;
+    cursor:pointer; margin-bottom:12px; position:relative;
     box-shadow:0 1px 2px rgba(0,0,0,0.05);
     transition:background .15s ease, border-color .15s ease, box-shadow .15s ease;
   }
   .auth-btn:hover{background:#f7f7f7; border-color:#d8d8d8; box-shadow:0 2px 6px rgba(0,0,0,0.08);}
   .auth-btn-icon{flex-shrink:0;}
+  .auth-btn-last{
+    border-color:var(--ink); border-width:1.5px;
+    box-shadow:0 0 0 3px rgba(0,0,0,0.06);
+  }
+  .auth-last-badge{
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    font-size:10.5px; font-weight:700; letter-spacing:0.04em;
+    color:var(--ink); background:var(--panel);
+    border:1px solid var(--border); border-radius:999px; padding:3px 9px;
+  }
   .auth-fine{font-size:12px; color:var(--text-secondary); line-height:1.6; margin-top:18px;}
   .auth-signin{margin-top:24px; font-size:14px; color:var(--text-secondary);}
   .auth-link{
