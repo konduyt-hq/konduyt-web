@@ -1,3 +1,5 @@
+import DevPanel from './DevPanel';
+
 export default function Home() {
   return (
     <>
@@ -152,107 +154,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* CODE / SANDBOX PANEL */}
-          <div className="panel">
-            <div className="panel-head">
-              <div className="tabs">
-                <div className="tab active">Quick start</div>
-                <div className="tab">API reference</div>
-              </div>
-              <button className="btn-test">Test before you sign up</button>
-            </div>
-            <div className="panel-body">
-              <div className="keys-row">
-                <div>
-                  <div className="key-label">Universal secret key <span className="info">ⓘ</span></div>
-                  <div className="key-field">
-                    <span>kdu_test_secret_************************</span>
-                    <span className="copy-icon">⧉</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="key-label">Universal publishable key <span className="info">ⓘ</span></div>
-                  <div className="key-field">
-                    <span>kdu_test_pub_**************************</span>
-                    <span className="copy-icon">⧉</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="step-label">1. Choose your language</div>
-              <div className="lang-pills">
-                <div className="pill active">
-                  <svg className="lgo" viewBox="0 0 128 128"><rect width="128" height="128" rx="8" fill="#f0db4f"/><path d="M67.3 106.6c-3.2-4.4-5.4-7-11.9-7-4.5 0-7.7 2.4-7.7 5.8 0 4 3.2 5.7 8.6 8l2.3.9c9.5 4 15.8 9 15.8 19.6l-.1.1c0-.1 0-.1.1-.1v-40h-9.9v43.8h.9zm-25.4-2.1c1.9 3.4 4.6 5.9 9.4 5.9 4.6 0 7.2-1.8 7.2-8.6V64h9.9v38c0 12.5-7.3 18.1-18 18.1-9.7 0-15.3-5-18.2-11z" transform="scale(0.72) translate(24 -14)" fill="#323330"/></svg>JavaScript
-                </div>
-                <div className="pill">
-                  <svg className="lgo" viewBox="0 0 128 128"><path d="M63.4 1.5c-5.3 0-10.3.5-14.7 1.3-13 2.3-15.4 7.1-15.4 16v11.7h30.8v3.9H21.6c-9 0-16.8 5.4-19.3 15.6-2.8 11.8-2.9 19.1 0 31.3 2.2 9.1 7.4 15.6 16.4 15.6h10.6V98.5c0-10.2 8.8-19.2 19.3-19.2h30.7c8.6 0 15.4-7.1 15.4-15.7V18.8c0-8.4-7.1-14.7-15.4-16-5.3-.9-10.7-1.3-16-1.3zM46.8 11c3.2 0 5.8 2.6 5.8 5.8s-2.6 5.8-5.8 5.8-5.8-2.6-5.8-5.8S43.6 11 46.8 11z" fill="#3776ab"/><path d="M96.6 34.4v11.3c0 10.6-9 19.6-19.3 19.6H46.6c-8.4 0-15.4 7.2-15.4 15.7v29.5c0 8.4 7.3 13.3 15.4 15.7 9.7 2.9 19.1 3.4 30.7 0 7.7-2.2 15.4-6.7 15.4-15.7V98.8H61.9v-3.9h46.1c9 0 12.3-6.2 15.4-15.6 3.2-9.6 3.1-18.9 0-31.3-2.2-8.9-6.4-15.6-15.4-15.6H96.6zM79.3 105.7c3.2 0 5.8 2.6 5.8 5.8s-2.6 5.8-5.8 5.8-5.8-2.6-5.8-5.8 2.6-5.8 5.8-5.8z" fill="#ffd43b"/></svg>Python
-                </div>
-                <div className="pill">
-                  <svg className="lgo" viewBox="0 0 128 128"><path d="M64 33.5C41 33.5 26.7 45 21 68c8.6-11.5 18.6-15.8 30-13 6.5 1.6 11.2 6.3 16.3 11.6C75.8 75.2 85.6 85 107 85c23 0 37.3-11.5 43-34.5-8.6 11.5-18.6 15.8-30 13-6.5-1.6-11.2-6.3-16.3-11.6C95.2 43.3 85.4 33.5 64 33.5zM21 85c-23 0-37.3 11.5-43 34.5C-13.4 108-3.4 103.7 8 106.5c6.5 1.6 11.2 6.3 16.3 11.6C32.8 126.7 42.6 136.5 64 136.5c23 0 37.3-11.5 43-34.5-8.6 11.5-18.6 15.8-30 13-6.5-1.6-11.2-6.3-16.3-11.6C52.2 94.8 42.4 85 21 85z" transform="translate(11 -25)" fill="#6181b6"/></svg>PHP
-                </div>
-                <div className="pill">
-                  <svg className="lgo" viewBox="0 0 128 128"><g fill="#00acd7"><path d="M9.7 59.5c-.3 0-.4-.2-.2-.4l1.9-2.5c.2-.2.5-.4.8-.4h32.4c.3 0 .4.2.2.5l-1.6 2.4c-.2.2-.5.4-.7.4zM.4 65.2c-.3 0-.4-.2-.2-.4l1.9-2.5c.2-.2.5-.4.8-.4h41.4c.3 0 .4.2.3.5l-.7 2.2c-.1.3-.4.4-.7.4zM15.3 70.9c-.3 0-.3-.2-.2-.4l1.3-2.3c.2-.2.4-.4.7-.4h18.2c.3 0 .4.2.4.5l-.2 2.2c0 .3-.3.5-.5.5z"/><path d="M79.5 58.4c-5.7 1.5-9.6 2.6-15.2 4-1.4.4-1.4.4-2.6-1-1.4-1.6-2.4-2.6-4.3-3.6-5.9-2.9-11.6-2-16.9 1.4-6.3 4.1-9.6 10.2-9.5 17.7.1 7.4 5.2 13.5 12.5 14.5 6.3.8 11.6-1.4 15.7-6.1.8-1 1.5-2.1 2.4-3.4H44.7c-1.9 0-2.4-1.2-1.8-2.7 1.2-2.8 3.4-7.5 4.7-9.9.3-.5 1-1.4 2.2-1.4h33.2c-.2 2.5-.2 5-.5 7.5-.9 6.4-3.3 12.3-7.2 17.5-6.4 8.5-14.8 13.8-25.5 15.2-8.8 1.2-17-.5-24.2-5.9-6.6-5-10.4-11.6-11.4-19.8-1.2-9.7 1.7-18.4 7.6-26.1 6.3-8.3 14.7-13.6 25-15.5 8.4-1.5 16.4-.5 23.6 4.4 4.7 3.1 8.1 7.4 10.3 12.6.5.8.1 1.3-.9 1.5z"/><path d="M99.9 100.8c-8.1-.2-15.5-2.5-21.7-7.8-5.3-4.5-8.6-10.3-9.7-17.2-1.6-10.1 1.2-19 7.3-27 6.6-8.6 14.5-13.1 25.2-15 9.1-1.6 17.7-.7 25.5 4.6 7.1 4.8 11.5 11.3 12.7 19.9 1.5 12.1-2 22-10.3 30.4-5.9 6-13.1 9.7-21.4 11.4-2.5.5-5 .6-7.6.7zm21.2-36c-.1-1.2-.1-2.1-.3-3-1.6-8.8-9.7-13.8-18.2-11.8-8.3 1.9-13.7 7.2-15.7 15.6-1.6 7 1.8 14.1 8.3 17 5 2.2 10 1.9 14.8-.5 7.3-3.8 11.2-9.7 11-17.3z"/></g></svg>Go
-                </div>
-                <div className="pill">
-                  <svg className="lgo" viewBox="0 0 128 128"><path d="M118.3 84.7c-6.3 1.9-9.7 3.5-19.5 8.9-2.4-1.4-6.6-3.7-15.4-8.6l-13.5-8-16.7 6.6-15.9-10.4L7.5 82.1 27.4 108l32.6 12.6L94 108l24.3-23.3z" fill="#a02c2c"/><path d="M94 108l-34-12.6L27.4 108 60 120.6z" fill="#7f1d1d"/><path d="M60 71.6l-16.7 6.6L27.4 108 60 95.4z" fill="#cc342d"/><path d="M60 71.6l23.9 5.4L94 108 60 95.4z" fill="#9c3535"/></svg>Ruby
-                </div>
-                <div className="pill">
-                  <svg className="lgo" viewBox="0 0 128 128"><path d="M63.5 8C33 8 8.3 32.7 8.3 63.2S33 118.4 63.5 118.4s55.2-24.7 55.2-55.2S94 8 63.5 8zm-2 12.3c1.4 0 2.5 1.1 2.5 2.5 0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5c0-1.4 1.1-2.5 2.5-2.5zm23.8 22.5c8.9 8.9 8.9 23.3 0 32.2-8.9 8.9-23.3 8.9-32.2 0s-8.9-23.3 0-32.2 23.3-8.9 32.2 0z" fill="#000"/></svg>Rust
-                </div>
-                <div className="pill">More ⌄</div>
-              </div>
-
-              <div className="step-row">
-                <div className="step-label" style={{marginBottom: '0'}}>2. Copy, run, and see it work</div>
-                <a href="#" className="view-docs">View full docs →</a>
-              </div>
-
-              <div className="code-grid">
-                <div className="code-box">
-                  <div className="code-box-head">
-                    <span>javascript</span>
-                    <span className="copy-btn">⧉ Copy</span>
-                  </div>
-                  <pre><span className="kw">import</span> Konduyt <span className="kw">from</span> <span className="str">'konduyt'</span>;
-
-      <span className="kw">const</span> konduyt = <span className="kw">new</span> <span className="fn">Konduyt</span>({'{'}
-        <span className="key">secretKey</span>: <span className="str">'kdu_test_secret_***********'</span>,
-      {'}'});
-
-      <span className="kw">const</span> payment = <span className="kw">await</span> konduyt.payments.<span className="fn">create</span>({'{'}
-        <span className="key">amount</span>: <span className="num">5000</span>,
-        <span className="key">currency</span>: <span className="str">'KES'</span>,
-        <span className="key">provider</span>: <span className="str">'mpesa'</span>,
-        <span className="key">customer</span>: {'{'} <span className="key">email</span>: <span className="str">'customer@example.com'</span> {'}'}
-      {'}'});
-
-      console.<span className="fn">log</span>(payment);</pre>
-                </div>
-                <div className="code-box">
-                  <div className="code-box-head">
-                    <span>RESPONSE</span>
-                    <span style={{display: 'flex', alignItems: 'center', gap: '6px'}}><span className="status-dot"></span>200 OK</span>
-                  </div>
-                  <pre>{'{'}
-        <span className="key">"id"</span>: <span className="str">"pay_01H8X1Z2Y7Q8K9LMN0P"</span>,
-        <span className="key">"status"</span>: <span className="str">"created"</span>,
-        <span className="key">"amount"</span>: <span className="num">5000</span>,
-        <span className="key">"currency"</span>: <span className="str">"KES"</span>,
-        <span className="key">"provider"</span>: <span className="str">"mpesa"</span>,
-        <span className="key">"customer"</span>: {'{'}
-          <span className="key">"email"</span>: <span className="str">"customer@example.com"</span>
-        {'}'},
-        <span className="key">"created_at"</span>: <span className="str">"2026-08-02T09:41:32Z"</span>
-      {'}'}</pre>
-                </div>
-              </div>
-
-              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                <button className="run-btn">▶ Run in sandbox</button>
-                <div className="success-line">✓ Payment created successfully</div>
-              </div>
-            </div>
-          </div>
+          {/* CODE / SANDBOX PANEL (interactive) */}
+          <DevPanel />
         </div>
 
         {/* IN THE WORKS */}
