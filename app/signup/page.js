@@ -162,7 +162,7 @@ export default function Signup() {
 
         <p className="auth-signin">
           Already have an account?{' '}
-          <button className="auth-link" onClick={() => go('google')} type="button">Sign in</button>
+          <Link href="/signin/" className="auth-link">Sign in</Link>
         </p>
       </div>
     </div>
