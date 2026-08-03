@@ -268,14 +268,14 @@ export default function Home() {
                 <span className="works-card-name"><span className="wc-brand">KONDUYT</span>creators</span>
                 <span className="works-badge">Coming soon</span>
               </div>
-              <p className="works-card-desc">Payments, payouts and analytics built for creators — turn an audience into recurring revenue without stitching together tools.</p>
+              <p className="works-card-desc">Get paid by your audience, wherever they are.</p>
             </div>
             <div className="works-card">
               <div className="works-card-top">
                 <span className="works-card-name"><span className="wc-brand">KONDUYT</span>payroll</span>
                 <span className="works-badge">Coming soon</span>
               </div>
-              <p className="works-card-desc">Pay teams and contractors across borders and providers, on schedule, from the same Konduyt account you already run.</p>
+              <p className="works-card-desc">One place to pay teams, contractors and suppliers.</p>
             </div>
           </div>
         </section>
