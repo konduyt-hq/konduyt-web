@@ -41,6 +41,13 @@ export default function Dashboard() {
   const [latestPayment, setLatestPayment] = useState(null);
   const [mode, setMode] = useState('test'); // test | live
   const [tab, setTab] = useState('home'); // home | connections | activity | money | project
+  const [providers, setProviders] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [connectingId, setConnectingId] = useState(null);
+  const [credInput, setCredInput] = useState('');
+  const [connectError, setConnectError] = useState('');
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [hasKeys, setHasKeys] = useState(false);
   const [lang, setLang] = useState('curl');
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState('');
@@ -91,26 +98,92 @@ export default function Dashboard() {
       });
   }, []);
 
-  // ---- Load keys + latest payment when active project changes ----
+  // ---- Load keys + connections + latest payment when active project changes ----
   const loadProjectData = useCallback((pid) => {
     if (!pid) return;
     fetch(`${API_BASE}/projects/${pid}/keys`, { headers: authHeaders() })
       .then((r) => r.json())
-      .then((d) => setKeys(d.keys || null))
-      .catch(() => setKeys(null));
+      .then((d) => {
+        const k = d.keys || null;
+        setKeys(k);
+        setHasKeys(!!(k && k.test));
+      })
+      .catch(() => {
+        setKeys(null);
+        setHasKeys(false);
+      });
+    fetch(`${API_BASE}/projects/${pid}/connections`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setConnections(d.connections || []))
+      .catch(() => setConnections([]));
     fetch(`${API_BASE}/projects/${pid}/latest-payment`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
       .catch(() => setLatestPayment(null));
   }, []);
 
+  // Load the provider catalog once.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    fetch(`${API_BASE}/providers`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setProviders(d.providers || []))
+      .catch(() => setProviders([]));
+  }, [status]);
+
   useEffect(() => {
     if (activeId) loadProjectData(activeId);
   }, [activeId, loadProjectData]);
 
+  // New users (no keys yet) land on Connections — the first meaningful action.
+  useEffect(() => {
+    if (status === 'ready' && keys !== null) {
+      if (!hasKeys) setTab('connections');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasKeys, status]);
+
   function logout() {
     clearToken();
     window.location.href = '/';
+  }
+
+  async function connectProvider(providerId) {
+    setConnectError('');
+    setConnectBusy(true);
+    try {
+      const r = await fetch(`${API_BASE}/projects/${activeId}/connections`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider_id: providerId,
+          credentials: { secret_key: credInput.trim() },
+        }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        setConnectError(err.detail || 'Could not connect. Check your credentials.');
+        setConnectBusy(false);
+        return;
+      }
+      // Success: reload keys + connections. Keys now exist.
+      setConnectingId(null);
+      setCredInput('');
+      loadProjectData(activeId);
+      // Land them on Home to see their new keys + snippet.
+      setTimeout(() => setTab('home'), 300);
+    } catch (e) {
+      setConnectError('Network error. Please try again.');
+    }
+    setConnectBusy(false);
+  }
+
+  function disconnectProvider(providerId) {
+    if (!confirm('Disconnect this provider?')) return;
+    fetch(`${API_BASE}/projects/${activeId}/connections/${providerId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }).then(() => loadProjectData(activeId));
   }
 
   async function createProject() {
@@ -333,7 +406,25 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {tab === 'home' && (
+            {tab === 'home' && !hasKeys && (
+              <div className="con-empty">
+                <h2 className="con-empty-title">Connect a provider to get your keys</h2>
+                <p className="con-empty-sub">
+                  Konduyt API keys are generated once you connect your first payment provider —
+                  because keys are only useful when Konduyt has somewhere to route payments.
+                </p>
+                <button
+                  className="dash-btn-primary"
+                  onClick={() => setTab('connections')}
+                  type="button"
+                  style={{ marginTop: 18 }}
+                >
+                  Go to Connections
+                </button>
+              </div>
+            )}
+
+            {tab === 'home' && hasKeys && (
               <div className="con-home">
                 <div className="con-home-head">
                   <h1 className="con-h1">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.</h1>
@@ -428,14 +519,100 @@ export default function Dashboard() {
             )}
 
             {tab === 'connections' && (
-              <div className="con-empty">
-                <h2 className="con-empty-title">Connections</h2>
-                <p className="con-empty-sub">
-                  This is where you&apos;ll connect real payment providers — Stripe, M-Pesa,
-                  PayPal, Flutterwave and more — so one Konduyt integration routes to all of them.
-                  Arriving in Milestone 2. For now, you can create test payments using the
-                  Konduyt test environment on the Home tab.
-                </p>
+              <div className="con-connections">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Connect a payment provider</h1>
+                  <p className="con-sub">
+                    Bring your own provider account. Konduyt validates your credentials,
+                    stores them encrypted, and routes payments through one integration.
+                    {!hasKeys && ' Your Konduyt API keys are generated the moment your first provider connects.'}
+                  </p>
+                </div>
+
+                <div className="con-provider-list">
+                  {providers.map((p) => {
+                    const conn = connections.find((c) => c.provider_id === p.id);
+                    const isConnected = !!conn;
+                    const isOpen = connectingId === p.id;
+                    return (
+                      <div className={`con-provider ${p.status === 'coming_soon' ? 'soon' : ''}`} key={p.id}>
+                        <div className="con-provider-main">
+                          <div className="con-provider-info">
+                            <span className="con-provider-name">{p.name}</span>
+                            {isConnected && (
+                              <span className="con-provider-badge connected">
+                                ✓ Connected{conn.mode ? ` · ${conn.mode}` : ''}
+                              </span>
+                            )}
+                            {p.status === 'coming_soon' && (
+                              <span className="con-provider-badge soon">Coming soon</span>
+                            )}
+                          </div>
+                          <div className="con-provider-action">
+                            {p.status === 'available' && !isConnected && (
+                              <button
+                                className="con-connect-btn"
+                                onClick={() => {
+                                  setConnectingId(isOpen ? null : p.id);
+                                  setCredInput('');
+                                  setConnectError('');
+                                }}
+                                type="button"
+                              >
+                                {isOpen ? 'Cancel' : 'Connect'}
+                              </button>
+                            )}
+                            {isConnected && (
+                              <button
+                                className="con-disconnect-btn"
+                                onClick={() => disconnectProvider(p.id)}
+                                type="button"
+                              >
+                                Disconnect
+                              </button>
+                            )}
+                            {p.status === 'coming_soon' && (
+                              <button className="con-connect-btn" disabled type="button">
+                                Connect
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {isOpen && p.status === 'available' && (
+                          <div className="con-connect-form">
+                            <label className="con-connect-label">{p.credential_label}</label>
+                            <input
+                              className="con-connect-input"
+                              type="password"
+                              placeholder="sk_test_..."
+                              value={credInput}
+                              onChange={(e) => setCredInput(e.target.value)}
+                              autoFocus
+                            />
+                            {p.credential_help && (
+                              <p className="con-connect-help">{p.credential_help}</p>
+                            )}
+                            {p.docs_url && (
+                              <a className="con-connect-docs" href={p.docs_url} target="_blank" rel="noreferrer">
+                                {p.name} API docs ↗
+                              </a>
+                            )}
+                            {connectError && <div className="con-connect-error">{connectError}</div>}
+                            <button
+                              className="con-connect-submit"
+                              onClick={() => connectProvider(p.id)}
+                              disabled={connectBusy || !credInput.trim()}
+                              type="button"
+                            >
+                              {connectBusy ? 'Validating…' : `Connect ${p.name}`}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
