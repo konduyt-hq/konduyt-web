@@ -39,8 +39,7 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [mode, setMode] = useState('test'); // test | live
-  const [tab, setTab] = useState('home'); // home | connections | activity | money | project
+  const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
   const [providers, setProviders] = useState([]);
   const [connections, setConnections] = useState([]);
   const [connectingId, setConnectingId] = useState(null);
@@ -138,7 +137,8 @@ export default function Dashboard() {
   // New users (no keys yet) land on Connections — the first meaningful action.
   useEffect(() => {
     if (status === 'ready' && keys !== null) {
-      if (!hasKeys) setTab('connections');
+      if (!hasKeys) setTab('integrations');
+      else setTab('overview');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasKeys, status]);
@@ -146,6 +146,21 @@ export default function Dashboard() {
   function logout() {
     clearToken();
     window.location.href = '/';
+  }
+
+  async function enterSandbox() {
+    // A sandbox is a free project for experimenting. Create one and switch to it.
+    const r = await fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Sandbox' }),
+    });
+    const p = await r.json();
+    const rl = await fetch(`${API_BASE}/projects`, { headers: authHeaders() });
+    const data = await rl.json();
+    setProjects(data.projects || []);
+    setActiveId(p.id);
+    setTab('integrations');
   }
 
   async function connectProvider(providerId) {
@@ -170,8 +185,7 @@ export default function Dashboard() {
       setConnectingId(null);
       setCredInput('');
       loadProjectData(activeId);
-      // Land them on Home to see their new keys + snippet.
-      setTimeout(() => setTab('home'), 300);
+      // Keys + snippet now appear right here in Integrations.
     } catch (e) {
       setConnectError('Network error. Please try again.');
     }
@@ -338,31 +352,10 @@ export default function Dashboard() {
         </div>
 
         <div className="con-topbar-right">
-          {/* Test/Live toggle */}
-          <div className="con-mode">
-            <button
-              className={mode === 'test' ? 'con-mode-opt active' : 'con-mode-opt'}
-              onClick={() => setMode('test')}
-              type="button"
-            >
-              Test
-            </button>
-            <button
-              className={mode === 'live' ? 'con-mode-opt active' : 'con-mode-opt'}
-              onClick={() => setMode('live')}
-              type="button"
-              title={kycVerified ? 'Live mode' : 'Complete KYC to enable'}
-            >
-              Live {!kycVerified && <span className="con-lock">🔒</span>}
-            </button>
-          </div>
-
-          {/* KYC button — only if not verified */}
-          {!kycVerified && (
-            <button className="con-kyc" type="button" onClick={() => setTab('project')}>
-              Complete KYC
-            </button>
-          )}
+          {/* Enter Sandbox — a free project for experimenting */}
+          <button className="con-sandbox" type="button" onClick={enterSandbox}>
+            Enter Sandbox
+          </button>
 
           <button className="con-avatar" onClick={logout} type="button" title="Sign out">
             {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
@@ -373,11 +366,11 @@ export default function Dashboard() {
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
         {[
-          ['home', 'Home'],
+          ['integrations', 'Integrations'],
+          ['overview', 'Overview'],
           ['money', 'Money'],
-          ['connections', 'Connections'],
           ['activity', 'Activity'],
-          ['project', 'Project'],
+          ['settings', 'Settings'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -392,21 +385,8 @@ export default function Dashboard() {
 
       {/* ===== Body ===== */}
       <main className="con-body">
-        {mode === 'live' && !kycVerified ? (
-          <div className="con-live-locked">
-            <div className="con-lock-big">🔒</div>
-            <h2 className="con-empty-title">Complete KYC to accept real payments</h2>
-            <p className="con-empty-sub">
-              Test mode works fully without verification. When you&apos;re ready to accept
-              real money, complete KYC to unlock Live mode and activate your live keys.
-            </p>
-            <button className="dash-btn-primary" onClick={() => { setMode('test'); }} type="button">
-              Back to Test mode
-            </button>
-          </div>
-        ) : (
-          <>
-            {tab === 'home' && !hasKeys && (
+        <>
+            {tab === 'integrations' && !hasKeys && false && (
               <div className="con-empty">
                 <h2 className="con-empty-title">Connect a provider to get your keys</h2>
                 <p className="con-empty-sub">
@@ -424,7 +404,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {tab === 'home' && hasKeys && (
+            {tab === 'integrations' && hasKeys && (
               <div className="con-home">
                 <div className="con-home-head">
                   <h1 className="con-h1">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.</h1>
@@ -518,7 +498,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {tab === 'connections' && (
+            {tab === 'integrations' && (
               <div className="con-connections">
                 <div className="con-home-head">
                   <h1 className="con-h1">Connect a payment provider</h1>
@@ -546,6 +526,9 @@ export default function Dashboard() {
                             )}
                             {p.status === 'coming_soon' && (
                               <span className="con-provider-badge soon">Coming soon</span>
+                            )}
+                            {p.capabilities?.best_for && (
+                              <span className="con-provider-bestfor">{p.capabilities.best_for}</span>
                             )}
                           </div>
                           <div className="con-provider-action">
@@ -578,6 +561,41 @@ export default function Dashboard() {
                             )}
                           </div>
                         </div>
+
+                        {p.capabilities && (
+                          <div className="con-provider-caps">
+                            {p.capabilities.countries && (
+                              <div className="con-cap-group">
+                                <span className="con-cap-label">Countries</span>
+                                <span className="con-cap-chips">
+                                  {p.capabilities.countries.slice(0, 6).map((ct) => (
+                                    <span className="con-cap-chip" key={ct}>{ct}</span>
+                                  ))}
+                                </span>
+                              </div>
+                            )}
+                            {p.capabilities.payment_methods && (
+                              <div className="con-cap-group">
+                                <span className="con-cap-label">Methods</span>
+                                <span className="con-cap-chips">
+                                  {p.capabilities.payment_methods.map((mtd) => (
+                                    <span className="con-cap-chip" key={mtd}>{mtd.replace(/_/g, ' ')}</span>
+                                  ))}
+                                </span>
+                              </div>
+                            )}
+                            {p.capabilities.mobile_money && (
+                              <div className="con-cap-group">
+                                <span className="con-cap-label">Mobile money</span>
+                                <span className="con-cap-chips">
+                                  {p.capabilities.mobile_money.map((mm) => (
+                                    <span className="con-cap-chip" key={mm}>{mm.replace(/_/g, ' ')}</span>
+                                  ))}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {isOpen && p.status === 'available' && (
                           <div className="con-connect-form">
@@ -616,6 +634,25 @@ export default function Dashboard() {
               </div>
             )}
 
+            {tab === 'overview' && (
+              <div className="con-empty">
+                <h2 className="con-empty-title">Overview</h2>
+                <p className="con-empty-sub">
+                  A summary of your project — recent payments, connected providers and
+                  integration health — will live here as those systems come online. For now,
+                  head to Integrations to connect providers and grab your code.
+                </p>
+                <button
+                  className="dash-btn-primary"
+                  onClick={() => setTab('integrations')}
+                  type="button"
+                  style={{ marginTop: 18 }}
+                >
+                  Go to Integrations
+                </button>
+              </div>
+            )}
+
             {tab === 'activity' && (
               <div className="con-empty">
                 <h2 className="con-empty-title">Activity</h2>
@@ -638,7 +675,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {tab === 'project' && (
+            {tab === 'settings' && (
               <div className="con-project">
                 <h2 className="con-empty-title">Project settings</h2>
                 <div className="con-proj-settings">
@@ -669,8 +706,7 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-          </>
-        )}
+        </>
       </main>
     </div>
   );

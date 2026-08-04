@@ -1133,3 +1133,27 @@
     .con-provider-action{width:100%;}
     .con-connect-btn, .con-disconnect-btn{width:100%;}
   }
+
+  /* ===== Integrations: capability chips + sandbox ===== */
+  .con-sandbox{
+    background:#fff; border:1px solid var(--border); border-radius:9px;
+    padding:8px 16px; font-size:13.5px; font-weight:600; color:var(--ink);
+    font-family:inherit; cursor:pointer;
+  }
+  .con-sandbox:hover{background:var(--panel);}
+  .con-provider-bestfor{font-size:13px; color:var(--text-secondary); width:100%; margin-top:2px;}
+  .con-provider-caps{
+    padding:0 20px 18px; display:flex; flex-direction:column; gap:10px;
+    border-top:1px solid var(--border); padding-top:14px; margin-top:-4px;
+  }
+  .con-cap-group{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
+  .con-cap-label{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-secondary); min-width:96px;}
+  .con-cap-chips{display:flex; gap:6px; flex-wrap:wrap;}
+  .con-cap-chip{
+    font-size:12px; font-weight:600; color:var(--ink); background:var(--panel);
+    border:1px solid var(--border); border-radius:6px; padding:3px 9px; text-transform:capitalize;
+  }
+  @media (max-width:640px){
+    .con-cap-group{flex-direction:column; gap:6px;}
+    .con-cap-label{min-width:0;}
+  }
