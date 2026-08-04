@@ -108,7 +108,7 @@ export default function Home() {
           </div>
           <div className="nav-links">
             <a href="#">Docs</a>
-            <a href="#">Pricing</a>
+            <a href="/pricing/">Pricing</a>
             <a href="#">GitHub</a>
             <a href="#">Blog</a>
           </div>
@@ -285,7 +285,7 @@ export default function Home() {
           </div>
           <div className="footer-links">
             <a href="#">Docs</a>
-            <a href="#">Pricing</a>
+            <a href="/pricing/">Pricing</a>
             <a href="#">GitHub</a>
             <a href="#">Privacy</a>
             <a href="#">Terms</a>
