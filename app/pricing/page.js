@@ -153,6 +153,17 @@ export default function Pricing() {
           </p>
         </section>
 
+        {/* Intelligence teaser — a separate future product */}
+        <section className="pricing-intel">
+          <span className="pricing-intel-badge">In the works</span>
+          <h3 className="pricing-intel-h">Konduyt Intelligence</h3>
+          <p className="pricing-intel-p">
+            A separate product, built on top of the same infrastructure: vendor performance
+            analysis, payment optimization, revenue-leakage detection and market insights.
+            Not part of KONDUYTbuild pricing — it&apos;s coming as its own thing.
+          </p>
+        </section>
+
         <footer className="pricing-foot">
           <Link href="/" className="pricing-navlink">← Back to Konduyt</Link>
         </footer>
