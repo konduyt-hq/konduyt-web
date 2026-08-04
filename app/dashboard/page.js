@@ -6,13 +6,29 @@ import { LANGUAGES } from './snippets';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
+
 const TOKEN_KEY = 'kdu_token';
 
-function authHeaders() {
-  let token = null;
+function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
+}
+function setToken(t) {
+  try { localStorage.setItem(TOKEN_KEY, t); } catch (e) {}
+}
+function clearToken() {
+  try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+}
+function migrateLegacyToken() {
   try {
-    token = sessionStorage.getItem(TOKEN_KEY);
+    const legacy = sessionStorage.getItem(TOKEN_KEY);
+    if (legacy && !localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, legacy);
+    if (legacy) sessionStorage.removeItem(TOKEN_KEY);
   } catch (e) {}
+}
+
+function authHeaders() {
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -37,18 +53,15 @@ export default function Dashboard() {
 
   // ---- Initial auth + token capture ----
   useEffect(() => {
+    migrateLegacyToken();
     let token = null;
     if (window.location.hash.startsWith('#token=')) {
       const params = new URLSearchParams(window.location.hash.slice(1));
       token = params.get('token');
-      try {
-        if (token) sessionStorage.setItem(TOKEN_KEY, token);
-      } catch (e) {}
+      if (token) setToken(token);
       window.history.replaceState(null, '', window.location.pathname);
     } else {
-      try {
-        token = sessionStorage.getItem(TOKEN_KEY);
-      } catch (e) {}
+      token = getToken();
     }
     if (!token) {
       setStatus('unauth');
@@ -73,9 +86,7 @@ export default function Dashboard() {
         setStatus('ready');
       })
       .catch(() => {
-        try {
-          sessionStorage.removeItem(TOKEN_KEY);
-        } catch (e) {}
+        clearToken();
         setStatus('unauth');
       });
   }, []);
@@ -98,9 +109,7 @@ export default function Dashboard() {
   }, [activeId, loadProjectData]);
 
   function logout() {
-    try {
-      sessionStorage.removeItem(TOKEN_KEY);
-    } catch (e) {}
+    clearToken();
     window.location.href = '/';
   }
 

@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 
 const TOKEN_KEY = 'kdu_token';
 
-// Renders the primary nav CTA. If the user has an active session token, it
-// reads "Go to console" and links to the dashboard. Otherwise it reads
-// "Start for free" and links to signup. Client-only so it can check storage.
 export default function NavCta() {
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     try {
-      setSignedIn(!!sessionStorage.getItem(TOKEN_KEY));
+      // Migrate any legacy sessionStorage token to localStorage.
+      const legacy = sessionStorage.getItem(TOKEN_KEY);
+      if (legacy && !localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, legacy);
+      if (legacy) sessionStorage.removeItem(TOKEN_KEY);
+      setSignedIn(!!localStorage.getItem(TOKEN_KEY));
     } catch (e) {}
   }, []);
 
@@ -20,11 +21,7 @@ export default function NavCta() {
   const label = signedIn ? 'Go to console' : 'Start for free';
 
   return (
-    <a
-      href={href}
-      className="btn-start"
-      style={{ textDecoration: 'none', display: 'inline-block' }}
-    >
+    <a href={href} className="btn-start" style={{ textDecoration: 'none', display: 'inline-block' }}>
       {label}
     </a>
   );
