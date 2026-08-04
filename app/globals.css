@@ -844,6 +844,7 @@
     font-family:inherit; cursor:pointer;
   }
   .con-copy:hover{background:var(--panel);}
+  .con-key-actions{display:flex; gap:8px; align-items:center;}
   .con-copy:disabled{opacity:0.5;}
   .con-roll{color:#a5302b; border-color:#e8cccc;}
   .con-lang-row{display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;}
@@ -907,3 +908,73 @@
   .con-verified{color:#2fa84f;}
   .con-unverified{color:#a5302b; font-weight:500; font-size:13px;}
   .con-setting-note{font-size:13px; color:var(--text-secondary); line-height:1.6; padding:16px 0 6px;}
+
+  /* ================= CONSOLE RESPONSIVE ================= */
+  /* Tablet and below */
+  @media (max-width: 900px){
+    .con-body{padding:28px 18px 70px;}
+    .con-h1{font-size:23px;}
+  }
+
+  /* Mobile */
+  @media (max-width: 640px){
+    /* Top bar: stack into two rows, wrap cleanly */
+    .con-topbar{
+      padding:12px 16px; gap:10px;
+    }
+    .con-topbar-left{gap:10px; width:100%; justify-content:space-between;}
+    .con-topbar-right{width:100%; justify-content:space-between; gap:8px;}
+    .con-logo{font-size:16px;}
+    .con-proj-btn{padding:7px 11px; font-size:13.5px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .con-proj-menu{min-width:200px;}
+    .con-rename{font-size:12px; padding:4px;}
+    .con-kyc{padding:7px 12px; font-size:12.5px;}
+    .con-mode-opt{padding:6px 11px; font-size:12.5px;}
+
+    /* Tabs: horizontal scroll, hide scrollbar visually */
+    .con-tabs{padding:0 12px; gap:2px;}
+    .con-tab{padding:12px 12px; font-size:13.5px;}
+
+    /* Body */
+    .con-body{padding:22px 14px 60px;}
+    .con-h1{font-size:21px;}
+    .con-sub{font-size:14px;}
+    .con-section{padding:16px;}
+
+    /* Key rows: stack label above the value+buttons */
+    .con-key-row{
+      flex-direction:column; align-items:stretch; gap:8px;
+      padding-bottom:12px; border-bottom:1px solid var(--border);
+    }
+    .con-key-row:last-child{border-bottom:none; padding-bottom:0;}
+    .con-key-label{width:auto;}
+    .con-key-val{min-width:0; width:100%; font-size:12px;}
+    .con-key-actions{display:flex; gap:8px; flex-wrap:wrap;}
+    .con-copy{flex:1; min-width:64px; text-align:center; padding:9px 8px;}
+
+    /* Snippet */
+    .con-lang{padding:7px 11px; font-size:12.5px;}
+    .con-code{font-size:11.5px; padding:14px 14px;}
+    .con-code-copy{top:8px; right:8px; padding:4px 9px; font-size:11px;}
+
+    /* Receipt: stack rows */
+    .con-receipt{padding:16px;}
+    .con-receipt-refresh{position:static; display:block; margin-top:12px; text-align:left; padding:0;}
+    .con-receipt-amt{font-size:16px;}
+
+    /* Empty states */
+    .con-empty{padding:32px 20px;}
+    .con-empty-title{font-size:19px;}
+    .con-empty-sub{font-size:14px;}
+    .con-live-locked{padding:36px 22px;}
+
+    /* Project settings: stack key/value */
+    .con-setting-row{flex-direction:column; align-items:flex-start; gap:4px;}
+  }
+
+  /* Very small phones */
+  @media (max-width: 380px){
+    .con-mode-opt{padding:6px 9px;}
+    .con-kyc{padding:6px 10px; font-size:12px;}
+    .con-proj-btn{max-width:120px;}
+  }

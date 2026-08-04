@@ -348,24 +348,28 @@ export default function Dashboard() {
                   <div className="con-key-row">
                     <span className="con-key-label">Publishable</span>
                     <code className="con-key-val">{testKeys?.publishable_key || '—'}</code>
-                    <button className="con-copy" onClick={() => copy(testKeys?.publishable_key, 'pub')} type="button">
-                      {copied === 'pub' ? '✓' : 'Copy'}
-                    </button>
+                    <div className="con-key-actions">
+                      <button className="con-copy" onClick={() => copy(testKeys?.publishable_key, 'pub')} type="button">
+                        {copied === 'pub' ? '✓' : 'Copy'}
+                      </button>
+                    </div>
                   </div>
                   <div className="con-key-row">
                     <span className="con-key-label">Secret</span>
                     <code className="con-key-val">
                       {showSecret ? (testKeys?.secret || '—') : (testKeys?.secret_masked || '—')}
                     </code>
-                    <button className="con-copy" onClick={() => setShowSecret((s) => !s)} type="button">
-                      {showSecret ? 'Hide' : 'Reveal'}
-                    </button>
-                    <button className="con-copy" onClick={() => copy(testKeys?.secret, 'sec')} type="button">
-                      {copied === 'sec' ? '✓' : 'Copy'}
-                    </button>
-                    <button className="con-copy con-roll" onClick={rotateTestKey} disabled={rotating} type="button">
-                      {rotating ? '…' : 'Roll'}
-                    </button>
+                    <div className="con-key-actions">
+                      <button className="con-copy" onClick={() => setShowSecret((s) => !s)} type="button">
+                        {showSecret ? 'Hide' : 'Reveal'}
+                      </button>
+                      <button className="con-copy" onClick={() => copy(testKeys?.secret, 'sec')} type="button">
+                        {copied === 'sec' ? '✓' : 'Copy'}
+                      </button>
+                      <button className="con-copy con-roll" onClick={rotateTestKey} disabled={rotating} type="button">
+                        {rotating ? '…' : 'Roll'}
+                      </button>
+                    </div>
                   </div>
                 </section>
 
