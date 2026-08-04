@@ -1,9 +1,23 @@
 import './globals.css';
+import ServiceWorker from './ServiceWorker';
 
 export const metadata = {
   title: 'Konduyt — One integration. Every payment provider.',
   description:
     'Every payment provider has a different API. Konduyt gives you one. Connect Stripe, PayPal, M-Pesa, Flutterwave and more with a few lines of code.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Konduyt',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    apple: '/apple-touch-icon.png',
+  },
+};
+
+export const viewport = {
+  themeColor: '#0a0a0a',
 };
 
 export default function RootLayout({ children }) {
@@ -21,7 +35,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   );
 }
