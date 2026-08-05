@@ -568,8 +568,10 @@ export default function Dashboard() {
                               <div className="con-cap-group">
                                 <span className="con-cap-label">Countries</span>
                                 <span className="con-cap-chips">
-                                  {p.capabilities.countries.slice(0, 6).map((ct) => (
-                                    <span className="con-cap-chip" key={ct}>{ct}</span>
+                                  {p.capabilities.countries.slice(0, 8).map((ct) => (
+                                    <span className="con-cap-chip" key={ct.code}>
+                                      <span className="con-cap-flag">{ct.flag}</span> {ct.name}
+                                    </span>
                                   ))}
                                 </span>
                               </div>

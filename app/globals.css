@@ -1157,3 +1157,5 @@
     .con-cap-group{flex-direction:column; gap:6px;}
     .con-cap-label{min-width:0;}
   }
+
+  .con-cap-flag{font-size:13px; margin-right:1px;}
