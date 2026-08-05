@@ -32,6 +32,19 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// A connector's required credential fields must all be filled before Connect.
+function schemaComplete(connector, values) {
+  const fields = connector?.credential_schema?.fields || [];
+  return fields
+    .filter((f) => f.required)
+    .every((f) => (values[f.name] || '').toString().trim().length > 0);
+}
+
+// Monogram from a connector name (logos come later).
+function monogram(name) {
+  return (name || '?').slice(0, 2).toUpperCase();
+}
+
 export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
@@ -44,7 +57,7 @@ export default function Dashboard() {
   const [capGroups, setCapGroups] = useState([]);
   const [connections, setConnections] = useState([]);
   const [connectingId, setConnectingId] = useState(null);
-  const [credInput, setCredInput] = useState('');
+  const [credValues, setCredValues] = useState({});
   const [connectError, setConnectError] = useState('');
   const [connectBusy, setConnectBusy] = useState(false);
   const [hasKeys, setHasKeys] = useState(false);
@@ -172,25 +185,27 @@ export default function Dashboard() {
     setConnectError('');
     setConnectBusy(true);
     try {
+      // Send whatever fields the schema collected, trimmed.
+      const credentials = {};
+      Object.entries(credValues).forEach(([k, v]) => {
+        credentials[k] = typeof v === 'string' ? v.trim() : v;
+      });
       const r = await fetch(`${API_BASE}/projects/${activeId}/connections`, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider_id: providerId,
-          credentials: { secret_key: credInput.trim() },
-        }),
+        body: JSON.stringify({ provider_id: providerId, credentials }),
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        setConnectError(err.detail || 'Could not connect. Check your credentials.');
+        const msg = typeof err.detail === 'string' ? err.detail
+          : (err.detail?.message || 'Could not connect. Check your credentials.');
+        setConnectError(msg);
         setConnectBusy(false);
         return;
       }
-      // Success: reload keys + connections. Keys now exist.
       setConnectingId(null);
-      setCredInput('');
+      setCredValues({});
       loadProjectData(activeId);
-      // Keys + snippet now appear right here in Integrations.
     } catch (e) {
       setConnectError('Network error. Please try again.');
     }
@@ -530,6 +545,7 @@ export default function Dashboard() {
                       <div className={`con-provider ${isPlanned ? 'soon' : ''}`} key={p.id}>
                         <div className="con-provider-main">
                           <div className="con-provider-info">
+                            <span className="con-provider-mono" aria-hidden="true">{monogram(p.name)}</span>
                             <span className="con-provider-name">{p.name}</span>
                             <span className="con-provider-type">{p.type_label}</span>
                             {status === 'connected' && (
@@ -605,28 +621,49 @@ export default function Dashboard() {
 
                         {isOpen && status === 'available' && (
                           <div className="con-connect-form">
-                            <label className="con-connect-label">{p.credential_label}</label>
-                            <input
-                              className="con-connect-input"
-                              type="password"
-                              placeholder="sk_test_..."
-                              value={credInput}
-                              onChange={(e) => setCredInput(e.target.value)}
-                              autoFocus
-                            />
-                            {p.credential_help && (
-                              <p className="con-connect-help">{p.credential_help}</p>
-                            )}
+                            {(p.credential_schema?.fields || []).map((field) => (
+                              <div className="con-field" key={field.name}>
+                                <label className="con-connect-label">
+                                  {field.label}
+                                  {field.required && <span className="con-req">*</span>}
+                                </label>
+                                {field.type === 'select' ? (
+                                  <select
+                                    className="con-connect-input"
+                                    value={credValues[field.name] || ''}
+                                    onChange={(e) =>
+                                      setCredValues((v) => ({ ...v, [field.name]: e.target.value }))
+                                    }
+                                  >
+                                    <option value="">Select…</option>
+                                    {(field.options || []).map((opt) => (
+                                      <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    className="con-connect-input"
+                                    type={field.type === 'password' ? 'password' : 'text'}
+                                    placeholder={field.placeholder || ''}
+                                    value={credValues[field.name] || ''}
+                                    onChange={(e) =>
+                                      setCredValues((v) => ({ ...v, [field.name]: e.target.value }))
+                                    }
+                                  />
+                                )}
+                                {field.help && <p className="con-field-help">{field.help}</p>}
+                              </div>
+                            ))}
                             {p.docs_url && (
                               <a className="con-connect-docs" href={p.docs_url} target="_blank" rel="noreferrer">
-                                Where to find this ↗
+                                Where to find these ↗
                               </a>
                             )}
                             {connectError && <div className="con-connect-error">{connectError}</div>}
                             <button
                               className="con-connect-submit"
                               onClick={() => connectProvider(p.id)}
-                              disabled={connectBusy || !credInput.trim()}
+                              disabled={connectBusy || !schemaComplete(p, credValues)}
                               type="button"
                             >
                               {connectBusy ? 'Validating…' : `Connect ${p.name}`}
