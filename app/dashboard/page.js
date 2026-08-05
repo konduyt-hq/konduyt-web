@@ -106,9 +106,26 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((data) => {
         const list = data.projects || [];
-        setProjects(list);
-        if (list.length) setActiveId(list[0].id);
-        setStatus('ready');
+        if (list.length) {
+          setProjects(list);
+          setActiveId(list[0].id);
+          setStatus('ready');
+        } else {
+          // No project yet — create the first one so the user never lands on
+          // an empty "No project" state.
+          fetch(`${API_BASE}/projects`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'My First Project' }),
+          })
+            .then((r) => r.json())
+            .then((proj) => {
+              setProjects([proj]);
+              setActiveId(proj.id);
+              setStatus('ready');
+            })
+            .catch(() => setStatus('ready'));
+        }
       })
       .catch(() => {
         clearToken();
@@ -432,6 +449,9 @@ export default function Dashboard() {
                     Choose what your customers can pay with. Konduyt connects the provider behind each one.
                   </p>
                 </div>
+                {methodGroups.length === 0 && (
+                  <p className="con-sub" style={{ marginTop: 8 }}>Loading payment methods…</p>
+                )}
                 {methodGroups.map((group) => (
                   <div className="pm-group" key={group.category}>
                     <div className="pm-group-label">{group.label}</div>
