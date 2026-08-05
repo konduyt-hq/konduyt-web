@@ -1213,3 +1213,37 @@
     .con-method-action{display:flex;}
     .con-method-action .con-connect-btn{width:100%;}
   }
+
+  /* ===== M-Pesa integration page ===== */
+  .mpesa-methods{display:flex; flex-direction:column; gap:12px;}
+  .mpesa-card{background:#fff; border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.04);}
+  .mpesa-card.unavailable{opacity:0.66;}
+  .mpesa-card-main{display:flex; align-items:center; justify-content:space-between; padding:18px 20px; gap:14px;}
+  .mpesa-card-info{display:flex; flex-direction:column; gap:5px; min-width:0;}
+  .mpesa-card-title-row{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .mpesa-card-name{font-size:16px; font-weight:700; color:var(--ink);}
+  .mpesa-card-tagline{font-size:13px; color:var(--text-secondary);}
+  .mpesa-status{font-size:12px; font-weight:600; color:var(--text-secondary);}
+  .mpesa-status.available{color:#1c7a3e;}
+  .mpesa-learn-toggle{width:100%; text-align:left; background:var(--panel); border:none; border-top:1px solid var(--border); padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-secondary); cursor:pointer; font-family:inherit;}
+  .mpesa-learn-toggle:hover{color:var(--ink);}
+  .mpesa-learn{padding:18px 20px; border-top:1px solid var(--border);}
+  .mpesa-learn-blurb{font-size:14px; line-height:1.6; color:var(--ink); margin-bottom:14px;}
+  .mpesa-req-label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-secondary); margin-bottom:8px;}
+  .mpesa-req-list{list-style:none; padding:0; margin:0 0 14px;}
+  .mpesa-req-list li{font-size:14px; color:var(--ink); padding:3px 0 3px 18px; position:relative;}
+  .mpesa-req-list li::before{content:'•'; position:absolute; left:4px; color:var(--text-secondary);}
+  .mpesa-connect-title{font-size:15px; font-weight:700; color:var(--ink); margin-bottom:16px;}
+  .con-connect-btn.secondary{background:#fff; color:var(--ink); border:1px solid var(--border);}
+  .mpesa-success{background:#fff; border:1px solid var(--border); border-radius:16px; padding:28px; box-shadow:0 1px 2px rgba(0,0,0,0.04);}
+  .mpesa-success-badge{display:inline-block; font-size:16px; font-weight:800; color:#1c7a3e; background:#e7f6ec; border-radius:999px; padding:8px 18px; margin-bottom:20px;}
+  .mpesa-success-row{display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-top:1px solid var(--border);}
+  .mpesa-success-label{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-secondary);}
+  .mpesa-success-val{font-size:15px; font-weight:600; color:var(--ink);}
+  .mpesa-success-actions{display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;}
+  @media (max-width:640px){
+    .mpesa-card-main{flex-direction:column; align-items:stretch;}
+    .mpesa-card-action .con-connect-btn{width:100%;}
+    .mpesa-success-actions{flex-direction:column;}
+    .mpesa-success-actions button{width:100%;}
+  }

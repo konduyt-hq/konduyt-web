@@ -61,6 +61,7 @@ export default function Dashboard() {
   const [credValues, setCredValues] = useState({});
   const [connectError, setConnectError] = useState('');
   const [connectBusy, setConnectBusy] = useState(false);
+  const [expandedMethod, setExpandedMethod] = useState(null);
   const [hasKeys, setHasKeys] = useState(false);
   const [lang, setLang] = useState('curl');
   const [showSecret, setShowSecret] = useState(false);
@@ -411,11 +412,174 @@ export default function Dashboard() {
       {/* ===== Body ===== */}
       <main className="con-body">
         <>
-            {tab === 'integrations' && (
-              <div className="con-empty">
-                <h1 className="con-h1">Integrations</h1>
-              </div>
-            )}
+            {tab === 'integrations' && (() => {
+              // The single payment method for V1: M-Pesa.
+              // Connection methods: only Paystack is implemented.
+              const paystackConn = providers.find((p) => p.id === 'paystack');
+              const mpesaConnection = connections.find((c) => c.provider_id === 'paystack');
+              const methods = [
+                {
+                  id: 'paystack',
+                  name: 'Paystack',
+                  tagline: 'Simplest to integrate.',
+                  available: true,
+                  blurb: 'Connect your existing Paystack account to start accepting M-Pesa payments.',
+                  requirements: ['Paystack Account', 'Public Key', 'Secret Key'],
+                  getKeysLabel: 'Get API Keys',
+                  getKeysUrl: 'https://dashboard.paystack.com/#/settings/developers',
+                },
+                {
+                  id: 'flutterwave',
+                  name: 'Flutterwave',
+                  available: false,
+                  blurb: 'Connect your existing Flutterwave account to start accepting M-Pesa payments.',
+                  requirements: ['Flutterwave Account', 'Public Key', 'Secret Key'],
+                  getKeysLabel: 'Get API Keys',
+                  getKeysUrl: 'https://dashboard.flutterwave.com/settings/apis',
+                },
+                {
+                  id: 'daraja',
+                  name: 'Safaricom Daraja API',
+                  available: false,
+                  blurb: 'Connect directly to Safaricom using the Daraja API.',
+                  requirements: ['Consumer Key', 'Consumer Secret', 'Business Shortcode', 'Passkey'],
+                  getKeysLabel: 'Create Daraja App',
+                  getKeysUrl: 'https://developer.safaricom.co.ke/',
+                },
+              ];
+
+              // Success state — M-Pesa is connected via Paystack.
+              if (mpesaConnection) {
+                return (
+                  <div className="mpesa-page">
+                    <div className="con-home-head">
+                      <h1 className="con-h1">M-Pesa</h1>
+                      <p className="con-sub">Accept payments from M-Pesa customers.</p>
+                    </div>
+                    <div className="mpesa-success">
+                      <div className="mpesa-success-badge">✓ M-Pesa Connected</div>
+                      <div className="mpesa-success-row">
+                        <span className="mpesa-success-label">Connection method</span>
+                        <span className="mpesa-success-val">Paystack</span>
+                      </div>
+                      <div className="mpesa-success-actions">
+                        <button className="con-connect-btn" type="button" disabled>Manage</button>
+                        <button className="con-disconnect-btn" type="button"
+                          onClick={() => disconnectProvider('paystack')}>Disconnect</button>
+                        <button className="con-connect-btn secondary" type="button" disabled>Test Connection</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="mpesa-page">
+                  <div className="con-home-head">
+                    <h1 className="con-h1">M-Pesa</h1>
+                    <p className="con-sub">Accept payments from M-Pesa customers.</p>
+                  </div>
+
+                  <div className="mpesa-methods">
+                    {methods.map((m) => {
+                      const isExpanded = expandedMethod === m.id;
+                      const isConnecting = connectingId === m.id && m.available;
+                      return (
+                        <div className={`mpesa-card ${m.available ? '' : 'unavailable'}`} key={m.id}>
+                          <div className="mpesa-card-main">
+                            <div className="mpesa-card-info">
+                              <div className="mpesa-card-title-row">
+                                <span className="mpesa-card-name">{m.name}</span>
+                                {m.tagline && <span className="mpesa-card-tagline">{m.tagline}</span>}
+                              </div>
+                              <span className={m.available ? 'mpesa-status available' : 'mpesa-status'}>
+                                {m.available ? 'Available' : 'Not available yet'}
+                              </span>
+                            </div>
+                            <div className="mpesa-card-action">
+                              {m.available ? (
+                                <button
+                                  className="con-connect-btn"
+                                  type="button"
+                                  onClick={() => {
+                                    setConnectingId(isConnecting ? null : m.id);
+                                    setCredValues({});
+                                    setConnectError('');
+                                  }}
+                                >
+                                  {isConnecting ? 'Cancel' : 'Connect'}
+                                </button>
+                              ) : (
+                                <button className="con-connect-btn" type="button" disabled>
+                                  Unavailable
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            className="mpesa-learn-toggle"
+                            type="button"
+                            onClick={() => setExpandedMethod(isExpanded ? null : m.id)}
+                          >
+                            {isExpanded ? '▲ Learn more' : '▼ Learn more'}
+                          </button>
+
+                          {isExpanded && (
+                            <div className="mpesa-learn">
+                              <p className="mpesa-learn-blurb">{m.blurb}</p>
+                              <div className="mpesa-req-label">Requirements</div>
+                              <ul className="mpesa-req-list">
+                                {m.requirements.map((r) => (
+                                  <li key={r}>{r}</li>
+                                ))}
+                              </ul>
+                              <a className="con-connect-docs" href={m.getKeysUrl} target="_blank" rel="noreferrer">
+                                {m.getKeysLabel} ↗
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Connect flow — only for the implemented (Paystack) method */}
+                          {isConnecting && paystackConn && (
+                            <div className="con-connect-form">
+                              <div className="mpesa-connect-title">Connect M-Pesa via {m.name}</div>
+                              {(paystackConn.credential_schema?.fields || []).map((field) => (
+                                <div className="con-field" key={field.name}>
+                                  <label className="con-connect-label">
+                                    {field.label}
+                                    {field.required && <span className="con-req">*</span>}
+                                  </label>
+                                  <input
+                                    className="con-connect-input"
+                                    type={field.type === 'password' ? 'password' : 'text'}
+                                    placeholder={field.placeholder || ''}
+                                    value={credValues[field.name] || ''}
+                                    onChange={(e) =>
+                                      setCredValues((v) => ({ ...v, [field.name]: e.target.value }))
+                                    }
+                                  />
+                                  {field.help && <p className="con-field-help">{field.help}</p>}
+                                </div>
+                              ))}
+                              {connectError && <div className="con-connect-error">{connectError}</div>}
+                              <button
+                                className="con-connect-submit"
+                                onClick={() => connectProvider('paystack')}
+                                disabled={connectBusy || !schemaComplete(paystackConn, credValues)}
+                                type="button"
+                              >
+                                {connectBusy ? 'Validating…' : 'Connect'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {tab === 'overview' && (
               <div className="con-empty">
