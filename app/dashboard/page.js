@@ -62,6 +62,9 @@ export default function Dashboard() {
   const [connectError, setConnectError] = useState('');
   const [connectBusy, setConnectBusy] = useState(false);
   const [expandedMethod, setExpandedMethod] = useState(null);
+  const [methodGroups, setMethodGroups] = useState([]);
+  const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
+  const [methodDetail, setMethodDetail] = useState(null);
   const [hasKeys, setHasKeys] = useState(false);
   const [lang, setLang] = useState('curl');
   const [showSecret, setShowSecret] = useState(false);
@@ -137,8 +140,8 @@ export default function Dashboard() {
       .catch(() => setCapGroups([]));
     fetch(`${API_BASE}/projects/${pid}/payment-methods`, { headers: authHeaders() })
       .then((r) => r.json())
-      .then((d) => setPayMethods(d.methods || []))
-      .catch(() => setPayMethods([]));
+      .then((d) => { setPayMethods(d.methods || []); setMethodGroups(d.groups || []); })
+      .catch(() => { setPayMethods([]); setMethodGroups([]); });
     fetch(`${API_BASE}/projects/${pid}/latest-payment`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
@@ -157,6 +160,15 @@ export default function Dashboard() {
   useEffect(() => {
     if (activeId) loadProjectData(activeId);
   }, [activeId, loadProjectData]);
+
+  // Load the detail for the currently open payment method.
+  useEffect(() => {
+    if (!activeId || !activeMethod) { setMethodDetail(null); return; }
+    fetch(`${API_BASE}/projects/${activeId}/payment-methods/${activeMethod}`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setMethodDetail(d))
+      .catch(() => setMethodDetail(null));
+  }, [activeId, activeMethod, connections]);
 
   // New users (no keys yet) land on Connections — the first meaningful action.
   useEffect(() => {
@@ -412,213 +424,168 @@ export default function Dashboard() {
       {/* ===== Body ===== */}
       <main className="con-body">
         <>
-            {tab === 'integrations' && (() => {
-              // Single payment method for V1: M-Pesa. Connection methods are the
-              // connectors that provide M-Pesa. Status comes from the backend:
-              // 'available' (proven), 'beta' (real code, unverified), 'planned'.
-              const statusOf = (id) => {
-                const p = providers.find((x) => x.id === id);
-                return p ? p.status : 'planned';
-              };
-              const connFor = (id) => connections.find((c) => c.provider_id === id);
-              // Which connector is M-Pesa currently connected through, if any?
-              const activeConn = connFor('paystack') || connFor('daraja') || connFor('flutterwave');
-
-              const meta = {
-                paystack: {
-                  tagline: 'Simplest to integrate.',
-                  blurb: 'Connect your existing Paystack account to start accepting M-Pesa payments.',
-                  requirements: ['Paystack Account', 'Public Key', 'Secret Key'],
-                  getKeysLabel: 'Get API Keys',
-                  getKeysUrl: 'https://dashboard.paystack.com/#/settings/developers',
-                },
-                daraja: {
-                  blurb: 'Connect directly to Safaricom using the Daraja API.',
-                  requirements: ['Consumer Key', 'Consumer Secret', 'Business Shortcode', 'Passkey'],
-                  getKeysLabel: 'Create Daraja App',
-                  getKeysUrl: 'https://developer.safaricom.co.ke/',
-                },
-                flutterwave: {
-                  blurb: 'Connect your existing Flutterwave account to start accepting M-Pesa payments.',
-                  requirements: ['Flutterwave Account', 'Public Key', 'Secret Key'],
-                  getKeysLabel: 'Get API Keys',
-                  getKeysUrl: 'https://dashboard.flutterwave.com/settings/apis',
-                },
-              };
-              const methods = ['paystack', 'daraja', 'flutterwave'].map((id) => {
-                const p = providers.find((x) => x.id === id);
-                const status = statusOf(id);
-                return {
-                  id,
-                  name: p?.name || id,
-                  tagline: meta[id].tagline,
-                  status,                       // available | beta | planned
-                  connectable: status === 'available' || status === 'beta',
-                  connector: p,                 // carries credential_schema
-                  ...meta[id],
-                };
-              });
-
-              const mpesaConnection = activeConn;
-
-              // Success state — M-Pesa is connected through some connector.
-              if (mpesaConnection) {
-                const viaName = providers.find((x) => x.id === mpesaConnection.provider_id)?.name
-                  || mpesaConnection.provider_id;
-                return (
-                  <div className="mpesa-page">
-                    <div className="con-home-head">
-                      <h1 className="con-h1">M-Pesa</h1>
-                      <p className="con-sub">Accept payments from M-Pesa customers.</p>
+            {tab === 'integrations' && !activeMethod && (
+              <div className="mpesa-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Payment methods</h1>
+                  <p className="con-sub">
+                    Choose what your customers can pay with. Konduyt connects the provider behind each one.
+                  </p>
+                </div>
+                {methodGroups.map((group) => (
+                  <div className="pm-group" key={group.category}>
+                    <div className="pm-group-label">{group.label}</div>
+                    <div className="pm-grid">
+                      {group.methods.map((m) => (
+                        <button
+                          className={`pm-tile ${m.status === 'unavailable' ? 'soon' : ''}`}
+                          key={m.id}
+                          type="button"
+                          onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}
+                        >
+                          <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
+                          <span className="pm-tile-name">{m.name}</span>
+                          <span className={
+                            m.status === 'connected' ? 'pm-tile-status connected'
+                            : m.status === 'connectable' ? 'pm-tile-status ready'
+                            : 'pm-tile-status'
+                          }>
+                            {m.status === 'connected' ? '✓ Enabled'
+                              : m.status === 'connectable' ? 'Available'
+                              : 'Not available yet'}
+                          </span>
+                        </button>
+                      ))}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {tab === 'integrations' && activeMethod && methodDetail && (() => {
+              const md = methodDetail;
+              const activeConn = md.connectors.find((c) => c.status === 'connected');
+              return (
+                <div className="mpesa-page">
+                  <button className="pm-back" type="button" onClick={() => { setActiveMethod(null); setConnectingId(null); }}>
+                    ← All payment methods
+                  </button>
+                  <div className="con-home-head">
+                    <h1 className="con-h1">{md.name}</h1>
+                    <p className="con-sub">Accept payments from {md.name} customers.</p>
+                  </div>
+
+                  {activeConn ? (
                     <div className="mpesa-success">
-                      <div className="mpesa-success-badge">✓ M-Pesa Connected</div>
+                      <div className="mpesa-success-badge">✓ {md.name} Connected</div>
                       <div className="mpesa-success-row">
                         <span className="mpesa-success-label">Connection method</span>
-                        <span className="mpesa-success-val">{viaName}</span>
+                        <span className="mpesa-success-val">{activeConn.name}</span>
                       </div>
                       <div className="mpesa-success-actions">
                         <button className="con-connect-btn" type="button" disabled>Manage</button>
                         <button className="con-disconnect-btn" type="button"
-                          onClick={() => disconnectProvider(mpesaConnection.provider_id)}>Disconnect</button>
+                          onClick={() => disconnectProvider(activeConn.id)}>Disconnect</button>
                         <button className="con-connect-btn secondary" type="button" disabled>Test Connection</button>
                       </div>
                     </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="mpesa-page">
-                  <div className="con-home-head">
-                    <h1 className="con-h1">M-Pesa</h1>
-                    <p className="con-sub">Accept payments from M-Pesa customers.</p>
-                  </div>
-
-                  <div className="mpesa-methods">
-                    {methods.map((m) => {
-                      const isExpanded = expandedMethod === m.id;
-                      const isConnecting = connectingId === m.id && m.connectable;
-                      const statusLabel = m.status === 'available' ? 'Available'
-                        : m.status === 'beta' ? 'Beta — unverified'
-                        : 'Not available yet';
-                      return (
-                        <div className={`mpesa-card ${m.connectable ? '' : 'unavailable'}`} key={m.id}>
-                          <div className="mpesa-card-main">
-                            <div className="mpesa-card-info">
-                              <div className="mpesa-card-title-row">
-                                <span className="mpesa-card-name">{m.name}</span>
-                                {m.tagline && <span className="mpesa-card-tagline">{m.tagline}</span>}
-                              </div>
-                              <span className={
-                                m.status === 'available' ? 'mpesa-status available'
-                                : m.status === 'beta' ? 'mpesa-status beta' : 'mpesa-status'
-                              }>
-                                {statusLabel}
-                              </span>
-                            </div>
-                            <div className="mpesa-card-action">
-                              {m.connectable ? (
-                                <button
-                                  className="con-connect-btn"
-                                  type="button"
-                                  onClick={() => {
-                                    setConnectingId(isConnecting ? null : m.id);
-                                    setCredValues({});
-                                    setConnectError('');
-                                  }}
-                                >
-                                  {isConnecting ? 'Cancel' : 'Connect'}
-                                </button>
-                              ) : (
-                                <button className="con-connect-btn" type="button" disabled>
-                                  Unavailable
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <button
-                            className="mpesa-learn-toggle"
-                            type="button"
-                            onClick={() => setExpandedMethod(isExpanded ? null : m.id)}
-                          >
-                            {isExpanded ? '▲ Learn more' : '▼ Learn more'}
-                          </button>
-
-                          {isExpanded && (
-                            <div className="mpesa-learn">
-                              <p className="mpesa-learn-blurb">{m.blurb}</p>
-                              {m.status === 'beta' && (
-                                <p className="mpesa-beta-note">
-                                  This connector is newly built and not yet verified against the
-                                  live API. Connect with test credentials to help confirm it.
-                                </p>
-                              )}
-                              <div className="mpesa-req-label">Requirements</div>
-                              <ul className="mpesa-req-list">
-                                {m.requirements.map((r) => (
-                                  <li key={r}>{r}</li>
-                                ))}
-                              </ul>
-                              <a className="con-connect-docs" href={m.getKeysUrl} target="_blank" rel="noreferrer">
-                                {m.getKeysLabel} ↗
-                              </a>
-                            </div>
-                          )}
-
-                          {/* Connect flow — renders each connector's OWN schema */}
-                          {isConnecting && m.connector && (
-                            <div className="con-connect-form">
-                              <div className="mpesa-connect-title">Connect M-Pesa via {m.name}</div>
-                              {(m.connector.credential_schema?.fields || []).map((field) => (
-                                <div className="con-field" key={field.name}>
-                                  <label className="con-connect-label">
-                                    {field.label}
-                                    {field.required && <span className="con-req">*</span>}
-                                  </label>
-                                  {field.type === 'select' ? (
-                                    <select
-                                      className="con-connect-input"
-                                      value={credValues[field.name] || ''}
-                                      onChange={(e) =>
-                                        setCredValues((v) => ({ ...v, [field.name]: e.target.value }))
-                                      }
-                                    >
-                                      <option value="">Select…</option>
-                                      {(field.options || []).map((opt) => (
-                                        <option key={opt} value={opt}>{opt}</option>
-                                      ))}
-                                    </select>
-                                  ) : (
-                                    <input
-                                      className="con-connect-input"
-                                      type={field.type === 'password' ? 'password' : 'text'}
-                                      placeholder={field.placeholder || ''}
-                                      value={credValues[field.name] || ''}
-                                      onChange={(e) =>
-                                        setCredValues((v) => ({ ...v, [field.name]: e.target.value }))
-                                      }
-                                    />
-                                  )}
-                                  {field.help && <p className="con-field-help">{field.help}</p>}
+                  ) : md.connectors.length === 0 ? (
+                    <div className="con-empty"><p className="con-empty-sub">No connectors provide this method yet.</p></div>
+                  ) : (
+                    <div className="mpesa-methods">
+                      {md.connectors.map((c) => {
+                        const isExpanded = expandedMethod === c.id;
+                        const isConnecting = connectingId === c.id && c.connectable;
+                        const statusLabel = c.status === 'available' ? 'Available'
+                          : c.status === 'beta' ? 'Beta — unverified'
+                          : 'Not available yet';
+                        return (
+                          <div className={`mpesa-card ${c.connectable ? '' : 'unavailable'}`} key={c.id}>
+                            <div className="mpesa-card-main">
+                              <div className="mpesa-card-info">
+                                <div className="mpesa-card-title-row">
+                                  <span className="mpesa-card-name">{c.name}</span>
+                                  {c.type_label && <span className="mpesa-card-tagline">{c.type_label}</span>}
                                 </div>
-                              ))}
-                              {connectError && <div className="con-connect-error">{connectError}</div>}
-                              <button
-                                className="con-connect-submit"
-                                onClick={() => connectProvider(m.id)}
-                                disabled={connectBusy || !schemaComplete(m.connector, credValues)}
-                                type="button"
-                              >
-                                {connectBusy ? 'Validating…' : 'Connect'}
-                              </button>
+                                <span className={
+                                  c.status === 'available' ? 'mpesa-status available'
+                                  : c.status === 'beta' ? 'mpesa-status beta' : 'mpesa-status'
+                                }>{statusLabel}</span>
+                              </div>
+                              <div className="mpesa-card-action">
+                                {c.connectable ? (
+                                  <button className="con-connect-btn" type="button"
+                                    onClick={() => { setConnectingId(isConnecting ? null : c.id); setCredValues({}); setConnectError(''); }}>
+                                    {isConnecting ? 'Cancel' : 'Connect'}
+                                  </button>
+                                ) : (
+                                  <button className="con-connect-btn" type="button" disabled>Unavailable</button>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+
+                            {c.best_for && (
+                              <button className="mpesa-learn-toggle" type="button"
+                                onClick={() => setExpandedMethod(isExpanded ? null : c.id)}>
+                                {isExpanded ? '▲ Learn more' : '▼ Learn more'}
+                              </button>
+                            )}
+                            {isExpanded && (
+                              <div className="mpesa-learn">
+                                <p className="mpesa-learn-blurb">{c.best_for}</p>
+                                {c.status === 'beta' && (
+                                  <p className="mpesa-beta-note">
+                                    This connector is newly built and not yet verified against the live API.
+                                    Connect with real credentials — Konduyt validates them and connects only if they work.
+                                  </p>
+                                )}
+                                {c.docs_url && (
+                                  <a className="con-connect-docs" href={c.docs_url} target="_blank" rel="noreferrer">
+                                    Where to find your credentials ↗
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
+                            {isConnecting && (
+                              <div className="con-connect-form">
+                                <div className="mpesa-connect-title">Connect {md.name} via {c.name}</div>
+                                {(c.credential_schema?.fields || []).map((field) => (
+                                  <div className="con-field" key={field.name}>
+                                    <label className="con-connect-label">
+                                      {field.label}{field.required && <span className="con-req">*</span>}
+                                    </label>
+                                    {field.type === 'select' ? (
+                                      <select className="con-connect-input"
+                                        value={credValues[field.name] || ''}
+                                        onChange={(e) => setCredValues((v) => ({ ...v, [field.name]: e.target.value }))}>
+                                        <option value="">Select…</option>
+                                        {(field.options || []).map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
+                                      </select>
+                                    ) : (
+                                      <input className="con-connect-input"
+                                        type={field.type === 'password' ? 'password' : 'text'}
+                                        placeholder={field.placeholder || ''}
+                                        value={credValues[field.name] || ''}
+                                        onChange={(e) => setCredValues((v) => ({ ...v, [field.name]: e.target.value }))} />
+                                    )}
+                                    {field.help && <p className="con-field-help">{field.help}</p>}
+                                  </div>
+                                ))}
+                                {connectError && <div className="con-connect-error">{connectError}</div>}
+                                <button className="con-connect-submit"
+                                  onClick={() => connectProvider(c.id)}
+                                  disabled={connectBusy || !schemaComplete(c, credValues)}
+                                  type="button">
+                                  {connectBusy ? 'Validating…' : 'Connect'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })()}

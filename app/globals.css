@@ -1250,3 +1250,21 @@
 
   .mpesa-status.beta{color:#b8860b;}
   .mpesa-beta-note{font-size:13px; line-height:1.5; color:#8a6d1a; background:#fdf6e3; border:1px solid #f0e0a8; border-radius:8px; padding:10px 12px; margin-bottom:14px;}
+
+  /* ===== Payment methods index ===== */
+  .pm-group{margin-bottom:26px;}
+  .pm-group-label{font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-secondary); margin-bottom:12px;}
+  .pm-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .pm-tile{display:flex; flex-direction:column; align-items:flex-start; gap:10px; background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px; cursor:pointer; font-family:inherit; text-align:left; transition:border-color 0.15s, box-shadow 0.15s;}
+  .pm-tile:hover{border-color:var(--ink); box-shadow:0 4px 14px rgba(0,0,0,0.07);}
+  .pm-tile.soon{opacity:0.7;}
+  .pm-tile-mono{width:38px; height:38px; border-radius:9px; background:var(--ink); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; font-family:'JetBrains Mono', monospace;}
+  .pm-tile.soon .pm-tile-mono{background:var(--text-secondary);}
+  .pm-tile-name{font-size:16px; font-weight:700; color:var(--ink);}
+  .pm-tile-status{font-size:12px; font-weight:600; color:var(--text-secondary);}
+  .pm-tile-status.ready{color:#1c7a3e;}
+  .pm-tile-status.connected{color:#1c7a3e; font-weight:700;}
+  .pm-back{background:none; border:none; color:var(--text-secondary); font-size:14px; font-weight:600; cursor:pointer; padding:0; margin-bottom:18px; font-family:inherit;}
+  .pm-back:hover{color:var(--ink);}
+  @media (max-width:900px){ .pm-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .pm-grid{grid-template-columns:1fr;} }
