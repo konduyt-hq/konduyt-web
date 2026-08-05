@@ -450,7 +450,39 @@ export default function Dashboard() {
                   </p>
                 </div>
                 {methodGroups.length === 0 && (
-                  <p className="con-sub" style={{ marginTop: 8 }}>Loading payment methods…</p>
+                  <div style={{ marginTop: 12 }}>
+                    {!activeId ? (
+                      <div className="con-empty">
+                        <p className="con-empty-sub">
+                          You don&apos;t have a project yet. Create one to see payment methods.
+                        </p>
+                        <button
+                          className="dash-btn-primary"
+                          type="button"
+                          style={{ marginTop: 14 }}
+                          onClick={async () => {
+                            try {
+                              const r = await fetch(`${API_BASE}/projects`, {
+                                method: 'POST',
+                                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: 'My First Project' }),
+                              });
+                              if (!r.ok) { alert('Could not create project (status ' + r.status + ')'); return; }
+                              const proj = await r.json();
+                              setProjects([proj]);
+                              setActiveId(proj.id);
+                            } catch (e) {
+                              alert('Network error creating project: ' + e.message);
+                            }
+                          }}
+                        >
+                          Create your first project
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="con-sub">Loading payment methods…</p>
+                    )}
+                  </div>
                 )}
                 {methodGroups.map((group) => (
                   <div className="pm-group" key={group.category}>
