@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [latestPayment, setLatestPayment] = useState(null);
   const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
   const [providers, setProviders] = useState([]);
+  const [capGroups, setCapGroups] = useState([]);
   const [connections, setConnections] = useState([]);
   const [connectingId, setConnectingId] = useState(null);
   const [credInput, setCredInput] = useState('');
@@ -115,6 +116,10 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => setConnections(d.connections || []))
       .catch(() => setConnections([]));
+    fetch(`${API_BASE}/projects/${pid}/capabilities`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setCapGroups(d.groups || []))
+      .catch(() => setCapGroups([]));
     fetch(`${API_BASE}/projects/${pid}/latest-payment`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
@@ -124,9 +129,9 @@ export default function Dashboard() {
   // Load the provider catalog once.
   useEffect(() => {
     if (status !== 'ready') return;
-    fetch(`${API_BASE}/providers`, { headers: authHeaders() })
+    fetch(`${API_BASE}/connectors`, { headers: authHeaders() })
       .then((r) => r.json())
-      .then((d) => setProviders(d.providers || []))
+      .then((d) => setProviders(d.connectors || []))
       .catch(() => setProviders([]));
   }, [status]);
 
@@ -501,38 +506,49 @@ export default function Dashboard() {
             {tab === 'integrations' && (
               <div className="con-connections">
                 <div className="con-home-head">
-                  <h1 className="con-h1">Connect a payment provider</h1>
+                  <h1 className="con-h1">Integrations</h1>
                   <p className="con-sub">
-                    Bring your own provider account. Konduyt validates your credentials,
-                    stores them encrypted, and routes payments through one integration.
-                    {!hasKeys && ' Your Konduyt API keys are generated the moment your first provider connects.'}
+                    Connect your payment providers. Accept payments through one Konduyt integration.
+                    {!hasKeys && ' Your Konduyt API keys are generated the moment your first connector connects.'}
                   </p>
                 </div>
 
+                {/* SECTION 1: Connectors — things you authenticate with */}
+                <div className="con-section-head">Connectors</div>
+                <p className="con-section-note">
+                  Real integrations that require credentials.
+                </p>
                 <div className="con-provider-list">
                   {providers.map((p) => {
                     const conn = connections.find((c) => c.provider_id === p.id);
                     const isConnected = !!conn;
                     const isOpen = connectingId === p.id;
+                    // Effective status: connected overrides catalogue status.
+                    const status = isConnected ? 'connected' : p.status;
+                    const isPlanned = p.status === 'planned';
                     return (
-                      <div className={`con-provider ${p.status === 'coming_soon' ? 'soon' : ''}`} key={p.id}>
+                      <div className={`con-provider ${isPlanned ? 'soon' : ''}`} key={p.id}>
                         <div className="con-provider-main">
                           <div className="con-provider-info">
                             <span className="con-provider-name">{p.name}</span>
-                            {isConnected && (
+                            <span className="con-provider-type">{p.type_label}</span>
+                            {status === 'connected' && (
                               <span className="con-provider-badge connected">
                                 ✓ Connected{conn.mode ? ` · ${conn.mode}` : ''}
                               </span>
                             )}
-                            {p.status === 'coming_soon' && (
-                              <span className="con-provider-badge soon">Coming soon</span>
+                            {status === 'available' && (
+                              <span className="con-provider-badge available">Available</span>
                             )}
-                            {p.capabilities?.best_for && (
-                              <span className="con-provider-bestfor">{p.capabilities.best_for}</span>
+                            {status === 'planned' && (
+                              <span className="con-provider-badge soon">Planned</span>
+                            )}
+                            {p.best_for && (
+                              <span className="con-provider-bestfor">{p.best_for}</span>
                             )}
                           </div>
                           <div className="con-provider-action">
-                            {p.status === 'available' && !isConnected && (
+                            {status === 'available' && (
                               <button
                                 className="con-connect-btn"
                                 onClick={() => {
@@ -545,7 +561,7 @@ export default function Dashboard() {
                                 {isOpen ? 'Cancel' : 'Connect'}
                               </button>
                             )}
-                            {isConnected && (
+                            {status === 'connected' && (
                               <button
                                 className="con-disconnect-btn"
                                 onClick={() => disconnectProvider(p.id)}
@@ -554,7 +570,7 @@ export default function Dashboard() {
                                 Disconnect
                               </button>
                             )}
-                            {p.status === 'coming_soon' && (
+                            {status === 'planned' && (
                               <button className="con-connect-btn" disabled type="button">
                                 Connect
                               </button>
@@ -562,44 +578,32 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        {p.capabilities && (
-                          <div className="con-provider-caps">
-                            {p.capabilities.countries && (
-                              <div className="con-cap-group">
-                                <span className="con-cap-label">Countries</span>
-                                <span className="con-cap-chips">
-                                  {p.capabilities.countries.slice(0, 8).map((ct) => (
-                                    <span className="con-cap-chip" key={ct.code}>
-                                      <span className="con-cap-flag">{ct.flag}</span> {ct.name}
-                                    </span>
-                                  ))}
-                                </span>
-                              </div>
-                            )}
-                            {p.capabilities.payment_methods && (
-                              <div className="con-cap-group">
-                                <span className="con-cap-label">Methods</span>
-                                <span className="con-cap-chips">
-                                  {p.capabilities.payment_methods.map((mtd) => (
-                                    <span className="con-cap-chip" key={mtd}>{mtd.replace(/_/g, ' ')}</span>
-                                  ))}
-                                </span>
-                              </div>
-                            )}
-                            {p.capabilities.mobile_money && (
-                              <div className="con-cap-group">
-                                <span className="con-cap-label">Mobile money</span>
-                                <span className="con-cap-chips">
-                                  {p.capabilities.mobile_money.map((mm) => (
-                                    <span className="con-cap-chip" key={mm}>{mm.replace(/_/g, ' ')}</span>
-                                  ))}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <div className="con-provider-caps">
+                          {p.capabilities?.length > 0 && (
+                            <div className="con-cap-group">
+                              <span className="con-cap-label">Provides</span>
+                              <span className="con-cap-chips">
+                                {p.capabilities.map((cap) => (
+                                  <span className="con-cap-chip" key={cap.id}>{cap.name}</span>
+                                ))}
+                              </span>
+                            </div>
+                          )}
+                          {p.countries?.length > 0 && (
+                            <div className="con-cap-group">
+                              <span className="con-cap-label">Countries</span>
+                              <span className="con-cap-chips">
+                                {p.countries.slice(0, 8).map((ct) => (
+                                  <span className="con-cap-chip" key={ct.code}>
+                                    <span className="con-cap-flag">{ct.flag}</span> {ct.name}
+                                  </span>
+                                ))}
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
-                        {isOpen && p.status === 'available' && (
+                        {isOpen && status === 'available' && (
                           <div className="con-connect-form">
                             <label className="con-connect-label">{p.credential_label}</label>
                             <input
@@ -615,7 +619,7 @@ export default function Dashboard() {
                             )}
                             {p.docs_url && (
                               <a className="con-connect-docs" href={p.docs_url} target="_blank" rel="noreferrer">
-                                {p.name} API docs ↗
+                                Where to find this ↗
                               </a>
                             )}
                             {connectError && <div className="con-connect-error">{connectError}</div>}
@@ -632,6 +636,39 @@ export default function Dashboard() {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* SECTION 2: Payment Methods (capabilities) — derived, read-only */}
+                <div className="con-section-head" style={{ marginTop: 40 }}>Payment methods</div>
+                <p className="con-section-note">
+                  What this project can accept, based on your connected connectors. Read-only —
+                  connect a connector above to enable more.
+                </p>
+                <div className="con-caps-grid">
+                  {capGroups.map((group) => (
+                    <div className="con-cap-cat" key={group.category}>
+                      <div className="con-cap-cat-label">{group.label}</div>
+                      <div className="con-cap-cat-items">
+                        {group.capabilities.map((cap) => (
+                          <div
+                            className={cap.enabled ? 'con-methodrow enabled' : 'con-methodrow'}
+                            key={cap.id}
+                          >
+                            <span className="con-method-name">
+                              {cap.enabled ? '✓ ' : ''}{cap.name}
+                            </span>
+                            {cap.enabled ? (
+                              <span className="con-method-by">via {cap.enabled_by.join(', ')}</span>
+                            ) : (
+                              <span className="con-method-need">
+                                Requires {cap.available_from.slice(0, 3).join(' or ')}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
