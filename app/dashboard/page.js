@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
+  const [payMethods, setPayMethods] = useState([]);
   const [connections, setConnections] = useState([]);
   const [connectingId, setConnectingId] = useState(null);
   const [credValues, setCredValues] = useState({});
@@ -133,6 +134,10 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => setCapGroups(d.groups || []))
       .catch(() => setCapGroups([]));
+    fetch(`${API_BASE}/projects/${pid}/payment-methods`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setPayMethods(d.methods || []))
+      .catch(() => setPayMethods([]));
     fetch(`${API_BASE}/projects/${pid}/latest-payment`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
@@ -523,15 +528,136 @@ export default function Dashboard() {
                 <div className="con-home-head">
                   <h1 className="con-h1">Integrations</h1>
                   <p className="con-sub">
-                    Connect your payment providers. Accept payments through one Konduyt integration.
-                    {!hasKeys && ' Your Konduyt API keys are generated the moment your first connector connects.'}
+                    Choose the payment methods you need. Konduyt connects the provider behind each one.
+                    {!hasKeys && ' Your Konduyt API keys are generated the moment your first method is connected.'}
                   </p>
                 </div>
 
-                {/* SECTION 1: Connectors — things you authenticate with */}
-                <div className="con-section-head">Connectors</div>
+                {/* PRIMARY VIEW: Payment methods lead */}
+                <div className="con-section-head">Payment methods</div>
                 <p className="con-section-note">
-                  Real integrations that require credentials.
+                  What your customers can pay with. Each is powered by a provider you connect.
+                </p>
+                <div className="con-method-list">
+                  {payMethods.map((m) => {
+                    const pc = m.primary_connector;
+                    const openForConn = pc && connectingId === pc.id;
+                    return (
+                      <div className={`con-method ${m.status === 'unavailable' ? 'soon' : ''}`} key={m.id}>
+                        <div className="con-method-main">
+                          <div className="con-method-left">
+                            <span className="con-method-mono" aria-hidden="true">{monogram(m.name)}</span>
+                            <div className="con-method-text">
+                              <span className="con-method-title">{m.name}</span>
+                              <span className="con-method-cat">{m.category_label}</span>
+                              {/* Always disclose the connector behind the method */}
+                              {m.status === 'connected' && (
+                                <span className="con-method-powered">
+                                  Connected via {m.connected_via.map((c) => c.name).join(', ')}
+                                </span>
+                              )}
+                              {m.status === 'connectable' && pc && (
+                                <span className="con-method-powered">Powered by {pc.name}</span>
+                              )}
+                              {m.status === 'unavailable' && pc && (
+                                <span className="con-method-powered muted">
+                                  Will be powered by {pc.name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="con-method-action">
+                            {m.status === 'connected' && (
+                              <span className="con-provider-badge connected">✓ Enabled</span>
+                            )}
+                            {m.status === 'connectable' && (
+                              <button
+                                className="con-connect-btn"
+                                onClick={() => {
+                                  setConnectingId(openForConn ? null : pc.id);
+                                  setCredValues({});
+                                  setConnectError('');
+                                }}
+                                type="button"
+                              >
+                                {openForConn ? 'Cancel' : 'Connect'}
+                              </button>
+                            )}
+                            {m.status === 'unavailable' && (
+                              <span className="con-provider-badge soon">Coming soon</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Connect flow: explain the connector, then the dynamic form */}
+                        {openForConn && (() => {
+                          const conn = providers.find((p) => p.id === pc.id);
+                          if (!conn) return null;
+                          return (
+                            <div className="con-connect-form">
+                              <p className="con-connect-explain">
+                                {m.name} payments are provided through <strong>{pc.name}</strong>.
+                                Connect your {pc.name} account to enable {m.name}.
+                              </p>
+                              {(conn.credential_schema?.fields || []).map((field) => (
+                                <div className="con-field" key={field.name}>
+                                  <label className="con-connect-label">
+                                    {field.label}
+                                    {field.required && <span className="con-req">*</span>}
+                                  </label>
+                                  {field.type === 'select' ? (
+                                    <select
+                                      className="con-connect-input"
+                                      value={credValues[field.name] || ''}
+                                      onChange={(e) =>
+                                        setCredValues((v) => ({ ...v, [field.name]: e.target.value }))
+                                      }
+                                    >
+                                      <option value="">Select…</option>
+                                      {(field.options || []).map((opt) => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      className="con-connect-input"
+                                      type={field.type === 'password' ? 'password' : 'text'}
+                                      placeholder={field.placeholder || ''}
+                                      value={credValues[field.name] || ''}
+                                      onChange={(e) =>
+                                        setCredValues((v) => ({ ...v, [field.name]: e.target.value }))
+                                      }
+                                    />
+                                  )}
+                                  {field.help && <p className="con-field-help">{field.help}</p>}
+                                </div>
+                              ))}
+                              {conn.docs_url && (
+                                <a className="con-connect-docs" href={conn.docs_url} target="_blank" rel="noreferrer">
+                                  Where to find these ↗
+                                </a>
+                              )}
+                              {connectError && <div className="con-connect-error">{connectError}</div>}
+                              <button
+                                className="con-connect-submit"
+                                onClick={() => connectProvider(pc.id)}
+                                disabled={connectBusy || !schemaComplete(conn, credValues)}
+                                type="button"
+                              >
+                                {connectBusy ? 'Validating…' : `Connect ${pc.name}`}
+                              </button>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* SECONDARY: Connectors (connected accounts / technical view) */}
+                <div className="con-section-head" style={{ marginTop: 40 }}>Connectors</div>
+                <p className="con-section-note">
+                  The provider accounts behind your payment methods.
                 </p>
                 <div className="con-provider-list">
                   {providers.map((p) => {
@@ -675,38 +801,6 @@ export default function Dashboard() {
                   })}
                 </div>
 
-                {/* SECTION 2: Payment Methods (capabilities) — derived, read-only */}
-                <div className="con-section-head" style={{ marginTop: 40 }}>Payment methods</div>
-                <p className="con-section-note">
-                  What this project can accept, based on your connected connectors. Read-only —
-                  connect a connector above to enable more.
-                </p>
-                <div className="con-caps-grid">
-                  {capGroups.map((group) => (
-                    <div className="con-cap-cat" key={group.category}>
-                      <div className="con-cap-cat-label">{group.label}</div>
-                      <div className="con-cap-cat-items">
-                        {group.capabilities.map((cap) => (
-                          <div
-                            className={cap.enabled ? 'con-methodrow enabled' : 'con-methodrow'}
-                            key={cap.id}
-                          >
-                            <span className="con-method-name">
-                              {cap.enabled ? '✓ ' : ''}{cap.name}
-                            </span>
-                            {cap.enabled ? (
-                              <span className="con-method-by">via {cap.enabled_by.join(', ')}</span>
-                            ) : (
-                              <span className="con-method-need">
-                                Requires {cap.available_from.slice(0, 3).join(' or ')}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 
