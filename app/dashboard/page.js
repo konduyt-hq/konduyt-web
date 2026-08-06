@@ -553,6 +553,17 @@ export default function Dashboard() {
                     <p className="con-sub">Accept payments from {md.name} customers.</p>
                   </div>
 
+                  {md.id === 'card' && (
+                    <div className="pm-networks">
+                      <span className="pm-networks-label">Supported networks</span>
+                      <div className="pm-networks-list">
+                        {['Visa', 'Mastercard', 'American Express', 'Discover', 'JCB', 'UnionPay'].map((n) => (
+                          <span className="pm-network" key={n}>{n}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {activeConn ? (
                     <div className="mpesa-success">
                       <div className="mpesa-success-badge">✓ {md.name} Connected</div>
