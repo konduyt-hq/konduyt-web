@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [methodGroups, setMethodGroups] = useState([]);
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [methodDetail, setMethodDetail] = useState(null);
+  const [snippetLang, setSnippetLang] = useState('curl');
   const [activity, setActivity] = useState([]);
   const [summary, setSummary] = useState(null);
   const [hasKeys, setHasKeys] = useState(false);
@@ -260,6 +261,14 @@ export default function Dashboard() {
   }
 
   // Enable a method using an ALREADY-CONNECTED account — no credentials.
+  function copyToClipboard(text, label) {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopied(label);
+      setTimeout(() => setCopied(''), 1500);
+    } catch (e) {}
+  }
+
   async function enableMethod(providerId) {
     try {
       const r = await fetch(`${API_BASE}/projects/${activeId}/enabled-methods`, {
@@ -485,6 +494,75 @@ export default function Dashboard() {
                     Choose what your customers can pay with. Konduyt connects the provider behind each one.
                   </p>
                 </div>
+
+                {/* API keys + code — shown once the project has keys (after first connect) */}
+                {hasKeys && keys && keys.test && (
+                  <div className="keys-panel">
+                    <div className="keys-head">
+                      <h3>Your API keys</h3>
+                      <span className="keys-mode">Test mode</span>
+                    </div>
+                    <div className="keys-row">
+                      <div className="keys-field">
+                        <label>Publishable key</label>
+                        <div className="keys-value">
+                          <code>{keys.test.publishable_key}</code>
+                          <button className="keys-copy" type="button"
+                            onClick={() => copyToClipboard(keys.test.publishable_key, 'pub')}>
+                            {copied === 'pub' ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="keys-field">
+                        <label>Secret key</label>
+                        <div className="keys-value">
+                          <code>{showSecret ? (keys.test.secret || keys.test.secret_masked) : keys.test.secret_masked}</code>
+                          <button className="keys-copy" type="button"
+                            onClick={() => setShowSecret((s) => !s)}>
+                            {showSecret ? 'Hide' : 'Reveal'}
+                          </button>
+                          {keys.test.secret && (
+                            <button className="keys-copy" type="button"
+                              onClick={() => copyToClipboard(keys.test.secret, 'sec')}>
+                              {copied === 'sec' ? 'Copied' : 'Copy'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="keys-note">Keep your secret key server-side. Never ship it to a browser or commit it.</p>
+
+                    <div className="keys-code">
+                      <div className="keys-code-head">
+                        <span className="keys-code-title">Create a payment</span>
+                        <div className="keys-langs">
+                          {LANGUAGES.map((l) => (
+                            <button key={l.id} type="button"
+                              className={`keys-lang ${snippetLang === l.id ? 'sel' : ''}`}
+                              onClick={() => setSnippetLang(l.id)}>
+                              {l.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {(() => {
+                        const lang = LANGUAGES.find((l) => l.id === snippetLang) || LANGUAGES[0];
+                        const code = (lang.code || '')
+                          .replaceAll('{{SECRET}}', keys.test.secret || 'YOUR_TEST_SECRET_KEY')
+                          .replaceAll('{{API}}', API_BASE);
+                        return (
+                          <div className="keys-codeblock">
+                            <button className="keys-code-copy" type="button"
+                              onClick={() => copyToClipboard(code, 'code')}>
+                              {copied === 'code' ? 'Copied' : 'Copy'}
+                            </button>
+                            <pre><code>{code}</code></pre>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
                 {methodGroups.length === 0 && (
                   <div style={{ marginTop: 12 }}>
                     {!activeId ? (
