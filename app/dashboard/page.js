@@ -228,7 +228,8 @@ export default function Dashboard() {
       const r = await fetch(`${API_BASE}/projects/${activeId}/connections`, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider_id: providerId, credentials }),
+        // Pass the method being enabled, so connecting also enables it.
+        body: JSON.stringify({ provider_id: providerId, credentials, method_id: activeMethod }),
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
@@ -241,10 +242,35 @@ export default function Dashboard() {
       setConnectingId(null);
       setCredValues({});
       loadProjectData(activeId);
+      reloadMethodDetail();
     } catch (e) {
       setConnectError('Network error. Please try again.');
     }
     setConnectBusy(false);
+  }
+
+  // Enable a method using an ALREADY-CONNECTED account — no credentials.
+  async function enableMethod(providerId) {
+    try {
+      const r = await fetch(`${API_BASE}/projects/${activeId}/enabled-methods`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method_id: activeMethod, provider_id: providerId }),
+      });
+      if (r.ok) { loadProjectData(activeId); reloadMethodDetail(); }
+    } catch (e) {}
+  }
+
+  function disableMethod() {
+    fetch(`${API_BASE}/projects/${activeId}/enabled-methods/${activeMethod}`, {
+      method: 'DELETE', headers: authHeaders(),
+    }).then(() => { loadProjectData(activeId); reloadMethodDetail(); });
+  }
+
+  function reloadMethodDetail() {
+    if (!activeId || !activeMethod) return;
+    fetch(`${API_BASE}/projects/${activeId}/payment-methods/${activeMethod}`, { headers: authHeaders() })
+      .then((r) => r.json()).then((d) => setMethodDetail(d)).catch(() => {});
   }
 
   function disconnectProvider(providerId) {
@@ -252,7 +278,7 @@ export default function Dashboard() {
     fetch(`${API_BASE}/projects/${activeId}/connections/${providerId}`, {
       method: 'DELETE',
       headers: authHeaders(),
-    }).then(() => loadProjectData(activeId));
+    }).then(() => { loadProjectData(activeId); reloadMethodDetail(); });
   }
 
   async function createProject() {
@@ -559,13 +585,26 @@ export default function Dashboard() {
                                   <span className="mpesa-card-name">{c.name}</span>
                                   {c.type_label && <span className="mpesa-card-tagline">{c.type_label}</span>}
                                 </div>
-                                <span className={
-                                  c.status === 'available' ? 'mpesa-status available'
-                                  : c.status === 'beta' ? 'mpesa-status beta' : 'mpesa-status'
-                                }>{statusLabel}</span>
+                                {c.enabled_here ? (
+                                  <span className="mpesa-status available">✓ Enabled — powering {md.name}</span>
+                                ) : c.account_connected ? (
+                                  <span className="mpesa-status available">✓ Already connected</span>
+                                ) : (
+                                  <span className={
+                                    c.status === 'available' ? 'mpesa-status available'
+                                    : c.status === 'beta' ? 'mpesa-status beta' : 'mpesa-status'
+                                  }>{statusLabel}</span>
+                                )}
                               </div>
                               <div className="mpesa-card-action">
-                                {c.connectable ? (
+                                {c.enabled_here ? (
+                                  <button className="con-disconnect-btn" type="button"
+                                    onClick={disableMethod}>Disable</button>
+                                ) : c.account_connected ? (
+                                  // Already connected — enable with NO credentials.
+                                  <button className="con-connect-btn" type="button"
+                                    onClick={() => enableMethod(c.id)}>Enable</button>
+                                ) : c.connectable ? (
                                   <button className="con-connect-btn" type="button"
                                     onClick={() => { setConnectingId(isConnecting ? null : c.id); setCredValues({}); setConnectError(''); }}>
                                     {isConnecting ? 'Cancel' : 'Connect'}
