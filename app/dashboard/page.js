@@ -433,10 +433,10 @@ export default function Dashboard() {
         </div>
 
         <div className="con-topbar-right">
-          {/* Enter Sandbox — a free project for experimenting */}
-          <button className="con-sandbox" type="button" onClick={enterSandbox}>
-            Enter Sandbox
-          </button>
+          {/* Sandbox — the reference application collection */}
+          <Link className="con-sandbox" href="/sandbox/">
+            Sandbox
+          </Link>
 
           <button className="con-avatar" onClick={logout} type="button" title="Sign out">
             {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
