@@ -65,6 +65,8 @@ export default function Dashboard() {
   const [methodGroups, setMethodGroups] = useState([]);
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [methodDetail, setMethodDetail] = useState(null);
+  const [activity, setActivity] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [hasKeys, setHasKeys] = useState(false);
   const [lang, setLang] = useState('curl');
   const [showSecret, setShowSecret] = useState(false);
@@ -159,6 +161,14 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => { setPayMethods(d.methods || []); setMethodGroups(d.groups || []); })
       .catch(() => { setPayMethods([]); setMethodGroups([]); });
+    fetch(`${API_BASE}/projects/${pid}/activity`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setActivity(d.activity || []))
+      .catch(() => setActivity([]));
+    fetch(`${API_BASE}/projects/${pid}/summary`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setSummary(d))
+      .catch(() => setSummary(null));
     fetch(`${API_BASE}/projects/${pid}/latest-payment`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
@@ -693,32 +703,78 @@ export default function Dashboard() {
             })()}
 
             {tab === 'overview' && (
-              <div className="con-empty">
-                <h2 className="con-empty-title">Overview</h2>
-                <p className="con-empty-sub">
-                  A summary of your project — recent payments, connected providers and
-                  integration health — will live here as those systems come online. For now,
-                  head to Integrations to connect providers and grab your code.
-                </p>
-                <button
-                  className="dash-btn-primary"
-                  onClick={() => setTab('integrations')}
-                  type="button"
-                  style={{ marginTop: 18 }}
-                >
-                  Go to Integrations
-                </button>
+              <div className="ov-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Overview</h1>
+                  <p className="con-sub">A live summary of this project, from real payment data.</p>
+                </div>
+                <div className="ov-stats">
+                  <div className="ov-stat">
+                    <span className="ov-stat-label">Completed volume</span>
+                    <span className="ov-stat-value">
+                      {summary ? `KES ${(summary.completed_volume || 0).toLocaleString()}` : '—'}
+                    </span>
+                  </div>
+                  <div className="ov-stat">
+                    <span className="ov-stat-label">Completed payments</span>
+                    <span className="ov-stat-value">{summary ? summary.completed_count : '—'}</span>
+                  </div>
+                  <div className="ov-stat">
+                    <span className="ov-stat-label">API requests</span>
+                    <span className="ov-stat-value">{summary ? summary.total_api_requests : '—'}</span>
+                  </div>
+                </div>
+                {summary && summary.payments_by_status && Object.keys(summary.payments_by_status).length > 0 ? (
+                  <div className="ov-breakdown">
+                    <h3>Payments by status</h3>
+                    {Object.entries(summary.payments_by_status).map(([status, v]) => (
+                      <div className="ov-row" key={status}>
+                        <span className={`ov-status-dot ${status}`} />
+                        <span className="ov-row-label">{status}</span>
+                        <span className="ov-row-count">{v.count}</span>
+                        <span className="ov-row-amount">KES {(v.amount || 0).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="con-sub">No payments yet. Connect a provider in Integrations, then create your first payment through the API — it'll show here.</p>
+                )}
               </div>
             )}
 
             {tab === 'activity' && (
-              <div className="con-empty">
-                <h2 className="con-empty-title">Activity</h2>
-                <p className="con-empty-sub">
-                  A live feed of API requests, test payments, webhooks and errors will appear
-                  here — so you can watch exactly what your integration is doing. Arriving in
-                  Milestone 3. Your most recent test payment already shows on the Home tab.
-                </p>
+              <div className="ov-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Activity</h1>
+                  <p className="con-sub">Every API request and webhook for this project, newest first.</p>
+                </div>
+                {activity.length === 0 ? (
+                  <p className="con-sub">No activity yet. API calls to <code>/v1/payments</code> and incoming webhooks will appear here.</p>
+                ) : (
+                  <div className="act-list">
+                    {activity.map((a) => (
+                      <div className="act-item" key={a.id}>
+                        {a.kind === 'api_request' ? (
+                          <>
+                            <span className={`act-method ${a.status >= 400 ? 'err' : 'ok'}`}>{a.method}</span>
+                            <span className="act-path">{a.path}</span>
+                            <span className={`act-status ${a.status >= 400 ? 'err' : 'ok'}`}>{a.status}</span>
+                            <span className="act-meta">{a.duration_ms}ms</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="act-method wh">{a.direction === 'inbound' ? 'HOOK IN' : 'HOOK OUT'}</span>
+                            <span className="act-path">{a.event_type || a.provider}</span>
+                            <span className={`act-status ${a.verified === false || a.delivered === false ? 'err' : 'ok'}`}>
+                              {a.direction === 'inbound' ? (a.verified ? 'verified' : 'rejected') : (a.delivered ? 'delivered' : 'failed')}
+                            </span>
+                            <span className="act-meta">{a.provider}</span>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
