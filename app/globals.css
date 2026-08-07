@@ -1419,3 +1419,8 @@
   .acct-btn:disabled{opacity:0.5; cursor:not-allowed;}
   .acct-btn.danger{color:#b91c1c; border-color:#fecaca;}
   .acct-btn.danger:hover{border-color:#b91c1c; background:#fef2f2;}
+
+  /* Sandbox live-app actions: Open app (primary) + View source (secondary) */
+  .sbx-actions{display:flex; align-items:center; gap:14px; margin-top:6px;}
+  .sbx-cta.primary{font-weight:800; color:#fff; background:var(--ink); border-radius:8px; padding:8px 16px;}
+  .sbx-cta.primary:hover{background:#22c55e; color:#fff;}

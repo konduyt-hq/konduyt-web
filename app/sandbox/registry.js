@@ -14,6 +14,7 @@ export const REFERENCE_APPS = [
     status: 'live',
     uses: ['One-time payments', 'Method-first checkout', 'Receipts'],
     repo: 'https://github.com/konduyt-hq/konduyt-reference-apps/tree/main/ecommerce',
+    openUrl: null, // set to the deployed Vercel URL to show an 'Open app' button
     // A one-time-payment flow — fully supported today.
     requires: null,
   },
@@ -24,6 +25,7 @@ export const REFERENCE_APPS = [
     status: 'live',
     uses: ['One-time payments', 'Custom amounts'],
     repo: 'https://github.com/konduyt-hq/konduyt-reference-apps/tree/main/donations',
+    openUrl: null, // set to the deployed Vercel URL to show an 'Open app' button
     requires: null,
   },
   {
@@ -33,6 +35,7 @@ export const REFERENCE_APPS = [
     status: 'live',
     uses: ['One-time payments', 'Fast confirmation'],
     repo: 'https://github.com/konduyt-hq/konduyt-reference-apps/tree/main/pos',
+    openUrl: null, // set to the deployed Vercel URL to show an 'Open app' button
     requires: null,
   },
   {
@@ -42,6 +45,7 @@ export const REFERENCE_APPS = [
     status: 'live',
     uses: ['One-time payments', 'Instant fulfilment'],
     repo: 'https://github.com/konduyt-hq/konduyt-reference-apps/tree/main/digital-products',
+    openUrl: null, // set to the deployed Vercel URL to show an 'Open app' button
     requires: null,
   },
   {
@@ -51,6 +55,7 @@ export const REFERENCE_APPS = [
     status: 'live',
     uses: ['One-time payments', 'Invoice tracking'],
     repo: 'https://github.com/konduyt-hq/konduyt-reference-apps/tree/main/invoices',
+    openUrl: null, // set to the deployed Vercel URL to show an 'Open app' button
     requires: null,
   },
   {
@@ -60,6 +65,7 @@ export const REFERENCE_APPS = [
     status: 'live',
     uses: ['One-time payments', 'Inventory'],
     repo: 'https://github.com/konduyt-hq/konduyt-reference-apps/tree/main/ticketing',
+    openUrl: null, // set to the deployed Vercel URL to show an 'Open app' button
     requires: null,
   },
   {

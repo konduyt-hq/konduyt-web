@@ -45,11 +45,18 @@ export default function SandboxPage() {
                 <div className="sbx-uses">
                   {app.uses.map((u) => <span key={u} className="sbx-use">{u}</span>)}
                 </div>
-                {app.repo && (
-                  <a className="sbx-cta" href={app.repo} target="_blank" rel="noreferrer">
-                    View source →
-                  </a>
-                )}
+                <div className="sbx-actions">
+                  {app.openUrl && (
+                    <a className="sbx-cta primary" href={app.openUrl} target="_blank" rel="noreferrer">
+                      Open app →
+                    </a>
+                  )}
+                  {app.repo && (
+                    <a className="sbx-cta" href={app.repo} target="_blank" rel="noreferrer">
+                      View source
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>
