@@ -224,21 +224,6 @@ export default function Dashboard() {
     window.location.href = '/';
   }
 
-  async function enterSandbox() {
-    // A sandbox is a free project for experimenting. Create one and switch to it.
-    const r = await fetch(`${API_BASE}/projects`, {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Sandbox' }),
-    });
-    const p = await r.json();
-    const rl = await fetch(`${API_BASE}/projects`, { headers: authHeaders() });
-    const data = await rl.json();
-    setProjects(data.projects || []);
-    setActiveId(p.id);
-    setTab('discover');
-  }
-
   async function connectProvider(providerId) {
     setConnectError('');
     setConnectBusy(true);
@@ -484,11 +469,6 @@ export default function Dashboard() {
         </div>
 
         <div className="con-topbar-right">
-          {/* Sandbox — the reference application collection */}
-          <Link className="con-sandbox" href="/sandbox/">
-            Sandbox
-          </Link>
-
           <button className="con-avatar" onClick={logout} type="button" title="Sign out">
             {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
           </button>

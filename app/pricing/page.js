@@ -42,7 +42,7 @@ export default function Pricing() {
           <div className="pricing-free">
             <div className="pricing-free-head">Free to start</div>
             <ul className="pricing-list">
-              <li><span className="pricing-check">✓</span> 1 sandbox project — always free</li>
+              <li><span className="pricing-check">✓</span> Test mode — always free, every project</li>
               <li><span className="pricing-check">✓</span> 3 live projects — free</li>
               <li><span className="pricing-check">✓</span> Full SDK &amp; API — no feature restrictions</li>
               <li><span className="pricing-check">✓</span> Every payment provider Konduyt supports</li>
@@ -54,7 +54,7 @@ export default function Pricing() {
               <span className="pricing-per">/ live project / month</span>
             </div>
             <p className="pricing-paid-note">
-              Charged only for each additional live project beyond your 3 free. Sandbox
+              Charged only for each additional live project beyond your 3 free. Test-mode
               projects never count.
             </p>
             <Link href="/signup/" className="pricing-start-btn">Start for free</Link>
@@ -136,7 +136,7 @@ export default function Pricing() {
             <h3 className="pricing-what-h">When a project is billable</h3>
             <p className="pricing-what-p">
               Only active production projects count — those with live mode enabled, a production
-              provider connected, or real transactions. Sandbox and archived projects are free.
+              provider connected, or real transactions. Test-mode and archived projects are free.
             </p>
           </div>
         </section>

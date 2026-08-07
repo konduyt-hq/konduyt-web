@@ -384,7 +384,7 @@ export default function DevPanel() {
 
   function selectLang(id) {
     setActiveId(id);
-    // Reset the sandbox result when the language changes
+    // Reset the test result when the language changes
     setRunState('idle');
   }
 
@@ -481,7 +481,7 @@ export default function DevPanel() {
               )}
             </div>
             {runState === 'idle' && (
-              <pre className="code-pre code-muted">{`// Click "Run in sandbox" to send
+              <pre className="code-pre code-muted">{`// Click "Run in test mode" to send
 // a test payment and see the
 // live API response here.`}</pre>
             )}
@@ -511,7 +511,7 @@ export default function DevPanel() {
               ? '● Running…'
               : runState === 'done'
               ? '↻ Run again'
-              : '▶ Run in sandbox'}
+              : '▶ Run in test mode'}
           </button>
           {runState === 'done' && (
             <div className="success-line">✓ Payment created successfully</div>
