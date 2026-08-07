@@ -66,6 +66,7 @@ export default function Dashboard() {
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [methodDetail, setMethodDetail] = useState(null);
   const [snippetLang, setSnippetLang] = useState('curl');
+  const [projectStatus, setProjectStatus] = useState(null);
   const [activity, setActivity] = useState([]);
   const [summary, setSummary] = useState(null);
   const [hasKeys, setHasKeys] = useState(false);
@@ -170,6 +171,10 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => setSummary(d))
       .catch(() => setSummary(null));
+    fetch(`${API_BASE}/projects/${pid}/status`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setProjectStatus(d))
+      .catch(() => setProjectStatus(null));
     fetch(`${API_BASE}/projects/${pid}/latest-payment`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
@@ -495,8 +500,31 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                {/* API keys + code — shown once the project has keys (after first connect) */}
-                {hasKeys && keys && keys.test && (
+                {/* Project status: Live requires a connected provider AND an enabled method */}
+                {projectStatus && (
+                  <div className={`proj-status ${projectStatus.live ? 'live' : 'notlive'}`}>
+                    <span className="proj-status-dot" />
+                    <div className="proj-status-text">
+                      <span className="proj-status-label">
+                        {projectStatus.live ? 'Live' : 'Not live'}
+                      </span>
+                      <span className="proj-status-reason">{projectStatus.reason}</span>
+                    </div>
+                    {!projectStatus.live && (
+                      <div className="proj-status-steps">
+                        <span className={projectStatus.has_connection ? 'step done' : 'step'}>
+                          {projectStatus.has_connection ? '✓' : '1'} Connect a provider
+                        </span>
+                        <span className={projectStatus.has_enabled_method ? 'step done' : 'step'}>
+                          {projectStatus.has_enabled_method ? '✓' : '2'} Enable a method
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* API keys + code — the project's identity, always available */}
+                {keys && keys.test && (
                   <div className="keys-panel">
                     <div className="keys-head">
                       <h3>Your API keys</h3>
