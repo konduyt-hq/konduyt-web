@@ -52,7 +52,7 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
+  const [tab, setTab] = useState('discover'); // discover | accounts | overview | money | activity | settings
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
@@ -64,6 +64,9 @@ export default function Dashboard() {
   const [expandedMethod, setExpandedMethod] = useState(null);
   const [methodGroups, setMethodGroups] = useState([]);
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
+  const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
+  const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
+  const [testResult, setTestResult] = useState({}); // provider_id -> {ok, message, testing}
   const [methodDetail, setMethodDetail] = useState(null);
   const [snippetLang, setSnippetLang] = useState('curl');
   const [projectStatus, setProjectStatus] = useState(null);
@@ -175,6 +178,10 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => setProjectStatus(d))
       .catch(() => setProjectStatus(null));
+    fetch(`${API_BASE}/projects/${pid}/connected-accounts`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setAccounts(d.accounts || []))
+      .catch(() => setAccounts([]));
     fetch(`${API_BASE}/projects/${pid}/latest-payment`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
@@ -206,7 +213,7 @@ export default function Dashboard() {
   // New users (no keys yet) land on Connections — the first meaningful action.
   useEffect(() => {
     if (status === 'ready' && keys !== null) {
-      if (!hasKeys) setTab('integrations');
+      if (!hasKeys) setTab('discover');
       else setTab('overview');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,7 +236,7 @@ export default function Dashboard() {
     const data = await rl.json();
     setProjects(data.projects || []);
     setActiveId(p.id);
-    setTab('integrations');
+    setTab('discover');
   }
 
   async function connectProvider(providerId) {
@@ -266,6 +273,26 @@ export default function Dashboard() {
   }
 
   // Enable a method using an ALREADY-CONNECTED account — no credentials.
+  async function testConnection(providerId) {
+    setTestResult((prev) => ({ ...prev, [providerId]: { testing: true } }));
+    try {
+      const r = await fetch(`${API_BASE}/projects/${activeId}/connected-accounts/${providerId}/test`, {
+        method: 'POST', headers: authHeaders(),
+      });
+      const d = await r.json();
+      setTestResult((prev) => ({ ...prev, [providerId]: { testing: false, ok: d.ok, message: d.message } }));
+    } catch (e) {
+      setTestResult((prev) => ({ ...prev, [providerId]: { testing: false, ok: false, message: 'Test failed to run.' } }));
+    }
+  }
+
+  function disconnectAccount(providerId) {
+    if (!confirm(`Disconnect ${providerId}? Any methods it powers will stop working.`)) return;
+    fetch(`${API_BASE}/projects/${activeId}/connections/${providerId}`, {
+      method: 'DELETE', headers: authHeaders(),
+    }).then(() => loadProjectData(activeId));
+  }
+
   function copyToClipboard(text, label) {
     try {
       navigator.clipboard.writeText(text);
@@ -471,7 +498,8 @@ export default function Dashboard() {
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
         {[
-          ['integrations', 'Integrations'],
+          ['discover', 'Discover'],
+          ['accounts', 'Connected Accounts'],
           ['overview', 'Overview'],
           ['money', 'Money'],
           ['activity', 'Activity'],
@@ -491,7 +519,7 @@ export default function Dashboard() {
       {/* ===== Body ===== */}
       <main className="con-body">
         <>
-            {tab === 'integrations' && !activeMethod && (
+            {tab === 'discover' && !activeMethod && (
               <div className="mpesa-page">
                 <div className="con-home-head">
                   <h1 className="con-h1">Payment methods</h1>
@@ -626,37 +654,66 @@ export default function Dashboard() {
                     )}
                   </div>
                 )}
-                {methodGroups.map((group) => (
-                  <div className="pm-group" key={group.category}>
-                    <div className="pm-group-label">{group.label}</div>
-                    <div className="pm-grid">
-                      {group.methods.map((m) => (
-                        <button
-                          className={`pm-tile ${m.status === 'unavailable' ? 'soon' : ''}`}
-                          key={m.id}
-                          type="button"
-                          onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}
-                        >
-                          <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
-                          <span className="pm-tile-name">{m.name}</span>
-                          <span className={
-                            m.status === 'connected' ? 'pm-tile-status connected'
-                            : m.status === 'connectable' ? 'pm-tile-status ready'
-                            : 'pm-tile-status'
-                          }>
-                            {m.status === 'connected' ? '✓ Enabled'
-                              : m.status === 'connectable' ? 'Available'
-                              : 'Not available yet'}
+                {/* Category drill-down: categories first, then methods in the chosen category */}
+                {methodGroups.length > 0 && !activeCategory && (
+                  <div className="cat-grid">
+                    {methodGroups.map((group) => {
+                      const enabledCount = group.methods.filter((m) => m.status === 'connected').length;
+                      const availCount = group.methods.filter((m) => m.status === 'connectable').length;
+                      return (
+                        <button className="cat-tile" key={group.category} type="button"
+                          onClick={() => setActiveCategory(group.category)}>
+                          <span className="cat-tile-name">{group.label}</span>
+                          <span className="cat-tile-count">{group.methods.length} method{group.methods.length !== 1 ? 's' : ''}</span>
+                          <span className="cat-tile-meta">
+                            {enabledCount > 0 && <span className="cat-badge on">{enabledCount} enabled</span>}
+                            {availCount > 0 && <span className="cat-badge ready">{availCount} available</span>}
                           </span>
+                          <span className="cat-tile-arrow">→</span>
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
+
+                {methodGroups.length > 0 && activeCategory && (() => {
+                  const group = methodGroups.find((g) => g.category === activeCategory);
+                  if (!group) { setActiveCategory(null); return null; }
+                  return (
+                    <div className="cat-detail">
+                      <button className="pm-back" type="button" onClick={() => setActiveCategory(null)}>
+                        ← All categories
+                      </button>
+                      <h2 className="cat-detail-title">{group.label}</h2>
+                      <div className="pm-grid">
+                        {group.methods.map((m) => (
+                          <button
+                            className={`pm-tile ${m.status === 'unavailable' ? 'soon' : ''}`}
+                            key={m.id}
+                            type="button"
+                            onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}
+                          >
+                            <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
+                            <span className="pm-tile-name">{m.name}</span>
+                            <span className={
+                              m.status === 'connected' ? 'pm-tile-status connected'
+                              : m.status === 'connectable' ? 'pm-tile-status ready'
+                              : 'pm-tile-status'
+                            }>
+                              {m.status === 'connected' ? '✓ Enabled'
+                                : m.status === 'connectable' ? 'Available'
+                                : 'Not available yet'}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
-            {tab === 'integrations' && activeMethod && methodDetail && (() => {
+            {tab === 'discover' && activeMethod && methodDetail && (() => {
               const md = methodDetail;
               const activeConn = md.connectors.find((c) => c.status === 'connected');
               return (
@@ -807,6 +864,74 @@ export default function Dashboard() {
                 </div>
               );
             })()}
+
+            {tab === 'accounts' && (
+              <div className="acct-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Connected accounts</h1>
+                  <p className="con-sub">
+                    Your provider accounts. Each one can power multiple payment methods — connect once, reuse everywhere.
+                  </p>
+                </div>
+
+                {accounts.length === 0 ? (
+                  <div className="con-empty">
+                    <p className="con-empty-sub">
+                      No provider accounts connected yet. Head to Discover, pick a payment method, and connect a provider — it&apos;ll appear here.
+                    </p>
+                    <button className="dash-btn-primary" type="button" style={{ marginTop: 14 }}
+                      onClick={() => { setTab('discover'); setActiveCategory(null); }}>
+                      Go to Discover
+                    </button>
+                  </div>
+                ) : (
+                  <div className="acct-list">
+                    {accounts.map((a) => {
+                      const test = testResult[a.provider_id] || {};
+                      return (
+                        <div className="acct-card" key={a.provider_id}>
+                          <div className="acct-head">
+                            <div>
+                              <div className="acct-name">{a.name}</div>
+                              {a.account_label && <div className="acct-label">{a.account_label}</div>}
+                            </div>
+                            <span className="acct-status">● Connected</span>
+                          </div>
+
+                          <div className="acct-caps">
+                            <div className="acct-caps-label">Capabilities</div>
+                            <div className="acct-caps-list">
+                              {a.capabilities.map((cap) => (
+                                <span key={cap.id} className={`acct-cap ${cap.enabled ? 'on' : ''}`}>
+                                  {cap.enabled ? '✓ ' : ''}{cap.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {test.message && (
+                            <div className={`acct-test-result ${test.ok ? 'ok' : 'err'}`}>
+                              {test.ok ? '✓ ' : '✕ '}{test.message}
+                            </div>
+                          )}
+
+                          <div className="acct-actions">
+                            <button className="acct-btn" type="button"
+                              onClick={() => testConnection(a.provider_id)} disabled={test.testing}>
+                              {test.testing ? 'Testing…' : 'Test connection'}
+                            </button>
+                            <button className="acct-btn danger" type="button"
+                              onClick={() => disconnectAccount(a.provider_id)}>
+                              Disconnect
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {tab === 'overview' && (
               <div className="ov-page">
