@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
+import { LANG_SNIPPETS } from './langsnippets';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -52,7 +53,9 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [tab, setTab] = useState('discover'); // discover | accounts | overview | money | activity | settings
+  const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
+  const [intSection, setIntSection] = useState('connections'); // connections | languages
+  const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
@@ -213,7 +216,7 @@ export default function Dashboard() {
   // New users (no keys yet) land on Connections — the first meaningful action.
   useEffect(() => {
     if (status === 'ready' && keys !== null) {
-      if (!hasKeys) setTab('discover');
+      if (!hasKeys) setTab('integrations');
       else setTab('overview');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -478,8 +481,7 @@ export default function Dashboard() {
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
         {[
-          ['discover', 'Discover'],
-          ['accounts', 'Connected Accounts'],
+          ['integrations', 'Integrations'],
           ['overview', 'Overview'],
           ['money', 'Money'],
           ['activity', 'Activity'],
@@ -499,7 +501,22 @@ export default function Dashboard() {
       {/* ===== Body ===== */}
       <main className="con-body">
         <>
-            {tab === 'discover' && !activeMethod && (
+            {tab === 'integrations' && (
+              <div className="int-subnav">
+                <button
+                  className={intSection === 'connections' ? 'int-subtab active' : 'int-subtab'}
+                  onClick={() => { setIntSection('connections'); setActiveMethod(null); }}
+                  type="button"
+                >Connections</button>
+                <button
+                  className={intSection === 'languages' ? 'int-subtab active' : 'int-subtab'}
+                  onClick={() => { setIntSection('languages'); setActiveMethod(null); }}
+                  type="button"
+                >Languages</button>
+              </div>
+            )}
+
+            {tab === 'integrations' && intSection === 'connections' && !activeMethod && (
               <div className="mpesa-page">
                 <div className="con-home-head">
                   <h1 className="con-h1">Payment methods</h1>
@@ -531,74 +548,6 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* API keys + code — the project's identity, always available */}
-                {keys && keys.test && (
-                  <div className="keys-panel">
-                    <div className="keys-head">
-                      <h3>Your API keys</h3>
-                      <span className="keys-mode">Test mode</span>
-                    </div>
-                    <div className="keys-row">
-                      <div className="keys-field">
-                        <label>Publishable key</label>
-                        <div className="keys-value">
-                          <code>{keys.test.publishable_key}</code>
-                          <button className="keys-copy" type="button"
-                            onClick={() => copyToClipboard(keys.test.publishable_key, 'pub')}>
-                            {copied === 'pub' ? 'Copied' : 'Copy'}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="keys-field">
-                        <label>Secret key</label>
-                        <div className="keys-value">
-                          <code>{showSecret ? (keys.test.secret || keys.test.secret_masked) : keys.test.secret_masked}</code>
-                          <button className="keys-copy" type="button"
-                            onClick={() => setShowSecret((s) => !s)}>
-                            {showSecret ? 'Hide' : 'Reveal'}
-                          </button>
-                          {keys.test.secret && (
-                            <button className="keys-copy" type="button"
-                              onClick={() => copyToClipboard(keys.test.secret, 'sec')}>
-                              {copied === 'sec' ? 'Copied' : 'Copy'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="keys-note">Keep your secret key server-side. Never ship it to a browser or commit it.</p>
-
-                    <div className="keys-code">
-                      <div className="keys-code-head">
-                        <span className="keys-code-title">Create a payment</span>
-                        <div className="keys-langs">
-                          {LANGUAGES.map((l) => (
-                            <button key={l.id} type="button"
-                              className={`keys-lang ${snippetLang === l.id ? 'sel' : ''}`}
-                              onClick={() => setSnippetLang(l.id)}>
-                              {l.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      {(() => {
-                        const lang = LANGUAGES.find((l) => l.id === snippetLang) || LANGUAGES[0];
-                        const code = (lang.code || '')
-                          .replaceAll('{{SECRET}}', keys.test.secret || 'YOUR_TEST_SECRET_KEY')
-                          .replaceAll('{{API}}', API_BASE);
-                        return (
-                          <div className="keys-codeblock">
-                            <button className="keys-code-copy" type="button"
-                              onClick={() => copyToClipboard(code, 'code')}>
-                              {copied === 'code' ? 'Copied' : 'Copy'}
-                            </button>
-                            <pre><code>{code}</code></pre>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
                 {methodGroups.length === 0 && (
                   <div style={{ marginTop: 12 }}>
                     {!activeId ? (
@@ -693,7 +642,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {tab === 'discover' && activeMethod && methodDetail && (() => {
+            {tab === 'integrations' && intSection === 'connections' && activeMethod && methodDetail && (() => {
               const md = methodDetail;
               const activeConn = md.connectors.find((c) => c.status === 'connected');
               return (
@@ -845,7 +794,7 @@ export default function Dashboard() {
               );
             })()}
 
-            {tab === 'accounts' && (
+            {tab === 'integrations' && intSection === 'connections' && !activeMethod && (
               <div className="acct-page">
                 <div className="con-home-head">
                   <h1 className="con-h1">Connected accounts</h1>
@@ -860,8 +809,8 @@ export default function Dashboard() {
                       No provider accounts connected yet. Head to Discover, pick a payment method, and connect a provider — it&apos;ll appear here.
                     </p>
                     <button className="dash-btn-primary" type="button" style={{ marginTop: 14 }}
-                      onClick={() => { setTab('discover'); setActiveCategory(null); }}>
-                      Go to Discover
+                      onClick={() => { setTab('integrations'); setIntSection('connections'); setActiveCategory(null); }}>
+                      Connect a provider
                     </button>
                   </div>
                 ) : (
@@ -908,6 +857,113 @@ export default function Dashboard() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {tab === 'integrations' && intSection === 'languages' && (
+              <div className="lang-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Languages</h1>
+                  <p className="con-sub">
+                    Pick your language to see how to create a payment with Konduyt. Then grab your keys below.
+                  </p>
+                </div>
+
+                <div className="lang-chips">
+                  {LANG_SNIPPETS.map((l) => (
+                    <button key={l.id} type="button"
+                      className={`lang-chip ${langTab === l.id ? 'sel' : ''}`}
+                      onClick={() => setLangTab(l.id)}>
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const lang = LANG_SNIPPETS.find((l) => l.id === langTab) || LANG_SNIPPETS[0];
+                  const secret = (keys && keys.test && keys.test.secret) || 'YOUR_TEST_SECRET_KEY';
+                  return (
+                    <div className="lang-blocks">
+                      {lang.platform && (
+                        <div className="lang-platform-note">Platform: {lang.platform}</div>
+                      )}
+                      {lang.sections.map((sec, i) => {
+                        const code = sec.code
+                          .replaceAll('{{SECRET}}', secret)
+                          .replaceAll('{{API}}', API_BASE);
+                        const copyId = `lang_${lang.id}_${i}`;
+                        return (
+                          <div className="lang-block" key={i}>
+                            <div className="lang-block-head">
+                              <span className="lang-block-title">{sec.title}</span>
+                              <button className="keys-code-copy static" type="button"
+                                onClick={() => copyToClipboard(code, copyId)}>
+                                {copied === copyId ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                            <div className="keys-codeblock">
+                              <pre><code>{code}</code></pre>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Keys — added into the developer's project */}
+                {keys && keys.test && (
+                  <div className="keys-panel" style={{ marginTop: 24 }}>
+                    <div className="keys-head">
+                      <h3>Your API keys</h3>
+                      <span className="keys-mode">Test mode</span>
+                    </div>
+                    <div className="keys-row">
+                      <div className="keys-field">
+                        <label>Publishable key</label>
+                        <div className="keys-value">
+                          <code>{keys.test.publishable_key}</code>
+                          <button className="keys-copy" type="button"
+                            onClick={() => copyToClipboard(keys.test.publishable_key, 'pub')}>
+                            {copied === 'pub' ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="keys-field">
+                        <label>Secret key</label>
+                        <div className="keys-value">
+                          <code>{showSecret ? (keys.test.secret || keys.test.secret_masked) : keys.test.secret_masked}</code>
+                          <button className="keys-copy" type="button"
+                            onClick={() => setShowSecret((s) => !s)}>
+                            {showSecret ? 'Hide' : 'Reveal'}
+                          </button>
+                          {keys.test.secret && (
+                            <button className="keys-copy" type="button"
+                              onClick={() => copyToClipboard(keys.test.secret, 'sec')}>
+                              {copied === 'sec' ? 'Copied' : 'Copy'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="keys-note">Keep your secret key server-side. Never ship it to a browser or commit it.</p>
+
+                    {/* Important: keys alone don't move money — a provider must be connected */}
+                    <div className={`keys-connect-note ${projectStatus && projectStatus.live ? 'ok' : ''}`}>
+                      {projectStatus && projectStatus.live ? (
+                        <span>✓ This project is live — a provider is connected and a method is enabled. Payments will route to it.</span>
+                      ) : (
+                        <span>
+                          <strong>Before this works:</strong> adding these keys is not enough on its own.
+                          Go to <button className="link-inline" type="button"
+                            onClick={() => setIntSection('connections')}>Connections</button>, connect a
+                          provider account and enable a payment method — otherwise your integration will
+                          authenticate but have nowhere to route the money, and payments will fail.
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
