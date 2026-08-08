@@ -885,16 +885,12 @@ export default function Dashboard() {
 
                 <div className="lang-chips">
                   {LANG_SNIPPETS.map((l) => {
-                    const brand = LANG_BRAND[l.icon] || 'var(--border)';
+                    const brand = LANG_BRAND[l.icon] || '#0a0a0a';
                     const selected = langTab === l.id;
                     return (
                       <button key={l.id} type="button"
                         className={`lang-chip ${selected ? 'sel' : ''}`}
-                        style={{
-                          borderColor: brand,
-                          boxShadow: selected ? `inset 0 0 0 1px ${brand}` : 'none',
-                          backgroundColor: selected ? `${brand}14` : '#fff',
-                        }}
+                        style={{ '--brand': brand }}
                         onClick={() => setLangTab(l.id)}>
                         {LANG_ICONS[l.icon] && (
                           <span className="lang-chip-icon"
