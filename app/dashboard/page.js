@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
+import { LANG_ICONS } from './langicons';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -876,6 +877,10 @@ export default function Dashboard() {
                     <button key={l.id} type="button"
                       className={`lang-chip ${langTab === l.id ? 'sel' : ''}`}
                       onClick={() => setLangTab(l.id)}>
+                      {LANG_ICONS[l.icon] && (
+                        <span className="lang-chip-icon"
+                          dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
+                      )}
                       {l.label}
                     </button>
                   ))}
@@ -920,7 +925,7 @@ export default function Dashboard() {
                       <h3>Your API keys</h3>
                       <span className="keys-mode">Test mode</span>
                     </div>
-                    <div className="keys-row">
+                    <div className="keys-row stacked">
                       <div className="keys-field">
                         <label>Publishable key</label>
                         <div className="keys-value">
