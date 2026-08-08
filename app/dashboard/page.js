@@ -282,6 +282,23 @@ export default function Dashboard() {
     }).then(() => loadProjectData(activeId));
   }
 
+  async function rollKey() {
+    if (!confirm('Roll your secret key? The current secret stops working immediately, and any app using it must be updated with the new one.')) return;
+    try {
+      const r = await fetch(`${API_BASE}/projects/${activeId}/keys/rotate`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'live' }),
+      });
+      if (!r.ok) { alert('Could not roll the key. Try again.'); return; }
+      // Reload keys so the new (retrievable) secret shows.
+      const kr = await fetch(`${API_BASE}/projects/${activeId}/keys`, { headers: authHeaders() });
+      const kd = await kr.json();
+      setKeys(kd.keys || null);
+      setShowSecret(true);
+    } catch (e) { alert('Could not roll the key. Try again.'); }
+  }
+
   function copyToClipboard(text, label) {
     try {
       navigator.clipboard.writeText(text);
@@ -957,22 +974,73 @@ export default function Dashboard() {
                       </div>
                       <div className="keys-field">
                         <label>Secret key</label>
-                        <div className="keys-value">
-                          <code>{showSecret ? (k.secret || k.secret_masked) : k.secret_masked}</code>
-                          <button className="keys-copy" type="button"
-                            onClick={() => setShowSecret((s) => !s)}>
-                            {showSecret ? 'Hide' : 'Reveal'}
-                          </button>
-                          {k.secret && (
+                        {k.secret ? (
+                          <div className="keys-value">
+                            <code>{showSecret ? k.secret : k.secret_masked}</code>
+                            <button className="keys-copy" type="button"
+                              onClick={() => setShowSecret((s) => !s)}>
+                              {showSecret ? 'Hide' : 'Reveal'}
+                            </button>
                             <button className="keys-copy" type="button"
                               onClick={() => copyToClipboard(k.secret, 'sec')}>
                               {copied === 'sec' ? 'Copied' : 'Copy'}
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="keys-value">
+                              <code>{k.secret_masked}</code>
+                              <button className="keys-copy" type="button" onClick={rollKey}>
+                                Roll to view
+                              </button>
+                            </div>
+                            <p className="keys-subnote">
+                              This project&apos;s secret was created before secrets were made viewable.
+                              Roll it once to get a fresh secret you can reveal and copy.
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <p className="keys-note">Keep your secret key server-side. Never ship it to a browser or commit it.</p>
+                    <p className="keys-note">
+                      Keep your secret key server-side. Never ship it to a browser or commit it.
+                      {k.secret && (
+                        <button className="keys-roll-link" type="button" onClick={rollKey}>Roll key</button>
+                      )}
+                    </p>
+
+                    {/* Plain-language: where the secret key actually goes */}
+                    <div className="keys-where">
+                      <div className="keys-where-title">Where does the secret key go?</div>
+                      <p className="keys-where-lead">
+                        &quot;Server-side&quot; means it lives in your <strong>backend</strong> — the code that
+                        runs on a computer <em>you</em> control, never in the browser or mobile app your
+                        customers use. Customers should never be able to see it, even by viewing page source.
+                      </p>
+                      <div className="keys-where-grid">
+                        <div className="keys-where-do">
+                          <div className="kw-head">✓ Put it here</div>
+                          <ul>
+                            <li>An <strong>environment variable</strong> on your server: <code className="inline-code">KONDUYT_SECRET_KEY=kdu_live_sk_…</code> in a <code className="inline-code">.env</code> file (never committed to Git).</li>
+                            <li>Your backend route / API handler (Node/Express, Django, Laravel, Rails, etc.) that calls Konduyt.</li>
+                            <li>Your hosting provider&apos;s &quot;secrets&quot; settings (Cloudflare, Vercel, Render — added as an env variable).</li>
+                          </ul>
+                        </div>
+                        <div className="keys-where-dont">
+                          <div className="kw-head">✕ Never here</div>
+                          <ul>
+                            <li>In your <strong>frontend / React / HTML / JS</strong> that runs in the browser.</li>
+                            <li>In your <strong>mobile app</strong> code (it can be extracted from the app).</li>
+                            <li>Committed to <strong>GitHub</strong> or pasted anywhere public.</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <p className="keys-where-flow">
+                        The flow: your customer&apos;s app → calls <em>your</em> server → your server (holding the
+                        secret key) calls Konduyt → Konduyt replies → your server passes back what the customer needs.
+                        The publishable key is the only one that&apos;s safe in the browser.
+                      </p>
+                    </div>
 
                     {/* You cannot receive money without connecting a provider */}
                     <div className={`keys-connect-note ${projectStatus && projectStatus.live ? 'ok' : ''}`}>

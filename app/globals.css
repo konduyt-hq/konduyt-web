@@ -1398,7 +1398,7 @@
   .lang-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px;}
   .lang-chip{font-size:13px; font-weight:600; border:1.5px solid var(--border); background:#fff; color:var(--ink); border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; transition:border-color 0.15s, background-color 0.15s, box-shadow 0.15s;}
   .lang-chip:hover{border-color:var(--brand); background:color-mix(in srgb, var(--brand) 7%, #fff);}
-  .lang-chip.sel{font-weight:700; color:var(--ink); border-color:var(--brand); background:color-mix(in srgb, var(--brand) 10%, #fff); box-shadow:inset 0 0 0 1px var(--brand);}
+  .lang-chip.sel{font-weight:700; color:var(--ink); border-color:var(--brand); background:color-mix(in srgb, var(--brand) 8%, #fff);}
   .lang-platform-note{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--green-ink); background:var(--green-soft); border-radius:6px; padding:5px 10px; display:inline-block; margin-bottom:14px;}
   .lang-blocks{display:flex; flex-direction:column; gap:16px;}
   .lang-block{}
@@ -1435,3 +1435,27 @@
 
   /* Live keys badge (no test mode — live only) */
   .keys-mode.live-badge{background:var(--green-soft); color:var(--green-ink);}
+
+  /* Roll key */
+  .keys-roll-link{background:none; border:none; color:var(--green-ink); font-weight:700; text-decoration:underline; cursor:pointer; font-family:inherit; font-size:13px; margin-left:10px;}
+  .keys-subnote{font-size:12.5px; color:#92600a; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:8px 11px; margin-top:8px; line-height:1.5;}
+
+  /* Where does the secret key go */
+  .keys-where{margin-top:18px; border:1px solid var(--border); border-radius:12px; padding:18px; background:var(--panel);}
+  .keys-where-title{font-size:14.5px; font-weight:800; color:var(--ink); margin-bottom:8px;}
+  .keys-where-lead{font-size:13.5px; color:var(--text-secondary); line-height:1.6; margin-bottom:14px;}
+  .keys-where-lead strong{color:var(--ink);}
+  .keys-where-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;}
+  @media (max-width:640px){ .keys-where-grid{grid-template-columns:1fr;} }
+  .keys-where-do, .keys-where-dont{border-radius:10px; padding:12px 14px;}
+  .keys-where-do{background:var(--green-soft); border:1px solid var(--green-border);}
+  .keys-where-dont{background:#fef2f2; border:1px solid #fecaca;}
+  .kw-head{font-size:13px; font-weight:800; margin-bottom:8px;}
+  .keys-where-do .kw-head{color:var(--green-ink);}
+  .keys-where-dont .kw-head{color:#b91c1c;}
+  .keys-where-do ul, .keys-where-dont ul{list-style:none; display:flex; flex-direction:column; gap:7px;}
+  .keys-where-do li, .keys-where-dont li{font-size:12.5px; line-height:1.5; color:var(--ink); padding-left:14px; position:relative;}
+  .keys-where-do li::before{content:'•'; position:absolute; left:0; color:var(--green-ink);}
+  .keys-where-dont li::before{content:'•'; position:absolute; left:0; color:#b91c1c;}
+  .keys-where-flow{font-size:12.5px; color:var(--text-secondary); line-height:1.6; background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px;}
+  .keys-where-flow em{color:var(--ink); font-style:normal; font-weight:700;}
