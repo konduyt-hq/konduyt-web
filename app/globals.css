@@ -1396,9 +1396,9 @@
   /* ===== Languages section ===== */
   .lang-page{max-width:820px;}
   .lang-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:22px;}
-  .lang-chip{font-size:13px; font-weight:600; border:1px solid var(--border); background:#fff; color:var(--text-secondary); border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; transition:all 0.12s;}
-  .lang-chip:hover{border-color:var(--ink); color:var(--ink);}
-  .lang-chip.sel{background:#fff; color:var(--green-ink); border-color:var(--green); border-width:1.5px;}
+  .lang-chip{font-size:13px; font-weight:600; border:1.5px solid var(--border); background:#fff; color:var(--ink); border-radius:8px; padding:7px 14px; cursor:pointer; font-family:inherit; transition:all 0.12s;}
+  .lang-chip:hover{filter:brightness(0.97);}
+  .lang-chip.sel{font-weight:700; color:var(--ink);}
   .lang-platform-note{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--green-ink); background:var(--green-soft); border-radius:6px; padding:5px 10px; display:inline-block; margin-bottom:14px;}
   .lang-blocks{display:flex; flex-direction:column; gap:16px;}
   .lang-block{}
@@ -1432,3 +1432,6 @@
   .receive-warn{display:flex; gap:12px; align-items:flex-start; background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:14px 16px; margin-bottom:18px; font-size:13.5px; line-height:1.6; color:#92600a;}
   .receive-warn-icon{font-size:16px; flex-shrink:0;}
   .receive-warn strong{font-weight:800;}
+
+  /* Live keys badge (no test mode — live only) */
+  .keys-mode.live-badge{background:var(--green-soft); color:var(--green-ink);}

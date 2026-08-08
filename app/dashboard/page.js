@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
-import { LANG_ICONS } from './langicons';
+import { LANG_ICONS, LANG_BRAND } from './langicons';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -57,7 +57,6 @@ export default function Dashboard() {
   const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
   const [intSection, setIntSection] = useState('connections'); // connections | languages
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
-  const [keyMode, setKeyMode] = useState('test'); // which keys to show: test | live
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
@@ -885,23 +884,32 @@ export default function Dashboard() {
                 </div>
 
                 <div className="lang-chips">
-                  {LANG_SNIPPETS.map((l) => (
-                    <button key={l.id} type="button"
-                      className={`lang-chip ${langTab === l.id ? 'sel' : ''}`}
-                      onClick={() => setLangTab(l.id)}>
-                      {LANG_ICONS[l.icon] && (
-                        <span className="lang-chip-icon"
-                          dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
-                      )}
-                      {l.label}
-                    </button>
-                  ))}
+                  {LANG_SNIPPETS.map((l) => {
+                    const brand = LANG_BRAND[l.icon] || 'var(--border)';
+                    const selected = langTab === l.id;
+                    return (
+                      <button key={l.id} type="button"
+                        className={`lang-chip ${selected ? 'sel' : ''}`}
+                        style={{
+                          borderColor: brand,
+                          boxShadow: selected ? `inset 0 0 0 1px ${brand}` : 'none',
+                          backgroundColor: selected ? `${brand}14` : '#fff',
+                        }}
+                        onClick={() => setLangTab(l.id)}>
+                        {LANG_ICONS[l.icon] && (
+                          <span className="lang-chip-icon"
+                            dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
+                        )}
+                        {l.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {(() => {
                   const lang = LANG_SNIPPETS.find((l) => l.id === langTab) || LANG_SNIPPETS[0];
-                  const activeKeys = (keys && keys[keyMode]) || null;
-                  const secret = (activeKeys && activeKeys.secret) || `YOUR_${keyMode.toUpperCase()}_SECRET_KEY`;
+                  const activeKeys = (keys && keys.live) || null;
+                  const secret = (activeKeys && activeKeys.secret) || 'YOUR_SECRET_KEY';
                   return (
                     <div className="lang-blocks">
                       {lang.platform && (
@@ -932,20 +940,13 @@ export default function Dashboard() {
                 })()}
 
                 {/* Keys — mode toggle (test / live). Both work from signup. */}
-                {keys && keys[keyMode] && (() => {
-                  const k = keys[keyMode];
+                {keys && keys.live && (() => {
+                  const k = keys.live;
                   return (
                   <div className="keys-panel" style={{ marginTop: 24 }}>
                     <div className="keys-head">
                       <h3>Your API keys</h3>
-                      <div className="keys-mode-toggle">
-                        <button type="button"
-                          className={`keys-mode-btn ${keyMode === 'test' ? 'sel' : ''}`}
-                          onClick={() => { setKeyMode('test'); setShowSecret(false); }}>Test</button>
-                        <button type="button"
-                          className={`keys-mode-btn live ${keyMode === 'live' ? 'sel' : ''}`}
-                          onClick={() => { setKeyMode('live'); setShowSecret(false); }}>Live</button>
-                      </div>
+                      <span className="keys-mode live-badge">Live</span>
                     </div>
                     <div className="keys-row stacked">
                       <div className="keys-field">

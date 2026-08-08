@@ -12,7 +12,7 @@
 
 export const LANG_SNIPPETS = [
   {
-    id: 'curl', label: 'cURL', icon: 'terminal',
+    id: 'curl', label: 'cURL', icon: 'curl',
     sections: [
       { title: 'Request', code:
 `# amount comes from your app (e.g. a donation input, or the clicked item's price)
