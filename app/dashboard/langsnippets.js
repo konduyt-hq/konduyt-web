@@ -1,25 +1,26 @@
 // Code snippets for creating a payment through Konduyt, per language.
 //
-// Each snippet is written the way a real integration works: the amount (and
-// customer email) are PASSED IN as values — not hardcoded — so a donations app
-// can pass a user-entered amount, or a marketplace can pass the price of the
-// clicked item. Snippets show both the reusable function (a) and a line showing
-// where the value comes from (b: user input / selected item).
-//
-// Platform languages (Java/Kotlin -> Android, Swift -> iOS) include a
-// "dependency" block separate from the "implementation" block. {{SECRET}} and
-// {{API}} are replaced at render time with the developer's real test key + URL.
+// SHOW, DON'T TELL: each snippet reads the secret key from an ENVIRONMENT
+// VARIABLE (KONDUYT_SECRET_KEY) the way that language does it — never pasted
+// inline — so the developer sees exactly where the key belongs and how it's
+// used. The amount is a parameter (from user input / the clicked item), not
+// hardcoded. Platform languages (Android/iOS) show a Dependency block separate
+// from Implementation. {{API}} is replaced at render time with the API base URL.
+// (The secret is intentionally NOT injected — it comes from the env var.)
 
 export const LANG_SNIPPETS = [
   {
     id: 'curl', label: 'cURL', icon: 'curl',
     sections: [
+      { title: 'Set your key (shell)', code:
+`# Keep the key in your environment, not in the command history/script.
+export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Request', code:
-`# amount comes from your app (e.g. a donation input, or the clicked item's price)
-AMOUNT=1000   # <- your value, in the smallest currency unit
+`# amount comes from your app (a donation input, or the clicked item's price)
+AMOUNT=1000
 
 curl -X POST {{API}}/v1/payments \\
-  -H "Authorization: Bearer {{SECRET}}" \\
+  -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
   -H "Content-Type: application/json" \\
   -d "{
     \\"amount\\": $AMOUNT,
@@ -32,46 +33,53 @@ curl -X POST {{API}}/v1/payments \\
   {
     id: 'js', label: 'JavaScript', icon: 'js',
     sections: [
+      { title: 'Set your key (.env)', code:
+`# .env  — never commit this file
+KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Implementation', code:
-`// Reusable — pass in whatever amount your app produces.
-// Runs server-side (Node). Never expose the secret key in the browser.
+`// Runs server-side (Node). The key is read from the environment — never
+// hardcoded, never sent to the browser.
+const KONDUYT_SECRET_KEY = process.env.KONDUYT_SECRET_KEY;
+
 async function createPayment({ amount, email, method = "mpesa" }) {
   const res = await fetch("{{API}}/v1/payments", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer {{SECRET}}",
+      "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      amount,                       // <- your value, not hardcoded
-      currency: "KES",
-      method,
-      customer: { email },
-    }),
+    body: JSON.stringify({ amount, currency: "KES", method, customer: { email } }),
   });
   return res.json();
 }
 
-// e.g. a donation form, or the price of the item the user clicked:
-const amount = Number(req.body.amount);          // user input
-// const amount = selectedItem.price;            // marketplace item
+// amount from your app — a donation form, or the clicked item:
+const amount = Number(req.body.amount);        // user input
+// const amount = selectedItem.price;          // marketplace item
 const payment = await createPayment({ amount, email: req.body.email });
-// Redirect the customer: res.redirect(payment.authorization_url);` },
+// res.redirect(payment.authorization_url);` },
     ],
   },
   {
     id: 'python', label: 'Python', icon: 'python',
     sections: [
+      { title: 'Set your key (.env)', code:
+`# .env  — never commit this file
+KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Dependency', code: `pip install requests` },
       { title: 'Implementation', code:
-`import requests
+`import os
+import requests
+
+# Read the key from the environment — never hardcode it.
+KONDUYT_SECRET_KEY = os.environ["KONDUYT_SECRET_KEY"]
 
 def create_payment(amount, email, method="mpesa"):
     res = requests.post(
         "{{API}}/v1/payments",
-        headers={"Authorization": "Bearer {{SECRET}}"},
+        headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
         json={
-            "amount": amount,            # <- your value, not hardcoded
+            "amount": amount,
             "currency": "KES",
             "method": method,
             "customer": {"email": email},
@@ -79,29 +87,34 @@ def create_payment(amount, email, method="mpesa"):
     )
     return res.json()
 
-# amount comes from your app — a donation input, or the clicked item:
+# amount from your app — a donation input, or the clicked item:
 amount = int(request.form["amount"])       # user input
 # amount = selected_item.price             # marketplace item
-payment = create_payment(amount, request.form["email"])
-# Redirect the customer to payment["authorization_url"]` },
+payment = create_payment(amount, request.form["email"])` },
     ],
   },
   {
     id: 'php', label: 'PHP', icon: 'php',
     sections: [
+      { title: 'Set your key (.env)', code:
+`# .env  — never commit this file
+KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Implementation', code:
 `<?php
-function create_payment($amount, $email, $method = "mpesa") {
+// Read the key from the environment — never hardcode it.
+$secret = getenv("KONDUYT_SECRET_KEY");
+
+function create_payment($secret, $amount, $email, $method = "mpesa") {
     $ch = curl_init("{{API}}/v1/payments");
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer {{SECRET}}",
+            "Authorization: Bearer " . $secret,
             "Content-Type: application/json",
         ],
         CURLOPT_POSTFIELDS => json_encode([
-            "amount" => $amount,           // <- your value, not hardcoded
+            "amount" => $amount,
             "currency" => "KES",
             "method" => $method,
             "customer" => ["email" => $email],
@@ -115,13 +128,14 @@ function create_payment($amount, $email, $method = "mpesa") {
 // amount from a donation form, or the clicked item's price:
 $amount = (int) $_POST["amount"];          // user input
 // $amount = $selectedItem["price"];       // marketplace item
-$payment = create_payment($amount, $_POST["email"]);
-// header("Location: " . $payment["authorization_url"]);` },
+$payment = create_payment($secret, $amount, $_POST["email"]);` },
     ],
   },
   {
     id: 'go', label: 'Go', icon: 'go',
     sections: [
+      { title: 'Set your key (shell)', code:
+`export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Implementation', code:
 `package main
 
@@ -129,19 +143,22 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"os"
 )
 
-// amount is a parameter — pass your donation input or item price.
+// Read the key from the environment — never hardcode it.
+var konduytSecret = os.Getenv("KONDUYT_SECRET_KEY")
+
 func createPayment(amount int, email string) (map[string]any, error) {
 	body, _ := json.Marshal(map[string]any{
-		"amount":   amount, // <- your value, not hardcoded
+		"amount":   amount,
 		"currency": "KES",
 		"method":   "mpesa",
 		"customer": map[string]string{"email": email},
 	})
 
 	req, _ := http.NewRequest("POST", "{{API}}/v1/payments", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer {{SECRET}}")
+	req.Header.Set("Authorization", "Bearer "+konduytSecret)
 	req.Header.Set("Content-Type", "application/json")
 
 	res, err := http.DefaultClient.Do(req)
@@ -159,10 +176,16 @@ func createPayment(amount int, email string) (map[string]any, error) {
   {
     id: 'ruby', label: 'Ruby', icon: 'ruby',
     sections: [
+      { title: 'Set your key (.env)', code:
+`# .env  — never commit this file
+KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Implementation', code:
 `require "net/http"
 require "json"
 require "uri"
+
+# Read the key from the environment — never hardcode it.
+KONDUYT_SECRET_KEY = ENV.fetch("KONDUYT_SECRET_KEY")
 
 def create_payment(amount, email, method: "mpesa")
   uri = URI("{{API}}/v1/payments")
@@ -170,12 +193,10 @@ def create_payment(amount, email, method: "mpesa")
   http.use_ssl = true
 
   req = Net::HTTP::Post.new(uri)
-  req["Authorization"] = "Bearer {{SECRET}}"
+  req["Authorization"] = "Bearer #{KONDUYT_SECRET_KEY}"
   req["Content-Type"] = "application/json"
   req.body = {
-    amount: amount,          # <- your value, not hardcoded
-    currency: "KES",
-    method: method,
+    amount: amount, currency: "KES", method: method,
     customer: { email: email },
   }.to_json
 
@@ -183,28 +204,31 @@ def create_payment(amount, email, method: "mpesa")
 end
 
 # amount from params — a donation input, or the clicked item:
-payment = create_payment(params[:amount].to_i, params[:email])
-# redirect_to payment["authorization_url"]` },
+payment = create_payment(params[:amount].to_i, params[:email])` },
     ],
   },
   {
     id: 'rust', label: 'Rust', icon: 'rust',
     sections: [
+      { title: 'Set your key (shell)', code:
+`export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Dependency (Cargo.toml)', code:
 `[dependencies]
 reqwest = { version = "0.12", features = ["json", "blocking"] }
 serde_json = "1"` },
       { title: 'Implementation', code:
 `use serde_json::json;
+use std::env;
 
-// amount is a parameter — pass user input or an item price.
 fn create_payment(amount: u64, email: &str) -> Result<serde_json::Value, reqwest::Error> {
+    // Read the key from the environment — never hardcode it.
+    let secret = env::var("KONDUYT_SECRET_KEY").expect("KONDUYT_SECRET_KEY not set");
     let client = reqwest::blocking::Client::new();
     client
         .post("{{API}}/v1/payments")
-        .bearer_auth("{{SECRET}}")
+        .bearer_auth(secret)
         .json(&json!({
-            "amount": amount,          // <- your value, not hardcoded
+            "amount": amount,
             "currency": "KES",
             "method": "mpesa",
             "customer": { "email": email }
@@ -217,23 +241,26 @@ fn create_payment(amount: u64, email: &str) -> Result<serde_json::Value, reqwest
   {
     id: 'csharp', label: 'C#', icon: 'csharp',
     sections: [
+      { title: 'Set your key (shell)', code:
+`setx KONDUYT_SECRET_KEY "kdu_live_sk_your_key_here"   # Windows
+# export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here" # macOS/Linux` },
       { title: 'Implementation', code:
-`using System.Net.Http;
+`using System;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-// amount is a parameter — pass your donation input or item price.
+// Read the key from the environment — never hardcode it.
+string secret = Environment.GetEnvironmentVariable("KONDUYT_SECRET_KEY");
+
 async Task<string> CreatePayment(int amount, string email, string method = "mpesa") {
     var client = new HttpClient();
     client.DefaultRequestHeaders.Authorization =
-        new AuthenticationHeaderValue("Bearer", "{{SECRET}}");
+        new AuthenticationHeaderValue("Bearer", secret);
 
     var body = new StringContent(JsonSerializer.Serialize(new {
-        amount,                         // <- your value, not hardcoded
-        currency = "KES",
-        method,
-        customer = new { email }
+        amount, currency = "KES", method, customer = new { email }
     }), Encoding.UTF8, "application/json");
 
     var res = await client.PostAsync("{{API}}/v1/payments", body);
@@ -251,14 +278,22 @@ async Task<string> CreatePayment(int amount, string email, string method = "mpes
 
 // AndroidManifest.xml — allow internet
 // <uses-permission android:name="android.permission.INTERNET" />` },
-      { title: 'Implementation', code:
+      { title: 'Set your key (do NOT ship it in the app)', code:
+`// The secret key must live on YOUR server, not inside the Android app —
+// anything shipped in the APK can be extracted. Your app should call your
+// backend, which holds KONDUYT_SECRET_KEY and calls Konduyt. If you must read
+// a value on-device, inject it at build time via BuildConfig, never commit it:
+//
+// app/build.gradle:
+//   buildConfigField "String", "KONDUYT_SECRET_KEY", "\\"\${System.getenv('KONDUYT_SECRET_KEY')}\\""` },
+      { title: 'Implementation (server-style call)', code:
 `// amount is a parameter — pass the value from an input or the tapped item.
-// The secret key belongs on YOUR server; in production call your backend.
 void createPayment(int amount, String email) throws IOException {
+    String secret = BuildConfig.KONDUYT_SECRET_KEY; // injected at build, not hardcoded
     OkHttpClient client = new OkHttpClient();
 
     String json = "{"
-        + "\\"amount\\": " + amount + ","      // <- your value, not hardcoded
+        + "\\"amount\\": " + amount + ","
         + "\\"currency\\": \\"KES\\","
         + "\\"method\\": \\"mpesa\\","
         + "\\"customer\\": { \\"email\\": \\"" + email + "\\" }"
@@ -266,19 +301,18 @@ void createPayment(int amount, String email) throws IOException {
 
     Request request = new Request.Builder()
         .url("{{API}}/v1/payments")
-        .addHeader("Authorization", "Bearer {{SECRET}}")
+        .addHeader("Authorization", "Bearer " + secret)
         .post(RequestBody.create(json, MediaType.parse("application/json")))
         .build();
 
     try (Response response = client.newCall(request).execute()) {
         String payment = response.body().string();
-        // Parse payment, open authorization_url in a Chrome Custom Tab
+        // open authorization_url in a Chrome Custom Tab
     }
 }
 
-// e.g. amount typed by the user, or the price of the product tapped:
-// createPayment(Integer.parseInt(amountInput.getText().toString()), email);
-// createPayment(selectedProduct.getPrice(), email);` },
+// e.g. createPayment(Integer.parseInt(amountInput.getText().toString()), email);
+//      createPayment(selectedProduct.getPrice(), email);` },
     ],
   },
   {
@@ -291,51 +325,62 @@ void createPayment(int amount, String email) throws IOException {
 
 // AndroidManifest.xml
 // <uses-permission android:name="android.permission.INTERNET" />` },
-      { title: 'Implementation', code:
+      { title: 'Set your key (do NOT ship it in the app)', code:
+`// The secret belongs on YOUR server, not in the APK (it can be extracted).
+// Have the app call your backend, which holds KONDUYT_SECRET_KEY. If you must
+// read it on-device, inject at build time, never commit:
+//
+// app/build.gradle.kts:
+//   buildConfigField("String", "KONDUYT_SECRET_KEY", "\\"\${System.getenv("KONDUYT_SECRET_KEY")}\\"")` },
+      { title: 'Implementation (server-style call)', code:
 `// amount is a parameter — pass user input or the tapped item's price.
-// Call from a coroutine (Dispatchers.IO). Route through your backend in prod.
+// Call from a coroutine (Dispatchers.IO).
 fun createPayment(amount: Int, email: String) {
+    val secret = BuildConfig.KONDUYT_SECRET_KEY  // injected at build, not hardcoded
     val client = OkHttpClient()
 
     val json = """
         { "amount": $amount, "currency": "KES", "method": "mpesa",
           "customer": { "email": "$email" } }
-    """.trimIndent()                       // amount = your value, not hardcoded
+    """.trimIndent()
 
     val request = Request.Builder()
         .url("{{API}}/v1/payments")
-        .addHeader("Authorization", "Bearer {{SECRET}}")
+        .addHeader("Authorization", "Bearer $secret")
         .post(json.toRequestBody("application/json".toMediaType()))
         .build()
 
     client.newCall(request).execute().use { response ->
         val payment = response.body?.string()
-        // Parse payment, open authorization_url in a Chrome Custom Tab
+        // open authorization_url in a Chrome Custom Tab
     }
 }
 
 // e.g. createPayment(amountField.text.toString().toInt(), email)
-//      createPayment(selectedProduct.price, email)   // marketplace item` },
+//      createPayment(selectedProduct.price, email)` },
     ],
   },
   {
     id: 'swift', label: 'Swift', icon: 'swift', platform: 'iOS',
     sections: [
-      { title: 'Dependency', code:
-`// No external dependency — URLSession is built into iOS.
-// In production, call your own backend so the secret key stays off-device.` },
-      { title: 'Implementation', code:
+      { title: 'Set your key (do NOT ship it in the app)', code:
+`// The secret belongs on YOUR server, not in the iOS binary (it can be
+// extracted). Your app should call your backend, which holds
+// KONDUYT_SECRET_KEY. If reading on-device for a prototype, use an xcconfig /
+// Info.plist value injected at build time — never commit the real key.` },
+      { title: 'Implementation (server-style call)', code:
 `// amount is a parameter — pass user input or the tapped item's price.
 func createPayment(amount: Int, email: String) async throws -> [String: Any] {
+    // Read from Info.plist (injected at build) — not hardcoded.
+    let secret = Bundle.main.object(forInfoDictionaryKey: "KONDUYT_SECRET_KEY") as! String
+
     var request = URLRequest(url: URL(string: "{{API}}/v1/payments")!)
     request.httpMethod = "POST"
-    request.setValue("Bearer {{SECRET}}", forHTTPHeaderField: "Authorization")
+    request.setValue("Bearer \\(secret)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
     let body: [String: Any] = [
-        "amount": amount,                  // <- your value, not hardcoded
-        "currency": "KES",
-        "method": "mpesa",
+        "amount": amount, "currency": "KES", "method": "mpesa",
         "customer": ["email": email]
     ]
     request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -351,25 +396,32 @@ func createPayment(amount: Int, email: String) async throws -> [String: Any] {
   {
     id: 'cpp', label: 'C++', icon: 'cpp',
     sections: [
+      { title: 'Set your key (shell)', code:
+`export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Dependency', code:
 `# Using libcurl (install via your package manager)
 sudo apt-get install libcurl4-openssl-dev   # Debian/Ubuntu` },
       { title: 'Implementation', code:
 `#include <curl/curl.h>
+#include <cstdlib>
 #include <string>
 
-// amount is a parameter — pass user input or an item price.
 void create_payment(long amount, const std::string& email) {
+    // Read the key from the environment — never hardcode it.
+    const char* secret = std::getenv("KONDUYT_SECRET_KEY");
+    if (!secret) return;
+
     CURL* curl = curl_easy_init();
     if (!curl) return;
 
     std::string body =
-        "{\\"amount\\": " + std::to_string(amount) +   // <- your value
+        "{\\"amount\\": " + std::to_string(amount) +
         ", \\"currency\\": \\"KES\\", \\"method\\": \\"mpesa\\","
         " \\"customer\\": { \\"email\\": \\"" + email + "\\" } }";
 
+    std::string auth = "Authorization: Bearer " + std::string(secret);
     struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(headers, "Authorization: Bearer {{SECRET}}");
+    headers = curl_slist_append(headers, auth.c_str());
     headers = curl_slist_append(headers, "Content-Type: application/json");
 
     curl_easy_setopt(curl, CURLOPT_URL, "{{API}}/v1/payments");
