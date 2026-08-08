@@ -1420,3 +1420,15 @@
   .lang-chip{display:inline-flex; align-items:center; gap:7px;}
   .lang-chip-icon{display:inline-flex; align-items:center; line-height:0;}
   .lang-chip-icon svg{display:block;}
+
+  /* Key mode toggle (test / live) */
+  .keys-mode-toggle{display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden;}
+  .keys-mode-btn{background:#fff; border:none; padding:6px 14px; font-size:12.5px; font-weight:700; color:var(--text-secondary); cursor:pointer; font-family:inherit;}
+  .keys-mode-btn.sel{background:var(--green-soft); color:var(--green-ink);}
+  .keys-mode-btn.live.sel{background:#fef3c7; color:#92600a;}
+  .inline-code{font-family:'JetBrains Mono', monospace; font-size:12px; background:#f3f4f6; border:1px solid var(--border); border-radius:4px; padding:1px 5px; color:#b91c1c;}
+
+  /* Cannot-receive-money warning banner */
+  .receive-warn{display:flex; gap:12px; align-items:flex-start; background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:14px 16px; margin-bottom:18px; font-size:13.5px; line-height:1.6; color:#92600a;}
+  .receive-warn-icon{font-size:16px; flex-shrink:0;}
+  .receive-warn strong{font-weight:800;}

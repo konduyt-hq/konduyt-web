@@ -57,6 +57,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
   const [intSection, setIntSection] = useState('connections'); // connections | languages
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
+  const [keyMode, setKeyMode] = useState('test'); // which keys to show: test | live
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
@@ -526,6 +527,17 @@ export default function Dashboard() {
                   </p>
                 </div>
 
+                {/* Cannot receive money without a connected provider */}
+                {projectStatus && !projectStatus.has_connection && (
+                  <div className="receive-warn">
+                    <span className="receive-warn-icon">⚠</span>
+                    <div>
+                      <strong>You cannot receive money yet.</strong> Connect a payment provider below to give
+                      payments somewhere to settle. Until you do, any payment your app attempts will fail.
+                    </div>
+                  </div>
+                )}
+
                 {/* Project status: Live requires a connected provider AND an enabled method */}
                 {projectStatus && (
                   <div className={`proj-status ${projectStatus.live ? 'live' : 'notlive'}`}>
@@ -888,7 +900,8 @@ export default function Dashboard() {
 
                 {(() => {
                   const lang = LANG_SNIPPETS.find((l) => l.id === langTab) || LANG_SNIPPETS[0];
-                  const secret = (keys && keys.test && keys.test.secret) || 'YOUR_TEST_SECRET_KEY';
+                  const activeKeys = (keys && keys[keyMode]) || null;
+                  const secret = (activeKeys && activeKeys.secret) || `YOUR_${keyMode.toUpperCase()}_SECRET_KEY`;
                   return (
                     <div className="lang-blocks">
                       {lang.platform && (
@@ -918,20 +931,29 @@ export default function Dashboard() {
                   );
                 })()}
 
-                {/* Keys — added into the developer's project */}
-                {keys && keys.test && (
+                {/* Keys — mode toggle (test / live). Both work from signup. */}
+                {keys && keys[keyMode] && (() => {
+                  const k = keys[keyMode];
+                  return (
                   <div className="keys-panel" style={{ marginTop: 24 }}>
                     <div className="keys-head">
                       <h3>Your API keys</h3>
-                      <span className="keys-mode">Test mode</span>
+                      <div className="keys-mode-toggle">
+                        <button type="button"
+                          className={`keys-mode-btn ${keyMode === 'test' ? 'sel' : ''}`}
+                          onClick={() => { setKeyMode('test'); setShowSecret(false); }}>Test</button>
+                        <button type="button"
+                          className={`keys-mode-btn live ${keyMode === 'live' ? 'sel' : ''}`}
+                          onClick={() => { setKeyMode('live'); setShowSecret(false); }}>Live</button>
+                      </div>
                     </div>
                     <div className="keys-row stacked">
                       <div className="keys-field">
                         <label>Publishable key</label>
                         <div className="keys-value">
-                          <code>{keys.test.publishable_key}</code>
+                          <code>{k.publishable_key}</code>
                           <button className="keys-copy" type="button"
-                            onClick={() => copyToClipboard(keys.test.publishable_key, 'pub')}>
+                            onClick={() => copyToClipboard(k.publishable_key, 'pub')}>
                             {copied === 'pub' ? 'Copied' : 'Copy'}
                           </button>
                         </div>
@@ -939,14 +961,14 @@ export default function Dashboard() {
                       <div className="keys-field">
                         <label>Secret key</label>
                         <div className="keys-value">
-                          <code>{showSecret ? (keys.test.secret || keys.test.secret_masked) : keys.test.secret_masked}</code>
+                          <code>{showSecret ? (k.secret || k.secret_masked) : k.secret_masked}</code>
                           <button className="keys-copy" type="button"
                             onClick={() => setShowSecret((s) => !s)}>
                             {showSecret ? 'Hide' : 'Reveal'}
                           </button>
-                          {keys.test.secret && (
+                          {k.secret && (
                             <button className="keys-copy" type="button"
-                              onClick={() => copyToClipboard(keys.test.secret, 'sec')}>
+                              onClick={() => copyToClipboard(k.secret, 'sec')}>
                               {copied === 'sec' ? 'Copied' : 'Copy'}
                             </button>
                           )}
@@ -955,22 +977,23 @@ export default function Dashboard() {
                     </div>
                     <p className="keys-note">Keep your secret key server-side. Never ship it to a browser or commit it.</p>
 
-                    {/* Important: keys alone don't move money — a provider must be connected */}
+                    {/* You cannot receive money without connecting a provider */}
                     <div className={`keys-connect-note ${projectStatus && projectStatus.live ? 'ok' : ''}`}>
                       {projectStatus && projectStatus.live ? (
-                        <span>✓ This project is live — a provider is connected and a method is enabled. Payments will route to it.</span>
+                        <span>✓ This project can receive money — a provider is connected and a method is enabled.</span>
                       ) : (
                         <span>
-                          <strong>Before this works:</strong> adding these keys is not enough on its own.
-                          Go to <button className="link-inline" type="button"
+                          <strong>You cannot receive money yet.</strong> Your keys work, but a payment needs
+                          somewhere to go. Go to <button className="link-inline" type="button"
                             onClick={() => setIntSection('connections')}>Connections</button>, connect a
-                          provider account and enable a payment method — otherwise your integration will
-                          authenticate but have nowhere to route the money, and payments will fail.
+                          provider account and enable a payment method — until then, payment attempts will
+                          fail with <code className="inline-code">no_provider_connected</code>.
                         </span>
                       )}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
