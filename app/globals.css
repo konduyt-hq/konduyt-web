@@ -1463,3 +1463,19 @@
   /* Revoke action on secret key */
   .keys-copy.danger{color:#b91c1c; border-color:#fecaca;}
   .keys-copy.danger:hover{border-color:#b91c1c; background:#fef2f2; color:#b91c1c;}
+
+  /* ===== .env setup explainer ===== */
+  .env-setup{border:1px solid var(--border); border-radius:12px; margin-bottom:18px; overflow:hidden; background:#fff;}
+  .env-setup-head{width:100%; display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:none; padding:12px 16px; font-size:13.5px; font-weight:700; color:var(--ink); cursor:pointer; font-family:inherit;}
+  .env-setup-head:hover{background:#f3f4f6;}
+  .env-setup-chevron{font-size:10px; color:var(--text-secondary);}
+  .env-setup-body{padding:16px; display:flex; flex-direction:column; gap:16px;}
+  .env-step{display:flex; gap:12px; align-items:flex-start;}
+  .env-step-n{flex-shrink:0; width:22px; height:22px; border-radius:50%; background:var(--green-soft); color:var(--green-ink); font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-top:1px;}
+  .env-step-title{font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:4px;}
+  .env-p{font-size:13px; color:var(--text-secondary); line-height:1.6; margin:4px 0;}
+  .env-p strong{color:var(--ink);}
+  .env-warn{color:#92600a;}
+  .env-host{background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; color:#92600a; margin-top:4px;}
+  .env-tree{background:var(--code-bg); border-radius:8px; padding:12px 14px; margin:8px 0; overflow-x:auto;}
+  .env-tree code{font-family:'JetBrains Mono', monospace; font-size:12px; line-height:1.6; color:#e6e6e6; white-space:pre;}

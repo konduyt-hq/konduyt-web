@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
+import { ENV_SETUP, ENV_STEPS } from './envsetup';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -57,6 +58,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
   const [intSection, setIntSection] = useState('connections'); // connections | languages
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
+  const [envOpen, setEnvOpen] = useState(false); // ".env setup" explainer expand
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
@@ -920,7 +922,96 @@ export default function Dashboard() {
 
                 {(() => {
                   const lang = LANG_SNIPPETS.find((l) => l.id === langTab) || LANG_SNIPPETS[0];
+                  const env = ENV_SETUP[lang.icon] || {};
+                  const isPlatform = Boolean(lang.platform);
                   return (
+                    <>
+                    {/* First-time .env setup — simple, no room for confusion */}
+                    <div className="env-setup">
+                      <button className="env-setup-head" type="button" onClick={() => setEnvOpen((o) => !o)}>
+                        <span>{isPlatform ? 'Where does the secret key go?' : 'New to .env files? Set one up (2 minutes)'}</span>
+                        <span className="env-setup-chevron">{envOpen ? '▲' : '▼'}</span>
+                      </button>
+                      {envOpen && (
+                        <div className="env-setup-body">
+                          {isPlatform ? (
+                            <p className="env-p">
+                              {lang.platform} apps are installed on your customers&apos; devices, and anything
+                              shipped inside the app can be extracted — so the secret key must <strong>never</strong> live
+                              in the app. Keep it on <strong>your own server</strong>: your app calls your server, and your
+                              server (holding the key) calls Konduyt. {env.loaderNote}
+                            </p>
+                          ) : (
+                            <>
+                              <div className="env-step">
+                                <span className="env-step-n">1</span>
+                                <div>
+                                  <div className="env-step-title">Put a file called <code className="inline-code">.env</code> at your project root</div>
+                                  <p className="env-p">That&apos;s the top folder of your project — the same place as your <code className="inline-code">{env.rootFile || 'main file'}</code>. Not inside a subfolder.</p>
+                                  <pre className="env-tree"><code>{`your-project/            ${'\u2190'} project root — .env goes HERE
+${'\u251C\u2500\u2500'} .env                 ${'\u2190'} create it here${env.rootFile ? `
+${'\u251C\u2500\u2500'} ${env.rootFile}` : ''}
+${'\u251C\u2500\u2500'} src/
+${'\u2502'}   ${'\u2514\u2500\u2500'} ... your code
+${'\u2514\u2500\u2500'} ...`}</code></pre>
+                                </div>
+                              </div>
+
+                              <div className="env-step">
+                                <span className="env-step-n">2</span>
+                                <div>
+                                  <div className="env-step-title">Create the file</div>
+                                  <p className="env-p"><strong>In VS Code:</strong> {ENV_STEPS.create_vscode}</p>
+                                  <p className="env-p"><strong>In the terminal</strong> (from your project root):</p>
+                                  <pre className="env-tree"><code>{`# macOS / Linux
+${ENV_STEPS.create_terminal_mac}
+
+# Windows
+${ENV_STEPS.create_terminal_win}`}</code></pre>
+                                  <p className="env-p env-warn">The filename is exactly <code className="inline-code">.env</code> — a dot, then &quot;env&quot;. No name before the dot, no <code className="inline-code">.txt</code> after.</p>
+                                </div>
+                              </div>
+
+                              <div className="env-step">
+                                <span className="env-step-n">3</span>
+                                <div>
+                                  <div className="env-step-title">Paste this line inside it</div>
+                                  <p className="env-p">No spaces around the <code className="inline-code">=</code>. No quotes. One key per line:</p>
+                                  <pre className="env-tree"><code>KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here</code></pre>
+                                </div>
+                              </div>
+
+                              <div className="env-step">
+                                <span className="env-step-n">4</span>
+                                <div>
+                                  <div className="env-step-title">Never commit it — add it to <code className="inline-code">.gitignore</code></div>
+                                  <p className="env-p">In a file called <code className="inline-code">.gitignore</code> at the same root, add one line:</p>
+                                  <pre className="env-tree"><code>.env</code></pre>
+                                </div>
+                              </div>
+
+                              {env.loader && (
+                                <div className="env-step">
+                                  <span className="env-step-n">5</span>
+                                  <div>
+                                    <div className="env-step-title">Load it in your code</div>
+                                    <p className="env-p">A <code className="inline-code">.env</code> file doesn&apos;t load itself. Install the loader:</p>
+                                    <pre className="env-tree"><code>{env.loader}</code></pre>
+                                    <p className="env-p">{env.loaderNote}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {!env.loader && env.loaderNote && (
+                                <p className="env-p" style={{ marginTop: 4 }}>{env.loaderNote}</p>
+                              )}
+
+                              <p className="env-p env-host">On your host (Cloudflare / Render / Vercel) there is no <code className="inline-code">.env</code> file — instead, add <code className="inline-code">KONDUYT_SECRET_KEY</code> under the project&apos;s Settings → Environment Variables. The <code className="inline-code">.env</code> file is just for your own computer.</p>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="lang-blocks">
                       {lang.platform && (
                         <div className="lang-platform-note">Platform: {lang.platform}</div>
@@ -944,6 +1035,7 @@ export default function Dashboard() {
                         );
                       })}
                     </div>
+                    </>
                   );
                 })()}
 
