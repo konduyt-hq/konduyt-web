@@ -996,7 +996,7 @@ export default function Dashboard() {
                 {accounts.length === 0 ? (
                   <div className="con-empty">
                     <p className="con-empty-sub">
-                      No provider accounts connected yet. Head to Discover, pick a payment method, and connect a provider — it&apos;ll appear here.
+                      No provider accounts connected yet. Pick a payment method above, choose a provider, and connect it — it&apos;ll appear here.
                     </p>
                     <button className="dash-btn-primary" type="button" style={{ marginTop: 14 }}
                       onClick={() => { setTab('integrations'); setIntSection('connections'); setActiveCategory(null); }}>
@@ -1008,17 +1008,28 @@ export default function Dashboard() {
                     {accounts.map((a) => {
                       const test = testResult[a.provider_id] || {};
                       return (
-                        <div className="acct-card" key={a.provider_id}>
+                        <div className={`acct-card ${a.integration_pending ? 'pending' : ''}`} key={a.provider_id}>
                           <div className="acct-head">
                             <div>
                               <div className="acct-name">{a.name}</div>
                               {a.account_label && <div className="acct-label">{a.account_label}</div>}
                             </div>
-                            <span className="acct-status">● Connected</span>
+                            {a.integration_pending ? (
+                              <span className="acct-status pending">● Connected · awaiting integration</span>
+                            ) : (
+                              <span className="acct-status">● Connected</span>
+                            )}
                           </div>
 
+                          {a.integration_pending && (
+                            <div className="acct-pending-note">
+                              Credentials stored securely. {a.name} transfers activate once its official
+                              bank integration is wired — no guessed endpoints, no fake payments.
+                            </div>
+                          )}
+
                           <div className="acct-caps">
-                            <div className="acct-caps-label">Capabilities</div>
+                            <div className="acct-caps-label">Provides</div>
                             <div className="acct-caps-list">
                               {a.capabilities.map((cap) => (
                                 <span key={cap.id} className={`acct-cap ${cap.enabled ? 'on' : ''}`}>
