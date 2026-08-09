@@ -235,14 +235,28 @@ export default function Dashboard() {
     window.location.href = '/';
   }
 
-  async function connectProvider(providerId) {
+  async function connectProvider(providerId, schemaFields) {
     setConnectError('');
     setConnectBusy(true);
     try {
-      // Send whatever fields the schema collected, trimmed.
+      // Send whatever fields the schema collected, trimmed. For optional
+      // selects the user never touched, fall back to the first option so a
+      // default (e.g. PayPal environment=live) is actually transmitted.
       const credentials = {};
+      (schemaFields || []).forEach((f) => {
+        let val = credValues[f.name];
+        if ((val === undefined || val === '') && f.type === 'select' && !f.required) {
+          val = (f.options || [])[0] || '';
+        }
+        if (val !== undefined && val !== '') {
+          credentials[f.name] = typeof val === 'string' ? val.trim() : val;
+        }
+      });
+      // Include any collected fields not present in the schema list (safety).
       Object.entries(credValues).forEach(([k, v]) => {
-        credentials[k] = typeof v === 'string' ? v.trim() : v;
+        if (!(k in credentials) && v !== undefined && v !== '') {
+          credentials[k] = typeof v === 'string' ? v.trim() : v;
+        }
       });
       const r = await fetch(`${API_BASE}/projects/${activeId}/connections`, {
         method: 'POST',
@@ -622,8 +636,11 @@ export default function Dashboard() {
                 {methodGroups.length > 0 && !activeCategory && (
                   <div className="cat-grid">
                     {methodGroups.map((group) => {
+                      const catByCategory = methodsCatalog.filter((m) => m.category === group.category);
                       const enabledCount = group.methods.filter((m) => m.status === 'connected').length;
-                      const availCount = group.methods.filter((m) => m.status === 'connectable').length;
+                      // "Connectable" = has a provider that can connect today (from /methods).
+                      const connectableCount = catByCategory.filter((m) => m.connectable).length
+                        || group.methods.filter((m) => m.status === 'connectable').length;
                       return (
                         <button className="cat-tile" key={group.category} type="button"
                           onClick={() => setActiveCategory(group.category)}>
@@ -631,7 +648,7 @@ export default function Dashboard() {
                           <span className="cat-tile-count">{group.methods.length} method{group.methods.length !== 1 ? 's' : ''}</span>
                           <span className="cat-tile-meta">
                             {enabledCount > 0 && <span className="cat-badge on">{enabledCount} enabled</span>}
-                            {availCount > 0 && <span className="cat-badge ready">{availCount} available</span>}
+                            {enabledCount === 0 && connectableCount > 0 && <span className="cat-badge ready">{connectableCount} available</span>}
                           </span>
                           <span className="cat-tile-arrow">→</span>
                         </button>
@@ -720,10 +737,14 @@ export default function Dashboard() {
                         {via.length > 0 && (
                           <button className="con-connect-btn" type="button" style={{ marginTop: 12 }}
                             onClick={() => {
-                              const target = (cat.available_via[0] || {}).id;
-                              const provMethod = (cat.available_via[0] || {});
-                              // Jump to the card method where the processor is connected.
+                              const processor = cat.available_via[0] || {};
+                              // Land on the Cards method (which this processor provides) and
+                              // auto-open that processor's connect form, so the button lands
+                              // exactly where the developer connects it.
                               setActiveMethod('card');
+                              setConnectingId(processor.id);
+                              setCredValues({});
+                              setConnectError('');
                             }}>
                             Connect {via[0]}
                           </button>
@@ -838,9 +859,9 @@ export default function Dashboard() {
                                     </label>
                                     {field.type === 'select' ? (
                                       <select className="con-connect-input"
-                                        value={credValues[field.name] || ''}
+                                        value={credValues[field.name] || (field.required ? '' : (field.options || [])[0] || '')}
                                         onChange={(e) => setCredValues((v) => ({ ...v, [field.name]: e.target.value }))}>
-                                        <option value="">Select…</option>
+                                        {field.required && <option value="">Select…</option>}
                                         {(field.options || []).map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
                                       </select>
                                     ) : (
@@ -855,7 +876,7 @@ export default function Dashboard() {
                                 ))}
                                 {connectError && <div className="con-connect-error">{connectError}</div>}
                                 <button className="con-connect-submit"
-                                  onClick={() => connectProvider(c.id)}
+                                  onClick={() => connectProvider(c.id, c.credential_schema?.fields || [])}
                                   disabled={connectBusy || !schemaComplete(c, credValues)}
                                   type="button">
                                   {connectBusy ? 'Validating…' : 'Connect'}
