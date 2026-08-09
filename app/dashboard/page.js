@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import CheckoutModal from './CheckoutModal';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
@@ -73,6 +74,7 @@ export default function Dashboard() {
   const [methodsCatalog, setMethodsCatalog] = useState([]); // /methods — treatment + available_via
   const [methodSearch, setMethodSearch] = useState(''); // search by method (PayPal, Apple Pay, SEPA...)
   const [savingCountry, setSavingCountry] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false); // customer checkout preview
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -586,11 +588,16 @@ export default function Dashboard() {
 
             {tab === 'integrations' && intSection === 'connections' && !activeMethod && (
               <div className="mpesa-page">
-                <div className="con-home-head">
-                  <h1 className="con-h1">Payment methods</h1>
-                  <p className="con-sub">
-                    Choose what your customers can pay with. Konduyt connects the provider behind each one.
-                  </p>
+                <div className="con-home-head con-home-head-row">
+                  <div>
+                    <h1 className="con-h1">Payment methods</h1>
+                    <p className="con-sub">
+                      Choose what your customers can pay with. Konduyt connects the provider behind each one.
+                    </p>
+                  </div>
+                  <button className="preview-checkout-btn" type="button" onClick={() => setCheckoutOpen(true)}>
+                    <span aria-hidden="true">▶</span> Preview checkout
+                  </button>
                 </div>
 
                 {/* Search by method — developers think in methods, not providers */}
@@ -1401,6 +1408,79 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               </div>
             )}
         </>
+
+        {/* Customer checkout preview — what the end customer sees on "Pay" */}
+        {(() => {
+          // Payable methods = capabilities the connected providers actually
+          // power (enabled), mapped to display info. If nothing is connected,
+          // show a representative set so the UI is visible in preview.
+          const enabledMethodIds = new Set();
+          const viaByMethod = {};
+          (accounts || []).forEach((a) => {
+            (a.capabilities || []).forEach((cap) => {
+              if (cap.enabled) {
+                enabledMethodIds.add(cap.id);
+                if (!viaByMethod[cap.id]) viaByMethod[cap.id] = a.name;
+              }
+            });
+          });
+          let payable = methodsCatalog
+            .filter((m) => enabledMethodIds.has(m.id))
+            .map((m) => ({ id: m.id, name: m.name, connectable: true,
+                           available_via: viaByMethod[m.id] ? [{ name: viaByMethod[m.id] }] : (m.available_via || []) }));
+          // Fallback representative set for preview when nothing is enabled yet.
+          const isRepresentative = payable.length === 0;
+          if (isRepresentative) {
+            const rep = ['mpesa', 'card', 'apple_pay'];
+            payable = methodsCatalog
+              .filter((m) => rep.includes(m.id))
+              .map((m) => ({ id: m.id, name: m.name, connectable: true,
+                             available_via: (m.available_via || []).slice(0, 1) }));
+          }
+
+          async function onPay(methodId) {
+            // Attempt a real payment through the project's live key, so the
+            // preview exercises the real endpoint. The next-step / error text is
+            // honest about what would happen with a live provider connected.
+            try {
+              const secret = keys?.live?.secret;
+              if (!secret) {
+                return { ok: true, message: `This is a preview. With ${merchantName} connected to a live provider, the customer would now complete payment via ${methodId}.` };
+              }
+              const r = await fetch(`${API_BASE}/v1/payments`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: 150000, currency: 'KES', method: methodId,
+                                       customer: { email: 'customer@example.com' } }),
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok) {
+                return { ok: true, message: '' }; // component fills the method-specific next step
+              }
+              const detail = d.detail;
+              const msg = (detail && detail.message) || (typeof detail === 'string' ? detail : 'Payment could not start.');
+              // no_provider_connected etc. — show the honest reason.
+              return { ok: false, message: msg };
+            } catch (e) {
+              return { ok: false, message: 'Network error starting the payment.' };
+            }
+          }
+
+          const merchantName = active?.name || 'Your Store';
+          return (
+            <CheckoutModal
+              open={checkoutOpen}
+              onClose={() => setCheckoutOpen(false)}
+              merchant={merchantName}
+              amount={150000}
+              currency="KES"
+              methods={payable}
+              reference="kdu_preview_demo"
+              onPay={onPay}
+              preview
+            />
+          );
+        })()}
       </main>
     </div>
   );
