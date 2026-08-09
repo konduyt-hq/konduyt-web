@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [connectBusy, setConnectBusy] = useState(false);
   const [expandedMethod, setExpandedMethod] = useState(null);
   const [methodGroups, setMethodGroups] = useState([]);
+  const [methodsCatalog, setMethodsCatalog] = useState([]); // /methods — treatment + available_via
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -201,6 +202,10 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => setProviders(d.connectors || []))
       .catch(() => setProviders([]));
+    fetch(`${API_BASE}/methods`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setMethodsCatalog(d.methods || []))
+      .catch(() => setMethodsCatalog([]));
   }, [status]);
 
   useEffect(() => {
@@ -638,6 +643,8 @@ export default function Dashboard() {
                 {methodGroups.length > 0 && activeCategory && (() => {
                   const group = methodGroups.find((g) => g.category === activeCategory);
                   if (!group) { setActiveCategory(null); return null; }
+                  const catLookup = {};
+                  methodsCatalog.forEach((m) => { catLookup[m.id] = m; });
                   return (
                     <div className="cat-detail">
                       <button className="pm-back" type="button" onClick={() => setActiveCategory(null)}>
@@ -645,26 +652,32 @@ export default function Dashboard() {
                       </button>
                       <h2 className="cat-detail-title">{group.label}</h2>
                       <div className="pm-grid">
-                        {group.methods.map((m) => (
-                          <button
-                            className={`pm-tile ${m.status === 'unavailable' ? 'soon' : ''}`}
-                            key={m.id}
-                            type="button"
-                            onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}
-                          >
-                            <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
-                            <span className="pm-tile-name">{m.name}</span>
-                            <span className={
-                              m.status === 'connected' ? 'pm-tile-status connected'
-                              : m.status === 'connectable' ? 'pm-tile-status ready'
-                              : 'pm-tile-status'
-                            }>
-                              {m.status === 'connected' ? '✓ Enabled'
-                                : m.status === 'connectable' ? 'Available'
-                                : 'Not available yet'}
-                            </span>
-                          </button>
-                        ))}
+                        {group.methods.map((m) => {
+                          const cat = catLookup[m.id] || {};
+                          const treatment = cat.treatment || 'method';
+                          const via = (cat.available_via || []).map((v) => v.name);
+                          const connectable = cat.connectable !== false && m.status !== 'unavailable';
+                          // Status line, treatment-aware — never "not available yet".
+                          let statusText, statusClass;
+                          if (m.status === 'connected') { statusText = '✓ Enabled'; statusClass = 'connected'; }
+                          else if (!connectable) { statusText = 'Connect a provider that supports this'; statusClass = 'needs'; }
+                          else if (treatment === 'capability') { statusText = `Turns on via ${via[0] || 'a processor'}`; statusClass = 'ready'; }
+                          else if (treatment === 'direct') { statusText = 'Direct connect'; statusClass = 'ready'; }
+                          else { statusText = via.length ? `Via ${via.join(', ')}` : 'Available'; statusClass = 'ready'; }
+                          return (
+                            <button
+                              className={`pm-tile ${!connectable ? 'needs' : ''}`}
+                              key={m.id}
+                              type="button"
+                              onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}
+                            >
+                              <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
+                              <span className="pm-tile-name">{m.name}</span>
+                              {treatment === 'capability' && <span className="pm-tile-tag">capability</span>}
+                              <span className={`pm-tile-status ${statusClass}`}>{statusText}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -684,6 +697,40 @@ export default function Dashboard() {
                     <h1 className="con-h1">{md.name}</h1>
                     <p className="con-sub">Accept payments from {md.name} customers.</p>
                   </div>
+
+                  {(() => {
+                    const cat = methodsCatalog.find((m) => m.id === md.id) || {};
+                    if (cat.treatment !== 'capability') return null;
+                    const via = (cat.available_via || []).map((v) => v.name);
+                    return (
+                      <div className="cap-explainer">
+                        <div className="cap-explainer-title">This turns on through a processor</div>
+                        {via.length ? (
+                          <p>
+                            {md.name} isn&apos;t connected on its own — it rides on top of a card processor.
+                            Connect <strong>{via.join(' or ')}</strong> and enable it there, and {md.name} becomes
+                            available automatically at checkout for customers whose device supports it.
+                          </p>
+                        ) : (
+                          <p>
+                            {md.name} rides on top of a card processor. None of your connectable providers
+                            expose it yet — connect a provider that supports {md.name} and it will turn on here.
+                          </p>
+                        )}
+                        {via.length > 0 && (
+                          <button className="con-connect-btn" type="button" style={{ marginTop: 12 }}
+                            onClick={() => {
+                              const target = (cat.available_via[0] || {}).id;
+                              const provMethod = (cat.available_via[0] || {});
+                              // Jump to the card method where the processor is connected.
+                              setActiveMethod('card');
+                            }}>
+                            Connect {via[0]}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {md.id === 'card' && (
                     <div className="pm-networks">
