@@ -75,6 +75,8 @@ export default function Dashboard() {
   const [methodSearch, setMethodSearch] = useState(''); // search by method (PayPal, Apple Pay, SEPA...)
   const [savingCountry, setSavingCountry] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false); // customer checkout preview
+  const [previewAmount, setPreviewAmount] = useState('1500.00'); // major units, editable
+  const [previewCurrency, setPreviewCurrency] = useState('KES');
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -595,12 +597,67 @@ export default function Dashboard() {
                       Choose what your customers can pay with. Konduyt connects the provider behind each one.
                     </p>
                   </div>
-                  <button className="preview-checkout-btn" type="button" onClick={() => setCheckoutOpen(true)}>
-                    <span aria-hidden="true">▶</span> Preview checkout
-                  </button>
+                  <div className="preview-checkout-controls">
+                    <div className="preview-amount-field">
+                      <select className="preview-cur" value={previewCurrency}
+                        onChange={(e) => setPreviewCurrency(e.target.value)} aria-label="Currency">
+                        {['KES', 'USD', 'GBP', 'EUR', 'NGN', 'GHS', 'ZAR', 'INR', 'BRL'].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                      <input className="preview-amt" type="text" inputMode="decimal"
+                        value={previewAmount}
+                        onChange={(e) => setPreviewAmount(e.target.value)}
+                        placeholder="1500.00" aria-label="Preview amount" />
+                    </div>
+                    <button className="preview-checkout-btn" type="button" onClick={() => setCheckoutOpen(true)}>
+                      <span aria-hidden="true">▶</span> Preview checkout
+                    </button>
+                  </div>
                 </div>
 
-                {/* Search by method — developers think in methods, not providers */}
+                {/* Drop-in checkout: copy-paste embed for the developer's own site */}
+                {liveKeys && (
+                  <details className="dropin-box">
+                    <summary className="dropin-summary">
+                      <span>▶ Add the checkout popup to your own site</span>
+                      <span className="dropin-hint">PayPal-style drop-in</span>
+                    </summary>
+                    <div className="dropin-body">
+                      <p className="dropin-note">
+                        Drop this into your site. The popup opens with your publishable key (safe in the browser)
+                        and shows customers the methods you&apos;ve enabled. Your server creates the actual charge with your secret key.
+                      </p>
+                      <pre className="dropin-code"><code>{`<script src="https://konduyt.dev/konduyt.js"></script>
+<script>
+  Konduyt.checkout({
+    publishableKey: "${liveKeys.publishable_key}",
+    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},        // minor units (${previewCurrency})
+    currency: "${previewCurrency}",
+    reference: "order_123",
+    onSuccess: function (r) { console.log("paid step", r); },
+    onClose: function () { console.log("closed"); }
+  });
+</script>`}</code></pre>
+                      <button className="dropin-copy" type="button"
+                        onClick={() => copyToClipboard(
+`<script src="https://konduyt.dev/konduyt.js"></script>
+<script>
+  Konduyt.checkout({
+    publishableKey: "${liveKeys.publishable_key}",
+    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},
+    currency: "${previewCurrency}",
+    reference: "order_123",
+    onSuccess: function (r) { console.log("paid step", r); },
+    onClose: function () { console.log("closed"); }
+  });
+</script>`, 'embed')}>
+                        {copied === 'embed' ? '✓ Copied' : 'Copy embed code'}
+                      </button>
+                    </div>
+                  </details>
+                )}
+
                 <div className="method-search">
                   <svg className="method-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <input
@@ -1438,6 +1495,9 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                              available_via: (m.available_via || []).slice(0, 1) }));
           }
 
+          // Editable preview amount -> integer minor units.
+          const amountMinor = Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100));
+
           async function onPay(methodId) {
             // Attempt a real payment through the project's live key, so the
             // preview exercises the real endpoint. The next-step / error text is
@@ -1450,7 +1510,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               const r = await fetch(`${API_BASE}/v1/payments`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: 150000, currency: 'KES', method: methodId,
+                body: JSON.stringify({ amount: amountMinor, currency: previewCurrency, method: methodId,
                                        customer: { email: 'customer@example.com' } }),
               });
               const d = await r.json().catch(() => ({}));
@@ -1472,8 +1532,8 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               open={checkoutOpen}
               onClose={() => setCheckoutOpen(false)}
               merchant={merchantName}
-              amount={150000}
-              currency="KES"
+              amount={amountMinor}
+              currency={previewCurrency}
               methods={payable}
               reference="kdu_preview_demo"
               onPay={onPay}
