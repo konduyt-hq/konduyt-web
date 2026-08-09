@@ -6,6 +6,7 @@ import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP, ENV_STEPS } from './envsetup';
+import { MERCHANT_COUNTRIES } from './countries';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -70,6 +71,8 @@ export default function Dashboard() {
   const [expandedMethod, setExpandedMethod] = useState(null);
   const [methodGroups, setMethodGroups] = useState([]);
   const [methodsCatalog, setMethodsCatalog] = useState([]); // /methods — treatment + available_via
+  const [methodSearch, setMethodSearch] = useState(''); // search by method (PayPal, Apple Pay, SEPA...)
+  const [savingCountry, setSavingCountry] = useState(false);
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -202,11 +205,17 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => setProviders(d.connectors || []))
       .catch(() => setProviders([]));
-    fetch(`${API_BASE}/methods`, { headers: authHeaders() })
+  }, [status]);
+
+  // Payment-method graph, resolved for the active project's merchant country.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const q = activeId ? `?project_id=${activeId}` : '';
+    fetch(`${API_BASE}/methods${q}`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setMethodsCatalog(d.methods || []))
       .catch(() => setMethodsCatalog([]));
-  }, [status]);
+  }, [status, activeId]);
 
   useEffect(() => {
     if (activeId) loadProjectData(activeId);
@@ -317,6 +326,27 @@ export default function Dashboard() {
       setKeys(kd.keys || null);
       setShowSecret(true);
     } catch (e) { alert('Could not revoke the key. Try again.'); }
+  }
+
+  async function saveMerchantCountry(country) {
+    if (!activeId) return;
+    setSavingCountry(true);
+    try {
+      const r = await fetch(`${API_BASE}/projects/${activeId}/country`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ merchant_country: country || null }),
+      });
+      if (r.ok) {
+        const proj = await r.json();
+        setProjects((ps) => ps.map((p) => (p.id === proj.id ? { ...p, ...proj } : p)));
+        // Re-resolve the method graph for the new country.
+        const mq = await fetch(`${API_BASE}/methods?project_id=${activeId}`, { headers: authHeaders() });
+        const md = await mq.json();
+        setMethodsCatalog(md.methods || []);
+      }
+    } catch (e) { /* keep silent; selector reflects last saved */ }
+    setSavingCountry(false);
   }
 
   function copyToClipboard(text, label) {
@@ -563,8 +593,23 @@ export default function Dashboard() {
                   </p>
                 </div>
 
+                {/* Search by method — developers think in methods, not providers */}
+                <div className="method-search">
+                  <svg className="method-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    className="method-search-input"
+                    type="text"
+                    placeholder="Search a payment method — PayPal, Apple Pay, M-Pesa, SEPA, UPI…"
+                    value={methodSearch}
+                    onChange={(e) => setMethodSearch(e.target.value)}
+                  />
+                  {methodSearch && (
+                    <button className="method-search-clear" type="button" onClick={() => setMethodSearch('')}>✕</button>
+                  )}
+                </div>
+
                 {/* Cannot receive money without a connected provider */}
-                {projectStatus && !projectStatus.has_connection && (
+                {projectStatus && !projectStatus.has_connection && !methodSearch && (
                   <div className="receive-warn">
                     <span className="receive-warn-icon">⚠</span>
                     <div>
@@ -575,7 +620,7 @@ export default function Dashboard() {
                 )}
 
                 {/* Project status: Live requires a connected provider AND an enabled method */}
-                {projectStatus && (
+                {projectStatus && !methodSearch && (
                   <div className={`proj-status ${projectStatus.live ? 'live' : 'notlive'}`}>
                     <span className="proj-status-dot" />
                     <div className="proj-status-text">
@@ -597,7 +642,47 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {methodGroups.length === 0 && (
+                {/* Search results — flat, filtered by method name */}
+                {methodSearch && (() => {
+                  const q = methodSearch.trim().toLowerCase();
+                  const matches = methodsCatalog.filter((m) =>
+                    m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
+                  if (matches.length === 0) {
+                    return (
+                      <div className="con-empty" style={{ marginTop: 16 }}>
+                        <p className="con-empty-sub">
+                          No payment method matches “{methodSearch}”. Try PayPal, Apple Pay, M-Pesa, SEPA, UPI, ACH, Pix…
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="pm-grid" style={{ marginTop: 4 }}>
+                      {matches.map((m) => {
+                        const treatment = m.treatment || 'method';
+                        const via = (m.available_via || []).map((v) => v.name);
+                        const connectable = m.connectable !== false;
+                        let statusText, statusClass;
+                        if (!connectable) { statusText = 'Connect a provider that supports this'; statusClass = 'needs'; }
+                        else if (treatment === 'capability') { statusText = `Turns on via ${via[0] || 'a processor'}`; statusClass = 'ready'; }
+                        else if (treatment === 'direct') { statusText = 'Direct connect'; statusClass = 'ready'; }
+                        else { statusText = via.length ? `Via ${via.join(', ')}` : 'Available'; statusClass = 'ready'; }
+                        return (
+                          <button className={`pm-tile ${!connectable ? 'needs' : ''}`} key={m.id} type="button"
+                            onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}>
+                            <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
+                            <span className="pm-tile-name">{m.name}</span>
+                            {treatment === 'capability' && <span className="pm-tile-tag">capability</span>}
+                            {treatment === 'direct' && <span className="pm-tile-tag direct">direct</span>}
+                            <span className={`pm-tile-status ${statusClass}`}>{statusText}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {methodGroups.length === 0 && !methodSearch && (
                   <div style={{ marginTop: 12 }}>
                     {!activeId ? (
                       <div className="con-empty">
@@ -633,10 +718,11 @@ export default function Dashboard() {
                   </div>
                 )}
                 {/* Category drill-down: categories first, then methods in the chosen category */}
-                {methodGroups.length > 0 && !activeCategory && (
+                {methodGroups.length > 0 && !activeCategory && !methodSearch && (
                   <div className="cat-grid">
                     {methodGroups.map((group) => {
                       const catByCategory = methodsCatalog.filter((m) => m.category === group.category);
+                      const methodCount = catByCategory.length || group.methods.length;
                       const enabledCount = group.methods.filter((m) => m.status === 'connected').length;
                       // "Connectable" = has a provider that can connect today (from /methods).
                       const connectableCount = catByCategory.filter((m) => m.connectable).length
@@ -645,7 +731,7 @@ export default function Dashboard() {
                         <button className="cat-tile" key={group.category} type="button"
                           onClick={() => setActiveCategory(group.category)}>
                           <span className="cat-tile-name">{group.label}</span>
-                          <span className="cat-tile-count">{group.methods.length} method{group.methods.length !== 1 ? 's' : ''}</span>
+                          <span className="cat-tile-count">{methodCount} method{methodCount !== 1 ? 's' : ''}</span>
                           <span className="cat-tile-meta">
                             {enabledCount > 0 && <span className="cat-badge on">{enabledCount} enabled</span>}
                             {enabledCount === 0 && connectableCount > 0 && <span className="cat-badge ready">{connectableCount} available</span>}
@@ -657,24 +743,29 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {methodGroups.length > 0 && activeCategory && (() => {
+                {methodGroups.length > 0 && activeCategory && !methodSearch && (() => {
                   const group = methodGroups.find((g) => g.category === activeCategory);
                   if (!group) { setActiveCategory(null); return null; }
-                  const catLookup = {};
-                  methodsCatalog.forEach((m) => { catLookup[m.id] = m; });
+                  // Connected/enabled status from the project's live method data.
+                  const statusById = {};
+                  group.methods.forEach((m) => { statusById[m.id] = m.status; });
+                  // Source of truth for WHAT methods exist in this category = the
+                  // country-resolved graph, so PayPal (direct) and capability
+                  // wallets always appear, in sync with search.
+                  const catMethods = methodsCatalog.filter((m) => m.category === activeCategory);
+                  const label = group.label;
                   return (
                     <div className="cat-detail">
                       <button className="pm-back" type="button" onClick={() => setActiveCategory(null)}>
                         ← All categories
                       </button>
-                      <h2 className="cat-detail-title">{group.label}</h2>
+                      <h2 className="cat-detail-title">{label}</h2>
                       <div className="pm-grid">
-                        {group.methods.map((m) => {
-                          const cat = catLookup[m.id] || {};
+                        {catMethods.map((cat) => {
+                          const m = { id: cat.id, name: cat.name, status: statusById[cat.id] };
                           const treatment = cat.treatment || 'method';
                           const via = (cat.available_via || []).map((v) => v.name);
-                          const connectable = cat.connectable !== false && m.status !== 'unavailable';
-                          // Status line, treatment-aware — never "not available yet".
+                          const connectable = cat.connectable !== false;
                           let statusText, statusClass;
                           if (m.status === 'connected') { statusText = '✓ Enabled'; statusClass = 'connected'; }
                           else if (!connectable) { statusText = 'Connect a provider that supports this'; statusClass = 'needs'; }
@@ -691,6 +782,7 @@ export default function Dashboard() {
                               <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
                               <span className="pm-tile-name">{m.name}</span>
                               {treatment === 'capability' && <span className="pm-tile-tag">capability</span>}
+                              {treatment === 'direct' && <span className="pm-tile-tag direct">direct</span>}
                               <span className={`pm-tile-status ${statusClass}`}>{statusText}</span>
                             </button>
                           );
@@ -1266,24 +1358,33 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     <span className="con-setting-v">{active?.name}</span>
                   </div>
                   <div className="con-setting-row">
-                    <span className="con-setting-k">Verification (KYC)</span>
+                    <span className="con-setting-k">Merchant country</span>
                     <span className="con-setting-v">
-                      {kycVerified ? (
-                        <span className="con-verified">✓ Verified</span>
-                      ) : (
-                        <span className="con-unverified">Not verified — required for Live mode</span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="con-setting-row">
-                    <span className="con-setting-k">Live keys</span>
-                    <span className="con-setting-v">
-                      {liveKeys?.enabled ? 'Active' : 'Disabled until KYC'}
+                      <select
+                        className="con-connect-input"
+                        style={{ maxWidth: 260 }}
+                        value={active?.merchant_country || ''}
+                        disabled={savingCountry}
+                        onChange={(e) => saveMerchantCountry(e.target.value)}
+                      >
+                        <option value="">Not set — showing all providers</option>
+                        {MERCHANT_COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.code}>{c.name}</option>
+                        ))}
+                      </select>
                     </span>
                   </div>
                   <p className="con-setting-note">
-                    API keys, webhooks, domains, tax settings and delete-project controls will
-                    expand here in later milestones.
+                    Your merchant country decides which payment providers you can actually connect —
+                    Konduyt shows only providers that onboard merchants where you operate, then resolves
+                    the right one behind each payment method. Change it any time; the Connections list updates.
+                  </p>
+                  <div className="con-setting-row">
+                    <span className="con-setting-k">Live keys</span>
+                    <span className="con-setting-v">Active from signup</span>
+                  </div>
+                  <p className="con-setting-note">
+                    Webhooks, domains, tax settings and delete-project controls will expand here in later milestones.
                   </p>
                 </div>
               </div>
