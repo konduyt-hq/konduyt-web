@@ -83,6 +83,11 @@ export default function Dashboard() {
   const [routeCustomerCountry, setRouteCustomerCountry] = useState('');
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  // Konduyt Sentinel
+  const [sentinelSources, setSentinelSources] = useState([]);
+  const [sentinelChanges, setSentinelChanges] = useState([]);
+  const [sentinelBusy, setSentinelBusy] = useState(false);
+  const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -239,6 +244,12 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, activeId, routeMethod, routeAmount, routeCustomerCountry, previewCurrency]);
 
+  // Load Sentinel data when its tab opens.
+  useEffect(() => {
+    if (tab === 'sentinel') loadSentinel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
   // Load the detail for the currently open payment method.
   useEffect(() => {
     if (!activeId || !activeMethod) { setMethodDetail(null); return; }
@@ -344,6 +355,50 @@ export default function Dashboard() {
       setKeys(kd.keys || null);
       setShowSecret(true);
     } catch (e) { alert('Could not revoke the key. Try again.'); }
+  }
+
+  async function loadSentinel() {
+    try {
+      const [sRes, cRes] = await Promise.all([
+        fetch(`${API_BASE}/sentinel/sources`, { headers: authHeaders() }),
+        fetch(`${API_BASE}/sentinel/changes`, { headers: authHeaders() }),
+      ]);
+      const s = await sRes.json();
+      const c = await cRes.json();
+      setSentinelSources(s.sources || []);
+      setSentinelChanges(c.changes || []);
+    } catch (e) { /* leave as-is */ }
+  }
+
+  async function runSentinel() {
+    setSentinelBusy(true);
+    try {
+      await fetch(`${API_BASE}/sentinel/run?force=true`, { method: 'POST', headers: authHeaders() });
+      await loadSentinel();
+    } catch (e) { /* ignore */ }
+    setSentinelBusy(false);
+  }
+
+  async function reviewChange(changeId, statusVal) {
+    try {
+      await fetch(`${API_BASE}/sentinel/changes/${changeId}/review`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: statusVal }),
+      });
+      setSentinelChanges((cs) => cs.map((c) => c.id === changeId ? { ...c, review_status: statusVal } : c));
+    } catch (e) { /* ignore */ }
+  }
+
+  async function testSentinelAlert(monitorType) {
+    setSentinelBusy(true);
+    try {
+      const r = await fetch(`${API_BASE}/sentinel/test-alert?type=${monitorType}`, {
+        method: 'POST', headers: authHeaders() });
+      const d = await r.json();
+      alert(d.sent ? `Test ${monitorType} alert sent — check Telegram.` : `Not sent: ${d.note}`);
+    } catch (e) { alert('Could not reach Sentinel.'); }
+    setSentinelBusy(false);
   }
 
   async function loadRouting() {
@@ -586,6 +641,7 @@ export default function Dashboard() {
         {[
           ['integrations', 'Integrations'],
           ['routing', 'Routing'],
+          ['sentinel', 'Sentinel'],
           ['overview', 'Overview'],
           ['money', 'Money'],
           ['activity', 'Activity'],
@@ -1366,6 +1422,112 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   </div>
                   );
                 })()}
+              </div>
+            )}
+
+            {tab === 'sentinel' && (
+              <div className="sentinel-page">
+                <div className="con-home-head con-home-head-row">
+                  <div>
+                    <h1 className="con-h1">Konduyt Sentinel</h1>
+                    <p className="con-sub">
+                      Watches provider pricing and tax-authority pages. Detects material changes,
+                      alerts Telegram, and waits for your review — it never changes Konduyt&apos;s logic on its own.
+                    </p>
+                  </div>
+                  <div className="sentinel-actions">
+                    <button className="preview-checkout-btn" type="button" disabled={sentinelBusy} onClick={runSentinel}>
+                      {sentinelBusy ? 'Running…' : '↻ Run check now'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="sentinel-test-row">
+                  <span>Verify Telegram delivery:</span>
+                  <button className="sentinel-test-btn" type="button" disabled={sentinelBusy}
+                    onClick={() => testSentinelAlert('fee')}>Test Fee bot</button>
+                  <button className="sentinel-test-btn" type="button" disabled={sentinelBusy}
+                    onClick={() => testSentinelAlert('tax')}>Test Tax bot</button>
+                </div>
+
+                <div className="int-subnav">
+                  <button className={sentinelTab === 'changes' ? 'int-subtab active' : 'int-subtab'}
+                    onClick={() => setSentinelTab('changes')}>
+                    Detected changes{sentinelChanges.filter((c) => c.review_status === 'pending').length > 0
+                      ? ` (${sentinelChanges.filter((c) => c.review_status === 'pending').length})` : ''}
+                  </button>
+                  <button className={sentinelTab === 'sources' ? 'int-subtab active' : 'int-subtab'}
+                    onClick={() => setSentinelTab('sources')}>
+                    Monitored sources ({sentinelSources.length})
+                  </button>
+                </div>
+
+                {sentinelTab === 'changes' && (
+                  sentinelChanges.length === 0 ? (
+                    <div className="route-empty">No changes detected yet. Sentinel records a change only when a fee or tax value actually moves.</div>
+                  ) : (
+                    <div className="sentinel-changes">
+                      {sentinelChanges.map((c) => (
+                        <div className={`sentinel-change ${c.review_status}`} key={c.id}>
+                          <div className="sentinel-change-head">
+                            <span className={`sentinel-type ${c.type}`}>{c.type === 'tax' ? 'TAX' : 'FEE'}</span>
+                            <span className="sentinel-change-source">{c.source_name}</span>
+                            <span className={`sentinel-review-badge ${c.review_status}`}>{c.review_status}</span>
+                          </div>
+                          <div className="sentinel-change-values">
+                            <div className="sentinel-val">
+                              <span className="sentinel-val-label">Previous</span>
+                              <span className="sentinel-val-old">{c.old_value || '—'}</span>
+                            </div>
+                            <span className="sentinel-arrow">→</span>
+                            <div className="sentinel-val">
+                              <span className="sentinel-val-label">New</span>
+                              <span className="sentinel-val-new">{c.new_value || '—'}</span>
+                            </div>
+                          </div>
+                          <div className="sentinel-change-meta">
+                            <span>{c.detected_at ? new Date(c.detected_at).toLocaleString() : ''}</span>
+                            <span>{c.alerted ? '✓ Telegram alerted' : 'not alerted'}</span>
+                            <a href={c.url} target="_blank" rel="noreferrer" className="sentinel-review-link">Review source ↗</a>
+                          </div>
+                          {c.review_status === 'pending' && (
+                            <div className="sentinel-change-actions">
+                              <button className="sentinel-approve" type="button" onClick={() => reviewChange(c.id, 'approved')}>
+                                Approve (I&apos;ll update the model)
+                              </button>
+                              <button className="sentinel-dismiss" type="button" onClick={() => reviewChange(c.id, 'dismissed')}>
+                                Dismiss
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {sentinelTab === 'sources' && (
+                  <div className="sentinel-sources">
+                    {['fee', 'tax'].map((t) => (
+                      <div key={t} className="sentinel-source-group">
+                        <h3 className="sentinel-group-title">{t === 'fee' ? 'Fee pages' : 'Tax authorities'} ({sentinelSources.filter((s) => s.type === t).length})</h3>
+                        {sentinelSources.filter((s) => s.type === t).map((s) => (
+                          <div className="sentinel-source" key={s.id}>
+                            <div className="sentinel-source-main">
+                              <span className="sentinel-source-name">{s.name}</span>
+                              <a href={s.url} target="_blank" rel="noreferrer" className="sentinel-source-url">{s.url}</a>
+                            </div>
+                            <div className="sentinel-source-meta">
+                              <span className={`sentinel-enabled ${s.enabled ? 'on' : ''}`}>{s.enabled ? '● enabled' : 'disabled'}</span>
+                              <span>every {Math.round(s.check_interval / 3600)}h</span>
+                              <span>{s.last_checked_at ? `checked ${new Date(s.last_checked_at).toLocaleDateString()}` : 'never checked'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
