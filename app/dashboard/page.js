@@ -77,6 +77,12 @@ export default function Dashboard() {
   const [checkoutOpen, setCheckoutOpen] = useState(false); // customer checkout preview
   const [previewAmount, setPreviewAmount] = useState('1500.00'); // major units, editable
   const [previewCurrency, setPreviewCurrency] = useState('KES');
+  // Routing intelligence panel
+  const [routeMethod, setRouteMethod] = useState('mpesa');
+  const [routeAmount, setRouteAmount] = useState('1500.00');
+  const [routeCustomerCountry, setRouteCustomerCountry] = useState('');
+  const [routeData, setRouteData] = useState(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -225,6 +231,14 @@ export default function Dashboard() {
     if (activeId) loadProjectData(activeId);
   }, [activeId, loadProjectData]);
 
+  // Load routing intelligence when the Routing tab is active or inputs change.
+  useEffect(() => {
+    if (tab !== 'routing' || !activeId) return;
+    const t = setTimeout(() => { loadRouting(); }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, activeId, routeMethod, routeAmount, routeCustomerCountry, previewCurrency]);
+
   // Load the detail for the currently open payment method.
   useEffect(() => {
     if (!activeId || !activeMethod) { setMethodDetail(null); return; }
@@ -330,6 +344,23 @@ export default function Dashboard() {
       setKeys(kd.keys || null);
       setShowSecret(true);
     } catch (e) { alert('Could not revoke the key. Try again.'); }
+  }
+
+  async function loadRouting() {
+    if (!activeId) return;
+    setRouteLoading(true);
+    try {
+      const amt = Math.max(0, Math.round((parseFloat(routeAmount) || 0) * 100));
+      const cc = routeCustomerCountry ? `&customer_country=${routeCustomerCountry}` : '';
+      const r = await fetch(
+        `${API_BASE}/projects/${activeId}/routing?method=${routeMethod}&amount=${amt}&currency=${previewCurrency}${cc}`,
+        { headers: authHeaders() });
+      const d = await r.json();
+      setRouteData(d);
+    } catch (e) {
+      setRouteData(null);
+    }
+    setRouteLoading(false);
   }
 
   async function saveMerchantCountry(country) {
@@ -554,6 +585,7 @@ export default function Dashboard() {
       <nav className="con-tabs">
         {[
           ['integrations', 'Integrations'],
+          ['routing', 'Routing'],
           ['overview', 'Overview'],
           ['money', 'Money'],
           ['activity', 'Activity'],
@@ -1334,6 +1366,103 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   </div>
                   );
                 })()}
+              </div>
+            )}
+
+            {tab === 'routing' && (
+              <div className="route-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Routing intelligence</h1>
+                  <p className="con-sub">
+                    For a given payment, Konduyt ranks every rail by cost, then settlement speed —
+                    and tells you if you&apos;re leaving money on the table.
+                  </p>
+                </div>
+
+                {/* Controls */}
+                <div className="route-controls">
+                  <label className="route-field">
+                    <span className="route-label">Method</span>
+                    <select className="con-connect-input" value={routeMethod}
+                      onChange={(e) => setRouteMethod(e.target.value)}>
+                      {[['mpesa','M-Pesa'],['card','Cards'],['apple_pay','Apple Pay'],['paypal_wallet','PayPal'],
+                        ['bank_transfer','Bank Transfer'],['rtgs','RTGS'],['pesalink','PesaLink'],['ach','ACH'],
+                        ['sepa','SEPA'],['upi','UPI'],['pix','Pix']].map(([id,label]) => (
+                        <option key={id} value={id}>{label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="route-field">
+                    <span className="route-label">Amount</span>
+                    <div className="route-amount-field">
+                      <select className="route-cur" value={previewCurrency}
+                        onChange={(e) => setPreviewCurrency(e.target.value)}>
+                        {['KES','USD','GBP','EUR','NGN','ZAR','INR','BRL'].map((c) => <option key={c}>{c}</option>)}
+                      </select>
+                      <input className="route-amt" value={routeAmount}
+                        onChange={(e) => setRouteAmount(e.target.value)} inputMode="decimal" />
+                    </div>
+                  </label>
+                  <label className="route-field">
+                    <span className="route-label">Customer location</span>
+                    <select className="con-connect-input" value={routeCustomerCountry}
+                      onChange={(e) => setRouteCustomerCountry(e.target.value)}>
+                      <option value="">Same as merchant (domestic)</option>
+                      {MERCHANT_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                {routeLoading && <div className="route-loading">Ranking rails…</div>}
+
+                {/* Gap nudge — the advice */}
+                {routeData?.gap && (
+                  <div className="route-gap">
+                    <span className="route-gap-icon">💡</span>
+                    <span>{routeData.gap.message}</span>
+                  </div>
+                )}
+
+                {/* Ranked table */}
+                {routeData?.options && routeData.options.length > 0 && (
+                  <div className="route-table">
+                    <div className="route-row route-row-head">
+                      <span className="route-c-rank">#</span>
+                      <span className="route-c-name">Provider</span>
+                      <span className="route-c-fee">Fee</span>
+                      <span className="route-c-settle">Settles</span>
+                      <span className="route-c-status">Status</span>
+                    </div>
+                    {routeData.options.map((o, i) => (
+                      <div className={`route-row ${o.connected ? 'connected' : ''} ${i === 0 && o.fee_profiled ? 'best' : ''}`} key={o.connector}>
+                        <span className="route-c-rank">{o.fee_profiled ? i + 1 : '–'}</span>
+                        <span className="route-c-name">
+                          {o.connector_name}
+                          {i === 0 && o.fee_profiled && <span className="route-badge cheapest">Cheapest</span>}
+                          {o.fx_applied && <span className="route-badge fx">incl. FX</span>}
+                        </span>
+                        <span className="route-c-fee">
+                          {o.effective_percent !== null ? `${o.effective_percent}%` : <span className="route-pending">pending</span>}
+                        </span>
+                        <span className="route-c-settle">{o.settlement !== 'unknown' ? o.settlement.toUpperCase() : '—'}</span>
+                        <span className="route-c-status">
+                          {o.connected
+                            ? <span className="route-conn on">● Connected</span>
+                            : <span className="route-conn">Not connected</span>}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="route-foot">
+                      Ranked by fee, then settlement speed. Fees are published provider rates
+                      {routeData.options.some((o) => o.fx_applied) ? ', including cross-border FX where it applies' : ''}.
+                      Your negotiated rates may differ.
+                    </div>
+                  </div>
+                )}
+
+                {routeData && (!routeData.options || routeData.options.length === 0) && !routeLoading && (
+                  <div className="route-empty">No providers serve this method for your merchant country yet.</div>
+                )}
               </div>
             )}
 
