@@ -39,18 +39,48 @@ function methodGlyph(id) {
 export default function CheckoutModal({
   open, onClose, merchant = 'Acme Store', amount = 150000, currency = 'KES',
   methods = [], reference = 'kdu_ref_preview', onPay, preview = false,
+  theme = {}, showIntelligence = true,
 }) {
   const [selected, setSelected] = useState(null);
   const [stage, setStage] = useState('select'); // select | processing | next | done | error
   const [message, setMessage] = useState('');
 
+  // Merchant-customizable look. Any omitted value falls back to Konduyt defaults.
+  const t = {
+    accent: theme.accent || '#22c55e',
+    accentInk: theme.accentInk || '#04120a',
+    radius: theme.radius != null ? theme.radius : 18,
+    font: theme.font || "'Inter', sans-serif",
+    logo: theme.logo || null,          // optional logo URL shown in header
+    heading: theme.heading || null,    // optional custom heading text
+  };
+  const styleVars = {
+    '--ckt-accent': t.accent,
+    '--ckt-accent-ink': t.accentInk,
+    '--ckt-radius': `${t.radius}px`,
+    fontFamily: t.font,
+  };
+
+  // Methods sorted cheapest-first when fee data is present; the cheapest is the
+  // recommended one and gets pre-selected — the intelligence, made visible.
+  const payable = methods.filter((m) => m.connectable !== false);
+  const ranked = [...payable].sort((a, b) => {
+    const fa = a.fee_percent == null ? 999 : a.fee_percent;
+    const fb = b.fee_percent == null ? 999 : b.fee_percent;
+    return fa - fb;
+  });
+  const cheapestId = ranked.length && ranked[0].fee_percent != null ? ranked[0].id : null;
+
   useEffect(() => {
-    if (open) { setSelected(null); setStage('select'); setMessage(''); }
+    if (open) {
+      setStage('select'); setMessage('');
+      // Pre-select the recommended (cheapest) method so the best rail is default.
+      setSelected(cheapestId || (ranked[0] && ranked[0].id) || null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!open) return null;
-
-  const payable = methods.filter((m) => m.connectable !== false);
 
   async function handlePay() {
     if (!selected) return;
@@ -82,17 +112,18 @@ export default function CheckoutModal({
     return 'The customer would be taken to the provider’s secure step to complete payment.';
   }
 
-  const selMethod = payable.find((m) => m.id === selected);
+  const selMethod = methods.find((m) => m.id === selected);
 
   return (
-    <div className="ckt-overlay" onClick={onClose}>
+    <div className="ckt-overlay" onClick={onClose} style={styleVars}>
       <div className="ckt-modal" onClick={(e) => e.stopPropagation()}>
         {preview && <div className="ckt-preview-ribbon">Preview</div>}
         <button className="ckt-close" type="button" onClick={onClose} aria-label="Close">✕</button>
 
-        {/* Header: merchant + amount */}
+        {/* Header: optional logo, merchant + amount */}
         <div className="ckt-head">
-          <div className="ckt-merchant">{merchant}</div>
+          {t.logo && <img src={t.logo} alt={merchant} className="ckt-logo" />}
+          <div className="ckt-merchant">{t.heading || merchant}</div>
           <div className="ckt-amount">{formatAmount(amount, currency)}</div>
           <div className="ckt-ref">Ref: {reference}</div>
         </div>
@@ -100,14 +131,16 @@ export default function CheckoutModal({
         {stage === 'select' && (
           <>
             <div className="ckt-section-label">Choose how to pay</div>
-            {payable.length === 0 ? (
+            {ranked.length === 0 ? (
               <div className="ckt-empty">
                 No payment methods are available yet. The merchant needs to connect a provider.
               </div>
             ) : (
               <div className="ckt-methods">
-                {payable.map((m) => {
-                  const via = (m.available_via || [])[0];
+                {ranked.map((m) => {
+                  const via = (m.available_via || [])[0] || (m.via ? { name: m.via } : null);
+                  const isCheapest = showIntelligence && m.id === cheapestId;
+                  const hasFee = showIntelligence && m.fee_percent != null;
                   return (
                     <button
                       key={m.id}
@@ -115,10 +148,16 @@ export default function CheckoutModal({
                       className={`ckt-method ${selected === m.id ? 'sel' : ''}`}
                       onClick={() => setSelected(m.id)}
                     >
-                      <span className="ckt-method-glyph"></span>
+                      <span className="ckt-method-glyph">{methodGlyph(m.id)}</span>
                       <span className="ckt-method-text">
-                        <span className="ckt-method-name">{m.name}</span>
-                        {via && <span className="ckt-method-via">via {via.name}</span>}
+                        <span className="ckt-method-name">
+                          {m.name}
+                          {isCheapest && <span className="ckt-cheapest">Best value</span>}
+                        </span>
+                        <span className="ckt-method-sub">
+                          {via && <span className="ckt-method-via">via {via.name}</span>}
+                          {hasFee && <span className="ckt-method-fee">{m.fee_percent}% fee{m.settlement ? ` · ${String(m.settlement).toUpperCase()}` : ''}</span>}
+                        </span>
                       </span>
                       <span className={`ckt-radio ${selected === m.id ? 'on' : ''}`} />
                     </button>
@@ -162,10 +201,9 @@ export default function CheckoutModal({
           </div>
         )}
 
-        {/* Footer — the required Konduyt attribution */}
+        {/* Footer — Konduyt attribution */}
         <div className="ckt-footer">
-          <span className="ckt-lock" aria-hidden="true">🔒</span>
-          <span>Secured &amp; optimized by</span>
+          <span>by</span>
           <a href="https://konduyt.dev" target="_blank" rel="noreferrer" className="ckt-brand">Konduyt.dev</a>
         </div>
       </div>

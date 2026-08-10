@@ -1775,15 +1775,22 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
           let payable = methodsCatalog
             .filter((m) => enabledMethodIds.has(m.id))
             .map((m) => ({ id: m.id, name: m.name, connectable: true,
+                           via: viaByMethod[m.id] || ((m.available_via || [])[0] || {}).name,
                            available_via: viaByMethod[m.id] ? [{ name: viaByMethod[m.id] }] : (m.available_via || []) }));
-          // Fallback representative set for preview when nothing is enabled yet.
+          // Fallback representative set for preview when nothing is enabled yet:
+          // up to 6 methods, each with a sample fee + settlement so the
+          // intelligence (cheapest-first, Best value badge) is visible.
           const isRepresentative = payable.length === 0;
           if (isRepresentative) {
-            const rep = ['mpesa', 'card', 'apple_pay'];
-            payable = methodsCatalog
-              .filter((m) => rep.includes(m.id))
-              .map((m) => ({ id: m.id, name: m.name, connectable: true,
-                             available_via: (m.available_via || []).slice(0, 1) }));
+            const rep = [
+              { id: 'mpesa', name: 'M-Pesa', via: 'Paystack', fee_percent: 1.5, settlement: 't1' },
+              { id: 'card', name: 'Cards', via: 'Paystack', fee_percent: 2.9, settlement: 't1' },
+              { id: 'apple_pay', name: 'Apple Pay', via: 'Paystack', fee_percent: 2.9, settlement: 't1' },
+              { id: 'paypal_wallet', name: 'PayPal', via: 'PayPal', fee_percent: 3.49, settlement: 'instant' },
+              { id: 'bank_transfer', name: 'Bank Transfer', via: 'Flutterwave', fee_percent: 1.4, settlement: 't1' },
+              { id: 'pesalink', name: 'PesaLink', via: 'Equity Bank', fee_percent: 0.5, settlement: 'instant' },
+            ];
+            payable = rep.map((m) => ({ ...m, connectable: true, available_via: [{ name: m.via }] }));
           }
 
           // Editable preview amount -> integer minor units.

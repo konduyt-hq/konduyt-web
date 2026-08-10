@@ -1529,7 +1529,7 @@
   .ckt-method-name{font-size:14.5px; font-weight:600; color:var(--ink);}
   .ckt-method-via{font-size:11.5px; color:var(--text-secondary);}
   .ckt-radio{width:18px; height:18px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; position:relative;}
-  .ckt-radio.on{border-color:var(--green);}
+  .ckt-radio.on{border-color:var(--ckt-accent,var(--green));}
   .ckt-radio.on::after{content:''; position:absolute; inset:3px; border-radius:50%; background:var(--green);}
 
   .ckt-pay-btn{width:100%; background:var(--green); color:#04120a; border:none; border-radius:11px; padding:15px; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; transition:background 0.15s;}
@@ -1653,3 +1653,9 @@
   .sentinel-source-url:hover{color:var(--green-ink);}
   .sentinel-source-meta{display:flex;gap:14px;font-size:11.5px;color:var(--text-secondary);flex-shrink:0;}
   .sentinel-enabled.on{color:var(--green-ink);font-weight:600;}
+
+  /* Checkout: intelligence + customization additions */
+  .ckt-logo{max-height:34px;max-width:150px;object-fit:contain;margin:0 auto 10px;display:block;}
+  .ckt-method-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .ckt-method-fee{font-size:11px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;}
+  .ckt-cheapest{display:inline-block;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--ckt-accent-ink,#04120a);background:var(--ckt-accent,var(--green));border-radius:4px;padding:1px 6px;margin-left:7px;vertical-align:middle;}
