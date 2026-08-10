@@ -1659,3 +1659,42 @@
   .ckt-method-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .ckt-method-fee{font-size:11px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;}
   .ckt-cheapest{display:inline-block;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--ckt-accent-ink,#04120a);background:var(--ckt-accent,var(--green));border-radius:4px;padding:1px 6px;margin-left:7px;vertical-align:middle;}
+
+  /* ===== Money tab ===== */
+  .money-page{max-width:760px;}
+  .money-totals{display:flex;gap:14px;margin-bottom:20px;}
+  .money-total-card{flex:1;border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px;}
+  .money-total-label{font-size:12px;color:var(--text-secondary);font-weight:600;}
+  .money-total-value{font-size:26px;font-weight:800;color:var(--ink);font-family:'JetBrains Mono',monospace;}
+  .money-table{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .money-row{display:grid;grid-template-columns:1.4fr 0.7fr 0.6fr 1.3fr 1.2fr;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border);font-size:13.5px;}
+  .money-row:last-child{border-bottom:none;}
+  .money-row-head{background:var(--panel);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);}
+  .money-provider{font-weight:600;color:var(--ink);}
+  .money-vol{font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .money-share{display:flex;align-items:center;gap:8px;position:relative;}
+  .money-share-bar{height:6px;background:var(--green);border-radius:3px;min-width:2px;max-width:70px;}
+  .money-share-pct{font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;}
+
+  /* ===== Taxes tab ===== */
+  .tax-page{max-width:760px;}
+  .tax-disclaimer{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 15px;font-size:12.5px;line-height:1.55;color:#92600a;margin-bottom:18px;}
+  .tax-result{border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;}
+  .tax-result-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .tax-result-country{font-weight:700;font-size:16px;color:var(--ink);}
+  .tax-result-type{font-size:13px;color:var(--text-secondary);}
+  .tax-indicative-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fef3c7;color:#92600a;padding:2px 8px;border-radius:5px;margin-left:auto;}
+  .tax-breakdown{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;}
+  .tax-line{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid var(--border);}
+  .tax-line span:last-child{font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .tax-line-total{border-bottom:none;font-weight:700;color:var(--green-ink);border-top:2px solid var(--border);margin-top:4px;padding-top:12px;}
+  .tax-noncomputable{font-size:13.5px;color:var(--text-secondary);padding:10px 0;line-height:1.5;}
+  .tax-caveats{margin:10px 0;padding-left:18px;font-size:12.5px;color:var(--text-secondary);line-height:1.6;}
+  .tax-source{font-size:11.5px;color:var(--text-secondary);margin-top:10px;}
+  .tax-source a{color:var(--text-secondary);}
+  .tax-table{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .tax-tr{display:grid;grid-template-columns:1.6fr 1.2fr 0.7fr 1fr 0.6fr;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .tax-tr:last-child{border-bottom:none;}
+  .tax-tr-head{background:var(--panel);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);}
+  .tax-country{font-weight:600;color:var(--ink);}
+  .tax-rate{font-family:'JetBrains Mono',monospace;font-weight:700;}

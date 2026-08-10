@@ -88,6 +88,16 @@ export default function Dashboard() {
   const [sentinelChanges, setSentinelChanges] = useState([]);
   const [sentinelBusy, setSentinelBusy] = useState(false);
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
+  // Money tab
+  const [moneyData, setMoneyData] = useState(null);
+  // Taxes tab
+  const [taxTable, setTaxTable] = useState([]);
+  const [taxDisclaimer, setTaxDisclaimer] = useState('');
+  const [taxView, setTaxView] = useState('estimate'); // 'estimate' | 'reference'
+  const [taxCountry, setTaxCountry] = useState('GB');
+  const [taxAmount, setTaxAmount] = useState('1500.00');
+  const [taxCurrency, setTaxCurrency] = useState('KES');
+  const [taxEstimate, setTaxEstimate] = useState(null);
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -250,6 +260,24 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  // Money tab: load real ledger split when opened.
+  useEffect(() => {
+    if (tab === 'money' && activeId) loadMoney();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, activeId]);
+
+  // Taxes tab: load reference table once; recompute estimate on input change.
+  useEffect(() => {
+    if (tab === 'taxes') loadTaxTable();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+  useEffect(() => {
+    if (tab !== 'taxes') return;
+    const t = setTimeout(() => loadTaxEstimate(), 200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, taxCountry, taxAmount]);
+
   // Load the detail for the currently open payment method.
   useEffect(() => {
     if (!activeId || !activeMethod) { setMethodDetail(null); return; }
@@ -355,6 +383,31 @@ export default function Dashboard() {
       setKeys(kd.keys || null);
       setShowSecret(true);
     } catch (e) { alert('Could not revoke the key. Try again.'); }
+  }
+
+  async function loadMoney() {
+    if (!activeId) return;
+    try {
+      const r = await fetch(`${API_BASE}/projects/${activeId}/money/by-provider`, { headers: authHeaders() });
+      setMoneyData(await r.json());
+    } catch (e) { setMoneyData(null); }
+  }
+
+  async function loadTaxTable() {
+    try {
+      const r = await fetch(`${API_BASE}/taxes`, { headers: authHeaders() });
+      const d = await r.json();
+      setTaxTable(d.taxes || []);
+      setTaxDisclaimer(d.disclaimer || '');
+    } catch (e) { setTaxTable([]); }
+  }
+
+  async function loadTaxEstimate() {
+    const amt = Math.max(0, Math.round((parseFloat(taxAmount) || 0) * 100));
+    try {
+      const r = await fetch(`${API_BASE}/taxes/estimate?country=${taxCountry}&amount=${amt}`, { headers: authHeaders() });
+      setTaxEstimate(await r.json());
+    } catch (e) { setTaxEstimate(null); }
   }
 
   async function loadSentinel() {
@@ -644,6 +697,7 @@ export default function Dashboard() {
           ['sentinel', 'Sentinel'],
           ['overview', 'Overview'],
           ['money', 'Money'],
+          ['taxes', 'Taxes'],
           ['activity', 'Activity'],
           ['settings', 'Settings'],
         ].map(([id, label]) => (
@@ -1705,13 +1759,154 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
             )}
 
             {tab === 'money' && (
-              <div className="con-empty">
-                <h2 className="con-empty-title">Money</h2>
-                <p className="con-empty-sub">
-                  Transactions, refunds and settlement history will live here once live payments
-                  are enabled — a unified view across every provider you connect. Arriving in
-                  Milestone 4.
-                </p>
+              <div className="money-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Money</h1>
+                  <p className="con-sub">
+                    Real transaction volume, split across the providers you&apos;ve connected.
+                  </p>
+                </div>
+                {!moneyData || !moneyData.has_data ? (
+                  <div className="route-empty">
+                    No transactions yet. Once live payments flow, this splits your volume and
+                    transaction count across every connected provider — real figures from the ledger, nothing simulated.
+                  </div>
+                ) : (
+                  <>
+                    <div className="money-totals">
+                      <div className="money-total-card">
+                        <span className="money-total-label">Completed volume</span>
+                        <span className="money-total-value">{(moneyData.total_completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="money-total-card">
+                        <span className="money-total-label">Transactions</span>
+                        <span className="money-total-value">{moneyData.total_transaction_count}</span>
+                      </div>
+                    </div>
+                    <div className="money-table">
+                      <div className="money-row money-row-head">
+                        <span>Provider</span><span>Currency</span><span>Txns</span><span>Completed volume</span><span>Share</span>
+                      </div>
+                      {moneyData.providers.map((p, i) => (
+                        <div className="money-row" key={`${p.provider}-${p.currency}-${i}`}>
+                          <span className="money-provider">{p.provider}</span>
+                          <span>{p.currency}</span>
+                          <span>{p.transaction_count}</span>
+                          <span className="money-vol">{(p.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          <span>
+                            {p.volume_share != null ? (
+                              <span className="money-share">
+                                <span className="money-share-bar" style={{ width: `${p.volume_share}%` }} />
+                                <span className="money-share-pct">{p.volume_share}%</span>
+                              </span>
+                            ) : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {tab === 'taxes' && (
+              <div className="tax-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Taxes</h1>
+                  <p className="con-sub">
+                    Indicative consumption-tax rates by the customer&apos;s country. Awareness only —
+                    Konduyt doesn&apos;t collect, remit, or determine tax liability.
+                  </p>
+                </div>
+
+                <div className="tax-disclaimer">
+                  <strong>Indicative &amp; informational.</strong> {taxDisclaimer ||
+                    'Actual tax depends on registration thresholds, B2B/B2C status, product classification and place-of-supply rules not modelled here.'}
+                </div>
+
+                <div className="int-subnav">
+                  <button className={taxView === 'estimate' ? 'int-subtab active' : 'int-subtab'}
+                    onClick={() => setTaxView('estimate')}>Per-payment</button>
+                  <button className={taxView === 'reference' ? 'int-subtab active' : 'int-subtab'}
+                    onClick={() => setTaxView('reference')}>Country reference</button>
+                </div>
+
+                {taxView === 'estimate' && (
+                  <div className="tax-estimate">
+                    <div className="route-controls">
+                      <label className="route-field">
+                        <span className="route-label">Customer country</span>
+                        <select className="con-connect-input" value={taxCountry}
+                          onChange={(e) => setTaxCountry(e.target.value)}>
+                          {(taxTable.length ? taxTable.map((t) => ({ code: t.code, name: t.country }))
+                            : MERCHANT_COUNTRIES).map((c) => (
+                            <option key={c.code} value={c.code}>{c.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="route-field">
+                        <span className="route-label">Payment amount</span>
+                        <div className="route-amount-field">
+                          <select className="route-cur" value={taxCurrency} onChange={(e) => setTaxCurrency(e.target.value)}>
+                            {['KES','USD','GBP','EUR','NGN','ZAR','INR','BRL'].map((c) => <option key={c}>{c}</option>)}
+                          </select>
+                          <input className="route-amt" value={taxAmount} onChange={(e) => setTaxAmount(e.target.value)} inputMode="decimal" />
+                        </div>
+                      </label>
+                    </div>
+
+                    {taxEstimate && !taxEstimate.error && (
+                      <div className="tax-result">
+                        <div className="tax-result-head">
+                          <span className="tax-result-country">{taxEstimate.country}</span>
+                          <span className="tax-result-type">{taxEstimate.tax_type}</span>
+                          <span className="tax-indicative-badge">indicative</span>
+                        </div>
+                        {taxEstimate.computable ? (
+                          <div className="tax-breakdown">
+                            <div className="tax-line"><span>Rate</span><span>{taxEstimate.rate}%</span></div>
+                            <div className="tax-line"><span>Payment amount</span><span>{taxCurrency} {(taxEstimate.amount_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
+                            <div className="tax-line"><span>Estimated tax</span><span>{taxCurrency} {(taxEstimate.tax_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
+                            <div className="tax-line tax-line-total"><span>Indicative total</span><span>{taxCurrency} {(taxEstimate.total_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
+                          </div>
+                        ) : (
+                          <div className="tax-noncomputable">
+                            No single national rate for {taxEstimate.country} — tax can&apos;t be shown as one number.
+                          </div>
+                        )}
+                        {taxEstimate.caveats && taxEstimate.caveats.length > 0 && (
+                          <ul className="tax-caveats">
+                            {taxEstimate.caveats.map((c, i) => <li key={i}>{c}</li>)}
+                          </ul>
+                        )}
+                        <div className="tax-source">
+                          Source: <a href={taxEstimate.source} target="_blank" rel="noreferrer">{taxEstimate.source}</a>
+                          {' · '}as of {taxEstimate.as_of}{taxEstimate.verified ? ' · verified' : ' · unverified'}
+                        </div>
+                      </div>
+                    )}
+                    {taxEstimate && taxEstimate.error && (
+                      <div className="route-empty">No indicative rate on file for this country yet.</div>
+                    )}
+                  </div>
+                )}
+
+                {taxView === 'reference' && (
+                  <div className="tax-table">
+                    <div className="tax-tr tax-tr-head">
+                      <span>Country</span><span>Type</span><span>Rate</span><span>Since</span><span>Verified</span>
+                    </div>
+                    {taxTable.map((t) => (
+                      <div className="tax-tr" key={t.code}>
+                        <span className="tax-country">{t.country}</span>
+                        <span>{t.tax_type}</span>
+                        <span className="tax-rate">{t.rate != null ? `${t.rate}%` : 'N/A'}</span>
+                        <span>{t.effective_from || '—'}</span>
+                        <span>{t.verified ? '✓' : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
