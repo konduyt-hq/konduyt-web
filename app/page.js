@@ -107,10 +107,10 @@ export default function Home() {
             <span className="brand-name">Konduyt</span>
           </div>
           <div className="nav-links">
-            <a href="#">Docs</a>
+            <a href="/docs/">Docs</a>
             <a href="/pricing/">Pricing</a>
-            <a href="#">GitHub</a>
-            <a href="#">Blog</a>
+            <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
+            <a href="/labs/">Labs</a>
           </div>
           <div className="nav-right">
             <a href="/signin/" className="signin">Sign in</a>
@@ -141,6 +141,8 @@ export default function Home() {
               <span className="vname" style={{color: '#43B02A'}}>M-Pesa</span>
               <span className="vdot">●</span>
               <span className="vname" style={{color: '#F5A623'}}>Flutterwave</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#00C3F7'}}>Paystack</span>
             </div>
             <div className="vendor-row" style={{marginTop: '10px'}}>
               <span className="vname" style={{color: '#3E4348'}}>Square</span>
@@ -151,7 +153,35 @@ export default function Home() {
               <span className="vdot">●</span>
               <span className="vname" style={{color: '#32BCAD'}}>Pix</span>
               <span className="vdot">●</span>
-              <span className="vendor-more">and more</span>
+              <span className="vname" style={{color: '#0A2540'}}>Adyen</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#1A1F71'}}>Mollie</span>
+            </div>
+            <div className="vendor-row" style={{marginTop: '10px'}}>
+              <span className="vname" style={{color: '#FF5A00'}}>Cashfree</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#00B9F1'}}>GoCardless</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#5A31F4'}}>Wise</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#EB001B'}}>Mastercard</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#1434CB'}}>Visa</span>
+            </div>
+            <div className="vendor-row" style={{marginTop: '10px'}}>
+              <span className="vname" style={{color: '#E30613'}}>Equity Bank</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#006B3F'}}>KCB</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#D50032'}}>Access Bank</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#00447C'}}>Standard Bank</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#FDB913'}}>MTN MoMo</span>
+              <span className="vdot">●</span>
+              <span className="vname" style={{color: '#FFCC00'}}>Airtel Money</span>
+              <span className="vdot">●</span>
+              <span className="vendor-more">+ 20 more</span>
             </div>
           </div>
 
@@ -284,11 +314,11 @@ export default function Home() {
             <span className="footer-name">Konduyt</span>
           </div>
           <div className="footer-links">
-            <a href="#">Docs</a>
+            <a href="/docs/">Docs</a>
             <a href="/pricing/">Pricing</a>
-            <a href="#">GitHub</a>
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
+            <a href="/labs/">Labs</a>
+            <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
+            <a href="/terms/">Terms</a>
           </div>
           <span className="footer-copy">© 2026 Konduyt</span>
         </footer>
