@@ -1945,12 +1945,14 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                                     <div className="tax-howto">
                                       <div className="tax-howto-title">How to account for this tax</div>
                                       {row.how_to_pay.filing && (
-                                        <div className="tax-filing">
-                                          <span className="tax-filing-badge">{row.how_to_pay.filing.frequency}</span>
+                                        <div className={`tax-filing ${row.how_to_pay.filing.frequency === 'varies' ? 'unknown' : ''}`}>
+                                          <span className="tax-filing-badge">
+                                            {row.how_to_pay.filing.frequency === 'varies' ? 'check' : row.how_to_pay.filing.frequency}
+                                          </span>
                                           <span className="tax-filing-text">
                                             {row.how_to_pay.filing.frequency !== 'varies'
-                                              ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}` : ''} So account for all {t ? t.country : ''} sales together each period, not per payment.</>
-                                              : row.how_to_pay.filing.note}
+                                              ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}.` : '.'} Account for all {t ? t.country : ''} sales together each period, not per payment.</>
+                                              : <>Filing frequency for {t ? t.country : 'this country'} isn&apos;t confirmed in Konduyt. Missing a deadline can be costly — confirm the cycle directly with {row.how_to_pay.authority}{row.how_to_pay.portal ? <> at <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></> : ''} before you rely on it.</>}
                                           </span>
                                         </div>
                                       )}

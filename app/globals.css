@@ -1725,8 +1725,14 @@
   .demo-banner::before{content:'●';color:#f59e0b;font-size:9px;}
 
   /* Filing cycle */
-  .tax-filing{display:flex;align-items:flex-start;gap:10px;background:var(--green-soft);border:1px solid var(--green-border);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.5;color:var(--green-ink);}
-  .tax-filing-badge{flex-shrink:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;background:var(--green);color:#04120a;padding:2px 8px;border-radius:5px;}
-  .tax-filing-text strong{font-weight:700;}
+  .tax-filing{display:flex;align-items:flex-start;gap:10px;background:var(--ink);border:1px solid var(--ink);border-radius:9px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.55;color:#e7e7e7;}
+  .tax-filing-badge{flex-shrink:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:var(--green);color:#04120a;padding:3px 9px;border-radius:5px;}
+  .tax-filing-text{color:#f0f0f0;}
+  .tax-filing-text strong{font-weight:700;color:#fff;}
+  .tax-filing.unknown{background:#3a2e0a;border-color:#7a5c12;}
+  .tax-filing.unknown .tax-filing-badge{background:#f59e0b;color:#1a1400;}
+  .tax-filing.unknown .tax-filing-text{color:#fde9b8;}
+  .tax-filing.unknown a{color:#fcd34d;font-weight:600;}
+  .tax-filing a{color:#7dd3a8;font-weight:600;}
   .tax-tr-filing{grid-template-columns:1.6fr 1.1fr 0.7fr 1fr 0.6fr;}
   .tax-filing-cell{text-transform:capitalize;color:var(--text-secondary);}
