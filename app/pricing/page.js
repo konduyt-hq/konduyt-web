@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 
 const FREE_LIVE = 3;
@@ -14,34 +14,8 @@ function calc(liveProjects) {
 
 export default function Pricing() {
   const [live, setLive] = useState(4);
-  const [localCur, setLocalCur] = useState(null);
-  const [localRate, setLocalRate] = useState(null);
   const [subMsg, setSubMsg] = useState('');
   const [subBusy, setSubBusy] = useState(false);
-
-  // Detect the visitor's currency (display only) and get a live USD rate, so we
-  // can show the $ price in local terms. Honest fallback: if it fails, stay in $.
-  useEffect(() => {
-    let off = false;
-    (async () => {
-      try {
-        const geo = await fetch('https://ipapi.co/json/').then((r) => r.json());
-        if (off || !geo || !geo.currency || geo.currency === 'USD') return;
-        const fx = await fetch('https://open.er-api.com/v6/latest/USD').then((r) => r.json());
-        if (off) return;
-        const rate = fx && fx.rates && fx.rates[geo.currency];
-        if (rate) { setLocalCur(geo.currency); setLocalRate(rate); }
-      } catch { /* stay in USD */ }
-    })();
-    return () => { off = true; };
-  }, []);
-
-  function localPrice(usd) {
-    if (!localCur || !localRate) return null;
-    try {
-      return new Intl.NumberFormat(undefined, { style: 'currency', currency: localCur }).format(usd * localRate);
-    } catch { return `${localCur} ${(usd * localRate).toFixed(2)}`; }
-  }
 
   async function subscribe() {
     // Requires a signed-in user; if not signed in, send to signup first.
@@ -107,15 +81,12 @@ export default function Pricing() {
               <span className="pricing-dollar">$10</span>
               <span className="pricing-per">/ live project / month</span>
             </div>
-            {localPrice(PRICE) && (
-              <div className="pricing-local">≈ {localPrice(PRICE)} / live project / month</div>
-            )}
             <p className="pricing-paid-note">
               Charged only for each additional live project beyond your 3 free. Test-mode
               projects never count.
             </p>
             <button className="pricing-start-btn" onClick={subscribe} type="button" disabled={subBusy}>
-              {subBusy ? 'Starting checkout…' : calc(live) > 0 ? `Subscribe — pay with Paystack` : 'Start for free'}
+              {subBusy ? 'Starting checkout…' : calc(live) > 0 ? 'Subscribe' : 'Start for free'}
             </button>
             {subMsg && <div className="pricing-sub-msg">{subMsg}</div>}
           </div>
@@ -154,9 +125,6 @@ export default function Pricing() {
             </div>
             <div className="pricing-calc-total">
               ${calc(live)}<span className="pricing-calc-mo">/mo</span>
-              {localPrice(calc(live)) && calc(live) > 0 && (
-                <span className="pricing-calc-local">≈ {localPrice(calc(live))}/mo</span>
-              )}
             </div>
           </div>
         </section>

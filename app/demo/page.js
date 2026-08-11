@@ -6,14 +6,22 @@ import Link from 'next/link';
 const BASE_KES = 420000; // KES 4,200.00 in minor units
 
 const RAILS = [
-  { id: 'pesalink', name: 'PesaLink', via: 'Equity Bank', fee: 0.5, settle: 'Instant' },
-  { id: 'mpesa', name: 'M-Pesa', via: 'Daraja', fee: 0.75, settle: 'Instant' },
-  { id: 'bank', name: 'Bank Transfer', via: 'Flutterwave', fee: 1.4, settle: 'T+1' },
-  { id: 'mpesa_ps', name: 'M-Pesa', via: 'Paystack', fee: 1.5, settle: 'T+1' },
-  { id: 'card', name: 'Cards', via: 'Paystack', fee: 2.9, settle: 'T+1' },
-  { id: 'applepay', name: 'Apple Pay', via: 'Stripe', fee: 2.9, settle: 'T+2' },
-  { id: 'paypal', name: 'PayPal', via: 'PayPal', fee: 3.49, settle: 'Instant' },
+  { id: 'pesalink', name: 'PesaLink', via: 'Equity Bank', fee: 0.5, speed: 'Instant', speedRank: 0 },
+  { id: 'mpesa', name: 'M-Pesa', via: 'Daraja', fee: 0.75, speed: 'Instant', speedRank: 0 },
+  { id: 'bank', name: 'Bank Transfer', via: 'Flutterwave', fee: 1.4, speed: 'Next day', speedRank: 1 },
+  { id: 'mpesa_ps', name: 'M-Pesa', via: 'Paystack', fee: 1.5, speed: 'Next day', speedRank: 1 },
+  { id: 'card', name: 'Cards', via: 'Paystack', fee: 2.9, speed: 'Next day', speedRank: 1 },
+  { id: 'applepay', name: 'Apple Pay', via: 'Stripe', fee: 2.9, speed: '2 days', speedRank: 2 },
+  { id: 'paypal', name: 'PayPal', via: 'PayPal', fee: 3.49, speed: 'Instant', speedRank: 0 },
 ];
+
+// Human labels for the recommendation, separate from the raw fee.
+function verdict(rail, cheapestId, dearestId) {
+  if (rail.id === cheapestId) return { label: 'Recommended', kind: 'good' };
+  if (rail.id === dearestId) return { label: 'Not recommended', kind: 'bad' };
+  if (rail.speedRank === 0) return { label: 'Fastest', kind: 'fast' };
+  return { label: 'An option', kind: 'neutral' };
+}
 
 function fmt(amountMinor, currency) {
   try {
@@ -104,21 +112,26 @@ export default function DemoCheckout() {
 
           <div className="demo-rail-table">
             <div className="demo-rail-row demo-rail-head">
-              <span>Rail</span><span>Fee</span><span>Fee cost</span><span>Settles</span>
+              <span>Rail</span><span>Transaction fee</span><span>Speed</span><span>Verdict</span>
             </div>
-            {ranked.map((rail) => (
-              <div key={rail.id}
-                className={`demo-rail-row ${selected === rail.id ? 'sel' : ''} ${rail.id === cheapest.id ? 'best' : ''}`}
-                onClick={() => stage === 'form' && setSelected(rail.id)} role="button">
-                <span className="demo-rail-name">
-                  {rail.name} <span className="demo-rail-via">via {rail.via}</span>
-                  {rail.id === cheapest.id && <span className="demo-rail-best">Best value</span>}
-                </span>
-                <span className="demo-rail-fee">{rail.fee}%</span>
-                <span className="demo-rail-cost">{fmt(rail.feeMinor, currency)}</span>
-                <span className="demo-rail-settle">{rail.settle}</span>
-              </div>
-            ))}
+            {ranked.map((rail) => {
+              const v = verdict(rail, cheapest.id, dearest.id);
+              return (
+                <div key={rail.id}
+                  className={`demo-rail-row ${selected === rail.id ? 'sel' : ''} ${rail.id === cheapest.id ? 'best' : ''}`}
+                  onClick={() => stage === 'form' && setSelected(rail.id)} role="button">
+                  <span className="demo-rail-name">
+                    {rail.name} <span className="demo-rail-via">via {rail.via}</span>
+                  </span>
+                  <span className="demo-rail-fee-cell">
+                    <span className="demo-rail-cost">{fmt(rail.feeMinor, currency)}</span>
+                    <span className="demo-rail-pct">{rail.fee}%</span>
+                  </span>
+                  <span className="demo-rail-speed">{rail.speed}</span>
+                  <span className={`demo-verdict demo-verdict-${v.kind}`}>{v.label}</span>
+                </div>
+              );
+            })}
           </div>
 
           <div className="demo-saving">
@@ -159,7 +172,7 @@ export default function DemoCheckout() {
             ) : (
               <>
                 <div className="demo-selected-rail">
-                  Paying with <strong>{sel.name}</strong> via {sel.via} · {sel.fee}% fee · settles {sel.settle}
+                  Paying with <strong>{sel.name}</strong> via {sel.via} · {sel.fee}% fee · {sel.speed}
                 </div>
 
                 {selected.startsWith('mpesa') ? (

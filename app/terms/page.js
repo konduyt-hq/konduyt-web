@@ -25,12 +25,14 @@ export default function Terms() {
         <section className="legal-section">
           <h2>1. What Konduyt is</h2>
           <p>
-            Konduyt is a payment orchestration layer. It gives developers a single integration that
-            routes payment requests to the developer&apos;s own connected payment providers (such as
-            Paystack, Stripe, PayPal, Flutterwave and others). Konduyt does not hold, receive,
-            settle or move your money. Funds always flow directly between the customer, the payment
-            provider, and the developer&apos;s own provider account. Konduyt is not a bank, a money
-            transmitter, a payment processor, or a tax-compliance service.
+            Konduyt is a payment orchestration and intelligence layer. It gives developers a single
+            integration that routes payment requests to the developer&apos;s own connected payment
+            providers (such as Paystack, Stripe, PayPal, Flutterwave and others), and surfaces
+            intelligence — fee and settlement comparison, routing recommendations, and reference tax
+            information — on top of those payments. Konduyt does not hold, receive, settle or move
+            your money. Funds always flow directly between the customer, the payment provider, and
+            the developer&apos;s own provider account. Konduyt is not a bank, a money transmitter, a
+            payment processor, or a tax-compliance service.
           </p>
         </section>
 
