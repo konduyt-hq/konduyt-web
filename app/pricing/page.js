@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 const FREE_LIVE = 3;
 const PRICE = 10;
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://konduyt-api.onrender.com';
 
 function calc(liveProjects) {
   const billable = Math.max(0, liveProjects - FREE_LIVE);
@@ -13,6 +14,59 @@ function calc(liveProjects) {
 
 export default function Pricing() {
   const [live, setLive] = useState(4);
+  const [localCur, setLocalCur] = useState(null);
+  const [localRate, setLocalRate] = useState(null);
+  const [subMsg, setSubMsg] = useState('');
+  const [subBusy, setSubBusy] = useState(false);
+
+  // Detect the visitor's currency (display only) and get a live USD rate, so we
+  // can show the $ price in local terms. Honest fallback: if it fails, stay in $.
+  useEffect(() => {
+    let off = false;
+    (async () => {
+      try {
+        const geo = await fetch('https://ipapi.co/json/').then((r) => r.json());
+        if (off || !geo || !geo.currency || geo.currency === 'USD') return;
+        const fx = await fetch('https://open.er-api.com/v6/latest/USD').then((r) => r.json());
+        if (off) return;
+        const rate = fx && fx.rates && fx.rates[geo.currency];
+        if (rate) { setLocalCur(geo.currency); setLocalRate(rate); }
+      } catch { /* stay in USD */ }
+    })();
+    return () => { off = true; };
+  }, []);
+
+  function localPrice(usd) {
+    if (!localCur || !localRate) return null;
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: localCur }).format(usd * localRate);
+    } catch { return `${localCur} ${(usd * localRate).toFixed(2)}`; }
+  }
+
+  async function subscribe() {
+    // Requires a signed-in user; if not signed in, send to signup first.
+    const token = typeof window !== 'undefined' ? localStorage.getItem('kdu_token') : null;
+    if (!token) { window.location.href = '/signup/'; return; }
+    if (calc(live) <= 0) { window.location.href = '/signup/'; return; }
+    setSubBusy(true); setSubMsg('');
+    try {
+      const r = await fetch(`${API_BASE}/billing/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ live_projects: live, currency: 'USD' }),
+      });
+      const d = await r.json();
+      if (d.ok && d.authorization_url) {
+        window.location.href = d.authorization_url; // redirect to Paystack
+      } else {
+        setSubMsg(d.detail || d.error || 'Could not start checkout. Please try again.');
+      }
+    } catch (e) {
+      setSubMsg('Could not reach billing. Please try again.');
+    } finally {
+      setSubBusy(false);
+    }
+  }
 
   return (
     <div className="pricing-root">
@@ -53,11 +107,17 @@ export default function Pricing() {
               <span className="pricing-dollar">$10</span>
               <span className="pricing-per">/ live project / month</span>
             </div>
+            {localPrice(PRICE) && (
+              <div className="pricing-local">≈ {localPrice(PRICE)} / live project / month</div>
+            )}
             <p className="pricing-paid-note">
               Charged only for each additional live project beyond your 3 free. Test-mode
               projects never count.
             </p>
-            <Link href="/signup/" className="pricing-start-btn">Start for free</Link>
+            <button className="pricing-start-btn" onClick={subscribe} type="button" disabled={subBusy}>
+              {subBusy ? 'Starting checkout…' : calc(live) > 0 ? `Subscribe — pay with Paystack` : 'Start for free'}
+            </button>
+            {subMsg && <div className="pricing-sub-msg">{subMsg}</div>}
           </div>
         </section>
 
@@ -94,6 +154,9 @@ export default function Pricing() {
             </div>
             <div className="pricing-calc-total">
               ${calc(live)}<span className="pricing-calc-mo">/mo</span>
+              {localPrice(calc(live)) && calc(live) > 0 && (
+                <span className="pricing-calc-local">≈ {localPrice(calc(live))}/mo</span>
+              )}
             </div>
           </div>
         </section>

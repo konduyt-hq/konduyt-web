@@ -1863,3 +1863,9 @@
   .demo-selected-rail strong{color:var(--ink);}
   .demo-rail-inputnote{font-size:12.5px;color:var(--text-secondary);padding:6px 0;}
   @media (max-width:880px){ .demo-two-col{grid-template-columns:1fr;max-width:460px;} }
+
+  /* Pricing: local currency + subscribe */
+  .pricing-local{font-size:13px;color:var(--green-ink);font-weight:600;margin:-4px 0 4px;}
+  .pricing-calc-local{display:block;font-size:13px;color:var(--green-ink);font-weight:600;margin-top:2px;}
+  .pricing-sub-msg{font-size:12.5px;color:#b45309;margin-top:10px;line-height:1.5;}
+  button.pricing-start-btn{border:none;cursor:pointer;font-family:inherit;width:100%;}
