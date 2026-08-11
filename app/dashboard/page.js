@@ -90,6 +90,10 @@ export default function Dashboard() {
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
   const [moneyData, setMoneyData] = useState(null);
+  // Demo/preview mode — browser-only sample data so the visualizations can be
+  // seen before real payments exist. NEVER written to the DB, never sent through
+  // the real endpoints. Auto-ignored once real data exists.
+  const [demoMode, setDemoMode] = useState(false);
   // Taxes tab
   const [taxTable, setTaxTable] = useState([]);
   const [taxDisclaimer, setTaxDisclaimer] = useState('');
@@ -386,6 +390,48 @@ export default function Dashboard() {
       setShowSecret(true);
     } catch (e) { alert('Could not revoke the key. Try again.'); }
   }
+
+  // Kenya-centric sample data for preview only — obviously illustrative, never
+  // persisted. Used solely to show how Money / Taxes visualizations render.
+  const DEMO_MONEY = {
+    has_data: true,
+    total_completed_volume: 4820000, // KES 48,200.00
+    total_transaction_count: 214,
+    providers: [
+      { provider: 'paystack', currency: 'KES', transaction_count: 142, completed_count: 138, completed_volume: 2760000, volume_share: 57.3 },
+      { provider: 'flutterwave', currency: 'KES', transaction_count: 48, completed_count: 45, completed_volume: 1210000, volume_share: 25.1 },
+      { provider: 'paypal', currency: 'USD', transaction_count: 16, completed_count: 15, completed_volume: 620000, volume_share: 12.9 },
+      { provider: 'stripe', currency: 'USD', transaction_count: 8, completed_count: 7, completed_volume: 230000, volume_share: 4.7 },
+    ],
+  };
+  const DEMO_TAX_RECEIVED = {
+    has_data: true,
+    countries: [
+      { country_code: 'KE', currency: 'KES', completed_count: 138, received_volume: 2760000,
+        tax: { country: 'Kenya', tax_type: 'VAT', rate: 16.0, computable: true, tax_minor: 441600,
+               caveats: ['16% VAT applies to taxable goods/services including digital supply to Kenyan consumers.',
+                         'Online/digital businesses: the Significant Economic Presence (SEP) tax replaced the 1.5% Digital Service Tax for non-resident digital businesses.'] },
+        how_to_pay: { authority: 'Kenya Revenue Authority (KRA)', portal: 'https://itax.kra.go.ke', detailed: true,
+          steps: ['Register for a KRA PIN and VAT obligation on iTax if you\u2019re VAT-registered.',
+                  'For non-resident digital supply, register under the VAT on digital / SEP regime.',
+                  'File and pay VAT monthly via iTax by the 20th of the following month.'] } },
+      { country_code: 'GB', currency: 'GBP', completed_count: 15, received_volume: 480000,
+        tax: { country: 'United Kingdom', tax_type: 'VAT', rate: 20.0, computable: true, tax_minor: 96000,
+               caveats: ['20% VAT applies to digital services to UK consumers.'] },
+        how_to_pay: { authority: 'HM Revenue & Customs (HMRC)', portal: 'https://www.gov.uk/vat-registration', detailed: true,
+          steps: ['Register for UK VAT if you supply digital services to UK consumers.',
+                  'File VAT returns through Making Tax Digital.'] } },
+      { country_code: 'US', currency: 'USD', completed_count: 22, received_volume: 850000,
+        tax: { country: 'United States', tax_type: 'Sales Tax', rate: null, computable: false,
+               caveats: ['No federal sales tax; rate varies by state and locality.', 'Economic nexus determines whether tax is due.'] },
+        how_to_pay: { authority: 'State revenue departments (no federal sales tax)', portal: 'https://www.taxadmin.org/state-tax-agencies', detailed: true,
+          steps: ['Sales tax is state/local — determine nexus per state.', 'Register with each state where you have economic nexus.'] } },
+    ],
+  };
+  // What the tabs actually render: real data, unless demo is on AND there's no
+  // real data (demo can never mask real numbers).
+  const moneyView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_MONEY : moneyData;
+  const taxReceivedView = (demoMode && (!taxReceived || !taxReceived.has_data)) ? DEMO_TAX_RECEIVED : taxReceived;
 
   async function loadMoney() {
     if (!activeId) return;
@@ -1770,13 +1816,24 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
             {tab === 'money' && (
               <div className="money-page">
-                <div className="con-home-head">
-                  <h1 className="con-h1">Money</h1>
-                  <p className="con-sub">
-                    Real transaction volume, split across the providers you&apos;ve connected.
-                  </p>
+                <div className="con-home-head con-home-head-row">
+                  <div>
+                    <h1 className="con-h1">Money</h1>
+                    <p className="con-sub">
+                      Real transaction volume, split across the providers you&apos;ve connected.
+                    </p>
+                  </div>
+                  {(!moneyData || !moneyData.has_data) && (
+                    <label className="demo-toggle">
+                      <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
+                      <span>Preview with sample data</span>
+                    </label>
+                  )}
                 </div>
-                {!moneyData || !moneyData.has_data ? (
+                {demoMode && moneyView === DEMO_MONEY && (
+                  <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
+                )}
+                {!moneyView || !moneyView.has_data ? (
                   <div className="route-empty">
                     No transactions yet. Once live payments flow, this splits your volume and
                     transaction count across every connected provider — real figures from the ledger, nothing simulated.
@@ -1786,18 +1843,18 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     <div className="money-totals">
                       <div className="money-total-card">
                         <span className="money-total-label">Completed volume</span>
-                        <span className="money-total-value">{(moneyData.total_completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span className="money-total-value">{(moneyView.total_completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       </div>
                       <div className="money-total-card">
                         <span className="money-total-label">Transactions</span>
-                        <span className="money-total-value">{moneyData.total_transaction_count}</span>
+                        <span className="money-total-value">{moneyView.total_transaction_count}</span>
                       </div>
                     </div>
                     <div className="money-table">
                       <div className="money-row money-row-head">
                         <span>Provider</span><span>Currency</span><span>Txns</span><span>Completed volume</span><span>Share</span>
                       </div>
-                      {moneyData.providers.map((p, i) => (
+                      {moneyView.providers.map((p, i) => (
                         <div className="money-row" key={`${p.provider}-${p.currency}-${i}`}>
                           <span className="money-provider">{p.provider}</span>
                           <span>{p.currency}</span>
@@ -1843,7 +1900,16 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
                 {taxView === 'estimate' && (
                   <div className="tax-received">
-                    {!taxReceived || !taxReceived.has_data ? (
+                    {(!taxReceived || !taxReceived.has_data) && (
+                      <label className="demo-toggle demo-toggle-inline">
+                        <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
+                        <span>Preview with sample data</span>
+                      </label>
+                    )}
+                    {demoMode && taxReceivedView === DEMO_TAX_RECEIVED && (
+                      <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
+                    )}
+                    {!taxReceivedView || !taxReceivedView.has_data ? (
                       <div className="route-empty">
                         No payments received yet. Once money flows in, this lists every country your
                         customers paid from — click a country to see the amount received, the indicative
@@ -1851,7 +1917,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       </div>
                     ) : (
                       <div className="tax-country-list">
-                        {taxReceived.countries.map((row) => {
+                        {taxReceivedView.countries.map((row) => {
                           const open = taxExpanded === row.country_code;
                           const t = row.tax;
                           return (
