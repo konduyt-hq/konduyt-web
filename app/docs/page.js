@@ -38,67 +38,128 @@ payment, _ := kd.Payments.Create(&konduyt.PaymentParams{
 })`,
 };
 
-// Documentation sections — the searchable content.
+// Documentation sections — the searchable content. Reflects the real, current
+// Konduyt architecture and product surface.
 const DOCS = [
   {
     id: 'introduction',
     group: 'Getting started',
     title: 'Introduction',
-    body: 'Konduyt is payment infrastructure. It connects providers like Stripe, PayPal, M-Pesa and Flutterwave to your product through one integration. You bring your own provider keys — Konduyt never holds your money; it routes and observes.',
+    body: 'Konduyt is a payment orchestration layer. It connects providers like Paystack, Stripe, PayPal, Flutterwave, M-Pesa (Daraja), Razorpay and more to your product through one integration. You bring your own provider accounts — Konduyt routes and records payments but never holds, receives or settles your money. Funds always flow directly between the customer, the provider, and your own provider account.',
+  },
+  {
+    id: 'how-it-works',
+    group: 'Getting started',
+    title: 'How it works',
+    body: 'You connect your provider credentials once. When you create a payment, Konduyt selects the right provider for the method and country, executes the operation against that provider using your credentials, and records the result in an append-only ledger. A payment state machine tracks each payment from created through completed, failed or refunded. Konduyt is the conductor; your providers are the instruments.',
+  },
+  {
+    id: 'architecture',
+    group: 'Getting started',
+    title: 'Architecture',
+    body: 'The API is a FastAPI (Python 3.12) service deployed on Render, backed by Neon Postgres (EU/Frankfurt). The web app is Next.js on Cloudflare Pages. Authentication is token-based (JWT). Provider secret credentials are encrypted at rest with Fernet (authenticated AES). The transaction ledger is append-only for integrity. Konduyt Sentinel monitors provider fee pages and tax-authority rate pages for changes. Everything is organised around one idea: one integration, every provider, without touching your money.',
   },
   {
     id: 'quickstart',
     group: 'Getting started',
     title: 'Quickstart',
-    body: 'Install the SDK for your language, add your universal test key, and create your first payment. No sign-up is required to test — the universal test keys work out of the box.',
+    body: 'Create a project in the dashboard to get your publishable and secret keys. Connect at least one provider (for Kenya, Paystack or M-Pesa). Then create your first payment from your server with your secret key, or drop the konduyt.js checkout onto your site with your publishable key.',
     code: true,
   },
   {
     id: 'authentication',
     group: 'Getting started',
     title: 'Authentication',
-    body: 'Authenticate every request with your secret key. Use the publishable key on the client for checkout, and keep the secret key on your server. Test keys are prefixed kdu_test_; live keys with kdu_live_.',
+    body: 'Authenticate every server request with your project secret key as a Bearer token. Use the publishable key on the client for checkout config and the embedded checkout — it exposes no secrets. Keys are issued per project at creation. Konduyt projects are live-only: there is no separate test mode inside Konduyt; you test with your provider\'s own test keys.',
+  },
+  {
+    id: 'projects-keys',
+    group: 'Getting started',
+    title: 'Projects & keys',
+    body: 'Each project has its own publishable and secret key and its own set of connected providers and merchant country. Both keys are generated at project creation. Your provider secret is encrypted before it is stored and is only decrypted in-memory to execute an operation you initiate.',
   },
   {
     id: 'create-payment',
     group: 'Payments',
     title: 'Create a payment',
-    body: 'Create a payment by specifying an amount, currency, provider and customer. Konduyt routes the request to the chosen provider and returns a unified payment object with a consistent shape across every provider.',
+    body: 'Create a payment with an amount (in minor units), currency, method and customer. Konduyt routes it to the best connected provider for that method and country and returns a unified payment object with a consistent shape across every provider — including an authorization URL or the provider-specific next step (M-Pesa STK push, card redirect, PayPal approval, Pix QR).',
     code: true,
+  },
+  {
+    id: 'methods',
+    group: 'Payments',
+    title: 'Payment methods',
+    body: 'Methods are country-aware. Konduyt maps a merchant country to eligible providers, and each provider to the methods it can serve — cards, M-Pesa and other mobile money, bank transfer, PesaLink, Apple Pay / Google Pay (device wallets), PayPal, Pix and more. Ask for a method; Konduyt picks the rail.',
+  },
+  {
+    id: 'checkout',
+    group: 'Payments',
+    title: 'Embedded checkout',
+    body: 'Drop konduyt.js onto any site and call Konduyt.checkout({ publishableKey, amount, currency, reference }). It renders a hosted-style popup with the available methods, each ranked cheapest-first with its fee and settlement time, the cheapest pre-selected. The popup never sees your secret key. A React CheckoutModal is also available with a theme prop (accent, radius, font, logo) so you can match your own UI.',
   },
   {
     id: 'providers',
     group: 'Payments',
     title: 'Providers',
-    body: 'Konduyt supports Stripe, PayPal, M-Pesa, Flutterwave, Square, Pesapal, Razorpay and Pix. For Kenya, M-Pesa and Paystack are the primary rails. Switch providers by changing a single field — the rest of your code stays the same.',
+    body: 'Konduyt speaks to 23+ payment providers and a growing set of bank rails. Fully profiled providers include Paystack, Flutterwave, M-Pesa (Daraja), Stripe, PayPal, Razorpay, Mollie, GoCardless and Cashfree. For Kenya, Paystack and M-Pesa are the primary rails. Switch providers by changing a field — the rest of your code stays the same.',
   },
   {
     id: 'webhooks',
     group: 'Payments',
     title: 'Webhooks',
-    body: 'Subscribe to events like payment.succeeded, payment.failed and refund.created. Konduyt normalizes webhook payloads across providers and retries delivery for 24 hours with exponential backoff.',
+    body: 'Konduyt receives provider webhooks, verifies them, and normalizes the payloads across providers so you handle one shape. Payment state transitions are recorded in the ledger as they arrive.',
   },
   {
-    id: 'refunds',
+    id: 'idempotency',
     group: 'Payments',
-    title: 'Refunds',
-    body: 'Issue full or partial refunds against any payment. Refunds return to the original payment method through the same provider that processed the payment.',
+    title: 'Idempotency',
+    body: 'Pass an idempotency key when creating a payment to safely retry without creating duplicates. Konduyt stores the first result and returns it for any retry with the same key.',
+  },
+  {
+    id: 'routing',
+    group: 'Intelligence',
+    title: 'Routing intelligence',
+    body: 'Konduyt ranks the rails that can serve a payment using published facts — each provider\'s fees, its settlement time, and the customer\'s location (which selects domestic vs cross-border fees and triggers FX). It is smart from the first transaction; it needs no history. Ranking is cheapest-first, with the settlement time shown so you can trade cost against speed.',
+  },
+  {
+    id: 'fee-model',
+    group: 'Intelligence',
+    title: 'Fee & settlement model',
+    body: 'A sourced, versioned model of real 2026 rates for profiled providers: per-method percentage and fixed fees, caps, cross-border surcharges, FX spread, and a settlement bucket (instant, T+1, T+2, T+3). Foreign-currency fixed fees are flagged rather than converted with an invented rate. Unprofiled providers are never shown as free.',
+  },
+  {
+    id: 'sentinel',
+    group: 'Intelligence',
+    title: 'Konduyt Sentinel',
+    body: 'Sentinel watches provider fee pages and tax-authority rate pages. It fetches, normalizes, hashes and compares; only on a real change does it extract, diff and assess materiality, then alert a human via Telegram for review. It detects and records — it never silently changes the numbers your routing depends on.',
+  },
+  {
+    id: 'taxes',
+    group: 'Intelligence',
+    title: 'Tax awareness',
+    body: 'Konduyt shows reference consumption-tax rates (VAT / GST / sales tax) for 186 countries, following the customer\'s country. It is awareness, not a filing and not tax advice: rates are the standard national rate, clearly flagged where unverified, and shown as N/A where no single national rate exists. Per-payment, you see the countries you received from, the reference tax on each, filing cycles, and how-to-pay guidance.',
+  },
+  {
+    id: 'money',
+    group: 'Dashboard',
+    title: 'Money',
+    body: 'The Money view splits your real transaction volume by connected provider — volume, transaction count and share — read from the ledger. It is empty until real payments exist; Konduyt never fabricates figures.',
   },
   {
     id: 'errors',
     group: 'Reference',
     title: 'Errors',
-    body: 'Konduyt uses standard HTTP status codes. 2xx for success, 4xx for request errors such as invalid keys or parameters, and 5xx for provider-side failures. Every error includes a machine-readable code and a human-readable message.',
+    body: 'Konduyt uses standard HTTP status codes: 2xx success, 4xx for request errors such as invalid keys or parameters, 5xx for provider-side failures. Every error includes a machine-readable code and a human-readable message. When no provider is connected for a method, Konduyt returns a clear no_provider_connected error rather than a fake success.',
   },
   {
-    id: 'idempotency',
+    id: 'security',
     group: 'Reference',
-    title: 'Idempotency',
-    body: 'Pass an Idempotency-Key header to safely retry requests without creating duplicate payments. Konduyt stores the result of the first request and returns it for any retry with the same key.',
+    title: 'Security',
+    body: 'Encryption in transit (TLS) and at rest for secret credentials (Fernet/AES), token-based auth, least-privilege provider access, and an append-only ledger. Konduyt never stores raw card data — that stays with the PCI-compliant providers you connect. Konduyt stores only the payment metadata needed to route and record a payment.',
   },
 ];
 
-const GROUPS = ['Getting started', 'Payments', 'Reference'];
+const GROUPS = ['Getting started', 'Payments', 'Intelligence', 'Dashboard', 'Reference'];
 
 export default function Docs() {
   const [query, setQuery] = useState('');
