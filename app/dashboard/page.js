@@ -1944,6 +1944,16 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                                   {row.how_to_pay && (
                                     <div className="tax-howto">
                                       <div className="tax-howto-title">How to account for this tax</div>
+                                      {row.how_to_pay.filing && (
+                                        <div className="tax-filing">
+                                          <span className="tax-filing-badge">{row.how_to_pay.filing.frequency}</span>
+                                          <span className="tax-filing-text">
+                                            {row.how_to_pay.filing.frequency !== 'varies'
+                                              ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}` : ''} So account for all {t ? t.country : ''} sales together each period, not per payment.</>
+                                              : row.how_to_pay.filing.note}
+                                          </span>
+                                        </div>
+                                      )}
                                       <div className="tax-howto-auth">
                                         {row.how_to_pay.authority}
                                         {row.how_to_pay.portal && (
@@ -1970,15 +1980,15 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
                 {taxView === 'reference' && (
                   <div className="tax-table">
-                    <div className="tax-tr tax-tr-head">
-                      <span>Country</span><span>Type</span><span>Rate</span><span>Since</span><span>Verified</span>
+                    <div className="tax-tr tax-tr-head tax-tr-filing">
+                      <span>Country</span><span>Type</span><span>Rate</span><span>Filing</span><span>Verified</span>
                     </div>
                     {taxTable.map((t) => (
-                      <div className="tax-tr" key={t.code}>
+                      <div className="tax-tr tax-tr-filing" key={t.code}>
                         <span className="tax-country">{t.country}</span>
                         <span>{t.tax_type}</span>
                         <span className="tax-rate">{t.rate != null ? `${t.rate}%` : 'N/A'}</span>
-                        <span>{t.effective_from || '—'}</span>
+                        <span className="tax-filing-cell">{t.filing ? t.filing.frequency : '—'}</span>
                         <span>{t.verified ? '✓' : '—'}</span>
                       </div>
                     ))}
