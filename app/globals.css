@@ -1725,14 +1725,70 @@
   .demo-banner::before{content:'●';color:#f59e0b;font-size:9px;}
 
   /* Filing cycle */
-  .tax-filing{display:flex;align-items:flex-start;gap:10px;background:var(--ink);border:1px solid var(--ink);border-radius:9px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.55;color:#e7e7e7;}
-  .tax-filing-badge{flex-shrink:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:var(--green);color:#04120a;padding:3px 9px;border-radius:5px;}
-  .tax-filing-text{color:#f0f0f0;}
-  .tax-filing-text strong{font-weight:700;color:#fff;}
-  .tax-filing.unknown{background:#3a2e0a;border-color:#7a5c12;}
-  .tax-filing.unknown .tax-filing-badge{background:#f59e0b;color:#1a1400;}
-  .tax-filing.unknown .tax-filing-text{color:#fde9b8;}
-  .tax-filing.unknown a{color:#fcd34d;font-weight:600;}
-  .tax-filing a{color:#7dd3a8;font-weight:600;}
+  .tax-filing{display:flex;align-items:flex-start;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.55;color:var(--ink);}
+  /* Only the frequency badge carries the dark, weighty shade — it's the critical bit. */
+  .tax-filing-badge{flex-shrink:0;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:var(--ink);color:#fff;padding:3px 10px;border-radius:5px;}
+  .tax-filing-text{color:var(--text-secondary);}
+  .tax-filing-text strong{font-weight:700;color:var(--ink);}
+  .tax-filing.unknown{background:#fffbeb;border-color:#fde68a;}
+  .tax-filing.unknown .tax-filing-badge{background:#92600a;color:#fff;}
+  .tax-filing.unknown .tax-filing-text{color:#92600a;}
+  .tax-filing.unknown a{color:#92600a;font-weight:700;text-decoration:underline;}
+  .tax-filing a{color:var(--green-ink);font-weight:600;}
   .tax-tr-filing{grid-template-columns:1.6fr 1.1fr 0.7fr 1fr 0.6fr;}
   .tax-filing-cell{text-transform:capitalize;color:var(--text-secondary);}
+
+  /* ===== Responsive: new tabs (routing / money / taxes / sentinel) ===== */
+  @media (max-width: 720px){
+    /* Header rows with side controls stack vertically */
+    .con-home-head-row{flex-direction:column;align-items:stretch;gap:12px;}
+    .preview-checkout-controls{flex-wrap:wrap;}
+    .sentinel-actions{width:100%;}
+    .sentinel-actions .preview-checkout-btn{width:100%;}
+
+    /* Routing controls stack */
+    .route-controls{flex-direction:column;}
+    .route-field{min-width:0;width:100%;}
+
+    /* Routing table -> denser grid, drop settlement column width */
+    .route-row{grid-template-columns:24px 1fr 64px 60px;font-size:12.5px;padding:11px 12px;gap:8px;}
+    .route-c-settle{display:none;}
+    .route-row-head .route-c-settle{display:none;}
+
+    /* Money table -> hide currency + txns columns on narrow, keep provider/volume/share */
+    .money-row{grid-template-columns:1.2fr 1.3fr 1fr;font-size:12.5px;padding:11px 12px;gap:8px;}
+    .money-row span:nth-child(2),.money-row span:nth-child(3){display:none;}
+    .money-totals{flex-direction:column;gap:10px;}
+
+    /* Tax reference table -> drop Type + Verified, keep country/rate/filing */
+    .tax-tr-filing{grid-template-columns:1.6fr 0.7fr 1fr;}
+    .tax-tr-filing span:nth-child(2),.tax-tr-filing span:nth-child(5){display:none;}
+
+    /* Tax per-payment country row stacks the meta */
+    .tax-country-row{grid-template-columns:1fr auto;grid-auto-rows:auto;gap:4px 10px;}
+    .tax-country-count{grid-column:1 / -1;font-size:11.5px;}
+    .tax-country-chev{grid-row:1;grid-column:2;}
+
+    /* Sentinel changes: values + meta wrap */
+    .sentinel-change-values{flex-wrap:wrap;gap:10px;}
+    .sentinel-source{flex-direction:column;align-items:flex-start;gap:6px;}
+    .sentinel-source-url{max-width:100%;}
+    .sentinel-change-actions{flex-direction:column;}
+    .sentinel-change-actions button{width:100%;}
+
+    /* Checkout modal fits small screens */
+    .ckt-modal,.kdu-m{max-width:100%;}
+    .ckt-amount{font-size:28px;}
+
+    /* Filing box wraps nicely */
+    .tax-filing{flex-direction:column;gap:8px;}
+  }
+
+  @media (max-width: 420px){
+    .con-h1{font-size:22px;}
+    .route-row{grid-template-columns:22px 1fr 56px;}
+    .route-c-fee{display:none;}
+    .route-row-head .route-c-fee{display:none;}
+    .money-total-value{font-size:22px;}
+    .tax-amount,.ckt-amount{font-size:26px;}
+  }
