@@ -1881,14 +1881,12 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 <div className="con-home-head">
                   <h1 className="con-h1">Taxes</h1>
                   <p className="con-sub">
-                    Indicative consumption-tax rates by the customer&apos;s country. Awareness only —
-                    Konduyt doesn&apos;t collect, remit, or determine tax liability.
+                    Reference consumption-tax rates by the customer&apos;s country.
                   </p>
                 </div>
 
-                <div className="tax-disclaimer">
-                  <strong>Tax awareness, built in.</strong> {taxDisclaimer ||
-                    'Konduyt shows the standard national consumption-tax rate for each country so you can see the tax context of a payment at a glance. It is not a tax filing or a substitute for professional advice.'}
+                <div className="tax-note">
+                  Konduyt shows each country&apos;s standard tax rate for reference — not a filing, and not tax advice.
                 </div>
 
                 <div className="int-subnav">
@@ -1912,7 +1910,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     {!taxReceivedView || !taxReceivedView.has_data ? (
                       <div className="route-empty">
                         No payments received yet. Once money flows in, this lists every country your
-                        customers paid from — click a country to see the amount received, the indicative
+                        customers paid from — click a country to see the amount received, the reference
                         tax on it, and how to account for that tax. Real data only, nothing simulated.
                       </div>
                     ) : (
@@ -1933,13 +1931,13 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                                 <div className="tax-country-detail">
                                   <div className="tax-result-head">
                                     <span className="tax-result-type">{t.tax_type}</span>
-                                    <span className="tax-indicative-badge">indicative</span>
+                                    <span className="tax-ref-badge">reference</span>
                                   </div>
                                   {t.computable ? (
                                     <div className="tax-breakdown">
                                       <div className="tax-line"><span>Received</span><span>{row.currency} {(row.received_volume/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
                                       <div className="tax-line"><span>Rate</span><span>{t.rate}%</span></div>
-                                      <div className="tax-line tax-line-total"><span>Indicative tax on this</span><span>{row.currency} {(t.tax_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
+                                      <div className="tax-line tax-line-total"><span>Reference tax on this</span><span>{row.currency} {(t.tax_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
                                     </div>
                                   ) : (
                                     <div className="tax-noncomputable">No single national rate for {t.country} — tax isn&apos;t a single number here.</div>

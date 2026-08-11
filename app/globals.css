@@ -1678,12 +1678,12 @@
 
   /* ===== Taxes tab ===== */
   .tax-page{max-width:760px;}
-  .tax-disclaimer{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 15px;font-size:12.5px;line-height:1.55;color:#92600a;margin-bottom:18px;}
+  .tax-note{font-size:12.5px;line-height:1.55;color:var(--text-secondary);margin-bottom:18px;}
   .tax-result{border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;}
   .tax-result-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
   .tax-result-country{font-weight:700;font-size:16px;color:var(--ink);}
   .tax-result-type{font-size:13px;color:var(--text-secondary);}
-  .tax-indicative-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fef3c7;color:#92600a;padding:2px 8px;border-radius:5px;margin-left:auto;}
+  .tax-ref-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--panel);color:var(--text-secondary);border:1px solid var(--border);padding:2px 8px;border-radius:5px;margin-left:auto;}
   .tax-breakdown{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;}
   .tax-line{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid var(--border);}
   .tax-line span:last-child{font-family:'JetBrains Mono',monospace;font-weight:600;}
