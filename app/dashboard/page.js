@@ -1881,12 +1881,8 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 <div className="con-home-head">
                   <h1 className="con-h1">Taxes</h1>
                   <p className="con-sub">
-                    Reference consumption-tax rates by the customer&apos;s country.
+                    Reference tax rates by the customer&apos;s country — each country&apos;s standard rate, for reference. Not a filing, and not tax advice.
                   </p>
-                </div>
-
-                <div className="tax-note">
-                  Konduyt shows each country&apos;s standard tax rate for reference — not a filing, and not tax advice.
                 </div>
 
                 <div className="int-subnav">
