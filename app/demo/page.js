@@ -7,7 +7,7 @@ const BASE_KES = 420000; // KES 4,200.00 in minor units
 
 const RAILS = [
   { id: 'pesalink', name: 'PesaLink', via: 'Equity Bank', fee: 0.5, speed: 'Instant', speedRank: 0 },
-  { id: 'mpesa', name: 'M-Pesa', via: 'Daraja', fee: 0.75, speed: 'Instant', speedRank: 0 },
+  { id: 'mpesa', name: 'M-Pesa', via: 'Safaricom', fee: 0.75, speed: 'Instant', speedRank: 0 },
   { id: 'bank', name: 'Bank Transfer', via: 'Flutterwave', fee: 1.4, speed: 'Next day', speedRank: 1 },
   { id: 'mpesa_ps', name: 'M-Pesa', via: 'Paystack', fee: 1.5, speed: 'Next day', speedRank: 1 },
   { id: 'card', name: 'Cards', via: 'Paystack', fee: 2.9, speed: 'Next day', speedRank: 1 },

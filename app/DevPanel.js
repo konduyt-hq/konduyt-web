@@ -295,10 +295,15 @@ function fmtMoney(minor, currency) {
 }
 
 // Human speed label from settlement days.
-function speedLabel(days) {
-  if (days === 0 || days == null) return 'Instant';
-  if (days === 1) return 'Next day';
-  return `${days} days`;
+// Human speed label. Only ever renders a real, known value — unknown shows "—",
+// NEVER a fabricated number of days.
+function speedLabel(settlement, days) {
+  if (settlement === 'instant' || days === 0) return 'Instant';
+  if (settlement === 't1' || days === 1) return 'Next day';
+  if (settlement === 't2' || days === 2) return '2 days';
+  if (settlement === 't3' || days === 3) return '3 days';
+  if (days != null && days > 0 && days < 99) return `${days} days`;
+  return '—';
 }
 
 export default function DevPanel() {
@@ -467,10 +472,10 @@ export default function DevPanel() {
               <div className="test-more-h">Every rail the intelligence considered</div>
               <div className="test-more-rails">
                 {options.map((o, i) => (
-                  <div key={o.connector} className={`test-more-rail ${i === 0 ? 'best' : ''}`}>
-                    <span className="test-more-rail-name">{o.connector_name || o.connector}</span>
+                  <div key={o.label} className={`test-more-rail ${i === 0 ? 'best' : ''}`}>
+                    <span className="test-more-rail-name">{o.label}</span>
                     <span className="test-more-rail-fee">{o.effective_percent != null ? `${o.effective_percent}%` : '—'}{o.fee_minor != null ? ` · ${fmtMoney(o.fee_minor, payment.currency)}` : ''}</span>
-                    <span className="test-more-rail-speed">{speedLabel(o.settlement_days)}</span>
+                    <span className="test-more-rail-speed">{speedLabel(o.settlement, o.settlement_days)}</span>
                     {o.rank_reason && <span className="test-more-rail-reason">{o.rank_reason}</span>}
                   </div>
                 ))}
@@ -480,7 +485,7 @@ export default function DevPanel() {
               <div className="test-more-h">What happens on a real (live) project</div>
               <ul className="test-more-list">
                 <li>You connect your own provider (Paystack, M-Pesa, etc.) in the dashboard.</li>
-                <li>Konduyt routes the payment to the recommended rail automatically.</li>
+                <li>Konduyt routes the payment to the cheapest provider automatically.</li>
                 <li>A webhook confirms the payment; the ledger records it.</li>
                 <li>The Money and Taxes tabs update with the real transaction.</li>
               </ul>
@@ -498,7 +503,7 @@ export default function DevPanel() {
             <div className="intel-modal-head">
               <div className="intel-modal-title">Payment intelligence</div>
               <div className="intel-modal-sub">
-                Same {fmtMoney(payment.amount * 100, payment.currency)} M-Pesa payment, every rail that can serve it —
+                Same {fmtMoney(payment.amount * 100, payment.currency)} {payment.method || 'M-Pesa'} payment, every provider that can process it —
                 ranked cheapest-first by real fees and speed. This is exactly what you get on a real project once you connect a provider.
               </div>
             </div>
@@ -507,19 +512,19 @@ export default function DevPanel() {
                 <span>Rail</span><span>Fee</span><span>Speed</span><span></span>
               </div>
               {options.map((o, i) => (
-                <div key={o.connector} className={`intel-modal-row ${i === 0 ? 'best' : ''}`}>
-                  <span className="intel-rail-name">{o.connector_name || o.connector}</span>
+                <div key={o.label} className={`intel-modal-row ${i === 0 ? 'best' : ''}`}>
+                  <span className="intel-rail-name">{o.label}</span>
                   <span className="intel-rail-fee">
                     {o.effective_percent != null ? `${o.effective_percent}%` : '—'}
                     {o.fee_minor != null && <span className="intel-rail-money"> · {fmtMoney(o.fee_minor, payment.currency)}</span>}
                   </span>
-                  <span className="intel-rail-speed">{speedLabel(o.settlement_days)}</span>
+                  <span className="intel-rail-speed">{speedLabel(o.settlement, o.settlement_days)}</span>
                   <span>{i === 0 ? <span className="intel-best-badge">Recommended</span> : null}</span>
                 </div>
               ))}
             </div>
             <div className="intel-modal-foot">
-              Test mode — no real charge. Konduyt chooses the recommended rail automatically for your customers.
+              Test mode — no real charge. Konduyt routes to the cheapest provider automatically for your customers.
             </div>
           </div>
         </div>
