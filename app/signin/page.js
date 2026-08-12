@@ -22,6 +22,26 @@ export default function Signin() {
     const params = new URLSearchParams(window.location.search);
     const e = params.get('error');
     if (e) setError(ERRORS[e] || 'Something went wrong. Please try again.');
+
+    // Silent re-auth (Cloudflare-style): if a session token already exists and is
+    // still valid, skip the sign-in screen and go straight to the dashboard.
+    // We validate against the API so an expired/stale token doesn't wrongly pass.
+    (async () => {
+      try {
+        const token = localStorage.getItem('kdu_token');
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          window.location.replace('/dashboard/');
+          return;
+        }
+        // Token invalid/expired — clear it and show the sign-in screen normally.
+        localStorage.removeItem('kdu_token');
+      } catch (err) { /* offline or API down — just show sign-in */ }
+    })();
+
     // Read the provider this browser last used, to reduce "which did I use?" confusion.
     try {
       const m = localStorage.getItem('kdu_last_method');

@@ -49,7 +49,7 @@ export default function Pricing() {
         <Link href="/" className="pricing-logo">Konduyt</Link>
         <div className="pricing-nav-links">
           <Link href="/" className="pricing-navlink">Home</Link>
-          <Link href="/signup/" className="pricing-navcta">Start for free</Link>
+          <Link href="/signin/" className="pricing-navcta">Sign in</Link>
         </div>
       </nav>
 
@@ -86,7 +86,7 @@ export default function Pricing() {
               projects never count.
             </p>
             <button className="pricing-start-btn" onClick={subscribe} type="button" disabled={subBusy}>
-              {subBusy ? 'Starting checkout…' : calc(live) > 0 ? 'Subscribe' : 'Start for free'}
+              {subBusy ? 'Starting checkout…' : calc(live) > 0 ? 'Subscribe' : 'Get started'}
             </button>
             {subMsg && <div className="pricing-sub-msg">{subMsg}</div>}
           </div>

@@ -44,7 +44,7 @@ export default function Labs() {
         <div className="labs-nav-links">
           <Link href="/" className="labs-navlink">Home</Link>
           <Link href="/pricing/" className="labs-navlink">Pricing</Link>
-          <Link href="/signup/" className="labs-navcta">Start for free</Link>
+          <Link href="/signin/" className="labs-navcta">Sign in</Link>
         </div>
       </nav>
 
