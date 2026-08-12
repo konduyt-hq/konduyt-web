@@ -268,8 +268,3 @@ export const DOCUMENTS = [
   },
 ];
 
-export const COUNSEL_NOTE = [
-  'This package is a legal drafting baseline. It must be reviewed and approved by qualified counsel before being relied upon commercially. Before publication as final documents:',
-  'Replace [JURISDICTION TO BE CONFIRMED BY COUNSEL] with the governing law and forum selected by counsel; replace [LEGAL EMAIL TO BE INSERTED] with the actual legal/privacy contact; replace the placeholder Subprocessor List with the actual providers; ensure the technical architecture matches the statements (credential encryption, data-center location, card-data flow, retention); and have counsel review for Kenyan payment-services regulation, the Kenya Data Protection Act, GDPR/UK GDPR, international transfers, provider/network requirements, limitation-of-liability enforceability, indemnification, and governing law.',
-  'Do not describe Konduyt as a regulated payment service, money transmitter, processor or tax service unless the relevant regulatory position has been independently confirmed.',
-];

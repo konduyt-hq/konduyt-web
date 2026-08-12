@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { DOCUMENTS, COUNSEL_NOTE } from './termsData';
+import { DOCUMENTS } from './termsData';
 
 function Section({ s }) {
   return (
@@ -49,10 +49,6 @@ export default function Terms() {
         </aside>
 
         <div className="legal-wrap">
-          <div className="legal-counsel-note">
-            {COUNSEL_NOTE.map((c, i) => <p key={i}>{c}</p>)}
-          </div>
-
           <header className="legal-head">
             <h1>{doc.title}</h1>
             <p className="legal-updated">{doc.meta}</p>
