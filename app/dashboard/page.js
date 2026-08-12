@@ -9,6 +9,7 @@ import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP, ENV_STEPS } from './envsetup';
 import { MERCHANT_COUNTRIES } from './countries';
 import { useTheme } from '../theme';
+import LanguageSelect from '../i18n/LanguageSelect';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -2068,6 +2069,13 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         >
                           <span className="settings-toggle-knob" />
                         </button>
+                      </div>
+                      <div className="settings-row">
+                        <div>
+                          <div className="settings-row-k">Language</div>
+                          <div className="settings-row-d">Choose your language. It applies across the whole site.</div>
+                        </div>
+                        <LanguageSelect className="settings-lang-select" />
                       </div>
                     </section>
 

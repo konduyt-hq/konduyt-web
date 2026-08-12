@@ -1,6 +1,7 @@
 import DevPanel from './DevPanel';
 import NavCta from './NavCta';
 import LandingCta from './LandingCta';
+import NavLinks from './NavLinks';
 
 export default function Home() {
   return (
@@ -107,12 +108,7 @@ export default function Home() {
             </div>
             <span className="brand-name">Konduyt</span>
           </div>
-          <div className="nav-links">
-            <a href="/docs/">Docs</a>
-            <a href="/pricing/">Pricing</a>
-            <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
-            <a href="/labs/">Labs</a>
-          </div>
+          <NavLinks />
           <div className="nav-right">
             <a href="/signin/" className="signin">Sign in</a>
             <NavCta />

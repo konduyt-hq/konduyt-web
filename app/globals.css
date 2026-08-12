@@ -2059,3 +2059,12 @@
     .settings-delete-actions{flex-direction:column;}
     .settings-delete-actions button{width:100%;}
   }
+
+  /* i18n: language selectors */
+  .nav-lang{background:transparent;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:13px;font-family:inherit;color:var(--ink);cursor:pointer;margin-left:4px;}
+  .settings-lang-select{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;color:var(--ink);cursor:pointer;min-width:140px;}
+  /* RTL support (Arabic) */
+  [dir="rtl"] .nav-links{flex-direction:row-reverse;}
+  [dir="rtl"] .settings-row{flex-direction:row-reverse;}
+  [dir="rtl"] .settings-profile{flex-direction:row-reverse;}
+  [dir="rtl"] .hero-grid{direction:rtl;}

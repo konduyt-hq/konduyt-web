@@ -1,5 +1,6 @@
 import './globals.css';
 import ServiceWorker from './ServiceWorker';
+import { I18nProvider } from './i18n/I18nProvider';
 
 export const metadata = {
   title: 'Konduyt — One integration. Every payment provider.',
@@ -27,8 +28,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Apply saved theme before paint to avoid a flash of the wrong theme. */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('kdu_theme');if(t==='dark'||(t===null&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();` }} />
+        {/* Apply saved theme + language/direction before paint to avoid a flash. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('kdu_theme');if(t==='dark'||(t===null&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.setAttribute('data-theme','dark');}var l=localStorage.getItem('kdu_lang');if(l){document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir', l==='ar'?'rtl':'ltr');}}catch(e){}})();` }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -41,7 +42,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        {children}
+        <I18nProvider>
+          {children}
+        </I18nProvider>
         <ServiceWorker />
       </body>
     </html>
