@@ -474,7 +474,7 @@ export default function DevPanel() {
                   <div key={o.label} className={`test-more-rail test-more-rail-2col ${i === 0 ? 'best' : ''}`}>
                     <span className="test-more-rail-name">{o.label}</span>
                     <span className="test-more-rail-fee">{o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}{o.fee_percent_effective != null ? ` · ${o.fee_percent_effective}%` : ''}</span>
-                    {i === 0 && <span className="test-more-rail-reason">Cheapest for this payment — chosen automatically.</span>}
+                    {i === 0 && <span className="test-more-rail-reason">Best value for this payment — chosen automatically.</span>}
                   </div>
                 ))}
               </div>
@@ -516,13 +516,14 @@ export default function DevPanel() {
                     {o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}
                     {o.fee_percent_effective != null && <span className="intel-rail-money"> · {o.fee_percent_effective}%</span>}
                   </span>
-                  <span>{i === 0 ? <span className="intel-best-badge">Cheapest</span> : null}</span>
+                  <span>{i === 0 ? <span className="intel-best-badge">Best value</span> : null}</span>
                 </div>
               ))}
             </div>
             <div className="intel-modal-foot">
-              Test mode — no real charge. Konduyt routes to the cheapest option automatically for your customers.
+              Test mode — no real charge. Konduyt routes to the best-value option automatically for your customers.
             </div>
+            <a href="/demo/" className="intel-modal-cta">View the full demo →</a>
           </div>
         </div>
       )}

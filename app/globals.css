@@ -1974,3 +1974,10 @@
   /* Demo popup: 2-column (pay with / charge) */
   .intel-modal-row.intel-row-2col{grid-template-columns:1.4fr 1.3fr 1fr;}
   .test-more-rail.test-more-rail-2col{grid-template-columns:1.2fr 1.4fr;}
+
+  /* Payment intelligence popup: View demo CTA */
+  .intel-modal-cta{display:block;text-align:center;margin-top:14px;background:var(--ink);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px;border-radius:9px;}
+  .intel-modal-cta:hover{opacity:.92;}
+
+  /* Demo table: 3-col (no speed) */
+  .demo-rail-row.demo-rail-row-3col{grid-template-columns:1.3fr 1.4fr 1fr;}

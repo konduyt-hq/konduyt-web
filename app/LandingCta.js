@@ -23,25 +23,14 @@ export default function LandingCta() {
     }
   }, []);
 
-  if (state === 'loading') {
-    // Avoid a flash: render nothing until we know which state.
-    return <div className="landing-cta landing-cta-placeholder" />;
+  if (state === 'loading' || state === 'returning') {
+    // Returning users already have "Sign in" and "Go to console" in the top nav —
+    // don't repeat them in a mid-page card. Show nothing here for them.
+    // (Also render nothing while loading, to avoid a flash of the new-user CTA.)
+    return null;
   }
 
-  if (state === 'returning') {
-    return (
-      <div className="landing-cta">
-        <h2 className="landing-cta-title">Welcome back</h2>
-        <p className="landing-cta-sub">Pick up where you left off.</p>
-        <div className="landing-cta-btns">
-          <a href="/dashboard/" className="landing-cta-primary">Go to console</a>
-          <a href="/signin/" className="landing-cta-secondary">Sign in</a>
-        </div>
-      </div>
-    );
-  }
-
-  // New visitor
+  // New visitor — invite them to sign up, after they've tried the test panel above.
   return (
     <div className="landing-cta">
       <h2 className="landing-cta-title">Ready when you are</h2>

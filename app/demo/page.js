@@ -5,21 +5,33 @@ import Link from 'next/link';
 
 const BASE_KES = 420000; // KES 4,200.00 in minor units
 
+// M-Pesa's real cost is a flat tariff band (KES), not a percentage. Others use
+// their real percentage rates. Each method appears ONCE — no "M-Pesa via X"
+// duplication (a customer just picks M-Pesa).
+function mpesaTariffMinor(kesMinor) {
+  const kes = kesMinor / 100;
+  const bands = [
+    [100, 0], [500, 7], [1000, 13], [1500, 23], [2500, 33], [3500, 53],
+    [5000, 57], [7500, 78], [10000, 90], [15000, 100], [20000, 105],
+    [35000, 108], [50000, 108], [150000, 108],
+  ];
+  for (const [upper, tariff] of bands) if (kes <= upper) return tariff * 100;
+  return 108 * 100;
+}
+
+// feeKesMinor(baseKesMinor) -> this method's charge in KES minor units.
 const RAILS = [
-  { id: 'pesalink', name: 'PesaLink', via: 'Equity Bank', fee: 0.5, speed: 'Instant', speedRank: 0 },
-  { id: 'mpesa', name: 'M-Pesa', via: 'Safaricom', fee: 0.75, speed: 'Instant', speedRank: 0 },
-  { id: 'bank', name: 'Bank Transfer', via: 'Flutterwave', fee: 1.4, speed: 'Next day', speedRank: 1 },
-  { id: 'mpesa_ps', name: 'M-Pesa', via: 'Paystack', fee: 1.5, speed: 'Next day', speedRank: 1 },
-  { id: 'card', name: 'Cards', via: 'Paystack', fee: 2.9, speed: 'Next day', speedRank: 1 },
-  { id: 'applepay', name: 'Apple Pay', via: 'Stripe', fee: 2.9, speed: '2 days', speedRank: 2 },
-  { id: 'paypal', name: 'PayPal', via: 'PayPal', fee: 3.49, speed: 'Instant', speedRank: 0 },
+  { id: 'mpesa', name: 'M-Pesa', feeKesMinor: (b) => mpesaTariffMinor(b), basis: 'M-Pesa tariff' },
+  { id: 'pesalink', name: 'PesaLink', feeKesMinor: (b) => Math.round(b * 0.005), basis: '0.5%' },
+  { id: 'card', name: 'Card', feeKesMinor: (b) => Math.round(b * 0.029), basis: '2.9%' },
+  { id: 'applepay', name: 'Apple Pay', feeKesMinor: (b) => Math.round(b * 0.029), basis: '2.9%' },
+  { id: 'paypal', name: 'PayPal', feeKesMinor: (b) => Math.round(b * 0.0349), basis: '3.49%' },
 ];
 
-// Human labels for the recommendation, separate from the raw fee.
+// Cost-based verdict only — no settlement/speed claims.
 function verdict(rail, cheapestId, dearestId) {
-  if (rail.id === cheapestId) return { label: 'Recommended', kind: 'good' };
-  if (rail.id === dearestId) return { label: 'Not recommended', kind: 'bad' };
-  if (rail.speedRank === 0) return { label: 'Fastest', kind: 'fast' };
+  if (rail.id === cheapestId) return { label: 'Best value', kind: 'good' };
+  if (rail.id === dearestId) return { label: 'Highest fee', kind: 'bad' };
   return { label: 'An option', kind: 'neutral' };
 }
 
@@ -65,10 +77,16 @@ export default function DemoCheckout() {
 
   const displayAmount = Math.round(BASE_KES * rate);
 
-  const ranked = [...RAILS].sort((a, b) => a.fee - b.fee).map((rail) => {
-    const feeMinor = Math.round(displayAmount * (rail.fee / 100));
-    return { ...rail, feeMinor, netMinor: displayAmount - feeMinor };
-  });
+  // Compute each method's real charge in KES, then convert to the display
+  // currency. M-Pesa uses its tariff band; others use their percentage.
+  const ranked = [...RAILS]
+    .map((rail) => {
+      const feeKes = rail.feeKesMinor(BASE_KES);
+      const feeMinor = Math.round(feeKes * rate);
+      return { ...rail, feeMinor, netMinor: displayAmount - feeMinor,
+               effPct: Math.round((feeKes / BASE_KES) * 1000) / 10 };
+    })
+    .sort((a, b) => a.feeMinor - b.feeMinor);
   const cheapest = ranked[0];
   const dearest = ranked[ranked.length - 1];
   const savingMinor = dearest.feeMinor - cheapest.feeMinor;
@@ -111,23 +129,20 @@ export default function DemoCheckout() {
           </div>
 
           <div className="demo-rail-table">
-            <div className="demo-rail-row demo-rail-head">
-              <span>Rail</span><span>Transaction fee</span><span>Speed</span><span>Verdict</span>
+            <div className="demo-rail-row demo-rail-head demo-rail-row-3col">
+              <span>Pay with</span><span>Transaction fee</span><span>Verdict</span>
             </div>
             {ranked.map((rail) => {
               const v = verdict(rail, cheapest.id, dearest.id);
               return (
                 <div key={rail.id}
-                  className={`demo-rail-row ${selected === rail.id ? 'sel' : ''} ${rail.id === cheapest.id ? 'best' : ''}`}
+                  className={`demo-rail-row demo-rail-row-3col ${selected === rail.id ? 'sel' : ''} ${rail.id === cheapest.id ? 'best' : ''}`}
                   onClick={() => stage === 'form' && setSelected(rail.id)} role="button">
-                  <span className="demo-rail-name">
-                    {rail.name} <span className="demo-rail-via">via {rail.via}</span>
-                  </span>
+                  <span className="demo-rail-name">{rail.name}</span>
                   <span className="demo-rail-fee-cell">
                     <span className="demo-rail-cost">{fmt(rail.feeMinor, currency)}</span>
-                    <span className="demo-rail-pct">{rail.fee}%</span>
+                    <span className="demo-rail-pct">{rail.effPct}%</span>
                   </span>
-                  <span className="demo-rail-speed">{rail.speed}</span>
                   <span className={`demo-verdict demo-verdict-${v.kind}`}>{v.label}</span>
                 </div>
               );
@@ -135,8 +150,8 @@ export default function DemoCheckout() {
           </div>
 
           <div className="demo-saving">
-            Cheapest vs most expensive on this payment:
-            <strong> you keep {fmt(savingMinor, currency)} more</strong> routing to {cheapest.name} instead of {dearest.name}.
+            Lowest vs highest fee on this payment:
+            <strong> you keep {fmt(savingMinor, currency)} more</strong> using {cheapest.name} instead of {dearest.name}.
           </div>
         </div>
 
@@ -163,8 +178,8 @@ export default function DemoCheckout() {
                 <div className="success-sub">{fmt(displayAmount, currency)} paid via {sel.name}</div>
                 <div className="success-receipt">
                   <div className="receipt-row"><span>Reference</span><span className="mono">KDU-PAY-8F2A91</span></div>
-                  <div className="receipt-row"><span>Rail</span><span>{sel.name} · {sel.via}</span></div>
-                  <div className="receipt-row"><span>Fee</span><span>{fmt(sel.feeMinor, currency)} ({sel.fee}%)</span></div>
+                  <div className="receipt-row"><span>Method</span><span>{sel.name}</span></div>
+                  <div className="receipt-row"><span>Fee</span><span>{fmt(sel.feeMinor, currency)} ({sel.effPct}%)</span></div>
                 </div>
                 <button className="pay-btn" onClick={reset} type="button">Run the demo again</button>
                 <Link href="/" className="demo-done-link">Done</Link>
@@ -172,7 +187,7 @@ export default function DemoCheckout() {
             ) : (
               <>
                 <div className="demo-selected-rail">
-                  Paying with <strong>{sel.name}</strong> via {sel.via} · {sel.fee}% fee · {sel.speed}
+                  Paying with <strong>{sel.name}</strong> · {fmt(sel.feeMinor, currency)} fee ({sel.effPct}%)
                 </div>
 
                 {selected.startsWith('mpesa') ? (
