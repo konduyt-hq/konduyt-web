@@ -323,8 +323,7 @@ export default function DevPanel() {
       const res = await fetch(`${API_BASE}/v1/demo/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 5000, currency: 'KES', method: 'mpesa',
-                               customer_country: 'KE', merchant_country: 'KE' }),
+        body: JSON.stringify({ amount: 500000, currency: 'KES' }),
       });
       const data = await res.json();
       setResult(data);
@@ -469,14 +468,13 @@ export default function DevPanel() {
               <pre className="code-pre">{JSON.stringify(payment, null, 2)}</pre>
             </div>
             <div className="test-more-block">
-              <div className="test-more-h">Every rail the intelligence considered</div>
+              <div className="test-more-h">What each way to pay would cost</div>
               <div className="test-more-rails">
                 {options.map((o, i) => (
-                  <div key={o.label} className={`test-more-rail ${i === 0 ? 'best' : ''}`}>
+                  <div key={o.label} className={`test-more-rail test-more-rail-2col ${i === 0 ? 'best' : ''}`}>
                     <span className="test-more-rail-name">{o.label}</span>
-                    <span className="test-more-rail-fee">{o.effective_percent != null ? `${o.effective_percent}%` : '—'}{o.fee_minor != null ? ` · ${fmtMoney(o.fee_minor, payment.currency)}` : ''}</span>
-                    <span className="test-more-rail-speed">{speedLabel(o.settlement, o.settlement_days)}</span>
-                    {o.rank_reason && <span className="test-more-rail-reason">{o.rank_reason}</span>}
+                    <span className="test-more-rail-fee">{o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}{o.fee_percent_effective != null ? ` · ${o.fee_percent_effective}%` : ''}</span>
+                    {i === 0 && <span className="test-more-rail-reason">Cheapest for this payment — chosen automatically.</span>}
                   </div>
                 ))}
               </div>
@@ -484,8 +482,8 @@ export default function DevPanel() {
             <div className="test-more-block">
               <div className="test-more-h">What happens on a real (live) project</div>
               <ul className="test-more-list">
-                <li>You connect your own provider (Paystack, M-Pesa, etc.) in the dashboard.</li>
-                <li>Konduyt routes the payment to the cheapest provider automatically.</li>
+                <li>You connect your own provider (Paystack, M-Pesa, PayPal, etc.) in the dashboard.</li>
+                <li>Konduyt routes the payment to the cheapest option automatically.</li>
                 <li>A webhook confirms the payment; the ledger records it.</li>
                 <li>The Money and Taxes tabs update with the real transaction.</li>
               </ul>
@@ -503,28 +501,27 @@ export default function DevPanel() {
             <div className="intel-modal-head">
               <div className="intel-modal-title">Payment intelligence</div>
               <div className="intel-modal-sub">
-                Same {fmtMoney(payment.amount * 100, payment.currency)} {payment.method || 'M-Pesa'} payment, every provider that can process it —
-                ranked cheapest-first by real fees and speed. This is exactly what you get on a real project once you connect a provider.
+                A {fmtMoney(payment.amount, payment.currency)} payment, every way your customer can pay —
+                ranked cheapest-first by real charges. This is exactly what you get on a real project once you connect a provider.
               </div>
             </div>
             <div className="intel-modal-table">
-              <div className="intel-modal-row intel-modal-row-head">
-                <span>Rail</span><span>Fee</span><span>Speed</span><span></span>
+              <div className="intel-modal-row intel-modal-row-head intel-row-2col">
+                <span>Pay with</span><span>Charge</span><span></span>
               </div>
               {options.map((o, i) => (
-                <div key={o.label} className={`intel-modal-row ${i === 0 ? 'best' : ''}`}>
+                <div key={o.label} className={`intel-modal-row intel-row-2col ${i === 0 ? 'best' : ''}`}>
                   <span className="intel-rail-name">{o.label}</span>
                   <span className="intel-rail-fee">
-                    {o.effective_percent != null ? `${o.effective_percent}%` : '—'}
-                    {o.fee_minor != null && <span className="intel-rail-money"> · {fmtMoney(o.fee_minor, payment.currency)}</span>}
+                    {o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}
+                    {o.fee_percent_effective != null && <span className="intel-rail-money"> · {o.fee_percent_effective}%</span>}
                   </span>
-                  <span className="intel-rail-speed">{speedLabel(o.settlement, o.settlement_days)}</span>
-                  <span>{i === 0 ? <span className="intel-best-badge">Recommended</span> : null}</span>
+                  <span>{i === 0 ? <span className="intel-best-badge">Cheapest</span> : null}</span>
                 </div>
               ))}
             </div>
             <div className="intel-modal-foot">
-              Test mode — no real charge. Konduyt routes to the cheapest provider automatically for your customers.
+              Test mode — no real charge. Konduyt routes to the cheapest option automatically for your customers.
             </div>
           </div>
         </div>

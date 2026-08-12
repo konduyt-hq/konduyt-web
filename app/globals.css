@@ -1970,3 +1970,7 @@
   .landing-cta-primary{background:var(--ink);color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 28px;border-radius:10px;}
   .landing-cta-secondary{background:none;color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid var(--border);}
   .landing-cta-secondary:hover{border-color:var(--ink);}
+
+  /* Demo popup: 2-column (pay with / charge) */
+  .intel-modal-row.intel-row-2col{grid-template-columns:1.4fr 1.3fr 1fr;}
+  .test-more-rail.test-more-rail-2col{grid-template-columns:1.2fr 1.4fr;}
