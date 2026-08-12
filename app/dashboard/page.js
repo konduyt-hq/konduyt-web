@@ -8,6 +8,7 @@ import { LANG_SNIPPETS } from './langsnippets';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP, ENV_STEPS } from './envsetup';
 import { MERCHANT_COUNTRIES } from './countries';
+import { useTheme } from '../theme';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -53,6 +54,11 @@ function monogram(name) {
 export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
+  const { theme, toggle: toggleTheme } = useTheme();
+  const [settingsView, setSettingsView] = useState('main'); // main | delete
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [projects, setProjects] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
@@ -305,6 +311,32 @@ export default function Dashboard() {
   function logout() {
     clearToken();
     window.location.href = '/';
+  }
+
+  async function deleteAccount() {
+    setDeleteError('');
+    if (deleteConfirm.trim().toUpperCase() !== 'DELETE') {
+      setDeleteError('Type DELETE to confirm.');
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/account`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        clearToken();
+        window.location.href = '/?deleted=1';
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setDeleteError(d.detail || 'Could not delete the account. Please try again.');
+      }
+    } catch (e) {
+      setDeleteError('Could not reach the server. Please try again.');
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   async function connectProvider(providerId, schemaFields) {
@@ -2000,43 +2032,139 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
             )}
 
             {tab === 'settings' && (
-              <div className="con-project">
-                <h2 className="con-empty-title">Project settings</h2>
-                <div className="con-proj-settings">
-                  <div className="con-setting-row">
-                    <span className="con-setting-k">Project name</span>
-                    <span className="con-setting-v">{active?.name}</span>
+              <div className="con-settings">
+                <h2 className="con-settings-title">Settings</h2>
+                <p className="con-settings-sub">Manage your account, appearance and preferences.</p>
+
+                {settingsView === 'main' && (
+                  <div className="settings-sections">
+                    {/* Profile */}
+                    <section className="settings-card">
+                      <div className="settings-card-h">Profile</div>
+                      <div className="settings-profile">
+                        <div className="settings-avatar">{(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}</div>
+                        <div>
+                          <div className="settings-profile-name">{user?.name || 'Konduyt developer'}</div>
+                          <div className="settings-profile-email">{user?.email || '—'}</div>
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* Appearance / Dark mode */}
+                    <section className="settings-card">
+                      <div className="settings-card-h">Appearance</div>
+                      <div className="settings-row">
+                        <div>
+                          <div className="settings-row-k">Dark mode</div>
+                          <div className="settings-row-d">Switch between light and dark across the whole site.</div>
+                        </div>
+                        <button
+                          type="button"
+                          className={`settings-toggle ${theme === 'dark' ? 'on' : ''}`}
+                          onClick={toggleTheme}
+                          role="switch"
+                          aria-checked={theme === 'dark'}
+                          aria-label="Toggle dark mode"
+                        >
+                          <span className="settings-toggle-knob" />
+                        </button>
+                      </div>
+                    </section>
+
+                    {/* Plan */}
+                    <section className="settings-card">
+                      <div className="settings-card-h">Plan</div>
+                      <div className="settings-row">
+                        <div>
+                          <div className="settings-row-k">Current plan</div>
+                          <div className="settings-row-d">
+                            {projects.length <= 3
+                              ? `Free — ${projects.length} of 3 free live projects used.`
+                              : `${projects.length} live projects · $${(projects.length - 3) * 10}/mo beyond the 3 free.`}
+                          </div>
+                        </div>
+                        <a href="/pricing/" className="settings-link-btn">View pricing</a>
+                      </div>
+                    </section>
+
+                    {/* Resources */}
+                    <section className="settings-card">
+                      <div className="settings-card-h">Resources</div>
+                      <a href="/docs/" className="settings-nav-row" target="_blank" rel="noreferrer">
+                        <span><span className="settings-nav-k">Documentation</span><span className="settings-nav-d">Guides and API reference</span></span>
+                        <span className="settings-nav-arrow">↗</span>
+                      </a>
+                      <a href="https://github.com/konduyt-hq" className="settings-nav-row" target="_blank" rel="noreferrer">
+                        <span><span className="settings-nav-k">GitHub</span><span className="settings-nav-d">github.com/konduyt-hq</span></span>
+                        <span className="settings-nav-arrow">↗</span>
+                      </a>
+                      <a href="/labs/" className="settings-nav-row" target="_blank" rel="noreferrer">
+                        <span><span className="settings-nav-k">Konduyt Labs</span><span className="settings-nav-d">Konduyt Intelligence — join the list</span></span>
+                        <span className="settings-nav-arrow">↗</span>
+                      </a>
+                      <a href="/terms/" className="settings-nav-row" target="_blank" rel="noreferrer">
+                        <span><span className="settings-nav-k">Privacy &amp; Terms</span><span className="settings-nav-d">Terms, DPA, Privacy Notice</span></span>
+                        <span className="settings-nav-arrow">↗</span>
+                      </a>
+                    </section>
+
+                    {/* About */}
+                    <section className="settings-card">
+                      <div className="settings-card-h">About Konduyt</div>
+                      <p className="settings-about">
+                        Konduyt is a payment orchestration and intelligence layer — one integration to every
+                        provider, routing to the best option, without ever touching your money.
+                      </p>
+                      <p className="settings-about-more">More about the team and story coming soon.</p>
+                    </section>
+
+                    {/* Account actions */}
+                    <section className="settings-card settings-card-danger">
+                      <div className="settings-card-h">Account</div>
+                      <div className="settings-row">
+                        <div>
+                          <div className="settings-row-k">Log out</div>
+                          <div className="settings-row-d">Sign out of this device.</div>
+                        </div>
+                        <button type="button" className="settings-link-btn" onClick={logout}>Log out</button>
+                      </div>
+                      <div className="settings-row">
+                        <div>
+                          <div className="settings-row-k settings-danger-k">Delete account</div>
+                          <div className="settings-row-d">Permanently delete your account, projects and connected credentials.</div>
+                        </div>
+                        <button type="button" className="settings-danger-btn" onClick={() => { setSettingsView('delete'); setDeleteConfirm(''); setDeleteError(''); }}>Delete</button>
+                      </div>
+                    </section>
                   </div>
-                  <div className="con-setting-row">
-                    <span className="con-setting-k">Merchant country</span>
-                    <span className="con-setting-v">
-                      <select
-                        className="con-connect-input"
-                        style={{ maxWidth: 260 }}
-                        value={active?.merchant_country || ''}
-                        disabled={savingCountry}
-                        onChange={(e) => saveMerchantCountry(e.target.value)}
-                      >
-                        <option value="">Not set — showing all providers</option>
-                        {MERCHANT_COUNTRIES.map((c) => (
-                          <option key={c.code} value={c.code}>{c.name}</option>
-                        ))}
-                      </select>
-                    </span>
+                )}
+
+                {settingsView === 'delete' && (
+                  <div className="settings-delete">
+                    <div className="settings-delete-card">
+                      <div className="settings-delete-h">Delete your account?</div>
+                      <p className="settings-delete-p">
+                        This permanently deletes your Konduyt account, all your projects, and every connected
+                        provider credential. This cannot be undone.
+                      </p>
+                      <p className="settings-delete-label">Type <strong>DELETE</strong> to confirm:</p>
+                      <input
+                        className="settings-delete-input"
+                        value={deleteConfirm}
+                        onChange={(e) => setDeleteConfirm(e.target.value)}
+                        placeholder="DELETE"
+                        autoFocus
+                      />
+                      {deleteError && <div className="settings-delete-error">{deleteError}</div>}
+                      <div className="settings-delete-actions">
+                        <button type="button" className="settings-link-btn" onClick={() => setSettingsView('main')} disabled={deleteBusy}>Cancel</button>
+                        <button type="button" className="settings-danger-btn" onClick={deleteAccount} disabled={deleteBusy || deleteConfirm.trim().toUpperCase() !== 'DELETE'}>
+                          {deleteBusy ? 'Deleting…' : 'Delete my account'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="con-setting-note">
-                    Your merchant country decides which payment providers you can actually connect —
-                    Konduyt shows only providers that onboard merchants where you operate, then resolves
-                    the right one behind each payment method. Change it any time; the Connections list updates.
-                  </p>
-                  <div className="con-setting-row">
-                    <span className="con-setting-k">Live keys</span>
-                    <span className="con-setting-v">Active from signup</span>
-                  </div>
-                  <p className="con-setting-note">
-                    Webhooks, domains, tax settings and delete-project controls will expand here in later milestones.
-                  </p>
-                </div>
+                )}
               </div>
             )}
         </>
