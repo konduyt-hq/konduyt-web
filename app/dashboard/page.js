@@ -10,6 +10,7 @@ import { ENV_SETUP, ENV_STEPS } from './envsetup';
 import { MERCHANT_COUNTRIES } from './countries';
 import { useTheme } from '../theme';
 import LanguageSelect from '../i18n/LanguageSelect';
+import { useI18n } from '../i18n/I18nProvider';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -56,6 +57,7 @@ export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
   const { theme, toggle: toggleTheme } = useTheme();
+  const { t } = useI18n();
   const [settingsView, setSettingsView] = useState('main'); // main | delete
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -2035,14 +2037,14 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
             {tab === 'settings' && (
               <div className="con-settings">
-                <h2 className="con-settings-title">Settings</h2>
-                <p className="con-settings-sub">Manage your account, appearance and preferences.</p>
+                <h2 className="con-settings-title">{t('settings.title')}</h2>
+                <p className="con-settings-sub">{t('settings.sub')}</p>
 
                 {settingsView === 'main' && (
                   <div className="settings-sections">
                     {/* Profile */}
                     <section className="settings-card">
-                      <div className="settings-card-h">Profile</div>
+                      <div className="settings-card-h">{t('settings.profile')}</div>
                       <div className="settings-profile">
                         <div className="settings-avatar">{(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}</div>
                         <div>
@@ -2050,7 +2052,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                           <div className="settings-profile-email">{user?.email || '—'}</div>
                           {user?.provider && (
                             <div className="settings-profile-method">
-                              Signed in with <strong>{user.provider === 'google' ? 'Google' : user.provider === 'github' ? 'GitHub' : user.provider}</strong>
+                              {t('settings.signedinwith')} <strong>{user.provider === 'google' ? 'Google' : user.provider === 'github' ? 'GitHub' : user.provider}</strong>
                             </div>
                           )}
                         </div>
@@ -2059,11 +2061,11 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
                     {/* Appearance / Dark mode */}
                     <section className="settings-card">
-                      <div className="settings-card-h">Appearance</div>
+                      <div className="settings-card-h">{t('settings.appearance')}</div>
                       <div className="settings-row">
                         <div>
-                          <div className="settings-row-k">Dark mode</div>
-                          <div className="settings-row-d">Switch between light and dark across the whole site.</div>
+                          <div className="settings-row-k">{t('settings.darkmode')}</div>
+                          <div className="settings-row-d">{t('settings.darkmode.d')}</div>
                         </div>
                         <button
                           type="button"
@@ -2078,8 +2080,8 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       </div>
                       <div className="settings-row">
                         <div>
-                          <div className="settings-row-k">Language</div>
-                          <div className="settings-row-d">Choose your language. It applies across the whole site.</div>
+                          <div className="settings-row-k">{t('settings.language')}</div>
+                          <div className="settings-row-d">{t('settings.language.d')}</div>
                         </div>
                         <LanguageSelect className="settings-lang-select" />
                       </div>
@@ -2087,23 +2089,23 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
                     {/* Plan */}
                     <section className="settings-card">
-                      <div className="settings-card-h">Plan</div>
+                      <div className="settings-card-h">{t('settings.plan')}</div>
                       <div className="settings-row">
                         <div>
-                          <div className="settings-row-k">Current plan</div>
+                          <div className="settings-row-k">{t('settings.currentplan')}</div>
                           <div className="settings-row-d">
                             {projects.length <= 3
                               ? `Free — ${projects.length} of 3 free live projects used.`
                               : `${projects.length} live projects · $${(projects.length - 3) * 10}/mo beyond the 3 free.`}
                           </div>
                         </div>
-                        <a href="/pricing/" className="settings-link-btn">View pricing</a>
+                        <a href="/pricing/" className="settings-link-btn">{t('settings.viewpricing')}</a>
                       </div>
                     </section>
 
                     {/* Resources */}
                     <section className="settings-card">
-                      <div className="settings-card-h">Resources</div>
+                      <div className="settings-card-h">{t('settings.resources')}</div>
                       <a href="/docs/" className="settings-nav-row" target="_blank" rel="noreferrer">
                         <span><span className="settings-nav-k">Documentation</span><span className="settings-nav-d">Guides and API reference</span></span>
                         <span className="settings-nav-arrow">↗</span>
@@ -2134,9 +2136,9 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
                     {/* Contact */}
                     <section className="settings-card">
-                      <div className="settings-card-h">Contact</div>
+                      <div className="settings-card-h">{t('settings.contact')}</div>
                       <a href="https://wa.me/254746355884" className="settings-nav-row" target="_blank" rel="noreferrer">
-                        <span><span className="settings-nav-k">WhatsApp <span className="settings-preferred">Preferred</span></span><span className="settings-nav-d">+254 746 355884</span></span>
+                        <span><span className="settings-nav-k">WhatsApp <span className="settings-preferred">{t('settings.preferred')}</span></span><span className="settings-nav-d">+254 746 355884</span></span>
                         <span className="settings-nav-arrow">↗</span>
                       </a>
                       <a href="mailto:teamkonduyt@gmail.com" className="settings-nav-row">
@@ -2147,17 +2149,17 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
                     {/* Account actions */}
                     <section className="settings-card settings-card-danger">
-                      <div className="settings-card-h">Account</div>
+                      <div className="settings-card-h">{t('settings.account')}</div>
                       <div className="settings-row">
                         <div>
-                          <div className="settings-row-k">Log out</div>
-                          <div className="settings-row-d">Sign out of this device.</div>
+                          <div className="settings-row-k">{t('settings.logout')}</div>
+                          <div className="settings-row-d">{t('settings.logout.d')}</div>
                         </div>
                         <button type="button" className="settings-link-btn" onClick={logout}>Log out</button>
                       </div>
                       <div className="settings-row">
                         <div>
-                          <div className="settings-row-k settings-danger-k">Delete account</div>
+                          <div className="settings-row-k settings-danger-k">{t('settings.delete')}</div>
                           <div className="settings-row-d">Permanently delete your account, projects and connected credentials.</div>
                         </div>
                         <button type="button" className="settings-danger-btn" onClick={() => { setSettingsView('delete'); setDeleteConfirm(''); setDeleteError(''); }}>Delete</button>
