@@ -83,7 +83,7 @@
     transition:background .15s ease, box-shadow .15s ease, border-color .15s ease;
   }
   .btn-start:hover{
-    background:#f2f2f2;
+    background:var(--panel);
     border-color:#d8d8d8;
     box-shadow:0 2px 5px rgba(0,0,0,0.10);
   }
@@ -138,7 +138,7 @@
     transition:background .15s ease, box-shadow .15s ease, border-color .15s ease;
   }
   .btn-primary:hover{
-    background:#f2f2f2;
+    background:var(--panel);
     border-color:#d8d8d8;
     box-shadow:0 2px 5px rgba(0,0,0,0.10);
   }
@@ -231,7 +231,7 @@
 
   .step-label{font-size:14px; font-weight:600; color:var(--ink); margin-bottom:14px;}
   .step-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
-  .view-docs{font-size:13.5px; font-weight:600; color:#1a1a1a; text-decoration:none;}
+  .view-docs{font-size:13.5px; font-weight:600; color:var(--ink); text-decoration:none;}
 
   .lang-pills{display:flex; flex-wrap:wrap; gap:9px; margin-bottom:28px;}
   .pill{
@@ -249,7 +249,7 @@
     transition:border-color .12s ease, box-shadow .12s ease;
   }
   .pill:hover{border-color:#c9c9c9;}
-  .pill.active{border-color:#0a0a0a; border-width:1.5px; box-shadow: 0 0 0 3px rgba(0,0,0,0.10);}
+  .pill.active{border-color:var(--ink); border-width:1.5px; box-shadow: 0 0 0 3px rgba(0,0,0,0.10);}
   .pill .sw{width:14px; height:14px; border-radius:3px; display:inline-block;}
   .pill .lgo{width:16px; height:16px; display:inline-block; flex-shrink:0;}
 
@@ -643,7 +643,7 @@
   .auth-root{
     min-height:100vh;
     background-color:var(--bg);
-    background-image: radial-gradient(rgba(0,0,0,0.13) 1px, transparent 1px);
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
     background-size: 24px 24px;
     background-position: 0 0;
     display:flex; flex-direction:column;
@@ -678,7 +678,7 @@
     box-shadow:0 1px 2px rgba(0,0,0,0.05);
     transition:background .15s ease, border-color .15s ease, box-shadow .15s ease;
   }
-  .auth-btn:hover{background:#f7f7f7; border-color:#d8d8d8; box-shadow:0 2px 6px rgba(0,0,0,0.08);}
+  .auth-btn:hover{background:var(--panel); border-color:var(--border); box-shadow:0 2px 6px rgba(0,0,0,0.08);}
   .auth-btn-icon{flex-shrink:0;}
   .auth-btn-last{
     border-color:var(--ink); border-width:1.5px;
@@ -703,7 +703,7 @@
   .dash-root{
     min-height:100vh;
     background-color:var(--bg);
-    background-image: radial-gradient(rgba(0,0,0,0.13) 1px, transparent 1px);
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
     background-size: 24px 24px;
     display:flex; flex-direction:column;
   }
@@ -718,7 +718,7 @@
     padding:9px 16px; font-size:14px; font-weight:600; color:var(--ink);
     font-family:inherit; cursor:pointer; transition:background .15s ease;
   }
-  .dash-logout:hover{background:#f5f5f5;}
+  .dash-logout:hover{background:var(--panel);}
   .dash-center{flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;}
   .dash-card{
     width:100%; max-width:480px; background:var(--elev); border:1px solid var(--border);
@@ -847,7 +847,7 @@
   .con-body{
     max-width:860px; margin:0 auto; padding:36px 24px 80px;
     background-color:var(--bg);
-    background-image: radial-gradient(rgba(0,0,0,0.10) 1px, transparent 1px);
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
     background-size:24px 24px;
     min-height:calc(100vh - 110px);
   }
@@ -1012,7 +1012,7 @@
   .pricing-root{
     min-height:100vh;
     background-color:var(--bg);
-    background-image: radial-gradient(rgba(0,0,0,0.10) 1px, transparent 1px);
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
     background-size:24px 24px;
   }
   .pricing-nav{
@@ -2068,3 +2068,11 @@
   [dir="rtl"] .settings-row{flex-direction:row-reverse;}
   [dir="rtl"] .settings-profile{flex-direction:row-reverse;}
   [dir="rtl"] .hero-grid{direction:rtl;}
+
+  /* Settings: sign-in method + contact preferred badge */
+  .settings-profile-method{font-size:12px;color:var(--text-secondary);margin-top:4px;}
+  .settings-profile-method strong{color:var(--ink);font-weight:600;}
+  .settings-preferred{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;background:var(--green-soft);color:var(--green-ink);border:1px solid var(--green-border);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle;}
+
+  /* Pricing local currency */
+  .pricing-local-price{font-size:14px;color:var(--green-ink);font-weight:600;margin:-6px 0 6px;}

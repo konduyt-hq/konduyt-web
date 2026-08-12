@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 const FREE_LIVE = 3;
@@ -16,6 +16,31 @@ export default function Pricing() {
   const [live, setLive] = useState(4);
   const [subMsg, setSubMsg] = useState('');
   const [subBusy, setSubBusy] = useState(false);
+  const [localCur, setLocalCur] = useState(null);
+  const [localRate, setLocalRate] = useState(null);
+
+  // Detect visitor currency + a live USD rate so the $10 shows in their money.
+  useEffect(() => {
+    let off = false;
+    (async () => {
+      try {
+        const geo = await fetch('https://ipapi.co/json/').then((r) => r.json());
+        if (off || !geo || !geo.currency || geo.currency === 'USD') return;
+        const fx = await fetch('https://open.er-api.com/v6/latest/USD').then((r) => r.json());
+        if (off) return;
+        const rate = fx && fx.rates && fx.rates[geo.currency];
+        if (rate) { setLocalCur(geo.currency); setLocalRate(rate); }
+      } catch { /* stay in USD */ }
+    })();
+    return () => { off = true; };
+  }, []);
+
+  function localPrice(usd) {
+    if (!localCur || !localRate) return null;
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: localCur, maximumFractionDigits: 0 }).format(usd * localRate);
+    } catch { return `${localCur} ${Math.round(usd * localRate)}`; }
+  }
 
   async function subscribe() {
     // Requires a signed-in user; if not signed in, send to signup first.
@@ -81,6 +106,9 @@ export default function Pricing() {
               <span className="pricing-dollar">$10</span>
               <span className="pricing-per">/ live project / month</span>
             </div>
+            {localPrice(PRICE) && (
+              <div className="pricing-local-price">≈ {localPrice(PRICE)} / live project / month</div>
+            )}
             <p className="pricing-paid-note">
               Charged only for each additional live project beyond your 3 free. Test-mode
               projects never count.

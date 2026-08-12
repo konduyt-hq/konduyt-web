@@ -316,8 +316,9 @@ export default function Dashboard() {
 
   async function deleteAccount() {
     setDeleteError('');
-    if (deleteConfirm.trim().toUpperCase() !== 'DELETE') {
-      setDeleteError('Type DELETE to confirm.');
+    const confirmName = (active?.name || projects[0]?.name || '').trim();
+    if (deleteConfirm.trim() !== confirmName || !confirmName) {
+      setDeleteError(`Type the project name exactly: ${confirmName}`);
       return;
     }
     setDeleteBusy(true);
@@ -2047,6 +2048,11 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         <div>
                           <div className="settings-profile-name">{user?.name || 'Konduyt developer'}</div>
                           <div className="settings-profile-email">{user?.email || '—'}</div>
+                          {user?.provider && (
+                            <div className="settings-profile-method">
+                              Signed in with <strong>{user.provider === 'google' ? 'Google' : user.provider === 'github' ? 'GitHub' : user.provider}</strong>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </section>
@@ -2126,6 +2132,19 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       <p className="settings-about-more">More about the team and story coming soon.</p>
                     </section>
 
+                    {/* Contact */}
+                    <section className="settings-card">
+                      <div className="settings-card-h">Contact</div>
+                      <a href="https://wa.me/254746355884" className="settings-nav-row" target="_blank" rel="noreferrer">
+                        <span><span className="settings-nav-k">WhatsApp <span className="settings-preferred">Preferred</span></span><span className="settings-nav-d">+254 746 355884</span></span>
+                        <span className="settings-nav-arrow">↗</span>
+                      </a>
+                      <a href="mailto:teamkonduyt@gmail.com" className="settings-nav-row">
+                        <span><span className="settings-nav-k">Email</span><span className="settings-nav-d">teamkonduyt@gmail.com</span></span>
+                        <span className="settings-nav-arrow">↗</span>
+                      </a>
+                    </section>
+
                     {/* Account actions */}
                     <section className="settings-card settings-card-danger">
                       <div className="settings-card-h">Account</div>
@@ -2155,18 +2174,20 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         This permanently deletes your Konduyt account, all your projects, and every connected
                         provider credential. This cannot be undone.
                       </p>
-                      <p className="settings-delete-label">Type <strong>DELETE</strong> to confirm:</p>
+                      <p className="settings-delete-label">
+                        Type your project name <strong>{active?.name || projects[0]?.name || ''}</strong> to confirm:
+                      </p>
                       <input
                         className="settings-delete-input"
                         value={deleteConfirm}
                         onChange={(e) => setDeleteConfirm(e.target.value)}
-                        placeholder="DELETE"
+                        placeholder={active?.name || projects[0]?.name || 'Project name'}
                         autoFocus
                       />
                       {deleteError && <div className="settings-delete-error">{deleteError}</div>}
                       <div className="settings-delete-actions">
                         <button type="button" className="settings-link-btn" onClick={() => setSettingsView('main')} disabled={deleteBusy}>Cancel</button>
-                        <button type="button" className="settings-danger-btn" onClick={deleteAccount} disabled={deleteBusy || deleteConfirm.trim().toUpperCase() !== 'DELETE'}>
+                        <button type="button" className="settings-danger-btn" onClick={deleteAccount} disabled={deleteBusy || deleteConfirm.trim() !== (active?.name || projects[0]?.name || '').trim() || !(active?.name || projects[0]?.name)}>
                           {deleteBusy ? 'Deleting…' : 'Delete my account'}
                         </button>
                       </div>

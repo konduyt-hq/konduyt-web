@@ -187,7 +187,7 @@ Console.WriteLine(await res.Content.ReadAsStringAsync());`,
   },
   {
     id: 'java', label: 'Java', filename: 'Main.java',
-    deps: 'Java 11+ — uses the built-in java.net.http client (no dependency). Run: java Main.java',
+    deps: 'Needs a JDK (Java 11+). No external library — java.net.http is built in. Compile & run: javac Main.java && java Main   ·   Or on Java 11+ run directly: java Main.java',
     note: 'For Android: this runs as-is on the JVM. On Android you must add the INTERNET permission in AndroidManifest.xml and make the call off the main thread (e.g. a coroutine or Executor) — a raw network call on the UI thread throws NetworkOnMainThreadException.',
     code: `// Main.java  —  Java 11+, run with:  java Main.java
 import java.net.URI;
@@ -214,7 +214,7 @@ public class Main {
   },
   {
     id: 'kotlin', label: 'Kotlin', filename: 'Main.kt',
-    deps: 'Kotlin + Java 11+ — uses the built-in java.net.http client. Run: kotlin Main.kt (or via Gradle).',
+    deps: 'Needs Kotlin + a JDK (Java 11+). No external library — java.net.http is built in. Run: kotlinc Main.kt -include-runtime -d main.jar && java -jar main.jar   ·   Or quick-run: kotlin Main.kt',
     note: 'For Android: works on the JVM as shown. On Android, add the INTERNET permission and call from a coroutine (Dispatchers.IO) — never the main thread.',
     code: `// Main.kt  —  Kotlin on JVM (Java 11+)
 import java.net.URI
