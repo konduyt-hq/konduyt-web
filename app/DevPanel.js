@@ -107,6 +107,142 @@ func main() {
     fmt.Println(string(out))
 }`,
   },
+  {
+    id: 'ruby', label: 'Ruby', filename: 'main.rb',
+    code: `require "net/http"
+require "json"
+require "uri"
+
+uri = URI("{{API}}/v1/payments/test")
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true
+
+req = Net::HTTP::Post.new(uri)
+req["Authorization"] = "Bearer {{SECRET}}"
+req["Content-Type"] = "application/json"
+req.body = {
+  amount: 5000, currency: "KES", provider: "test",
+  customer: { email: "customer@example.com" }
+}.to_json
+
+puts http.request(req).body`,
+  },
+  {
+    id: 'rust', label: 'Rust', filename: 'main.rs',
+    code: `use reqwest::blocking::Client;
+use serde_json::json;
+
+fn main() {
+    let res = Client::new()
+        .post("{{API}}/v1/payments/test")
+        .bearer_auth("{{SECRET}}")
+        .json(&json!({
+            "amount": 5000,
+            "currency": "KES",
+            "provider": "test",
+            "customer": { "email": "customer@example.com" }
+        }))
+        .send()
+        .unwrap();
+
+    println!("{}", res.text().unwrap());
+}`,
+  },
+  {
+    id: 'csharp', label: 'C#', filename: 'Program.cs',
+    code: `using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+
+var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization =
+    new AuthenticationHeaderValue("Bearer", "{{SECRET}}");
+
+var body = new StringContent("""
+{ "amount": 5000, "currency": "KES", "provider": "test",
+  "customer": { "email": "customer@example.com" } }
+""", Encoding.UTF8, "application/json");
+
+var res = await client.PostAsync("{{API}}/v1/payments/test", body);
+Console.WriteLine(await res.Content.ReadAsStringAsync());`,
+  },
+  {
+    id: 'java', label: 'Java', filename: 'Main.java',
+    code: `import java.net.URI;
+import java.net.http.*;
+
+var client = HttpClient.newHttpClient();
+var request = HttpRequest.newBuilder()
+    .uri(URI.create("{{API}}/v1/payments/test"))
+    .header("Authorization", "Bearer {{SECRET}}")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString("""
+        { "amount": 5000, "currency": "KES", "provider": "test",
+          "customer": { "email": "customer@example.com" } }
+    """))
+    .build();
+
+var res = client.send(request, HttpResponse.BodyHandlers.ofString());
+System.out.println(res.body());`,
+  },
+  {
+    id: 'kotlin', label: 'Kotlin', filename: 'Main.kt',
+    code: `import java.net.URI
+import java.net.http.*
+
+val client = HttpClient.newHttpClient()
+val request = HttpRequest.newBuilder()
+    .uri(URI.create("{{API}}/v1/payments/test"))
+    .header("Authorization", "Bearer {{SECRET}}")
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(
+        """{ "amount": 5000, "currency": "KES", "provider": "test",
+             "customer": { "email": "customer@example.com" } }"""
+    ))
+    .build()
+
+val res = client.send(request, HttpResponse.BodyHandlers.ofString())
+println(res.body())`,
+  },
+  {
+    id: 'swift', label: 'Swift', filename: 'main.swift',
+    code: `import Foundation
+
+var request = URLRequest(url: URL(string: "{{API}}/v1/payments/test")!)
+request.httpMethod = "POST"
+request.setValue("Bearer {{SECRET}}", forHTTPHeaderField: "Authorization")
+request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+request.httpBody = """
+{ "amount": 5000, "currency": "KES", "provider": "test",
+  "customer": { "email": "customer@example.com" } }
+""".data(using: .utf8)
+
+let (data, _) = try await URLSession.shared.data(for: request)
+print(String(data: data, encoding: .utf8)!)`,
+  },
+  {
+    id: 'cpp', label: 'C++', filename: 'main.cpp',
+    code: `// Using libcurl
+#include <curl/curl.h>
+#include <string>
+
+int main() {
+    CURL* curl = curl_easy_init();
+    const char* body =
+        R"({"amount":5000,"currency":"KES","provider":"test",)"
+        R"("customer":{"email":"customer@example.com"}})";
+
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Authorization: Bearer {{SECRET}}");
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    curl_easy_setopt(curl, CURLOPT_URL, "{{API}}/v1/payments/test");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
+    curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+}`,
+  },
 ];
 
 function render(code) {
@@ -170,6 +306,8 @@ export default function DevPanel() {
   const [runState, setRunState] = useState('idle'); // idle | running | done
   const [result, setResult] = useState(null);
   const [showIntel, setShowIntel] = useState(false);
+  const [showEnv, setShowEnv] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -203,7 +341,6 @@ export default function DevPanel() {
       <div className="panel-head">
         <div className="tabs">
           <div className="tab active">Quick start</div>
-          <div className="tab">API reference</div>
         </div>
         <button className="btn-test" type="button" onClick={handleRun}>Test before you sign up</button>
       </div>
@@ -220,8 +357,30 @@ export default function DevPanel() {
           </div>
         </div>
 
-        {/* 1. Language selector — matches the dashboard set */}
-        <div className="step-label">1. Choose your language</div>
+        {/* 1. Set your key */}
+        <div className="step-label">1. Set your key</div>
+        <p className="step-hint">
+          Keep your secret key out of your code — put it in an environment variable your app reads at runtime.
+          {' '}
+          <button type="button" className="env-toggle" onClick={() => setShowEnv((v) => !v)}>
+            New to .env files? Set one up (2 minutes) {showEnv ? '▲' : '▼'}
+          </button>
+        </p>
+        {showEnv && (
+          <div className="env-help">
+            <div className="env-step"><span className="env-num">1</span> In your project root, create a file named <code>.env</code></div>
+            <div className="env-step"><span className="env-num">2</span> Add this line:</div>
+            <div className="code-box env-code">
+              <div className="code-box-head"><span>.env</span><CopyButton text={`KONDUYT_SECRET_KEY=${KEYS.secret}`} /></div>
+              <pre className="code-pre">{`KONDUYT_SECRET_KEY=${KEYS.secret}`}</pre>
+            </div>
+            <div className="env-step"><span className="env-num">3</span> Add <code>.env</code> to your <code>.gitignore</code> so it&apos;s never committed</div>
+            <div className="env-step"><span className="env-num">4</span> Read it in code (e.g. <code>process.env.KONDUYT_SECRET_KEY</code> in Node, <code>os.environ[&quot;KONDUYT_SECRET_KEY&quot;]</code> in Python)</div>
+          </div>
+        )}
+
+        {/* 2. Language selector — matches the dashboard set */}
+        <div className="step-label">2. Choose your language</div>
         <div className="lang-pills">
           {LANGUAGES.map((l) => (
             <button key={l.id} type="button"
@@ -232,9 +391,9 @@ export default function DevPanel() {
           ))}
         </div>
 
-        {/* 2. Real code */}
+        {/* 3. Real code */}
         <div className="step-row">
-          <div className="step-label" style={{ marginBottom: 0 }}>2. Copy, run, and see it work</div>
+          <div className="step-label" style={{ marginBottom: 0 }}>3. Copy, run, and see it work</div>
           <a href="/docs/" className="view-docs">View full docs →</a>
         </div>
 
@@ -291,6 +450,44 @@ export default function DevPanel() {
             </button>
           )}
         </div>
+
+        {/* View more in test mode — appears after a run */}
+        {runState === 'done' && payment && (
+          <button className="view-more-btn" type="button" onClick={() => setShowMore((v) => !v)}>
+            {showMore ? 'Hide test details ▲' : 'View more in test mode ▼'}
+          </button>
+        )}
+        {showMore && runState === 'done' && payment && (
+          <div className="test-more">
+            <div className="test-more-block">
+              <div className="test-more-h">Full payment object</div>
+              <pre className="code-pre">{JSON.stringify(payment, null, 2)}</pre>
+            </div>
+            <div className="test-more-block">
+              <div className="test-more-h">Every rail the intelligence considered</div>
+              <div className="test-more-rails">
+                {options.map((o, i) => (
+                  <div key={o.connector} className={`test-more-rail ${i === 0 ? 'best' : ''}`}>
+                    <span className="test-more-rail-name">{o.connector_name || o.connector}</span>
+                    <span className="test-more-rail-fee">{o.effective_percent != null ? `${o.effective_percent}%` : '—'}{o.fee_minor != null ? ` · ${fmtMoney(o.fee_minor, payment.currency)}` : ''}</span>
+                    <span className="test-more-rail-speed">{speedLabel(o.settlement_days)}</span>
+                    {o.rank_reason && <span className="test-more-rail-reason">{o.rank_reason}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="test-more-block">
+              <div className="test-more-h">What happens on a real (live) project</div>
+              <ul className="test-more-list">
+                <li>You connect your own provider (Paystack, M-Pesa, etc.) in the dashboard.</li>
+                <li>Konduyt routes the payment to the recommended rail automatically.</li>
+                <li>A webhook confirms the payment; the ledger records it.</li>
+                <li>The Money and Taxes tabs update with the real transaction.</li>
+              </ul>
+              <div className="test-more-note">Test mode — no real charge, nothing stored. This mirrors the live result.</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Payment intelligence popup — the real ranked vendors from the engine */}
