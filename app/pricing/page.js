@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Logo from '../Logo';
 import { useI18n } from '../i18n/I18nProvider';
 
 const FREE_LIVE = 3;
@@ -73,7 +74,7 @@ export default function Pricing() {
     <div className="pricing-root">
       {/* Nav */}
       <nav className="pricing-nav">
-        <Link href="/" className="pricing-logo">Konduyt</Link>
+        <Logo className="pricing-logo" />
         <div className="pricing-nav-links">
           <Link href="/" className="pricing-navlink">Home</Link>
           <Link href="/signin/" className="pricing-navcta">Sign in</Link>

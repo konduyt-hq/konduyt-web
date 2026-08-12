@@ -713,7 +713,7 @@ export default function Dashboard() {
       {/* ===== Top bar ===== */}
       <header className="con-topbar">
         <div className="con-topbar-left">
-          <Link href="/" className="con-logo">Konduyt</Link>
+          <Link href="/dashboard/" className="con-logo">Konduyt</Link>
 
           {/* Project switcher */}
           <div className="con-proj">

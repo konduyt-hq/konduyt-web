@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Logo from '../Logo';
 import { useI18n } from '../i18n/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://konduyt-api.onrender.com';
@@ -42,7 +43,7 @@ export default function Labs() {
   return (
     <div className="labs-root">
       <nav className="labs-nav">
-        <Link href="/" className="labs-logo">Konduyt</Link>
+        <Logo className="labs-logo" />
         <div className="labs-nav-links">
           <Link href="/" className="labs-navlink">{t('labs.home')}</Link>
           <Link href="/pricing/" className="labs-navlink">{t('nav.pricing')}</Link>

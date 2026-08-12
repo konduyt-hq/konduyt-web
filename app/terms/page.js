@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Logo from '../Logo';
 import { DOCUMENTS } from './termsData';
 
 function Section({ s }) {
@@ -31,7 +32,7 @@ export default function Terms() {
   return (
     <div className="legal-root">
       <nav className="legal-nav">
-        <Link href="/" className="legal-logo">Konduyt</Link>
+        <Logo className="legal-logo" />
         <Link href="/" className="legal-navlink">← Back to Konduyt</Link>
       </nav>
 
