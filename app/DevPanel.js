@@ -19,6 +19,7 @@ const KEYS = {
 const LANGUAGES = [
   {
     id: 'curl', label: 'cURL', filename: 'request.sh',
+    deps: 'No dependencies — cURL is built into macOS and Linux.',
     code: `curl -X POST {{API}}/v1/payments/test \\
   -H "Authorization: Bearer {{SECRET}}" \\
   -H "Content-Type: application/json" \\
@@ -30,8 +31,10 @@ const LANGUAGES = [
   }'`,
   },
   {
-    id: 'javascript', label: 'JavaScript', filename: 'index.js',
-    code: `const res = await fetch("{{API}}/v1/payments/test", {
+    id: 'javascript', label: 'JavaScript', filename: 'index.mjs',
+    deps: 'Node 18+ (fetch is built in). Run: node index.mjs',
+    code: `// index.mjs  —  run with:  node index.mjs
+const res = await fetch("{{API}}/v1/payments/test", {
   method: "POST",
   headers: {
     "Authorization": "Bearer {{SECRET}}",
@@ -50,7 +53,9 @@ console.log(payment);`,
   },
   {
     id: 'python', label: 'Python', filename: 'main.py',
-    code: `import requests
+    deps: 'Install: pip install requests   ·   Run: python main.py',
+    code: `# main.py  —  pip install requests, then: python main.py
+import requests
 
 res = requests.post(
     "{{API}}/v1/payments/test",
@@ -67,7 +72,9 @@ print(res.json())`,
   },
   {
     id: 'php', label: 'PHP', filename: 'index.php',
+    deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php index.php',
     code: `<?php
+// index.php  —  run with:  php index.php
 $ch = curl_init("{{API}}/v1/payments/test");
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -82,34 +89,42 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     "customer" => ["email" => "customer@example.com"],
 ]));
 
-echo curl_exec($ch);`,
+echo curl_exec($ch);
+curl_close($ch);`,
   },
   {
     id: 'go', label: 'Go', filename: 'main.go',
-    code: `package main
+    deps: 'Standard library only. Run: go run main.go',
+    code: `// main.go  —  run with:  go run main.go
+package main
 
 import (
-    "bytes"
-    "fmt"
-    "io"
-    "net/http"
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
 )
 
 func main() {
-    body := []byte(\`{"amount":5000,"currency":"KES","provider":"test","customer":{"email":"customer@example.com"}}\`)
-    req, _ := http.NewRequest("POST", "{{API}}/v1/payments/test", bytes.NewBuffer(body))
-    req.Header.Set("Authorization", "Bearer {{SECRET}}")
-    req.Header.Set("Content-Type", "application/json")
+	body := []byte(\`{"amount":5000,"currency":"KES","provider":"test","customer":{"email":"customer@example.com"}}\`)
+	req, _ := http.NewRequest("POST", "{{API}}/v1/payments/test", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", "Bearer {{SECRET}}")
+	req.Header.Set("Content-Type", "application/json")
 
-    res, _ := http.DefaultClient.Do(req)
-    defer res.Body.Close()
-    out, _ := io.ReadAll(res.Body)
-    fmt.Println(string(out))
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+	out, _ := io.ReadAll(res.Body)
+	fmt.Println(string(out))
 }`,
   },
   {
     id: 'ruby', label: 'Ruby', filename: 'main.rb',
-    code: `require "net/http"
+    deps: 'Standard library only (net/http). Run: ruby main.rb',
+    code: `# main.rb  —  run with:  ruby main.rb
+require "net/http"
 require "json"
 require "uri"
 
@@ -129,10 +144,12 @@ puts http.request(req).body`,
   },
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
-    code: `use reqwest::blocking::Client;
+    deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"   —   Run: cargo run',
+    code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json
+use reqwest::blocking::Client;
 use serde_json::json;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let res = Client::new()
         .post("{{API}}/v1/payments/test")
         .bearer_auth("{{SECRET}}")
@@ -142,19 +159,21 @@ fn main() {
             "provider": "test",
             "customer": { "email": "customer@example.com" }
         }))
-        .send()
-        .unwrap();
+        .send()?;
 
-    println!("{}", res.text().unwrap());
+    println!("{}", res.text()?);
+    Ok(())
 }`,
   },
   {
     id: 'csharp', label: 'C#', filename: 'Program.cs',
-    code: `using System.Net.Http;
+    deps: '.NET 6+ (HttpClient is built in). Run: dotnet run',
+    code: `// Program.cs  —  dotnet new console, paste, then: dotnet run
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 
-var client = new HttpClient();
+using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization =
     new AuthenticationHeaderValue("Bearer", "{{SECRET}}");
 
@@ -168,45 +187,63 @@ Console.WriteLine(await res.Content.ReadAsStringAsync());`,
   },
   {
     id: 'java', label: 'Java', filename: 'Main.java',
-    code: `import java.net.URI;
-import java.net.http.*;
+    deps: 'Java 11+ — uses the built-in java.net.http client (no dependency). Run: java Main.java',
+    note: 'For Android: this runs as-is on the JVM. On Android you must add the INTERNET permission in AndroidManifest.xml and make the call off the main thread (e.g. a coroutine or Executor) — a raw network call on the UI thread throws NetworkOnMainThreadException.',
+    code: `// Main.java  —  Java 11+, run with:  java Main.java
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
-var client = HttpClient.newHttpClient();
-var request = HttpRequest.newBuilder()
-    .uri(URI.create("{{API}}/v1/payments/test"))
-    .header("Authorization", "Bearer {{SECRET}}")
-    .header("Content-Type", "application/json")
-    .POST(HttpRequest.BodyPublishers.ofString("""
-        { "amount": 5000, "currency": "KES", "provider": "test",
-          "customer": { "email": "customer@example.com" } }
-    """))
-    .build();
+public class Main {
+    public static void main(String[] args) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("{{API}}/v1/payments/test"))
+            .header("Authorization", "Bearer {{SECRET}}")
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(
+                "{ \\"amount\\": 5000, \\"currency\\": \\"KES\\", \\"provider\\": \\"test\\","
+              + "  \\"customer\\": { \\"email\\": \\"customer@example.com\\" } }"))
+            .build();
 
-var res = client.send(request, HttpResponse.BodyHandlers.ofString());
-System.out.println(res.body());`,
+        HttpResponse<String> res = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println(res.body());
+    }
+}`,
   },
   {
     id: 'kotlin', label: 'Kotlin', filename: 'Main.kt',
-    code: `import java.net.URI
-import java.net.http.*
+    deps: 'Kotlin + Java 11+ — uses the built-in java.net.http client. Run: kotlin Main.kt (or via Gradle).',
+    note: 'For Android: works on the JVM as shown. On Android, add the INTERNET permission and call from a coroutine (Dispatchers.IO) — never the main thread.',
+    code: `// Main.kt  —  Kotlin on JVM (Java 11+)
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 
-val client = HttpClient.newHttpClient()
-val request = HttpRequest.newBuilder()
-    .uri(URI.create("{{API}}/v1/payments/test"))
-    .header("Authorization", "Bearer {{SECRET}}")
-    .header("Content-Type", "application/json")
-    .POST(HttpRequest.BodyPublishers.ofString(
-        """{ "amount": 5000, "currency": "KES", "provider": "test",
-             "customer": { "email": "customer@example.com" } }"""
-    ))
-    .build()
+fun main() {
+    val client = HttpClient.newHttpClient()
+    val request = HttpRequest.newBuilder()
+        .uri(URI.create("{{API}}/v1/payments/test"))
+        .header("Authorization", "Bearer {{SECRET}}")
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(
+            """{ "amount": 5000, "currency": "KES", "provider": "test",
+                 "customer": { "email": "customer@example.com" } }"""
+        ))
+        .build()
 
-val res = client.send(request, HttpResponse.BodyHandlers.ofString())
-println(res.body())`,
+    val res = client.send(request, HttpResponse.BodyHandlers.ofString())
+    println(res.body())
+}`,
   },
   {
     id: 'swift', label: 'Swift', filename: 'main.swift',
-    code: `import Foundation
+    deps: 'Swift 5.5+ with Foundation. Run: swift main.swift',
+    note: 'Uses async/await at top level (Swift 5.5+). In an app target, call this inside a Task { } rather than at file scope.',
+    code: `// main.swift  —  swift main.swift
+import Foundation
 
 var request = URLRequest(url: URL(string: "{{API}}/v1/payments/test")!)
 request.httpMethod = "POST"
@@ -222,12 +259,14 @@ print(String(data: data, encoding: .utf8)!)`,
   },
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
-    code: `// Using libcurl
+    deps: 'Needs libcurl. Install: apt install libcurl4-openssl-dev (Debian/Ubuntu) or brew install curl (macOS). Compile: g++ main.cpp -lcurl -o pay && ./pay',
+    code: `// main.cpp  —  g++ main.cpp -lcurl -o pay && ./pay
 #include <curl/curl.h>
-#include <string>
 
 int main() {
     CURL* curl = curl_easy_init();
+    if (!curl) return 1;
+
     const char* body =
         R"({"amount":5000,"currency":"KES","provider":"test",)"
         R"("customer":{"email":"customer@example.com"}})";
@@ -240,7 +279,10 @@ int main() {
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
     curl_easy_perform(curl);
+
+    curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
+    return 0;
 }`,
   },
 ];
@@ -407,7 +449,9 @@ export default function DevPanel() {
               <span>{active.filename}</span>
               <CopyButton text={renderedCode} />
             </div>
+            {active.deps && <div className="code-deps"><span className="code-deps-tag">setup</span>{active.deps}</div>}
             <pre className="code-pre">{renderedCode}</pre>
+            {active.note && <div className="code-note">{active.note}</div>}
           </div>
           <div className="code-box">
             <div className="code-box-head">
