@@ -1,0 +1,275 @@
+// Konduyt legal documents — data model. Kept as structured data so the page
+// renders consistently. Placeholders ([JURISDICTION...], [LEGAL EMAIL...]) are
+// intentionally preserved as reminders until counsel finalises them.
+
+export const DOCUMENTS = [
+  {
+    id: 'tos',
+    title: 'Konduyt Terms of Service',
+    meta: 'Last updated: 11 August 2026 · Version 1.0',
+    intro: [
+      'These Terms of Service ("Terms") govern access to and use of Konduyt\u2019s software, APIs, dashboards, SDKs, documentation and related services (collectively, the "Service").',
+      'By creating a Konduyt account, connecting a payment provider, using the Konduyt API, or otherwise using the Service, you agree to these Terms.',
+      'If you are using Konduyt on behalf of a company or other legal entity, you represent that you have authority to bind that entity. In that case, "you" and "Customer" mean that entity.',
+      'These Terms are intended to describe how Konduyt actually operates. They are not a representation that Konduyt is licensed to provide regulated financial or payment services in every jurisdiction. Customers should obtain their own legal, tax and regulatory advice where appropriate.',
+    ],
+    sections: [
+      { h: '1. The Service', p: [
+        'Konduyt provides software and payment-orchestration infrastructure that allows developers and businesses to integrate with payment providers through a unified interface.',
+        'The Service may allow a Customer to connect its own accounts with third-party payment providers, including providers such as Paystack, Stripe, PayPal, Flutterwave and others supported by Konduyt.',
+        'Konduyt is a technology provider. Except where expressly stated otherwise:',
+      ], ul: [
+        'Konduyt does not hold Customer funds;',
+        'Konduyt does not receive or settle Customer funds;',
+        'Konduyt does not operate a Customer wallet;',
+        'Konduyt does not become the merchant of record for the Customer\u2019s transactions;',
+        'Konduyt does not establish or control the Customer\u2019s payment-provider account;',
+        'Konduyt does not determine whether a payment provider approves, declines, settles, freezes, reserves or otherwise processes a transaction; and',
+        'Konduyt does not become a party to the underlying sale between the Customer and the Customer\u2019s customers.',
+      ], after: [
+        'Funds relating to a payment transaction are handled by the relevant payment provider and the Customer\u2019s payment-provider account according to the terms applicable to that provider.',
+        'Konduyt does not represent itself as a bank, deposit-taking institution, money transmitter, payment processor, payment institution, remittance provider, tax adviser or tax-compliance service except to the extent that applicable law expressly requires otherwise or Konduyt separately obtains the relevant authorization.',
+        'The legal and regulatory classification of a service depends on applicable law and the actual activities performed. Nothing in these Terms is intended to override or determine such classification.',
+      ] },
+      { h: '2. Customer Account', p: [
+        'You must provide accurate and current information when creating and maintaining your Konduyt account.',
+        'You are responsible for:',
+      ], ul: [
+        'maintaining the confidentiality of your Konduyt credentials;',
+        'protecting your API keys and authentication credentials;',
+        'restricting access to authorized personnel;',
+        'promptly notifying Konduyt if you believe your account or credentials have been compromised; and',
+        'all activity performed through your account unless caused by Konduyt\u2019s breach of its security obligations.',
+      ], after: [
+        'You must not share credentials in a manner that creates unauthorized access to the Service.',
+        'Konduyt may require additional verification where reasonably necessary for security, fraud prevention, legal compliance or operation of the Service.',
+      ] },
+      { h: '3. Connecting Payment Providers', p: [
+        'Konduyt uses a bring-your-own-provider-account model.',
+        'You connect your own payment-provider accounts and remain responsible for maintaining those accounts.',
+        'When you provide provider credentials to Konduyt:',
+      ], ol: [
+        'you represent that you are authorized to provide those credentials;',
+        'you authorize Konduyt to use them to perform the payment operations you initiate through the Service;',
+        'you remain the account holder with the relevant provider;',
+        'you remain responsible for compliance with the provider\u2019s terms;',
+        'you remain responsible for the validity and permissions of the credentials; and',
+        'you remain responsible for revoking those credentials when you no longer authorize Konduyt to use them.',
+      ], after: [
+        'Konduyt will use provider credentials for the purpose of operating the Service and executing authorized requests.',
+        'Provider credentials are protected using appropriate technical security controls, including encryption at rest and access controls.',
+        'Konduyt does not guarantee that a particular payment provider, payment method, country, currency or transaction type will remain available.',
+      ] },
+      { h: '4. Third-Party Payment Providers', p: [
+        'Payment providers are independent third parties.',
+        'Your relationship with each payment provider is governed by that provider\u2019s own terms, policies and agreements.',
+        'Konduyt is not responsible for:',
+      ], ul: [
+        'provider account approval or rejection;', 'provider KYC or identity verification;',
+        'provider compliance decisions;', 'payment authorization or decline decisions;',
+        'provider fees;', 'settlement timing;', 'reserves or rolling reserves;', 'chargebacks;',
+        'refunds processed by a provider;', 'provider account suspensions or closures;',
+        'provider outages;', 'provider API changes;',
+        'provider changes to supported countries or payment methods;', 'provider transaction limits; or',
+        'provider decisions to restrict or terminate your account.',
+      ], after: [
+        'If a provider becomes unavailable, changes its API, changes its commercial terms or stops supporting a payment method, Konduyt may be unable to provide the affected functionality.',
+        'Konduyt may add, remove, replace or modify supported payment-provider integrations.',
+      ] },
+      { h: '5. Customer Responsibilities', p: ['You are solely responsible for:'], ul: [
+        'the products and services you sell;', 'the legality of your business and transactions;',
+        'complying with applicable laws and regulations;', 'complying with your payment providers\u2019 terms;',
+        'complying with applicable card-network and payment-network rules;',
+        'obtaining all required licenses, registrations and approvals;',
+        'determining and fulfilling your tax obligations;',
+        'obtaining any legally required consent for processing personal data;',
+        'providing legally required notices to your customers;',
+        'handling customer refunds and disputes as required;',
+        'securing your own systems and applications; and', 'ensuring that your use of Konduyt is lawful.',
+      ], after: [
+        'You must not use Konduyt to facilitate fraud, money laundering, sanctions evasion, unauthorized transactions, unlawful goods or services, or other prohibited activity.',
+        'You must not use Konduyt to circumvent restrictions imposed by a payment provider, payment network or applicable law.',
+      ] },
+      { h: '6. Acceptable Use', p: ['You must not:'], ul: [
+        'use the Service for unlawful, fraudulent or deceptive activity;',
+        'process transactions that you are not authorized to process;',
+        'attempt to obtain unauthorized access to Konduyt or another Customer\u2019s account;',
+        'interfere with or disrupt the Service;', 'introduce malicious code, malware or harmful software;',
+        'reverse engineer or attempt to extract source code from the Service except where applicable law expressly permits it;',
+        'circumvent API limits or security controls;', 'use automated methods to abuse or overload the Service;',
+        'use Konduyt to circumvent a payment provider\u2019s restrictions;',
+        'use the Service to process transactions involving prohibited goods or services where prohibited by applicable law or provider rules;',
+        'use the Service to evade sanctions or anti-money-laundering requirements; or',
+        'use the Service in a way that could reasonably expose Konduyt or another party to legal, regulatory or security risk.',
+      ], after: ['Konduyt may suspend or restrict access where it reasonably believes that the Service is being used in violation of this section.'] },
+      { h: '7. API and Technical Use', p: [
+        'The Service may include APIs, SDKs, webhooks, dashboards and other developer tools.',
+        'You are responsible for applications and systems that you build using Konduyt.',
+        'You must implement appropriate security controls, including secure handling of Konduyt API credentials.',
+        'Konduyt may impose reasonable rate limits, request limits, usage restrictions and security controls.',
+        'Konduyt may introduce new API versions, deprecate older versions or modify API behavior where reasonably necessary.',
+        'Where practical, Konduyt will provide reasonable notice of material breaking changes.',
+        'Nothing in these Terms requires Konduyt to maintain an obsolete API version indefinitely.',
+      ] },
+      { h: '8. Transaction Processing', p: [
+        'Konduyt may receive and record information relating to payment requests and payment-provider responses.',
+        'Konduyt may maintain transaction records, including information such as:',
+      ], ul: [
+        'transaction identifiers;', 'amount;', 'currency;', 'payment status;', 'payment provider;',
+        'payment method;', 'customer country or jurisdiction;', 'timestamps;', 'provider references;',
+        'error information; and', 'other metadata reasonably required to operate, secure and audit the Service.',
+      ], after: [
+        'Konduyt does not guarantee that every payment request will succeed.',
+        'A transaction may fail because of factors including provider decisions, customer authentication, insufficient funds, network failures, fraud controls, provider outages, configuration errors or other circumstances outside Konduyt\u2019s control.',
+      ] },
+      { h: '9. Transaction Ledger', p: ['Konduyt may maintain an append-only or otherwise integrity-protected transaction ledger for operational, reconciliation, audit, security and reporting purposes.', 'Ledger records may be retained after termination where reasonably necessary for:'], ul: [
+        'legal compliance;', 'accounting;', 'fraud prevention;', 'dispute resolution;', 'security;', 'audit;', 'reconciliation; or', 'establishment, exercise or defense of legal claims.',
+      ], after: ['Retention does not mean that Konduyt retains raw payment-card credentials.'] },
+      { h: '10. Tax Information', p: [
+        'Konduyt may provide tax rates, jurisdictional information, calculations or other tax-related reference information.',
+        'Such information is provided for informational and operational purposes only.',
+        'Konduyt does not provide legal, accounting or tax advice and does not determine a Customer\u2019s legal tax liability.',
+        'You remain solely responsible for determining:',
+      ], ul: [
+        'whether you are required to register for tax;', 'where you are required to register;',
+        'whether tax must be collected;', 'the applicable tax treatment of your products or services;',
+        'filing obligations;', 'reporting deadlines; and', 'payment or remittance obligations.',
+      ], after: [
+        'Tax information provided by Konduyt may be based on published rates or other sources and may not reflect changes that have occurred since the information was obtained.',
+        'You should independently verify tax information before relying on it for compliance purposes.',
+      ] },
+      { h: '11. Data Protection', p: [
+        'Where Konduyt processes Personal Data on behalf of a Customer in connection with the Service, the Customer generally acts as the data controller and Konduyt acts as the data processor, subject to the nature of the relevant processing and applicable law.',
+        'The parties\u2019 processing relationship is governed by the Konduyt Data Processing Agreement ("DPA"), which forms part of these Terms where applicable.',
+        'The DPA governs matters including:',
+      ], ul: [
+        'processing instructions;', 'security measures;', 'subprocessors;', 'data-subject rights;',
+        'personal-data breaches;', 'international transfers;', 'deletion or return of data; and',
+        'other processor obligations required by applicable data-protection law.',
+      ], after: ['Konduyt may also process certain personal data as an independent controller, including data relating to Customer accounts, billing, security, authentication, abuse prevention, service administration and legal compliance. Such processing is governed by Konduyt\u2019s Privacy Notice.'] },
+      { h: '12. Data Minimisation', p: [
+        'Konduyt is designed to minimize the amount of sensitive payment information entering its systems.',
+        'Konduyt is not designed to receive or store raw card numbers or full payment-card credentials.',
+        'Cardholder data is handled by the relevant payment provider\u2019s infrastructure.',
+        'Konduyt may nevertheless process payment-related metadata and other information necessary to operate the Service.',
+        'Customers must not intentionally send raw card numbers, payment-card security codes or other prohibited sensitive payment information to Konduyt unless expressly supported by a documented Konduyt feature and applicable compliance requirements.',
+      ] },
+      { h: '13. Security', p: ['Konduyt maintains reasonable technical and organizational safeguards appropriate to the nature of the Service and the information processed.', 'Security measures may include:'], ul: [
+        'encryption in transit;', 'encryption at rest;', 'access controls;', 'authentication controls;',
+        'least-privilege access;', 'credential protection;', 'monitoring and logging;',
+        'infrastructure security controls; and', 'incident-response procedures.',
+      ], after: [
+        'No system can be guaranteed to be completely secure.',
+        'Customers remain responsible for securing their own applications, devices, accounts, credentials and integrations.',
+        'If you believe a Konduyt credential or provider credential has been compromised, you should immediately rotate or revoke the affected credential and notify Konduyt where appropriate.',
+      ] },
+      { h: '14. Confidentiality', p: ['Each party may receive non-public information from the other party that is reasonably understood to be confidential ("Confidential Information").', 'Confidential Information includes, as applicable:'], ul: [
+        'credentials;', 'API keys;', 'security information;', 'technical information;',
+        'non-public product information;', 'business information;', 'pricing information;',
+        'customer information; and', 'information marked or reasonably understood to be confidential.',
+      ], after: ['The receiving party will use Confidential Information only for purposes connected with the relationship; protect it using reasonable safeguards; and disclose it only to personnel, contractors or service providers who need to know it and are bound by confidentiality obligations. Confidential Information does not include information that is publicly available without breach, was lawfully known before disclosure, is independently developed, or is lawfully received from a third party without confidentiality obligations. A party may disclose Confidential Information where required by law, providing reasonable notice where legally permitted.'] },
+      { h: '15. Intellectual Property', p: ['Konduyt and its licensors own all rights in and to the Konduyt software, APIs, SDKs, dashboards, documentation, infrastructure, interfaces, trademarks, branding, designs, underlying technology, improvements and related intellectual property.', 'These Terms do not transfer ownership of Konduyt intellectual property to the Customer.', 'Subject to these Terms, Konduyt grants the Customer a limited, non-exclusive, non-transferable right to use the Service during the applicable subscription or account period.', 'The Customer retains ownership of its applications, business content, customer relationships, customer data, payment-provider accounts and other materials it independently owns. The Customer grants Konduyt the limited rights reasonably necessary to provide the Service.'] },
+      { h: '16. Feedback', p: ['If you provide suggestions, recommendations, ideas or other feedback concerning Konduyt, you grant Konduyt the right to use that feedback without restriction or compensation, provided that Konduyt does not disclose your Confidential Information in doing so.'] },
+      { h: '17. Fees', p: [
+        'Konduyt\u2019s fees, if any, are described on the applicable Pricing page or order documentation.',
+        'Payment-provider fees are separate and are charged according to the applicable provider\u2019s terms.',
+        'Unless expressly stated otherwise, Konduyt does not take a percentage of Customer transaction value and does not receive or settle Customer funds.',
+        'Where Konduyt charges subscription or usage fees, the Customer is responsible for paying those fees when due.',
+        'Taxes applicable to Konduyt\u2019s own fees may be charged where required by law.',
+      ] },
+      { h: '18. Availability', p: ['Konduyt provides the Service on a commercially reasonable efforts basis unless the parties have separately agreed to a service-level commitment.', 'Konduyt does not guarantee uninterrupted or error-free operation.', 'Availability may be affected by maintenance, infrastructure failures, security incidents, internet failures, third-party services, payment-provider outages, provider API changes, force majeure events, or other circumstances outside Konduyt\u2019s reasonable control.', 'Konduyt may perform scheduled or emergency maintenance.'] },
+      { h: '19. Changes to the Service', p: ['Konduyt may modify, improve, replace or discontinue features of the Service.', 'Where a change materially affects Customer use of the Service, Konduyt will provide reasonable notice where practicable.', 'Konduyt may make changes without advance notice where reasonably necessary for security, fraud prevention, legal or regulatory compliance, payment-provider requirements, protection of the Service, or urgent technical reasons.'] },
+      { h: '20. Suspension', p: ['Konduyt may suspend or restrict access to the Service where reasonably necessary to address a security threat; prevent fraud or abuse; comply with law; comply with a lawful request from a regulator or provider; address a material breach of these Terms; protect Konduyt or another Customer; investigate suspected unauthorized activity; address non-payment; or prevent significant harm to the Service or infrastructure.', 'Where reasonably practicable, Konduyt will provide notice and an opportunity to remedy the issue. Suspension does not automatically terminate the Customer\u2019s obligations under these Terms.'] },
+      { h: '21. Termination', p: ['The Customer may stop using the Service at any time.', 'Konduyt may terminate or suspend the Customer\u2019s access where the Customer materially breaches these Terms; engages in unlawful or fraudulent activity; continued provision would violate applicable law; continued provision creates a material security or legal risk; the Customer fails to pay amounts due; or Konduyt discontinues the relevant Service.', 'Upon termination, Customer access may be disabled; provider credentials may be disconnected and deleted per the applicable security and retention procedures; Customer Data will be handled per the DPA where applicable; legally required records may be retained; and provisions that by their nature should survive termination will remain effective.'] },
+      { h: '22. Warranties and Disclaimers', p: ['To the maximum extent permitted by law, the Service is provided on an "as available" and "as is" basis.', 'Konduyt does not warrant that the Service will always be available; that every payment will succeed; that every payment provider will remain supported; that provider services will remain available; that tax information will always be current or accurate; that the Service will be free from all errors; that the Service will satisfy every Customer requirement; or that the Service will produce any particular commercial result.', 'Nothing in these Terms excludes a warranty or right that cannot lawfully be excluded.'] },
+      { h: '23. Indemnification', p: ['To the maximum extent permitted by law, the Customer will defend, indemnify and hold harmless Konduyt and its officers, employees and contractors from third-party claims, losses, liabilities, damages and reasonable costs arising from the Customer\u2019s unlawful use of the Service; the Customer\u2019s products or services; the Customer\u2019s breach of these Terms; the Customer\u2019s violation of a payment provider\u2019s terms; the Customer\u2019s infringement of another person\u2019s rights; the Customer\u2019s unlawful processing of Personal Data; or fraudulent or unauthorized activity caused by the Customer or its authorized users.', 'Konduyt will promptly notify the Customer of a covered claim and provide reasonable cooperation. The indemnified party may participate in the defense through counsel of its choice. No settlement may impose an admission of wrongdoing or non-monetary obligation on the indemnified party without its consent.'] },
+      { h: '24. Limitation of Liability', p: ['To the maximum extent permitted by law, Konduyt will not be liable for indirect or consequential loss; loss of profits; loss of revenue; loss of business opportunities; loss of goodwill; loss of anticipated savings; loss arising from payment-provider outages or decisions; loss caused by Customer configuration; loss caused by inaccurate tax or reference information; or loss caused by circumstances outside Konduyt\u2019s reasonable control.', 'To the maximum extent permitted by law, Konduyt\u2019s aggregate liability arising out of or relating to the Service or these Terms will not exceed the greater of (1) the fees actually paid by the Customer to Konduyt during the twelve months immediately preceding the event giving rise to the claim; or (2) USD 100.', 'This limitation does not apply to liability that cannot lawfully be limited or excluded. Nothing in these Terms excludes liability for fraud, intentional misconduct or other liability that applicable law prohibits the parties from excluding.'] },
+      { h: '25. Force Majeure', p: ['Konduyt will not be responsible for failure or delay caused by circumstances beyond its reasonable control, including natural disasters, war, terrorism, civil unrest, government action, internet or telecommunications failures, infrastructure failures, widespread cyber incidents, payment-provider outages, cloud-provider outages, labor disputes, or other events outside Konduyt\u2019s reasonable control.', 'The affected party will take reasonable steps to mitigate the effects of such events.'] },
+      { h: '26. Governing Law and Disputes', p: ['These Terms are governed by the laws of [JURISDICTION TO BE CONFIRMED BY COUNSEL], without regard to conflict-of-law principles.', 'The parties submit disputes to the courts of [JURISDICTION TO BE CONFIRMED BY COUNSEL], except where applicable law requires another forum.', 'Nothing in this section prevents either party from seeking urgent injunctive or protective relief where necessary.'] },
+      { h: '27. Changes to These Terms', p: ['Konduyt may update these Terms from time to time.', 'The updated version will be posted through the Service or on the Konduyt website.', 'Where changes materially affect Customer rights or obligations, Konduyt will provide reasonable advance notice where practicable.', 'Changes required for legal, regulatory, security or fraud-prevention reasons may take effect immediately where reasonably necessary.', 'Continued use of the Service after the effective date of updated Terms constitutes acceptance of the updated Terms to the extent permitted by law.'] },
+      { h: '28. General', p: ['These Terms constitute the agreement between the Customer and Konduyt regarding the Service and supersede prior agreements concerning the same subject matter, except where the parties have entered into a separate written agreement.', 'If a provision is found invalid or unenforceable, the remaining provisions remain effective. Failure to enforce a provision does not constitute a waiver.', 'The Customer may not assign these Terms without Konduyt\u2019s prior written consent, except in connection with a merger, acquisition or sale of substantially all of its assets where the successor agrees to be bound. Konduyt may assign these Terms in connection with a merger, acquisition, corporate restructuring or sale of substantially all of its assets.', 'The parties are independent contractors. These Terms do not create a partnership, joint venture, agency or employment relationship. Neither party may make commitments on behalf of the other.', 'Provisions which by their nature should survive termination will survive, including confidentiality, intellectual property, payment obligations, indemnification, limitations of liability and dispute resolution.'] },
+      { h: '29. Data Processing Agreement', p: ['Where Konduyt processes Personal Data as a processor on behalf of the Customer, the Konduyt Data Processing Agreement applies.', 'The DPA is incorporated into these Terms by reference.', 'Where there is a conflict between these Terms and the DPA regarding the processing of Personal Data, the DPA controls to the extent of that conflict.'] },
+      { h: '30. Contact', p: ['Questions concerning these Terms may be directed to:', 'Konduyt \u2014 Website: konduyt.dev \u2014 Legal/privacy contact: [LEGAL EMAIL TO BE INSERTED]', 'Privacy requests concerning Personal Data processed by Konduyt on behalf of a Customer will be handled in accordance with the applicable DPA and the Customer\u2019s role as controller.'] },
+    ],
+  },
+  {
+    id: 'dpa',
+    title: 'Konduyt Data Processing Agreement',
+    meta: 'Last updated: 11 August 2026 · Version 1.0',
+    intro: [
+      'This Data Processing Agreement ("DPA") applies where Konduyt processes Personal Data on behalf of a Customer in connection with the Service.',
+      'This DPA forms part of the Konduyt Terms of Service.',
+    ],
+    sections: [
+      { h: '1. Definitions', p: ['"Customer Data" means Personal Data submitted to or processed through the Service by or on behalf of the Customer. "Personal Data" has the meaning given under applicable data-protection law. "Controller" means the entity that determines the purposes and means of processing. "Processor" means an entity that processes Personal Data on behalf of a Controller. "Data Subject" means an identifiable individual to whom Personal Data relates. "Subprocessor" means a third party engaged by Konduyt to process Personal Data on behalf of the Customer. "Personal Data Breach" means a breach of security leading to accidental or unlawful destruction, loss, alteration, unauthorized disclosure of, or access to Personal Data.'] },
+      { h: '2. Roles of the Parties', p: ['For Customer Data processed through the Service on the Customer\u2019s behalf, the Customer acts as Controller and Konduyt acts as Processor, except where applicable law determines otherwise.', 'Konduyt may separately act as a Controller for information it processes for its own purposes, including account administration, billing, security, fraud prevention, service analytics, legal compliance and communications.'] },
+      { h: '3. Subject Matter and Purpose', p: ['Konduyt processes Customer Data to:'], ul: ['provide the Service;', 'route and record payment requests;', 'maintain transaction records;', 'provide API functionality;', 'provide dashboards and reporting;', 'maintain security;', 'detect abuse and fraud;', 'provide customer support;', 'maintain service reliability; and', 'comply with applicable legal obligations.'], after: ['Konduyt will not process Customer Data for unrelated purposes except where permitted or required by applicable law.'] },
+      { h: '4. Customer Instructions', p: ['The Customer instructs Konduyt to process Customer Data as necessary to provide the Service.', 'The Customer is responsible for ensuring that its instructions and use of the Service comply with applicable law.', 'The Customer is responsible for establishing an appropriate lawful basis for its processing activities and for providing required privacy notices and obtaining required consents.', 'If Konduyt reasonably believes an instruction violates applicable data-protection law, Konduyt may notify the Customer and may suspend the relevant processing where legally required.'] },
+      { h: '5. Categories of Data', p: ['Depending on the Customer\u2019s implementation, Customer Data may include:'], ul: ['names;', 'email addresses;', 'country or jurisdiction;', 'transaction identifiers;', 'payment metadata;', 'amounts and currencies;', 'payment status;', 'provider references;', 'IP addresses;', 'device or technical information;', 'customer references;', 'billing-related information; and', 'other information submitted through supported Service features.'], after: ['Konduyt is designed not to receive or store raw payment-card numbers or full payment-card credentials.'] },
+      { h: '6. Categories of Data Subjects', p: ['Data Subjects may include:'], ul: ['the Customer\u2019s customers;', 'users of the Customer\u2019s applications;', 'Customer employees;', 'Customer contractors;', 'Customer administrators; and', 'other individuals whose information the Customer submits through the Service.'] },
+      { h: '7. Security', p: ['Konduyt will maintain reasonable technical and organizational measures appropriate to the risk associated with processing Customer Data. These measures may include:'], ul: ['encryption in transit;', 'encryption at rest;', 'access controls;', 'authentication;', 'least-privilege access;', 'credential protection;', 'monitoring and logging;', 'backup and recovery controls;', 'vulnerability management; and', 'incident-response procedures.'], after: ['Konduyt will ensure that persons authorized to process Customer Data are subject to appropriate confidentiality obligations.'] },
+      { h: '8. Subprocessors', p: ['The Customer generally authorizes Konduyt to engage subprocessors reasonably necessary to provide the Service.', 'Konduyt will maintain a list of relevant subprocessors and make that list available through the Konduyt website or documentation. Subprocessors may provide services including application hosting, database hosting, infrastructure, monitoring, security, communications and other services required to operate Konduyt.', 'Konduyt will impose appropriate contractual data-protection obligations on subprocessors and remains responsible for their acts and omissions to the extent required by applicable law.'] },
+      { h: '9. Payment Providers', p: ['Where the Customer connects a third-party payment provider, that provider may independently process Personal Data according to its own terms and privacy documentation.', 'Konduyt does not control the processing performed directly by a payment provider. The Customer is responsible for establishing the appropriate contractual and legal relationship with its payment providers. Where a payment provider receives information directly from the Customer or the Customer\u2019s customer, that processing may occur independently of Konduyt.'] },
+      { h: '10. Data-Subject Requests', p: ['Taking into account the nature of the processing, Konduyt will provide reasonable assistance to the Customer in responding to legally valid requests from Data Subjects concerning Customer Data.', 'Where Konduyt receives a Data Subject request relating to Customer Data for which the Customer is Controller, Konduyt may direct the Data Subject to the Customer where appropriate. Konduyt will not independently respond to such requests except where legally required or otherwise authorized.'] },
+      { h: '11. Personal Data Breaches', p: ['Konduyt will notify the Customer without undue delay after becoming aware of a Personal Data Breach affecting Customer Data. Where reasonably available, the notification will include the nature of the incident; categories of data affected; categories of Data Subjects affected; known or reasonably suspected consequences; measures taken or proposed; and other information reasonably necessary to assist the Customer.', 'Konduyt will provide reasonable cooperation in investigating and responding to the incident. The Customer remains responsible for determining whether it must notify a regulator or Data Subject.'] },
+      { h: '12. Data Protection Impact Assessments', p: ['Where required by applicable law and reasonably necessary in relation to the Service, Konduyt will provide reasonable information available to it to assist the Customer with a data-protection impact assessment.'] },
+      { h: '13. Regulatory and Audit Assistance', p: ['Where required by applicable law, Konduyt will provide reasonable information necessary to demonstrate compliance with its processor obligations.', 'Audits must be reasonably related to the Service; conducted during normal business hours; subject to reasonable confidentiality obligations; and designed to minimize disruption to Konduyt and other Customers. Where appropriate, Konduyt may satisfy audit requirements by providing current independent security assessments, certifications, policies or other relevant documentation.'] },
+      { h: '14. International Transfers', p: ['Customer Data may be processed or stored in countries outside the country in which the Customer or Data Subject is located.', 'Konduyt will implement legally required transfer safeguards where applicable, which may include adequacy decisions, Standard Contractual Clauses, appropriate contractual safeguards, or other lawful transfer mechanisms.', 'The Customer acknowledges that the primary Konduyt database infrastructure may currently operate in the European Union, including Frankfurt, Germany, subject to change.'] },
+      { h: '15. Data Retention', p: ['Konduyt will retain Customer Data for as long as reasonably necessary to provide the Service and as required for legal, security, accounting, audit, fraud-prevention or dispute-resolution purposes.', 'Following termination, Konduyt will delete or return Customer Data in accordance with the applicable retention requirements and the Customer\u2019s instructions, subject to legally required retention. Backups may remain for a limited period while being securely overwritten.'] },
+      { h: '16. Controller Obligations', p: ['The Customer is responsible for:'], ul: ['determining the purposes and means of its processing;', 'establishing lawful bases;', 'providing appropriate privacy notices;', 'obtaining required consents;', 'responding to Data Subject requests;', 'complying with applicable data-protection law;', 'ensuring that its instructions to Konduyt are lawful; and', 'ensuring that Personal Data submitted to Konduyt is appropriate for the Service.'] },
+      { h: '17. Konduyt\u2019s Controller Activities', p: ['Nothing in this DPA prevents Konduyt from processing information as an independent Controller where reasonably necessary for account management, billing, security, fraud prevention, abuse detection, service improvement, legal compliance, dispute resolution, or protection of Konduyt\u2019s rights. Such processing is governed by the Konduyt Privacy Notice.'] },
+      { h: '18. Order of Precedence', p: ['If there is a conflict between this DPA and the Terms regarding the processing of Personal Data, this DPA controls to the extent of the conflict. If applicable law imposes additional mandatory obligations, those obligations will apply.'] },
+    ],
+  },
+  {
+    id: 'privacy',
+    title: 'Konduyt Privacy Notice',
+    meta: 'Last updated: 11 August 2026 · Version 1.0',
+    intro: ['This Privacy Notice explains how Konduyt collects, uses, stores and protects personal information when you use Konduyt\u2019s website, dashboard, APIs and services.'],
+    sections: [
+      { h: '1. Information We Collect', p: ['Depending on how you use Konduyt, we may collect:'], ul: ['account information;', 'name and email address;', 'authentication information;', 'organization or project information;', 'billing information;', 'API and system logs;', 'IP addresses;', 'device and browser information;', 'transaction metadata;', 'support communications;', 'security and audit information; and', 'information you voluntarily provide.'], after: ['Konduyt is designed not to store raw payment-card numbers.'] },
+      { h: '2. How We Use Information', p: ['We may use information to:'], ul: ['provide Konduyt;', 'authenticate users;', 'secure accounts;', 'process billing;', 'provide customer support;', 'monitor reliability;', 'prevent fraud and abuse;', 'investigate security incidents;', 'improve the Service;', 'comply with legal obligations; and', 'enforce our agreements.'] },
+      { h: '3. Data We Process for Customers', p: ['Where Konduyt processes Personal Data on behalf of a Customer, the Customer generally determines the purposes of that processing.', 'In those circumstances, the Customer is generally the Controller and Konduyt is the Processor. Customers should direct requests concerning their end customers\u2019 Personal Data to the relevant Customer where appropriate.'] },
+      { h: '4. Security', p: ['We use reasonable technical and organizational measures to protect information against unauthorized access, alteration, disclosure or destruction. No Internet-based service can guarantee absolute security.'] },
+      { h: '5. Data Location', p: ['Konduyt may process information in multiple jurisdictions. Our primary database infrastructure may currently be located in the European Union, including Frankfurt, Germany. Infrastructure locations and service providers may change as the Service develops. Where legally required, we use appropriate safeguards for international transfers.'] },
+      { h: '6. Retention', p: ['We retain information only for as long as reasonably necessary for the purposes described in this Notice, or as required by law. Retention periods vary depending on the type of information and purpose.'] },
+      { h: '7. Your Rights', p: ['Depending on applicable law, you may have rights concerning your Personal Data, including rights to:'], ul: ['access;', 'correction;', 'deletion;', 'restriction;', 'objection;', 'portability; and', 'withdrawal of consent where processing relies on consent.'], after: ['The availability of these rights depends on the applicable law and Konduyt\u2019s role in the relevant processing.'] },
+      { h: '8. Contact', p: ['Privacy questions and requests may be sent through the contact details provided on konduyt.dev.', 'Privacy email: [TO BE INSERTED]'] },
+    ],
+  },
+  {
+    id: 'aup',
+    title: 'Konduyt Acceptable Use Policy',
+    meta: 'Last updated: 11 August 2026 · Version 1.0',
+    intro: ['You may not use Konduyt to facilitate:'],
+    sections: [
+      { h: 'Prohibited activity', ul: ['fraud;', 'money laundering;', 'terrorist financing;', 'sanctions evasion;', 'unauthorized transactions;', 'illegal goods or services;', 'deceptive or misleading transactions;', 'unauthorized access;', 'credential theft;', 'malicious software;', 'attacks against payment infrastructure;', 'circumvention of payment-provider restrictions; or', 'activity prohibited by applicable law or the relevant payment provider.'], after: ['Konduyt may investigate suspected violations and may suspend or terminate access where reasonably necessary. This policy may be updated as Konduyt adds providers, payment methods and supported jurisdictions.'] },
+    ],
+  },
+  {
+    id: 'subprocessors',
+    title: 'Konduyt Subprocessors',
+    meta: 'Last updated: 11 August 2026 · Version 1.0',
+    intro: [
+      'Konduyt may use third-party infrastructure and service providers to operate the Service. The current Subprocessor List is maintained separately from these Terms and kept current.',
+      'For each Subprocessor, Konduyt publishes the provider, service, processing role and data location. Placeholders below are to be completed with the actual infrastructure providers before final publication.',
+    ],
+    sections: [
+      { h: 'Current subprocessors', table: {
+        head: ['Subprocessor', 'Service', 'Role', 'Data location'],
+        rows: [
+          ['[Hosting Provider]', 'Application hosting', 'Infrastructure', '[Location]'],
+          ['[Database Provider]', 'Managed database', 'Data storage', '[Location]'],
+          ['[Monitoring Provider]', 'Monitoring / logging', 'Observability', '[Location]'],
+          ['[Email Provider]', 'Email delivery', 'Communications', '[Location]'],
+        ],
+      }, after: ['The list must be updated whenever a material Subprocessor is added or removed.'] },
+    ],
+  },
+];
+
+export const COUNSEL_NOTE = [
+  'This package is a legal drafting baseline. It must be reviewed and approved by qualified counsel before being relied upon commercially. Before publication as final documents:',
+  'Replace [JURISDICTION TO BE CONFIRMED BY COUNSEL] with the governing law and forum selected by counsel; replace [LEGAL EMAIL TO BE INSERTED] with the actual legal/privacy contact; replace the placeholder Subprocessor List with the actual providers; ensure the technical architecture matches the statements (credential encryption, data-center location, card-data flow, retention); and have counsel review for Kenyan payment-services regulation, the Kenya Data Protection Act, GDPR/UK GDPR, international transfers, provider/network requirements, limitation-of-liability enforceability, indemnification, and governing law.',
+  'Do not describe Konduyt as a regulated payment service, money transmitter, processor or tax service unless the relevant regulatory position has been independently confirmed.',
+];
