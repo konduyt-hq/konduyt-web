@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useI18n } from '../i18n/I18nProvider';
+import { DOCS_T } from './docsTranslations';
+import LanguageSelect from '../i18n/LanguageSelect';
 import Link from 'next/link';
 
 // Same universal keys as the homepage
@@ -165,19 +168,36 @@ export default function Docs() {
   const [query, setQuery] = useState('');
   const [activeId, setActiveId] = useState('introduction');
   const [lang, setLang] = useState('javascript');
+  const { lang: uiLang } = useI18n();
+  const [homeHref, setHomeHref] = useState('/');
+  useEffect(() => { try { if (localStorage.getItem('kdu_token')) setHomeHref('/dashboard/'); } catch (e) {} }, []);
+
+  // Overlay translations onto the English DOCS based on the UI language.
+  // Falls back to English for any id/lang not present in DOCS_T.
+  const localizedDocs = useMemo(() => {
+    return DOCS.map((d) => {
+      const tr = DOCS_T[d.id];
+      if (!tr) return d;
+      return {
+        ...d,
+        title: (tr.title && tr.title[uiLang]) || d.title,
+        body: (tr.body && tr.body[uiLang]) || d.body,
+      };
+    });
+  }, [uiLang]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return DOCS;
-    return DOCS.filter(
+    if (!q) return localizedDocs;
+    return localizedDocs.filter(
       (d) =>
         d.title.toLowerCase().includes(q) ||
         d.body.toLowerCase().includes(q) ||
         d.group.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, localizedDocs]);
 
-  const active = DOCS.find((d) => d.id === activeId) || DOCS[0];
+  const active = localizedDocs.find((d) => d.id === activeId) || localizedDocs[0];
 
   return (
     <div className="docs-root">
@@ -196,7 +216,8 @@ export default function Docs() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <Link href="/" className="docs-home-link">← Home</Link>
+        <LanguageSelect className="nav-lang" />
+        <Link href={homeHref} className="docs-home-link">← Home</Link>
       </div>
 
       <div className="docs-body">
@@ -226,7 +247,7 @@ export default function Docs() {
             GROUPS.map((g) => (
               <div className="docs-navgroup" key={g}>
                 <div className="docs-navgroup-title">{g}</div>
-                {DOCS.filter((d) => d.group === g).map((d) => (
+                {localizedDocs.filter((d) => d.group === g).map((d) => (
                   <button
                     key={d.id}
                     className={d.id === activeId ? 'docs-navitem active' : 'docs-navitem'}
