@@ -61,7 +61,12 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [tab, setTab] = useState('integrations'); // integrations | overview | money | activity | settings
+  const [tab, setTab] = useState('integrations'); // money | integrations | taxes | messages | settings
+  const [msgs, setMsgs] = useState([]);
+  const [msgUnread, setMsgUnread] = useState(0);
+  const [msgFilter, setMsgFilter] = useState('all'); // all | unread | important
+  const [msgCategory, setMsgCategory] = useState('');
+  const [msgLoading, setMsgLoading] = useState(false);
   const [intSection, setIntSection] = useState('connections'); // connections | languages
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
   const [envOpen, setEnvOpen] = useState(false); // ".env setup" explainer expand
@@ -287,6 +292,56 @@ export default function Dashboard() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, taxCountry, taxAmount]);
+
+  // Messages: load the unread badge on mount, and the feed when the tab/filter changes.
+  useEffect(() => { loadUnread(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    if (tab === 'messages') loadMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, msgFilter, msgCategory]);
+
+  async function loadUnread() {
+    try {
+      const r = await fetch(`${API_BASE}/v1/messages/unread_count`, { headers: authHeaders() });
+      if (r.ok) { const d = await r.json(); setMsgUnread(d.unread || 0); }
+    } catch (e) {}
+  }
+
+  async function loadMessages() {
+    setMsgLoading(true);
+    try {
+      const params = new URLSearchParams({ filter: msgFilter });
+      if (msgCategory) params.set('category', msgCategory);
+      const r = await fetch(`${API_BASE}/v1/messages?${params}`, { headers: authHeaders() });
+      if (r.ok) {
+        const d = await r.json();
+        setMsgs(d.messages || []);
+        setMsgUnread(d.unread || 0);
+      }
+    } catch (e) {} finally { setMsgLoading(false); }
+  }
+
+  async function markMessageRead(id) {
+    try {
+      const r = await fetch(`${API_BASE}/v1/messages/${id}/read`, { method: 'POST', headers: authHeaders() });
+      if (r.ok) {
+        const d = await r.json();
+        setMsgUnread(d.unread || 0);
+        setMsgs((prev) => prev.map((m) => (m.id === id ? { ...m, read: true } : m)));
+      }
+    } catch (e) {}
+  }
+
+  async function dismissMessage(id) {
+    try {
+      const r = await fetch(`${API_BASE}/v1/messages/${id}/dismiss`, { method: 'POST', headers: authHeaders() });
+      if (r.ok) {
+        const d = await r.json();
+        setMsgUnread(d.unread || 0);
+        setMsgs((prev) => prev.filter((m) => m.id !== id));
+      }
+    } catch (e) {}
+  }
 
   // Load the detail for the currently open payment method.
   useEffect(() => {
@@ -779,13 +834,10 @@ export default function Dashboard() {
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
         {[
-          ['integrations', 'Integrations'],
-          ['routing', 'Routing'],
-          ['sentinel', 'Sentinel'],
-          ['overview', 'Overview'],
           ['money', 'Money'],
+          ['integrations', 'Integrations'],
           ['taxes', 'Taxes'],
-          ['activity', 'Activity'],
+          ['messages', 'Messages'],
           ['settings', 'Settings'],
         ].map(([id, label]) => (
           <button
@@ -795,6 +847,9 @@ export default function Dashboard() {
             type="button"
           >
             {label}
+            {id === 'messages' && msgUnread > 0 && (
+              <span className="con-tab-badge">{msgUnread > 99 ? '99+' : msgUnread}</span>
+            )}
           </button>
         ))}
       </nav>
@@ -2023,6 +2078,83 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         <span className="tax-rate">{t.rate != null ? `${t.rate}%` : 'N/A'}</span>
                         <span className="tax-filing-cell">{t.filing ? t.filing.frequency : '—'}</span>
                         <span>{t.verified ? '✓' : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {tab === 'messages' && (
+              <div className="con-messages">
+                <h2 className="con-messages-title">Messages</h2>
+                <p className="con-messages-sub">
+                  Important updates about your providers, payments, taxes and the Konduyt API.
+                </p>
+
+                <div className="msg-filters">
+                  {[['all', 'All'], ['unread', 'Unread'], ['important', 'Important']].map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={msgFilter === id ? 'msg-filter active' : 'msg-filter'}
+                      onClick={() => setMsgFilter(id)}
+                    >{label}</button>
+                  ))}
+                  <select
+                    className="msg-cat-select"
+                    value={msgCategory}
+                    onChange={(e) => setMsgCategory(e.target.value)}
+                  >
+                    <option value="">All categories</option>
+                    {['Provider', 'API', 'Payments', 'Tax', 'Security', 'Maintenance', 'Feature', 'Deprecation', 'Account'].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {msgLoading ? (
+                  <div className="msg-empty">Loading…</div>
+                ) : msgs.length === 0 ? (
+                  <div className="msg-empty">
+                    <div className="msg-empty-icon">✓</div>
+                    <div className="msg-empty-title">You're all caught up</div>
+                    <div className="msg-empty-sub">No messages{msgFilter !== 'all' ? ' match this filter' : ' right now'}.</div>
+                  </div>
+                ) : (
+                  <div className="msg-list">
+                    {msgs.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`msg-card sev-${m.severity} ${m.read ? '' : 'unread'}`}
+                        onClick={() => !m.read && markMessageRead(m.id)}
+                      >
+                        <div className="msg-card-top">
+                          <span className="msg-card-provider">
+                            {(m.provider || m.category || '').toUpperCase()}
+                          </span>
+                          <span className={`msg-sev-dot sev-${m.severity}`} />
+                          {!m.read && <span className="msg-unread-dot" />}
+                        </div>
+                        <div className="msg-card-title">{m.title}</div>
+                        <div className="msg-card-body">{m.body}</div>
+                        {m.action_url && (
+                          <a
+                            href={m.action_url}
+                            className="msg-action-btn"
+                            onClick={(e) => e.stopPropagation()}
+                          >{m.action_label || 'View details'}</a>
+                        )}
+                        <div className="msg-card-foot">
+                          <span className="msg-card-date">
+                            {m.published_at ? new Date(m.published_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                          </span>
+                          <button
+                            type="button"
+                            className="msg-dismiss"
+                            onClick={(e) => { e.stopPropagation(); dismissMessage(m.id); }}
+                          >Dismiss</button>
+                        </div>
                       </div>
                     ))}
                   </div>
