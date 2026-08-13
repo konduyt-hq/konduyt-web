@@ -237,6 +237,8 @@
   .pill.active{border-color:var(--ink); border-width:1.5px; box-shadow: 0 0 0 3px rgba(0,0,0,0.10);}
   .pill .sw{width:14px; height:14px; border-radius:3px; display:inline-block;}
   .pill .lgo{width:16px; height:16px; display:inline-block; flex-shrink:0;}
+  .pill-icon{width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .pill-icon svg{display:block; width:16px; height:16px;}
 
   .code-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
   .code-box{

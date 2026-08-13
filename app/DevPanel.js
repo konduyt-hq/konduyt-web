@@ -1,6 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { LANG_ICONS, LANG_BRAND } from './dashboard/langicons';
+
+// Landing language ids -> icon keys (only javascript differs from 'js').
+const ICON_KEY = {
+  curl: 'curl', javascript: 'js', python: 'python', php: 'php', go: 'go',
+  ruby: 'ruby', rust: 'rust', csharp: 'csharp', java: 'java', kotlin: 'kotlin',
+  swift: 'swift', cpp: 'cpp',
+};
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
 
@@ -187,55 +195,62 @@ Console.WriteLine(await res.Content.ReadAsStringAsync());`,
   },
   {
     id: 'java', label: 'Java', filename: 'Main.java',
-    deps: 'Needs a JDK (Java 11+). No external library — java.net.http is built in. Compile & run: javac Main.java && java Main   ·   Or on Java 11+ run directly: java Main.java',
+    deps: `dependencies {
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}
+// AndroidManifest.xml — allow internet
+// <uses-permission android:name="android.permission.INTERNET" />`,
     note: 'For Android: this runs as-is on the JVM. On Android you must add the INTERNET permission in AndroidManifest.xml and make the call off the main thread (e.g. a coroutine or Executor) — a raw network call on the UI thread throws NetworkOnMainThreadException.',
-    code: `// Main.java  —  Java 11+, run with:  java Main.java
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+    code: `// Main.java  —  uses OkHttp (add the dependency above)
+import okhttp3.*;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("{{API}}/v1/payments/test"))
+        OkHttpClient client = new OkHttpClient();
+        MediaType JSON = MediaType.get("application/json");
+        String payload = "{ \\"amount\\": 5000, \\"currency\\": \\"KES\\", \\"provider\\": \\"test\\","
+                       + "  \\"customer\\": { \\"email\\": \\"customer@example.com\\" } }";
+
+        Request request = new Request.Builder()
+            .url("{{API}}/v1/payments/test")
             .header("Authorization", "Bearer {{SECRET}}")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(
-                "{ \\"amount\\": 5000, \\"currency\\": \\"KES\\", \\"provider\\": \\"test\\","
-              + "  \\"customer\\": { \\"email\\": \\"customer@example.com\\" } }"))
+            .post(RequestBody.create(payload, JSON))
             .build();
 
-        HttpResponse<String> res = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println(res.body());
+        try (Response res = client.newCall(request).execute()) {
+            System.out.println(res.body().string());
+        }
     }
 }`,
   },
   {
     id: 'kotlin', label: 'Kotlin', filename: 'Main.kt',
-    deps: 'Needs Kotlin + a JDK (Java 11+). No external library — java.net.http is built in. Run: kotlinc Main.kt -include-runtime -d main.jar && java -jar main.jar   ·   Or quick-run: kotlin Main.kt',
-    note: 'For Android: works on the JVM as shown. On Android, add the INTERNET permission and call from a coroutine (Dispatchers.IO) — never the main thread.',
-    code: `// Main.kt  —  Kotlin on JVM (Java 11+)
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
+    deps: `dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+}
+// AndroidManifest.xml
+// <uses-permission android:name="android.permission.INTERNET" />`,
+    note: 'On Android, call from a coroutine (Dispatchers.IO) — never the main thread.',
+    code: `// Main.kt  —  uses OkHttp (add the dependency above)
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 fun main() {
-    val client = HttpClient.newHttpClient()
-    val request = HttpRequest.newBuilder()
-        .uri(URI.create("{{API}}/v1/payments/test"))
+    val client = OkHttpClient()
+    val json = "application/json".toMediaType()
+    val payload = """{ "amount": 5000, "currency": "KES", "provider": "test",
+                       "customer": { "email": "customer@example.com" } }"""
+
+    val request = Request.Builder()
+        .url("{{API}}/v1/payments/test")
         .header("Authorization", "Bearer {{SECRET}}")
-        .header("Content-Type", "application/json")
-        .POST(HttpRequest.BodyPublishers.ofString(
-            """{ "amount": 5000, "currency": "KES", "provider": "test",
-                 "customer": { "email": "customer@example.com" } }"""
-        ))
+        .post(payload.toRequestBody(json))
         .build()
 
-    val res = client.send(request, HttpResponse.BodyHandlers.ofString())
-    println(res.body())
+    client.newCall(request).execute().use { res ->
+        println(res.body?.string())
+    }
 }`,
   },
   {
@@ -428,13 +443,23 @@ export default function DevPanel() {
         {/* 2. Language selector — matches the dashboard set */}
         <div className="step-label">2. Choose your language</div>
         <div className="lang-pills">
-          {LANGUAGES.map((l) => (
-            <button key={l.id} type="button"
-              className={l.id === activeId ? 'pill active' : 'pill'}
-              onClick={() => selectLang(l.id)}>
-              {l.label}
-            </button>
-          ))}
+          {LANGUAGES.map((l) => {
+            const key = ICON_KEY[l.id] || l.id;
+            const icon = LANG_ICONS[key];
+            const brand = LANG_BRAND[key];
+            const isActive = l.id === activeId;
+            return (
+              <button key={l.id} type="button"
+                className={isActive ? 'pill active' : 'pill'}
+                style={isActive && brand ? { borderColor: brand } : undefined}
+                onClick={() => selectLang(l.id)}>
+                {icon && (
+                  <span className="pill-icon" dangerouslySetInnerHTML={{ __html: icon }} />
+                )}
+                {l.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* 3. Real code */}
