@@ -2146,3 +2146,8 @@
   .admin-mini.danger{color:#dc2626;border-color:#fecaca;}
   .admin-mini.danger:hover{border-color:#dc2626;}
   @media (max-width:820px){ .admin-grid{grid-template-columns:1fr;} }
+
+  /* Messages: admin "Create post" entry (only shown to admins) */
+  .con-messages-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+  .con-msg-admin-btn{flex-shrink:0;background:var(--ink);color:var(--bg);border-radius:9px;padding:9px 16px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;}
+  .con-msg-admin-btn:hover{opacity:.9;}

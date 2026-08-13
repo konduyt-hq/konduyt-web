@@ -2087,10 +2087,17 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
             {tab === 'messages' && (
               <div className="con-messages">
-                <h2 className="con-messages-title">Messages</h2>
-                <p className="con-messages-sub">
-                  Important updates about your providers, payments, taxes and the Konduyt API.
-                </p>
+                <div className="con-messages-head">
+                  <div>
+                    <h2 className="con-messages-title">Messages</h2>
+                    <p className="con-messages-sub">
+                      Important updates about your providers, payments, taxes and the Konduyt API.
+                    </p>
+                  </div>
+                  {user?.is_admin && (
+                    <a href="/admin/messages/" className="con-msg-admin-btn">+ Create post</a>
+                  )}
+                </div>
 
                 <div className="msg-filters">
                   {[['all', 'All'], ['unread', 'Unread'], ['important', 'Important']].map(([id, label]) => (
