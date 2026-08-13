@@ -185,7 +185,7 @@ export default function Docs() {
     <div className="docs-root">
       {/* Top bar */}
       <div className="docs-topbar">
-        <Link href="/" className="docs-brand">
+        <Link href={homeHref} className="docs-brand">
           <span className="docs-brand-name">Konduyt</span>
           <span className="docs-brand-tag">Docs</span>
         </Link>
@@ -268,7 +268,7 @@ export default function Docs() {
           )}
 
           <div className="docs-footlinks">
-            <Link href="/" className="docs-footlink">← Back to homepage</Link>
+            <Link href={homeHref} className="docs-footlink">← Back to homepage</Link>
             <Link href="/demo/" className="docs-footlink">Try the live demo →</Link>
           </div>
         </main>

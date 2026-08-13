@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useHomeHref } from '../useHomeHref';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://konduyt-api.onrender.com';
 
 export default function Labs() {
+  const homeHref = useHomeHref();
   const [hasAccount, setHasAccount] = useState(false);
   const [joined, setJoined] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,9 +42,9 @@ export default function Labs() {
   return (
     <div className="labs-root">
       <nav className="labs-nav">
-        <Link href="/" className="labs-logo">Konduyt</Link>
+        <Link href={homeHref} className="labs-logo">Konduyt</Link>
         <div className="labs-nav-links">
-          <Link href="/" className="labs-navlink">Home</Link>
+          <Link href={homeHref} className="labs-navlink">Home</Link>
           <Link href="/pricing/" className="labs-navlink">Pricing</Link>
           <Link href="/signin/" className="labs-navcta">Sign in</Link>
         </div>
@@ -73,7 +75,7 @@ export default function Labs() {
           </div>
         )}
 
-        <Link href="/" className="labs-navlink labs-tease-back">← Back to Konduyt</Link>
+        <Link href={homeHref} className="labs-navlink labs-tease-back">← Back to Konduyt</Link>
       </div>
     </div>
   );

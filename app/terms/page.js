@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useHomeHref } from '../useHomeHref';
 import Logo from '../Logo';
 import { DOCUMENTS } from './termsData';
 
@@ -26,6 +27,7 @@ function Section({ s }) {
 }
 
 export default function Terms() {
+  const homeHref = useHomeHref();
   const [docId, setDocId] = useState('tos');
   const doc = DOCUMENTS.find((d) => d.id === docId) || DOCUMENTS[0];
 
@@ -33,7 +35,7 @@ export default function Terms() {
     <div className="legal-root">
       <nav className="legal-nav">
         <Logo className="legal-logo" />
-        <Link href="/" className="legal-navlink">← Back to Konduyt</Link>
+        <Link href={homeHref} className="legal-navlink">← Back to Konduyt</Link>
       </nav>
 
       <div className="legal-layout">
@@ -60,7 +62,7 @@ export default function Terms() {
           {doc.sections.map((s, i) => <Section key={i} s={s} />)}
 
           <footer className="legal-foot">
-            <Link href="/" className="legal-navlink">← Back to Konduyt</Link>
+            <Link href={homeHref} className="legal-navlink">← Back to Konduyt</Link>
             <span className="legal-copy">© 2026 Konduyt</span>
           </footer>
         </div>

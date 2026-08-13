@@ -1,6 +1,5 @@
 import DevPanel from './DevPanel';
 import NavCta from './NavCta';
-import LandingCta from './LandingCta';
 
 export default function Home() {
   return (
@@ -192,7 +191,6 @@ export default function Home() {
 
         {/* SIGN-UP CTA — after the test panel, before "In the works".
             New visitors are invited to sign up; returning users see console+sign in. */}
-        <LandingCta />
 
         {/* IN THE WORKS */}
         <section className="works">

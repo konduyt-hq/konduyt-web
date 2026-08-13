@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useHomeHref } from '../useHomeHref';
 
 const FREE_LIVE = 3;
 const PRICE = 10;
@@ -13,6 +14,7 @@ function calc(liveProjects) {
 }
 
 export default function Pricing() {
+  const homeHref = useHomeHref();
   const [live, setLive] = useState(4);
   const [subMsg, setSubMsg] = useState('');
   const [subBusy, setSubBusy] = useState(false);
@@ -71,9 +73,9 @@ export default function Pricing() {
     <div className="pricing-root">
       {/* Nav */}
       <nav className="pricing-nav">
-        <Link href="/" className="pricing-logo">Konduyt</Link>
+        <Link href={homeHref} className="pricing-logo">Konduyt</Link>
         <div className="pricing-nav-links">
-          <Link href="/" className="pricing-navlink">Home</Link>
+          <Link href={homeHref} className="pricing-navlink">Home</Link>
           <Link href="/signin/" className="pricing-navcta">Sign in</Link>
         </div>
       </nav>
@@ -223,7 +225,7 @@ export default function Pricing() {
         </Link>
 
         <footer className="pricing-foot">
-          <Link href="/" className="pricing-navlink">← Back to Konduyt</Link>
+          <Link href={homeHref} className="pricing-navlink">← Back to Konduyt</Link>
         </footer>
       </div>
     </div>

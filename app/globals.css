@@ -9,6 +9,7 @@
     --accent:#0a0a0a;
     --dot:rgba(0,0,0,0.13);
     --elev:#ffffff;
+    --body:#3d3d3d;
     /* Green accent — money / live / success / enabled states. */
     --green:#22c55e;
     --green-dark:#16a34a;
@@ -28,6 +29,7 @@
     --accent:#f2f2f3;
     --dot:rgba(255,255,255,0.10);
     --elev:#151519;
+    --body:#c9c9d0;
     --green:#2ee06a;
     --green-dark:#22c55e;
     --green-ink:#4ade80;
@@ -119,7 +121,7 @@
   .copy p{
     font-size:15.5px;
     line-height:1.75;
-    color:#3d3d3d;
+    color:var(--body);
     margin-bottom:18px;
     max-width:480px;
   }
@@ -309,7 +311,7 @@
   .run-btn{
     display:flex; align-items:center; gap:8px;
     background:var(--ink);
-    color:#fff;
+    color:var(--bg);
     border:none;
     padding:13px 22px;
     border-radius:10px;
@@ -606,7 +608,7 @@
     transition:background .12s ease, color .12s ease;
   }
   .docs-navitem:hover{background:var(--panel); color:var(--ink);}
-  .docs-navitem.active{background:var(--ink); color:#fff; font-weight:600;}
+  .docs-navitem.active{background:var(--ink); color:var(--bg); font-weight:600;}
   .docs-noresult{font-size:13.5px; color:var(--text-secondary); padding:6px 10px;}
   .docs-content{padding:44px 48px; max-width:760px;}
   .docs-eyebrow{
@@ -1821,7 +1823,7 @@
   .labs-nav-links{display:flex;align-items:center;gap:22px;}
   .labs-navlink{color:var(--text-secondary);text-decoration:none;font-size:14px;font-weight:500;}
   .labs-navlink:hover{color:var(--ink);}
-  .labs-navcta{background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;}
+  .labs-navcta{background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;}
   .labs-wrap{max-width:1080px;margin:0 auto;padding:56px 32px 80px;}
   .labs-head{max-width:680px;margin-bottom:48px;}
   .labs-eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--green-ink);}
@@ -1896,7 +1898,7 @@
   .labs-tease .labs-h1{font-size:48px;margin:14px 0 16px;}
   .labs-tease-sub{font-size:17px;color:var(--text-secondary);margin:0 0 40px;}
   .labs-join-box{display:flex;flex-direction:column;align-items:center;gap:12px;}
-  .labs-join-btn{background:var(--ink);color:#fff;border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;padding:14px 32px;border-radius:10px;}
+  .labs-join-btn{background:var(--ink);color:var(--bg);border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;padding:14px 32px;border-radius:10px;}
   .labs-join-btn:disabled{opacity:.6;}
   .labs-join-note{font-size:13px;color:var(--text-secondary);margin:0;}
   .labs-join-err{font-size:13px;color:#b45309;margin:0;}
@@ -1988,7 +1990,7 @@
   .landing-cta-title{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px;}
   .landing-cta-sub{font-size:15px;color:var(--text-secondary);margin:0 0 22px;line-height:1.5;}
   .landing-cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
-  .landing-cta-primary{background:var(--ink);color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 28px;border-radius:10px;}
+  .landing-cta-primary{background:var(--ink);color:var(--bg);text-decoration:none;font-weight:600;font-size:15px;padding:13px 28px;border-radius:10px;}
   .landing-cta-secondary{background:none;color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;padding:13px 24px;border-radius:10px;border:1px solid var(--border);}
   .landing-cta-secondary:hover{border-color:var(--ink);}
 
@@ -2039,20 +2041,21 @@
   .settings-toggle-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
   .settings-toggle.on .settings-toggle-knob{transform:translateX(20px);}
   /* Danger */
-  .settings-danger-k{color:#dc2626;}
-  .settings-danger-btn{background:#dc2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .settings-danger-k{color:var(--ink);}
+  .settings-danger-btn{background:#dc2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .12s ease;}
   .settings-danger-btn:hover:not(:disabled){background:#b91c1c;}
-  .settings-danger-btn:disabled{opacity:.5;cursor:not-allowed;}
-  /* Delete flow */
+  .settings-danger-btn:disabled{opacity:.45;cursor:not-allowed;}
+  /* Delete flow — professional restraint: neutral card, one subtle danger accent,
+     red reserved for the confirm button and error text only. */
   .settings-delete{max-width:460px;}
-  .settings-delete-card{background:var(--elev);border:1px solid #dc2626;border-radius:14px;padding:24px;}
-  .settings-delete-h{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:10px;}
-  .settings-delete-p{font-size:13.5px;line-height:1.6;color:var(--text-secondary);margin-bottom:16px;}
+  .settings-delete-card{background:var(--elev);border:1px solid var(--border);border-left:3px solid #dc2626;border-radius:12px;padding:24px;}
+  .settings-delete-h{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.01em;}
+  .settings-delete-p{font-size:13.5px;line-height:1.65;color:var(--text-secondary);margin-bottom:18px;}
   .settings-delete-label{font-size:13px;color:var(--ink);margin-bottom:8px;}
-  .settings-delete-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:9px;font-size:14px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--ink);outline:none;}
-  .settings-delete-input:focus{border-color:#dc2626;}
+  .settings-delete-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:9px;font-size:14px;font-family:'JetBrains Mono',monospace;background:var(--panel);color:var(--ink);outline:none;transition:border-color .12s ease, box-shadow .12s ease;}
+  .settings-delete-input:focus{border-color:var(--ink);box-shadow:0 0 0 3px var(--dot);}
   .settings-delete-error{font-size:12.5px;color:#dc2626;margin-top:10px;}
-  .settings-delete-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+  .settings-delete-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;}
   @media (max-width:560px){
     .settings-row{flex-direction:column;align-items:flex-start;gap:10px;}
     .settings-row .settings-link-btn,.settings-row .settings-danger-btn{width:100%;text-align:center;}
