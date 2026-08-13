@@ -8,7 +8,6 @@ import { LANG_SNIPPETS } from './langsnippets';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP, ENV_STEPS } from './envsetup';
 import { MERCHANT_COUNTRIES } from './countries';
-import { useTheme } from '../theme';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -54,7 +53,6 @@ function monogram(name) {
 export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
-  const { theme, toggle: toggleTheme } = useTheme();
   const [settingsView, setSettingsView] = useState('main'); // main | delete
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -2053,27 +2051,6 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                             </div>
                           )}
                         </div>
-                      </div>
-                    </section>
-
-                    {/* Appearance / Dark mode */}
-                    <section className="settings-card">
-                      <div className="settings-card-h">Appearance</div>
-                      <div className="settings-row">
-                        <div>
-                          <div className="settings-row-k">Dark mode</div>
-                          <div className="settings-row-d">Switch between light and dark across the whole site.</div>
-                        </div>
-                        <button
-                          type="button"
-                          className={`settings-toggle ${theme === 'dark' ? 'on' : ''}`}
-                          onClick={toggleTheme}
-                          role="switch"
-                          aria-checked={theme === 'dark'}
-                          aria-label="Toggle dark mode"
-                        >
-                          <span className="settings-toggle-knob" />
-                        </button>
                       </div>
                     </section>
 
