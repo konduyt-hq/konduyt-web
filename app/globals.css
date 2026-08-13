@@ -2077,3 +2077,16 @@
 
   /* Pricing local currency */
   .pricing-local-price{font-size:14px;color:var(--green-ink);font-weight:600;margin:-6px 0 6px;}
+
+  /* Pricing: three economic layers (access / usage / scale) */
+  .pricing-layers{max-width:900px;margin:52px auto 0;padding:0 24px;}
+  .pricing-layers-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);text-align:center;margin-bottom:24px;}
+  .pricing-layers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .pricing-layer{background:var(--elev);border:1px solid var(--border);border-radius:14px;padding:22px;}
+  .pricing-layer-num{width:26px;height:26px;border-radius:50%;background:var(--panel);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:14px;}
+  .pricing-layer-name{font-size:17px;font-weight:800;color:var(--ink);letter-spacing:-0.01em;margin-bottom:4px;}
+  .pricing-layer-price{font-size:14px;font-weight:600;color:var(--green-ink);margin-bottom:10px;line-height:1.4;}
+  .pricing-layer-tbd{display:inline-block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--amber-ink);background:var(--amber-soft);border:1px solid var(--amber-border);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:middle;}
+  .pricing-layer-desc{font-size:13px;line-height:1.6;color:var(--text-secondary);margin:0;}
+  .pricing-layers-foot{font-size:13.5px;line-height:1.65;color:var(--body);text-align:center;max-width:640px;margin:24px auto 0;}
+  @media (max-width:720px){ .pricing-layers-grid{grid-template-columns:1fr;} }

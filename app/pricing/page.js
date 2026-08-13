@@ -83,12 +83,12 @@ export default function Pricing() {
       <div className="pricing-wrap">
         {/* Header */}
         <header className="pricing-head">
-          <span className="pricing-eyebrow">KONDUYTbuild pricing</span>
-          <h1 className="pricing-title">One price. Every provider. No tiers.</h1>
+          <span className="pricing-eyebrow">Konduyt pricing</span>
+          <h1 className="pricing-title">Simple to explain. Scales with your business.</h1>
           <p className="pricing-lede">
-            No Developer, Team, or Enterprise plans. Everyone runs on the same Konduyt
-            infrastructure with the same API and dashboard. You only pay for active
-            production projects.
+            No feature paywalls. Intelligence, routing, tax awareness and reconciliation are
+            part of Konduyt — never billed separately. You pay for access, for the volume Konduyt
+            orchestrates, and for capacity when you outgrow the basics.
           </p>
         </header>
 
@@ -156,6 +156,47 @@ export default function Pricing() {
               ${calc(live)}<span className="pricing-calc-mo">/mo</span>
             </div>
           </div>
+        </section>
+
+        {/* The three economic layers */}
+        <section className="pricing-layers">
+          <div className="pricing-layers-title">How Konduyt pricing works</div>
+          <div className="pricing-layers-grid">
+            <div className="pricing-layer">
+              <div className="pricing-layer-num">1</div>
+              <div className="pricing-layer-name">Access</div>
+              <div className="pricing-layer-price">$10 / project / month</div>
+              <p className="pricing-layer-desc">
+                Use Konduyt for your project — the full product, no feature restrictions.
+                Your first 3 live projects are free.
+              </p>
+            </div>
+            <div className="pricing-layer">
+              <div className="pricing-layer-num">2</div>
+              <div className="pricing-layer-name">Usage</div>
+              <div className="pricing-layer-price">
+                A small orchestration fee <span className="pricing-layer-tbd">rate to be announced</span>
+              </div>
+              <p className="pricing-layer-desc">
+                A small fee on the payment volume Konduyt orchestrates. Your connected provider
+                still charges its own fee and still settles your money — Konduyt never holds it.
+                We&apos;re finalising the rate; it isn&apos;t live yet, so nothing is charged here today.
+              </p>
+            </div>
+            <div className="pricing-layer">
+              <div className="pricing-layer-num">3</div>
+              <div className="pricing-layer-name">Scale</div>
+              <div className="pricing-layer-price">Higher-capacity plans</div>
+              <p className="pricing-layer-desc">
+                When you outgrow the basics — throughput, rate limits, volume, SLA — you move to a
+                higher-capacity plan. More capacity, not unlocked features. Enterprise is custom.
+              </p>
+            </div>
+          </div>
+          <p className="pricing-layers-foot">
+            You pay more because you use more Konduyt — never because we hid something useful behind
+            a paywall. Intelligence, routing, tax awareness and reconciliation are always included.
+          </p>
         </section>
 
         {/* Examples */}
