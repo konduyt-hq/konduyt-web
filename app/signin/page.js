@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useI18n } from '../i18n/I18nProvider';
 import Link from 'next/link';
 
 const API_BASE =
@@ -16,7 +15,6 @@ const ERRORS = {
 };
 
 export default function Signin() {
-  const { t } = useI18n();
   const [error, setError] = useState('');
   const [lastMethod, setLastMethod] = useState(null);
 
@@ -164,8 +162,8 @@ export default function Signin() {
             </svg>
           </div>
 
-          <h1 className="auth-title">{t('auth.signin.title')}</h1>
-          <p className="auth-sub">{t('auth.signin.sub')}</p>
+          <h1 className="auth-title">Sign in to Konduyt</h1>
+          <p className="auth-sub">Welcome back. Continue with the provider you used to sign up.</p>
 
           {error && <div className="auth-error">{error}</div>}
 
@@ -180,8 +178,8 @@ export default function Signin() {
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
-            {t('auth.google')}
-            {lastMethod === 'google' && <span className="auth-last-badge">{t('auth.lastused')}</span>}
+            Continue with Google
+            {lastMethod === 'google' && <span className="auth-last-badge">Last used</span>}
           </button>
 
           <button
@@ -192,8 +190,8 @@ export default function Signin() {
             <svg className="auth-btn-icon" viewBox="0 0 24 24" width="18" height="18" fill="#0a0a0a">
               <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.12-.31-.54-1.53.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.65.24 2.87.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.82 1.1.82 2.22v3.29c0 .32.22.7.83.58C20.57 22.29 24 17.79 24 12.5 24 5.87 18.63.5 12 .5z"/>
             </svg>
-            {t('auth.github')}
-            {lastMethod === 'github' && <span className="auth-last-badge">{t('auth.lastused')}</span>}
+            Continue with GitHub
+            {lastMethod === 'github' && <span className="auth-last-badge">Last used</span>}
           </button>
 
           <p className="auth-fine">

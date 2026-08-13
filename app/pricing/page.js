@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Logo from '../Logo';
-import { useI18n } from '../i18n/I18nProvider';
 
 const FREE_LIVE = 3;
 const PRICE = 10;
@@ -15,7 +13,6 @@ function calc(liveProjects) {
 }
 
 export default function Pricing() {
-  const { t } = useI18n();
   const [live, setLive] = useState(4);
   const [subMsg, setSubMsg] = useState('');
   const [subBusy, setSubBusy] = useState(false);
@@ -74,7 +71,7 @@ export default function Pricing() {
     <div className="pricing-root">
       {/* Nav */}
       <nav className="pricing-nav">
-        <Logo className="pricing-logo" />
+        <Link href="/" className="pricing-logo">Konduyt</Link>
         <div className="pricing-nav-links">
           <Link href="/" className="pricing-navlink">Home</Link>
           <Link href="/signin/" className="pricing-navcta">Sign in</Link>
@@ -85,7 +82,7 @@ export default function Pricing() {
         {/* Header */}
         <header className="pricing-head">
           <span className="pricing-eyebrow">KONDUYTbuild pricing</span>
-          <h1 className="pricing-title">{t('pricing.title')}</h1>
+          <h1 className="pricing-title">One price. Every provider. No tiers.</h1>
           <p className="pricing-lede">
             No Developer, Team, or Enterprise plans. Everyone runs on the same Konduyt
             infrastructure with the same API and dashboard. You only pay for active
@@ -96,27 +93,27 @@ export default function Pricing() {
         {/* The single plan */}
         <section className="pricing-card-main">
           <div className="pricing-free">
-            <div className="pricing-free-head">{t('pricing.freehead')}</div>
+            <div className="pricing-free-head">Free to start</div>
             <ul className="pricing-list">
               <li><span className="pricing-check">✓</span> Test mode — always free, every project</li>
-              <li><span className="pricing-check">✓</span> {t('pricing.free1')}</li>
-              <li><span className="pricing-check">✓</span> {t('pricing.free2')}</li>
-              <li><span className="pricing-check">✓</span> {t('pricing.free3')}</li>
+              <li><span className="pricing-check">✓</span> 3 live projects — free</li>
+              <li><span className="pricing-check">✓</span> Full SDK &amp; API — no feature restrictions</li>
+              <li><span className="pricing-check">✓</span> Every payment provider Konduyt supports</li>
             </ul>
           </div>
           <div className="pricing-paid">
             <div className="pricing-paid-amount">
               <span className="pricing-dollar">$10</span>
-              <span className="pricing-per">{t('pricing.per')}</span>
+              <span className="pricing-per">/ live project / month</span>
             </div>
             {localPrice(PRICE) && (
-              <div className="pricing-local-price">≈ {localPrice(PRICE)} {t('pricing.per')}</div>
+              <div className="pricing-local-price">≈ {localPrice(PRICE)} / live project / month</div>
             )}
             <p className="pricing-paid-note">
-              {t('pricing.paidnote')}
+              Charged only for each additional live project beyond your 3 free. Test-mode projects never count.
             </p>
             <button className="pricing-start-btn" onClick={subscribe} type="button" disabled={subBusy}>
-              {subBusy ? 'Starting checkout…' : calc(live) > 0 ? t('pricing.subscribe') : t('pricing.getstarted')}
+              {subBusy ? 'Starting checkout…' : calc(live) > 0 ? 'Subscribe' : 'Get started'}
             </button>
             {subMsg && <div className="pricing-sub-msg">{subMsg}</div>}
           </div>

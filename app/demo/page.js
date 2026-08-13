@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useI18n } from '../i18n/I18nProvider';
 
 const BASE_KES = 420000; // KES 4,200.00 in minor units
 
@@ -30,10 +29,10 @@ const RAILS = [
 ];
 
 // Cost-based verdict only — no settlement/speed claims.
-function verdict(rail, cheapestId, dearestId, t) {
-  if (rail.id === cheapestId) return { label: t('demo.bestvalue'), kind: 'good' };
-  if (rail.id === dearestId) return { label: t('demo.highestfee'), kind: 'bad' };
-  return { label: t('demo.anoption'), kind: 'neutral' };
+function verdict(rail, cheapestId, dearestId) {
+  if (rail.id === cheapestId) return { label: 'Best value', kind: 'good' };
+  if (rail.id === dearestId) return { label: 'Highest fee', kind: 'bad' };
+  return { label: 'An option', kind: 'neutral' };
 }
 
 function fmt(amountMinor, currency) {
@@ -45,7 +44,6 @@ function fmt(amountMinor, currency) {
 }
 
 export default function DemoCheckout() {
-  const { t } = useI18n();
   const [selected, setSelected] = useState('pesalink');
   const [stage, setStage] = useState('form');
   const [phone, setPhone] = useState('');
@@ -111,13 +109,13 @@ export default function DemoCheckout() {
     <div className="demo-root">
       <div className="demo-topbar">
         <Link href="/" className="demo-back">← Back to Konduyt</Link>
-        <span className="demo-flag">{t('demo.flag')}</span>
+        <span className="demo-flag">Demo — no real charge</span>
       </div>
 
       <div className="demo-center demo-two-col">
         <div className="demo-intel">
           <div className="demo-intel-head">
-            <h2 className="demo-intel-h">{t('demo.intel')}</h2>
+            <h2 className="demo-intel-h">The intelligence layer</h2>
             <p className="demo-intel-sub">
               Same {fmt(displayAmount, currency)} payment, every available rail — ranked cheapest-first
               by real fees and settlement time. Konduyt puts your customer on the best one by default.
@@ -132,10 +130,10 @@ export default function DemoCheckout() {
 
           <div className="demo-rail-table">
             <div className="demo-rail-row demo-rail-head demo-rail-row-3col">
-              <span>{t('demo.paywith')}</span><span>{t('demo.txfee')}</span><span>{t('demo.verdict')}</span>
+              <span>Pay with</span><span>Transaction fee</span><span>Verdict</span>
             </div>
             {ranked.map((rail) => {
-              const v = verdict(rail, cheapest.id, dearest.id, t);
+              const v = verdict(rail, cheapest.id, dearest.id);
               return (
                 <div key={rail.id}
                   className={`demo-rail-row demo-rail-row-3col ${selected === rail.id ? 'sel' : ''} ${rail.id === cheapest.id ? 'best' : ''}`}
@@ -168,7 +166,7 @@ export default function DemoCheckout() {
                 </div>
               </div>
               <div className="amount">
-                <div className="amount-label">{t('demo.amountdue')}</div>
+                <div className="amount-label">Amount due</div>
                 <div className="amount-value">{fmt(displayAmount, currency)}</div>
               </div>
             </div>
@@ -176,15 +174,15 @@ export default function DemoCheckout() {
             {stage === 'success' ? (
               <div className="pay-success">
                 <div className="success-check">✓</div>
-                <div className="success-title">{t('demo.success')}</div>
+                <div className="success-title">Payment successful</div>
                 <div className="success-sub">{fmt(displayAmount, currency)} paid via {sel.name}</div>
                 <div className="success-receipt">
-                  <div className="receipt-row"><span>{t('demo.reference')}</span><span className="mono">KDU-PAY-8F2A91</span></div>
-                  <div className="receipt-row"><span>{t('demo.method')}</span><span>{sel.name}</span></div>
-                  <div className="receipt-row"><span>{t('demo.fee')}</span><span>{fmt(sel.feeMinor, currency)} ({sel.effPct}%)</span></div>
+                  <div className="receipt-row"><span>Reference</span><span className="mono">KDU-PAY-8F2A91</span></div>
+                  <div className="receipt-row"><span>Method</span><span>{sel.name}</span></div>
+                  <div className="receipt-row"><span>Fee</span><span>{fmt(sel.feeMinor, currency)} ({sel.effPct}%)</span></div>
                 </div>
-                <button className="pay-btn" onClick={reset} type="button">{t('demo.again')}</button>
-                <Link href="/" className="demo-done-link">{t('demo.done')}</Link>
+                <button className="pay-btn" onClick={reset} type="button">Run the demo again</button>
+                <Link href="/" className="demo-done-link">Done</Link>
               </div>
             ) : (
               <>
@@ -194,7 +192,7 @@ export default function DemoCheckout() {
 
                 {selected.startsWith('mpesa') ? (
                   <div className="field">
-                    <label className="field-label">{t('demo.phone')}</label>
+                    <label className="field-label">M-Pesa phone number</label>
                     <input className="field-input" inputMode="numeric" placeholder="07XX XXX XXX"
                       value={phone} onChange={(e) => setPhone(e.target.value)} disabled={stage !== 'form'} />
                   </div>
@@ -209,7 +207,7 @@ export default function DemoCheckout() {
                   <div className="stk-prompt">
                     <div className="stk-spinner"></div>
                     <div>
-                      <div className="stk-title">{t('demo.checkphone')}</div>
+                      <div className="stk-title">Check your phone</div>
                       <div className="stk-sub">Enter your M-Pesa PIN to authorize {fmt(displayAmount, currency)}.</div>
                     </div>
                   </div>

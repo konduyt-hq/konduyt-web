@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Logo from '../Logo';
-import { useI18n } from '../i18n/I18nProvider';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://konduyt-api.onrender.com';
 
 export default function Labs() {
-  const { t } = useI18n();
   const [hasAccount, setHasAccount] = useState(false);
   const [joined, setJoined] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,34 +40,34 @@ export default function Labs() {
   return (
     <div className="labs-root">
       <nav className="labs-nav">
-        <Logo className="labs-logo" />
+        <Link href="/" className="labs-logo">Konduyt</Link>
         <div className="labs-nav-links">
-          <Link href="/" className="labs-navlink">{t('labs.home')}</Link>
-          <Link href="/pricing/" className="labs-navlink">{t('nav.pricing')}</Link>
-          <Link href="/signin/" className="labs-navcta">{t('nav.signin')}</Link>
+          <Link href="/" className="labs-navlink">Home</Link>
+          <Link href="/pricing/" className="labs-navlink">Pricing</Link>
+          <Link href="/signin/" className="labs-navcta">Sign in</Link>
         </div>
       </nav>
 
       <div className="labs-wrap labs-tease">
-        <span className="labs-eyebrow">{t('labs.eyebrow')}</span>
+        <span className="labs-eyebrow">KONDUYT LABS</span>
         <h1 className="labs-h1">Konduyt Intelligence</h1>
         <p className="labs-tease-sub">
-          {t('labs.teaser')}
+          Something is coming. We&apos;re not saying much yet.
         </p>
 
         {joined ? (
           <div className="labs-joined">
             <div className="labs-joined-check">✓</div>
-            <div className="labs-joined-title">{t('labs.onlist')}</div>
-            <div className="labs-joined-sub">{t('labs.onlist.d')}</div>
+            <div className="labs-joined-title">You&apos;re on the list.</div>
+            <div className="labs-joined-sub">We&apos;ll reach out when Konduyt Intelligence is ready.</div>
           </div>
         ) : (
           <div className="labs-join-box">
             <button className="labs-join-btn" onClick={join} type="button" disabled={busy}>
-              {busy ? t('labs.joining') : t('labs.join')}
+              {busy ? 'Joining…' : 'Join the list'}
             </button>
             {!hasAccount && (
-              <p className="labs-join-note">{t('labs.needaccount')}</p>
+              <p className="labs-join-note">You&apos;ll need a Konduyt account to join the list.</p>
             )}
             {msg && <p className="labs-join-err">{msg}</p>}
           </div>

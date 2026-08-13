@@ -1,9 +1,6 @@
 import DevPanel from './DevPanel';
 import NavCta from './NavCta';
 import LandingCta from './LandingCta';
-import NavLinks from './NavLinks';
-import HeroCopy from './HeroCopy';
-import WorksHead from './WorksHead';
 
 export default function Home() {
   return (
@@ -110,7 +107,12 @@ export default function Home() {
             </div>
             <span className="brand-name">Konduyt</span>
           </div>
-          <NavLinks />
+          <div className="nav-links">
+            <a href="/docs/">Docs</a>
+            <a href="/pricing/">Pricing</a>
+            <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
+            <a href="/labs/">Labs</a>
+          </div>
           <div className="nav-right">
             <a href="/signin/" className="signin">Sign in</a>
             <NavCta />
@@ -122,7 +124,16 @@ export default function Home() {
           <div>
             <span className="hero-eyebrow">Payment infrastructure</span>
             <h1>One integration.<br />Every payment<br />provider.</h1>
-            <HeroCopy />
+            <div className="copy">
+              <p>Every payment provider has a different API. Konduyt gives you one.</p>
+              <p>We connect providers like Stripe, PayPal, M-Pesa, Flutterwave and more with a few lines of code.</p>
+              <p>Your customers pay the way they already know.<br />You keep your payment accounts. We never touch your money.</p>
+            </div>
+            <div className="cta-row">
+              <a href="/demo/" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>View demo</a>
+              <a href="/docs/" className="link-arrow">View documentation →</a>
+            </div>
+            <div className="works-with">WORKS WITH</div>
             <div className="vendor-row">
               <span className="vname" style={{color: '#635BFF'}}>Stripe</span>
               <span className="vdot">●</span>
@@ -185,7 +196,11 @@ export default function Home() {
 
         {/* IN THE WORKS */}
         <section className="works">
-          <WorksHead />
+          <div className="works-head">
+            <span className="works-eyebrow">In the works</span>
+            <h2 className="works-title">More of Konduyt, coming soon</h2>
+            <p className="works-sub">Built on the same infrastructure. Same keys, same integration.</p>
+          </div>
           <div className="works-cards">
             <div className="works-card">
               <div className="works-card-top">
