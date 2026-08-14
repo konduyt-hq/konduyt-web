@@ -2262,7 +2262,9 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         Konduyt is a payment orchestration and intelligence layer — one integration to every
                         provider, routing to the best option, without ever touching your money.
                       </p>
-                      <p className="settings-about-more">More about the team and story coming soon.</p>
+                      <p className="settings-about-more">
+                        <a href="/about/" className="settings-about-link">Read our story and ambition →</a>
+                      </p>
                     </section>
 
                     {/* Contact */}
