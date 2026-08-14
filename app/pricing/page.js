@@ -175,12 +175,13 @@ export default function Pricing() {
               <div className="pricing-layer-num">2</div>
               <div className="pricing-layer-name">Usage</div>
               <div className="pricing-layer-price">
-                A small orchestration fee <span className="pricing-layer-tbd">rate to be announced</span>
+                0.25% per transaction
               </div>
               <p className="pricing-layer-desc">
-                A small fee on the payment volume Konduyt orchestrates. Your connected provider
-                still charges its own fee and still settles your money — Konduyt never holds it.
-                We&apos;re finalising the rate; it isn&apos;t live yet, so nothing is charged here today.
+                A small 0.25% fee on the volume Konduyt successfully orchestrates — the same
+                rate for everyone, on free and paid projects alike. Your connected provider
+                still charges its own fee and still settles your money; Konduyt never holds it.
+                Test-mode and failed payments are never charged.
               </p>
             </div>
             <div className="pricing-layer">
