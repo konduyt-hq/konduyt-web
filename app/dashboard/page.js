@@ -75,6 +75,7 @@ export default function Dashboard() {
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
   const [connections, setConnections] = useState([]);
+  const [connectionsLoaded, setConnectionsLoaded] = useState(false);
   const [connectingId, setConnectingId] = useState(null);
   const [credValues, setCredValues] = useState({});
   const [connectError, setConnectError] = useState('');
@@ -207,8 +208,8 @@ export default function Dashboard() {
       });
     fetch(`${API_BASE}/projects/${pid}/connections`, { headers: authHeaders() })
       .then((r) => r.json())
-      .then((d) => setConnections(d.connections || []))
-      .catch(() => setConnections([]));
+      .then((d) => { setConnections(d.connections || []); setConnectionsLoaded(true); })
+      .catch(() => { setConnections([]); setConnectionsLoaded(true); });
     fetch(`${API_BASE}/projects/${pid}/capabilities`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((d) => setCapGroups(d.groups || []))
@@ -360,14 +361,21 @@ export default function Dashboard() {
       .catch(() => setMethodDetail(null));
   }, [activeId, activeMethod, connections]);
 
-  // New users (no keys yet) land on Connections — the first meaningful action.
+  // Landing tab: a NEW user (no provider connected yet) starts on Integrations —
+  // the first meaningful action. A returning user (has at least one connection)
+  // lands on Money. Runs once per session, after the initial data has loaded, so
+  // it never fights the user's own tab clicks.
+  const [landingChosen, setLandingChosen] = useState(false);
   useEffect(() => {
-    if (status === 'ready' && keys !== null) {
-      if (!hasKeys) setTab('integrations');
-      else setTab('overview');
+    if (landingChosen) return;
+    if (status !== 'ready' || keys === null || !activeId) return;
+    // Wait until connections for the active project have actually loaded.
+    if (connectionsLoaded) {
+      setTab(connections.length > 0 ? 'money' : 'integrations');
+      setLandingChosen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasKeys, status]);
+  }, [status, keys, activeId, connectionsLoaded, connections, landingChosen]);
 
   function logout() {
     clearToken();
