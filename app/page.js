@@ -319,6 +319,7 @@ export default function Home() {
           <div className="footer-links">
             <a href="/docs/">Docs</a>
             <a href="/pricing/">Pricing</a>
+            <a href="/about/">About</a>
             <a href="/labs/">Labs</a>
             <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
             <a href="/terms/">Terms</a>
