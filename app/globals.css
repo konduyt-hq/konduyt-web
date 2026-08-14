@@ -2157,3 +2157,11 @@
   .con-msg-admin-btn:hover{opacity:.9;}
 
   .legal-providers{font-size:13.5px;line-height:1.7;color:var(--body);background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin:10px 0;}
+
+  /* Provider connection mode (test / live) */
+  .acct-mode{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:5px;margin-left:8px;vertical-align:middle;}
+  .acct-mode.test{background:var(--amber-soft);color:var(--amber-ink);border:1px solid var(--amber-border);}
+  .acct-mode.live{background:var(--green-soft);color:var(--green-ink);border:1px solid var(--green-border);}
+  .acct-mode.unknown{background:var(--panel);color:var(--text-secondary);border:1px solid var(--border);}
+  .acct-testmode-note{font-size:12.5px;line-height:1.55;color:var(--body);background:var(--amber-soft);border:1px solid var(--amber-border);border-radius:9px;padding:10px 12px;margin:10px 0 4px;}
+  .acct-testmode-note code{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--panel);padding:1px 5px;border-radius:4px;}

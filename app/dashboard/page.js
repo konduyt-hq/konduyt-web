@@ -1367,7 +1367,12 @@ export default function Dashboard() {
                         <div className={`acct-card ${a.integration_pending ? 'pending' : ''}`} key={a.provider_id}>
                           <div className="acct-head">
                             <div>
-                              <div className="acct-name">{a.name}</div>
+                              <div className="acct-name">
+                                {a.name}
+                                {a.mode === 'test' && <span className="acct-mode test">Test mode</span>}
+                                {a.mode === 'live' && <span className="acct-mode live">Live</span>}
+                                {a.mode === 'unknown' && <span className="acct-mode unknown">Mode unverified</span>}
+                              </div>
                               {a.account_label && <div className="acct-label">{a.account_label}</div>}
                             </div>
                             {a.integration_pending ? (
@@ -1376,6 +1381,14 @@ export default function Dashboard() {
                               <span className="acct-status">● Connected</span>
                             )}
                           </div>
+
+                          {a.mode === 'test' && (
+                            <div className="acct-testmode-note">
+                              These are <strong>test credentials</strong>. Payments routed through {a.name} won&apos;t
+                              move real money. Connect live keys (e.g. Paystack <code>sk_live_…</code>) to accept
+                              real payments.
+                            </div>
+                          )}
 
                           {a.integration_pending && (
                             <div className="acct-pending-note">
