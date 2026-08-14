@@ -1300,6 +1300,10 @@ export default function Dashboard() {
                             {isConnecting && (
                               <div className="con-connect-form">
                                 <div className="mpesa-connect-title">Connect {md.name} via {c.name}</div>
+                                <div className="con-connect-livehint">
+                                  Use your <strong>live</strong> keys. Konduyt connects real provider accounts —
+                                  test or sandbox credentials won&apos;t be accepted here.
+                                </div>
                                 {(c.credential_schema?.fields || []).map((field) => (
                                   <div className="con-field" key={field.name}>
                                     <label className="con-connect-label">
