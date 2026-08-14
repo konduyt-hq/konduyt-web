@@ -2155,3 +2155,5 @@
   .con-messages-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
   .con-msg-admin-btn{flex-shrink:0;background:var(--ink);color:var(--bg);border-radius:9px;padding:9px 16px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;}
   .con-msg-admin-btn:hover{opacity:.9;}
+
+  .legal-providers{font-size:13.5px;line-height:1.7;color:var(--body);background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin:10px 0;}

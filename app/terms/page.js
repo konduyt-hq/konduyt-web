@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useHomeHref } from '../useHomeHref';
 import Logo from '../Logo';
 import { DOCUMENTS } from './termsData';
 
-function Section({ s }) {
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
+
+function Section({ s, providers }) {
   return (
     <div className="legal-section">
       {s.h && <h2>{s.h}</h2>}
@@ -21,6 +24,15 @@ function Section({ s }) {
           </table>
         </div>
       )}
+      {/* Dynamically-generated supported providers line (never hard-coded). */}
+      {s.dynamicProviders && (
+        <p className="legal-providers">
+          <strong>Supported payment providers: </strong>
+          {providers && providers.length
+            ? providers.join(', ') + '.'
+            : 'the current list is generated from Konduyt\u2019s live integrations.'}
+        </p>
+      )}
       {(s.after || []).map((para, i) => <p key={`a${i}`}>{para}</p>)}
     </div>
   );
@@ -29,7 +41,19 @@ function Section({ s }) {
 export default function Terms() {
   const homeHref = useHomeHref();
   const [docId, setDocId] = useState('tos');
+  const [providers, setProviders] = useState([]);
   const doc = DOCUMENTS.find((d) => d.id === docId) || DOCUMENTS[0];
+
+  // Pull the live supported-provider names so the legal text never hard-codes
+  // them. Public endpoint (no auth); fails quietly to a generic line.
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_BASE}/public/supported-providers`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d && Array.isArray(d.providers)) setProviders(d.providers); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   return (
     <div className="legal-root">
@@ -59,7 +83,7 @@ export default function Terms() {
 
           {(doc.intro || []).map((para, i) => <p key={`i${i}`} className="legal-intro-p">{para}</p>)}
 
-          {doc.sections.map((s, i) => <Section key={i} s={s} />)}
+          {doc.sections.map((s, i) => <Section key={i} s={s} providers={providers} />)}
 
           <footer className="legal-foot">
             <Link href={homeHref} className="legal-navlink">← Back to Konduyt</Link>

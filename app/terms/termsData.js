@@ -1,6 +1,9 @@
 // Konduyt legal documents — data model. Kept as structured data so the page
-// renders consistently. Placeholders ([JURISDICTION...], [LEGAL EMAIL...]) are
-// intentionally preserved as reminders until counsel finalises them.
+// renders consistently. NOTE: governing-law jurisdiction is set to Kenya but
+// marked "pending confirmation by counsel"; the liability cap, indemnity and
+// dispute terms are template drafting and still need a qualified Kenyan
+// lawyer's review before these are relied upon. The supported-providers line in
+// the Terms is generated live from the connector registry, not hard-coded.
 
 export const DOCUMENTS = [
   {
@@ -16,7 +19,7 @@ export const DOCUMENTS = [
     sections: [
       { h: '1. The Service', p: [
         'Konduyt provides software and payment-orchestration infrastructure that allows developers and businesses to integrate with payment providers through a unified interface.',
-        'The Service may allow a Customer to connect its own accounts with third-party payment providers, including providers such as Paystack, Stripe, PayPal, Flutterwave and others supported by Konduyt.',
+        'The Service may allow a Customer to connect its own accounts with third-party payment providers supported by Konduyt. The current list of supported payment providers is shown below and is generated from Konduyt\u2019s live integrations rather than fixed in this document.',
         'Konduyt is a technology provider. Except where expressly stated otherwise:',
       ], ul: [
         'Konduyt does not hold Customer funds;',
@@ -26,7 +29,7 @@ export const DOCUMENTS = [
         'Konduyt does not establish or control the Customer\u2019s payment-provider account;',
         'Konduyt does not determine whether a payment provider approves, declines, settles, freezes, reserves or otherwise processes a transaction; and',
         'Konduyt does not become a party to the underlying sale between the Customer and the Customer\u2019s customers.',
-      ], after: [
+      ], dynamicProviders: true, after: [
         'Funds relating to a payment transaction are handled by the relevant payment provider and the Customer\u2019s payment-provider account according to the terms applicable to that provider.',
         'Konduyt does not represent itself as a bank, deposit-taking institution, money transmitter, payment processor, payment institution, remittance provider, tax adviser or tax-compliance service except to the extent that applicable law expressly requires otherwise or Konduyt separately obtains the relevant authorization.',
         'The legal and regulatory classification of a service depends on applicable law and the actual activities performed. Nothing in these Terms is intended to override or determine such classification.',
@@ -185,11 +188,11 @@ export const DOCUMENTS = [
       { h: '23. Indemnification', p: ['To the maximum extent permitted by law, the Customer will defend, indemnify and hold harmless Konduyt and its officers, employees and contractors from third-party claims, losses, liabilities, damages and reasonable costs arising from the Customer\u2019s unlawful use of the Service; the Customer\u2019s products or services; the Customer\u2019s breach of these Terms; the Customer\u2019s violation of a payment provider\u2019s terms; the Customer\u2019s infringement of another person\u2019s rights; the Customer\u2019s unlawful processing of Personal Data; or fraudulent or unauthorized activity caused by the Customer or its authorized users.', 'Konduyt will promptly notify the Customer of a covered claim and provide reasonable cooperation. The indemnified party may participate in the defense through counsel of its choice. No settlement may impose an admission of wrongdoing or non-monetary obligation on the indemnified party without its consent.'] },
       { h: '24. Limitation of Liability', p: ['To the maximum extent permitted by law, Konduyt will not be liable for indirect or consequential loss; loss of profits; loss of revenue; loss of business opportunities; loss of goodwill; loss of anticipated savings; loss arising from payment-provider outages or decisions; loss caused by Customer configuration; loss caused by inaccurate tax or reference information; or loss caused by circumstances outside Konduyt\u2019s reasonable control.', 'To the maximum extent permitted by law, Konduyt\u2019s aggregate liability arising out of or relating to the Service or these Terms will not exceed the greater of (1) the fees actually paid by the Customer to Konduyt during the twelve months immediately preceding the event giving rise to the claim; or (2) USD 100.', 'This limitation does not apply to liability that cannot lawfully be limited or excluded. Nothing in these Terms excludes liability for fraud, intentional misconduct or other liability that applicable law prohibits the parties from excluding.'] },
       { h: '25. Force Majeure', p: ['Konduyt will not be responsible for failure or delay caused by circumstances beyond its reasonable control, including natural disasters, war, terrorism, civil unrest, government action, internet or telecommunications failures, infrastructure failures, widespread cyber incidents, payment-provider outages, cloud-provider outages, labor disputes, or other events outside Konduyt\u2019s reasonable control.', 'The affected party will take reasonable steps to mitigate the effects of such events.'] },
-      { h: '26. Governing Law and Disputes', p: ['These Terms are governed by the laws of [JURISDICTION TO BE CONFIRMED BY COUNSEL], without regard to conflict-of-law principles.', 'The parties submit disputes to the courts of [JURISDICTION TO BE CONFIRMED BY COUNSEL], except where applicable law requires another forum.', 'Nothing in this section prevents either party from seeking urgent injunctive or protective relief where necessary.'] },
+      { h: '26. Governing Law and Disputes', p: ['These Terms are governed by the laws of Kenya (pending confirmation by counsel), without regard to conflict-of-law principles.', 'The parties submit disputes to the courts of Kenya (pending confirmation by counsel), except where applicable law requires another forum.', 'Nothing in this section prevents either party from seeking urgent injunctive or protective relief where necessary.'] },
       { h: '27. Changes to These Terms', p: ['Konduyt may update these Terms from time to time.', 'The updated version will be posted through the Service or on the Konduyt website.', 'Where changes materially affect Customer rights or obligations, Konduyt will provide reasonable advance notice where practicable.', 'Changes required for legal, regulatory, security or fraud-prevention reasons may take effect immediately where reasonably necessary.', 'Continued use of the Service after the effective date of updated Terms constitutes acceptance of the updated Terms to the extent permitted by law.'] },
       { h: '28. General', p: ['These Terms constitute the agreement between the Customer and Konduyt regarding the Service and supersede prior agreements concerning the same subject matter, except where the parties have entered into a separate written agreement.', 'If a provision is found invalid or unenforceable, the remaining provisions remain effective. Failure to enforce a provision does not constitute a waiver.', 'The Customer may not assign these Terms without Konduyt\u2019s prior written consent, except in connection with a merger, acquisition or sale of substantially all of its assets where the successor agrees to be bound. Konduyt may assign these Terms in connection with a merger, acquisition, corporate restructuring or sale of substantially all of its assets.', 'The parties are independent contractors. These Terms do not create a partnership, joint venture, agency or employment relationship. Neither party may make commitments on behalf of the other.', 'Provisions which by their nature should survive termination will survive, including confidentiality, intellectual property, payment obligations, indemnification, limitations of liability and dispute resolution.'] },
       { h: '29. Data Processing Agreement', p: ['Where Konduyt processes Personal Data as a processor on behalf of the Customer, the Konduyt Data Processing Agreement applies.', 'The DPA is incorporated into these Terms by reference.', 'Where there is a conflict between these Terms and the DPA regarding the processing of Personal Data, the DPA controls to the extent of that conflict.'] },
-      { h: '30. Contact', p: ['Questions concerning these Terms may be directed to:', 'Konduyt \u2014 Website: konduyt.dev \u2014 Legal/privacy contact: [LEGAL EMAIL TO BE INSERTED]', 'Privacy requests concerning Personal Data processed by Konduyt on behalf of a Customer will be handled in accordance with the applicable DPA and the Customer\u2019s role as controller.'] },
+      { h: '30. Contact', p: ['Questions concerning these Terms may be directed to:', 'Konduyt \u2014 Website: konduyt.dev \u2014 Legal/privacy contact: teamkonduyt@gmail.com', 'Privacy requests concerning Personal Data processed by Konduyt on behalf of a Customer will be handled in accordance with the applicable DPA and the Customer\u2019s role as controller.'] },
     ],
   },
   {
@@ -234,7 +237,7 @@ export const DOCUMENTS = [
       { h: '5. Data Location', p: ['Konduyt may process information in multiple jurisdictions. Our primary database infrastructure may currently be located in the European Union, including Frankfurt, Germany. Infrastructure locations and service providers may change as the Service develops. Where legally required, we use appropriate safeguards for international transfers.'] },
       { h: '6. Retention', p: ['We retain information only for as long as reasonably necessary for the purposes described in this Notice, or as required by law. Retention periods vary depending on the type of information and purpose.'] },
       { h: '7. Your Rights', p: ['Depending on applicable law, you may have rights concerning your Personal Data, including rights to:'], ul: ['access;', 'correction;', 'deletion;', 'restriction;', 'objection;', 'portability; and', 'withdrawal of consent where processing relies on consent.'], after: ['The availability of these rights depends on the applicable law and Konduyt\u2019s role in the relevant processing.'] },
-      { h: '8. Contact', p: ['Privacy questions and requests may be sent through the contact details provided on konduyt.dev.', 'Privacy email: [TO BE INSERTED]'] },
+      { h: '8. Contact', p: ['Privacy questions and requests may be sent through the contact details provided on konduyt.dev.', 'Privacy email: teamkonduyt@gmail.com'] },
     ],
   },
   {
@@ -251,19 +254,18 @@ export const DOCUMENTS = [
     title: 'Konduyt Subprocessors',
     meta: 'Last updated: 11 August 2026 · Version 1.0',
     intro: [
-      'Konduyt may use third-party infrastructure and service providers to operate the Service. The current Subprocessor List is maintained separately from these Terms and kept current.',
-      'For each Subprocessor, Konduyt publishes the provider, service, processing role and data location. Placeholders below are to be completed with the actual infrastructure providers before final publication.',
+      'Konduyt may use third-party infrastructure and service providers to operate the Service. The current Subprocessor List is maintained here and kept current.',
+      'For each Subprocessor, Konduyt publishes the provider, service, processing role and data location.',
     ],
     sections: [
       { h: 'Current subprocessors', table: {
         head: ['Subprocessor', 'Service', 'Role', 'Data location'],
         rows: [
-          ['[Hosting Provider]', 'Application hosting', 'Infrastructure', '[Location]'],
-          ['[Database Provider]', 'Managed database', 'Data storage', '[Location]'],
-          ['[Monitoring Provider]', 'Monitoring / logging', 'Observability', '[Location]'],
-          ['[Email Provider]', 'Email delivery', 'Communications', '[Location]'],
+          ['Render', 'Application hosting', 'Infrastructure', 'United States'],
+          ['Neon', 'Managed Postgres database', 'Data storage', 'Frankfurt, Germany (EU)'],
+          ['Cloudflare', 'CDN, edge and web delivery', 'Infrastructure / network', 'Global edge network'],
         ],
-      }, after: ['The list must be updated whenever a material Subprocessor is added or removed.'] },
+      }, after: ['This list is updated whenever a material Subprocessor is added or removed. If Konduyt introduces an email-delivery or monitoring subprocessor, it will be added here before or at the time it begins processing data.'] },
     ],
   },
 ];
