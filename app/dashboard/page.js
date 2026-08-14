@@ -64,6 +64,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState('integrations'); // money | integrations | taxes | messages | settings
   const [msgs, setMsgs] = useState([]);
   const [msgUnread, setMsgUnread] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [msgFilter, setMsgFilter] = useState('all'); // all | unread | important
   const [msgCategory, setMsgCategory] = useState('');
   const [msgLoading, setMsgLoading] = useState(false);
@@ -294,7 +295,14 @@ export default function Dashboard() {
   }, [tab, taxCountry, taxAmount]);
 
   // Messages: load the unread badge on mount, and the feed when the tab/filter changes.
-  useEffect(() => { loadUnread(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { loadUnread(); checkAdmin(); /* eslint-disable-next-line */ }, []);
+
+  async function checkAdmin() {
+    try {
+      const r = await fetch(`${API_BASE}/admin/whoami`, { headers: authHeaders() });
+      if (r.ok) { const d = await r.json(); setIsAdmin(!!d.is_admin); }
+    } catch (e) {}
+  }
   useEffect(() => {
     if (tab === 'messages') loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2094,7 +2102,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       Important updates about your providers, payments, taxes and the Konduyt API.
                     </p>
                   </div>
-                  {user?.is_admin && (
+                  {isAdmin && (
                     <a href="/admin/messages/" className="con-msg-admin-btn">+ Create post</a>
                   )}
                 </div>

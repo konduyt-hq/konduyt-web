@@ -130,6 +130,26 @@ export default function CheckoutModal({
 
         {stage === 'select' && (
           <>
+            {showIntelligence && cheapestId && (() => {
+              const rec = ranked.find((m) => m.id === cheapestId);
+              if (!rec) return null;
+              const others = ranked.filter((m) => m.fee_percent != null && m.id !== cheapestId);
+              const dearest = others.length ? others[others.length - 1] : null;
+              const saving = dearest && dearest.fee_percent != null
+                ? (dearest.fee_percent - rec.fee_percent).toFixed(2) : null;
+              return (
+                <div className="ckt-intel">
+                  <div className="ckt-intel-badge">Konduyt intelligence</div>
+                  <div className="ckt-intel-text">
+                    Recommends <strong>{rec.name}</strong> — the lowest-cost rail for this
+                    payment{rec.settlement ? ` (${String(rec.settlement).toUpperCase()} settlement)` : ''}.
+                    {saving && Number(saving) > 0 && (
+                      <> That&apos;s {saving}% cheaper than the priciest option here.</>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="ckt-section-label">Choose how to pay</div>
             {ranked.length === 0 ? (
               <div className="ckt-empty">
