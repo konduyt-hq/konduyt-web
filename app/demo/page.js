@@ -109,7 +109,7 @@ export default function DemoCheckout() {
     <div className="demo-root">
       <div className="demo-topbar">
         <Link href="/" className="demo-back">← Back to Konduyt</Link>
-        <span className="demo-flag">Demo — no real charge</span>
+        <span className="demo-flag">Demo. No real charge.</span>
       </div>
 
       <div className="demo-center demo-two-col">
@@ -117,14 +117,14 @@ export default function DemoCheckout() {
           <div className="demo-intel-head">
             <h2 className="demo-intel-h">The intelligence layer</h2>
             <p className="demo-intel-sub">
-              Same {fmt(displayAmount, currency)} payment, every available rail — ranked cheapest-first
+              Same {fmt(displayAmount, currency)} payment, every available rail. Ranked cheapest-first.
               by real fees and settlement time. Konduyt puts your customer on the best one by default.
             </p>
             {country && fxStatus === 'live' && currency !== 'KES' && (
-              <div className="demo-fx-note">Costs shown in {currency} for {country} — converted live from KES.</div>
+              <div className="demo-fx-note">Costs shown in {currency} for {country}, converted live from KES.</div>
             )}
             {fxStatus === 'native' && (
-              <div className="demo-fx-note">Live rate unavailable — showing native KES.</div>
+              <div className="demo-fx-note">Live rate unavailable. Showing native KES.</div>
             )}
           </div>
 
@@ -199,7 +199,7 @@ export default function DemoCheckout() {
                 ) : (
                   <div className="field">
                     <label className="field-label">{sel.name}</label>
-                    <div className="demo-rail-inputnote">Selected from the intelligence panel — {sel.id === cheapest.id ? 'the cheapest rail' : 'your chosen rail'}.</div>
+                    <div className="demo-rail-inputnote">Selected from the intelligence panel: {sel.id === cheapest.id ? 'the cheapest rail' : 'your chosen rail'}.</div>
                   </div>
                 )}
 
@@ -223,7 +223,7 @@ export default function DemoCheckout() {
             )}
           </div>
           <p className="demo-caption">
-            Your customer sees the checkout. You get the intelligence — the cheapest rail, chosen automatically.
+            Your customer sees the checkout. You get the intelligence: the cheapest rail, chosen automatically.
           </p>
         </div>
       </div>

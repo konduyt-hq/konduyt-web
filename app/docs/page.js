@@ -45,7 +45,7 @@ const DOCS = [
     id: 'introduction',
     group: 'Getting started',
     title: 'Introduction',
-    body: 'Konduyt is a payment orchestration layer. It connects providers like Paystack, Stripe, PayPal, Flutterwave, M-Pesa (Daraja), Razorpay and more to your product through one integration. You bring your own provider accounts — Konduyt routes and records payments but never holds, receives or settles your money. Funds always flow directly between the customer, the provider, and your own provider account.',
+    body: 'Konduyt is a payment orchestration layer. It connects providers like Paystack, Stripe, PayPal, Flutterwave, M-Pesa (Daraja), Razorpay and more to your product through one integration. You bring your own provider accounts. Konduyt routes and records payments. It never holds, receives, or settles your money. Funds always flow directly between the customer, the provider, and your own provider account.',
   },
   {
     id: 'how-it-works',
@@ -70,7 +70,7 @@ const DOCS = [
     id: 'authentication',
     group: 'Getting started',
     title: 'Authentication',
-    body: 'Authenticate every server request with your project secret key as a Bearer token. Use the publishable key on the client for checkout config and the embedded checkout — it exposes no secrets. Keys are issued per project at creation. Konduyt projects are live-only: there is no separate test mode inside Konduyt; you test with your provider\'s own test keys.',
+    body: 'Authenticate every server request with your project secret key as a Bearer token. Use the publishable key on the client, for checkout config and the embedded checkout. It exposes no secrets. Keys are issued per project at creation. Konduyt projects are live-only: there is no separate test mode inside Konduyt; you test with your provider\'s own test keys.',
   },
   {
     id: 'projects-keys',
@@ -82,14 +82,14 @@ const DOCS = [
     id: 'create-payment',
     group: 'Payments',
     title: 'Create a payment',
-    body: 'Create a payment with an amount (in minor units), currency, method and customer. Konduyt routes it to the best connected provider for that method and country and returns a unified payment object with a consistent shape across every provider — including an authorization URL or the provider-specific next step (M-Pesa STK push, card redirect, PayPal approval, Pix QR).',
+    body: 'Create a payment with an amount (in minor units), currency, method and customer. Konduyt routes it to the best connected provider for that method and country and returns a unified payment object with the same shape across every provider: an authorization URL, or the provider-specific next step (M-Pesa STK push, card redirect, PayPal approval, Pix QR).',
     code: true,
   },
   {
     id: 'methods',
     group: 'Payments',
     title: 'Payment methods',
-    body: 'Methods are country-aware. Konduyt maps a merchant country to eligible providers, and each provider to the methods it can serve — cards, M-Pesa and other mobile money, bank transfer, PesaLink, Apple Pay / Google Pay (device wallets), PayPal, Pix and more. Ask for a method; Konduyt picks the rail.',
+    body: 'Methods are country-aware. Konduyt maps a merchant country to eligible providers, and each provider to the methods it can serve: cards, M-Pesa and other mobile money, bank transfer, PesaLink, Apple Pay and Google Pay, PayPal, Pix, and more. Ask for a method; Konduyt picks the rail.',
   },
   {
     id: 'checkout',
@@ -101,7 +101,7 @@ const DOCS = [
     id: 'providers',
     group: 'Payments',
     title: 'Providers',
-    body: 'Konduyt speaks to 23+ payment providers and a growing set of bank rails. Fully profiled providers include Paystack, Flutterwave, M-Pesa (Daraja), Stripe, PayPal, Razorpay, Mollie, GoCardless and Cashfree. For Kenya, Paystack and M-Pesa are the primary rails. Switch providers by changing a field — the rest of your code stays the same.',
+    body: 'Konduyt speaks to 23+ payment providers and a growing set of bank rails. Fully profiled providers include Paystack, Flutterwave, M-Pesa (Daraja), Stripe, PayPal, Razorpay, Mollie, GoCardless and Cashfree. For Kenya, Paystack and M-Pesa are the primary rails. Switch providers by changing a field. The rest of your code stays the same.',
   },
   {
     id: 'webhooks',
@@ -119,7 +119,7 @@ const DOCS = [
     id: 'routing',
     group: 'Intelligence',
     title: 'Routing intelligence',
-    body: 'Konduyt ranks the rails that can serve a payment using published facts — each provider\'s fees, its settlement time, and the customer\'s location (which selects domestic vs cross-border fees and triggers FX). It is smart from the first transaction; it needs no history. Ranking is cheapest-first, with the settlement time shown so you can trade cost against speed.',
+    body: 'Konduyt ranks the rails that can serve a payment using published facts: each provider\'s fees, its settlement time, and the customer\'s location (which selects domestic vs cross-border fees and triggers FX). It is smart from the first transaction; it needs no history. Ranking is cheapest-first, with the settlement time shown so you can trade cost against speed.',
   },
   {
     id: 'fee-model',
@@ -131,7 +131,7 @@ const DOCS = [
     id: 'sentinel',
     group: 'Intelligence',
     title: 'Konduyt Sentinel',
-    body: 'Sentinel watches provider fee pages and tax-authority rate pages. It fetches, normalizes, hashes and compares; only on a real change does it extract, diff and assess materiality, then alert a human via Telegram for review. It detects and records — it never silently changes the numbers your routing depends on.',
+    body: 'Sentinel watches provider fee pages and tax-authority rate pages. It fetches, normalizes, hashes and compares; only on a real change does it extract, diff and assess materiality, then alert a human via Telegram for review. It detects and records. It never silently changes the numbers your routing depends on.',
   },
   {
     id: 'taxes',
@@ -143,7 +143,7 @@ const DOCS = [
     id: 'money',
     group: 'Dashboard',
     title: 'Money',
-    body: 'The Money view splits your real transaction volume by connected provider — volume, transaction count and share — read from the ledger. It is empty until real payments exist; Konduyt never fabricates figures.',
+    body: 'The Money view splits your real transaction volume by connected provider: volume, transaction count, share. Read straight from the ledger. It is empty until real payments exist; Konduyt never fabricates figures.',
   },
   {
     id: 'errors',
@@ -155,7 +155,7 @@ const DOCS = [
     id: 'security',
     group: 'Reference',
     title: 'Security',
-    body: 'Encryption in transit (TLS) and at rest for secret credentials (Fernet/AES), token-based auth, least-privilege provider access, and an append-only ledger. Konduyt never stores raw card data — that stays with the PCI-compliant providers you connect. Konduyt stores only the payment metadata needed to route and record a payment.',
+    body: 'Encryption in transit (TLS) and at rest for secret credentials (Fernet/AES), token-based auth, least-privilege provider access, and an append-only ledger. Konduyt never stores raw card data. That stays with the PCI-compliant providers you connect. Konduyt stores only the payment metadata needed to route and record a payment.',
   },
 ];
 

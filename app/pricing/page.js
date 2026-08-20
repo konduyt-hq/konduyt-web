@@ -86,9 +86,9 @@ export default function Pricing() {
           <span className="pricing-eyebrow">Konduyt pricing</span>
           <h1 className="pricing-title">Simple to explain. Scales with your business.</h1>
           <p className="pricing-lede">
-            No feature paywalls. Intelligence, routing, tax awareness and reconciliation are
-            part of Konduyt — never billed separately. You pay for access, for the volume Konduyt
-            orchestrates, and for capacity when you outgrow the basics.
+            No feature paywalls. Intelligence, routing, tax awareness, reconciliation.
+            All of it comes with Konduyt. You pay for access, for the volume we move,
+            and for more room when you outgrow the basics.
           </p>
         </header>
 
@@ -97,9 +97,9 @@ export default function Pricing() {
           <div className="pricing-free">
             <div className="pricing-free-head">Free to start</div>
             <ul className="pricing-list">
-              <li><span className="pricing-check">✓</span> Test mode — always free, every project</li>
-              <li><span className="pricing-check">✓</span> 3 live projects — free</li>
-              <li><span className="pricing-check">✓</span> Full SDK &amp; API — no feature restrictions</li>
+              <li><span className="pricing-check">✓</span> Test mode. Always free, every project.</li>
+              <li><span className="pricing-check">✓</span> 3 live projects. Free.</li>
+              <li><span className="pricing-check">✓</span> Full SDK &amp; API. Nothing locked.</li>
               <li><span className="pricing-check">✓</span> Every payment provider Konduyt supports</li>
             </ul>
           </div>
@@ -167,8 +167,7 @@ export default function Pricing() {
               <div className="pricing-layer-name">Access</div>
               <div className="pricing-layer-price">$10 / project / month</div>
               <p className="pricing-layer-desc">
-                Use Konduyt for your project — the full product, no feature restrictions.
-                Your first 3 live projects are free.
+                The full product. No feature restrictions. Your first 3 live projects are free.
               </p>
             </div>
             <div className="pricing-layer">
@@ -178,10 +177,9 @@ export default function Pricing() {
                 0.25% per transaction
               </div>
               <p className="pricing-layer-desc">
-                A small 0.25% fee on the volume Konduyt successfully orchestrates — the same
-                rate for everyone, on free and paid projects alike. Your connected provider
-                still charges its own fee and still settles your money; Konduyt never holds it.
-                Test-mode and failed payments are never charged.
+                A small 0.25% fee on what we successfully move. Same rate for everyone, free
+                or paid. Your provider still charges its own fee and still settles your money.
+                We never touch it. Test payments and failed ones cost nothing.
               </p>
             </div>
             <div className="pricing-layer">
@@ -189,14 +187,14 @@ export default function Pricing() {
               <div className="pricing-layer-name">Scale</div>
               <div className="pricing-layer-price">Higher-capacity plans</div>
               <p className="pricing-layer-desc">
-                When you outgrow the basics — throughput, rate limits, volume, SLA — you move to a
-                higher-capacity plan. More capacity, not unlocked features. Enterprise is custom.
+                Outgrow the basics (throughput, rate limits, volume, an SLA) and you move to a
+                bigger plan. More room, not more features. Enterprise pricing is custom.
               </p>
             </div>
           </div>
           <p className="pricing-layers-foot">
-            You pay more because you use more Konduyt — never because we hid something useful behind
-            a paywall. Intelligence, routing, tax awareness and reconciliation are always included.
+            You pay more because you use more, not because we hid something behind a wall.
+            Intelligence, routing, tax awareness, reconciliation: always included.
           </p>
         </section>
 
@@ -223,8 +221,8 @@ export default function Pricing() {
           <div className="pricing-what-col">
             <h3 className="pricing-what-h">What a project is</h3>
             <p className="pricing-what-p">
-              One application or system connected to Konduyt — a mobile app, a SaaS product,
-              a marketplace, or a website checkout.
+              One app or system connected to Konduyt. A mobile app, a SaaS product,
+              a marketplace, a checkout page.
             </p>
           </div>
           <div className="pricing-what-col">
@@ -237,8 +235,8 @@ export default function Pricing() {
           <div className="pricing-what-col">
             <h3 className="pricing-what-h">When a project is billable</h3>
             <p className="pricing-what-p">
-              Only active production projects count — those with live mode enabled, a production
-              provider connected, or real transactions. Test-mode and archived projects are free.
+              Only active production projects count: live mode on, a real provider connected,
+              real transactions happening. Test projects and archived ones are free.
             </p>
           </div>
         </section>
@@ -247,11 +245,10 @@ export default function Pricing() {
         <section className="pricing-why">
           <h3 className="pricing-why-h">Why we price this way</h3>
           <p className="pricing-why-p">
-            The value isn&apos;t extra features — it&apos;s Konduyt maintaining the payment
-            infrastructure behind your apps: provider integrations, API changes, normalized
-            payment flows, webhook handling and payment-state management. More applications mean
-            more infrastructure we maintain on your behalf, so cost scales with active projects,
-            not with locked-away features.
+            You&apos;re not paying for extra features. You&apos;re paying us to keep the
+            plumbing working: provider integrations, API changes, webhooks, payment states,
+            all of it. More apps means more plumbing on our end. So the cost follows how
+            much you use, not what we decided to lock away.
           </p>
         </section>
 
@@ -260,9 +257,9 @@ export default function Pricing() {
           <span className="pricing-intel-badge">In the works</span>
           <h3 className="pricing-intel-h">Konduyt Intelligence →</h3>
           <p className="pricing-intel-p">
-            A separate product, built on top of the same infrastructure: vendor performance
-            analysis, payment optimization, revenue-leakage detection and market insights.
-            Not part of KONDUYTbuild pricing — it&apos;s coming as its own thing.
+            A separate product, built on the same infrastructure. Vendor performance,
+            payment optimization, catching revenue leaks, market insight.
+            Not part of this pricing. It&apos;s coming on its own.
           </p>
         </Link>
 
