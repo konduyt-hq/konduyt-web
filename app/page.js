@@ -124,9 +124,9 @@ export default function Home() {
             <span className="hero-eyebrow">Payment infrastructure</span>
             <h1>One integration.<br />Every payment<br />provider.</h1>
             <div className="copy">
-              <p>Every payment provider has a different API. Konduyt gives you one.</p>
-              <p>We connect providers like Stripe, PayPal, M-Pesa, Flutterwave and more with a few lines of code.</p>
-              <p>Your customers pay the way they already know.<br />You keep your payment accounts. We never touch your money.</p>
+              <p>Every payment company speaks its own language. We learned all of them so you don&apos;t have to.</p>
+              <p>Plug in Stripe, PayPal, M-Pesa, Flutterwave, whatever you use. A few lines of code. That&apos;s it.</p>
+              <p>Your customers pay the way they already do. Nothing changes for them.<br />Your money stays in your own accounts. We never touch it.</p>
             </div>
             <div className="cta-row">
               <a href="/demo/" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>View demo</a>
