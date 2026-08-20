@@ -2267,11 +2267,8 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     <section className="settings-card">
                       <div className="settings-card-h">About Konduyt</div>
                       <p className="settings-about">
-                        Konduyt is a payment orchestration and intelligence layer — one integration to every
+                        Konduyt is a payment orchestration and intelligence layer. One integration to every
                         provider, routing to the best option, without ever touching your money.
-                      </p>
-                      <p className="settings-about-more">
-                        <a href="/about/" className="settings-about-link">Read our story and ambition →</a>
                       </p>
                     </section>
 
