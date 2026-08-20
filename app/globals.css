@@ -2076,7 +2076,7 @@
   /* Delete flow — professional restraint: neutral card, one subtle danger accent,
      red reserved for the confirm button and error text only. */
   .settings-delete{max-width:460px;}
-  .settings-delete-card{background:var(--elev);border:1px solid var(--border);border-left:3px solid #dc2626;border-radius:12px;padding:24px;}
+  .settings-delete-card{background:var(--elev);border:1px solid var(--border);border-radius:12px;padding:24px;}
   .settings-delete-h{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:10px;letter-spacing:-0.01em;}
   .settings-delete-p{font-size:13.5px;line-height:1.65;color:var(--text-secondary);margin-bottom:18px;}
   .settings-delete-label{font-size:13px;color:var(--ink);margin-bottom:8px;}
