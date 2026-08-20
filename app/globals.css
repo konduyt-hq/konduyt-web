@@ -819,7 +819,49 @@
   .con-avatar{
     width:34px; height:34px; border-radius:50%; background:var(--ink); color:#fff;
     border:none; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+    overflow:hidden; padding:0; display:flex; align-items:center; justify-content:center;
   }
+  .con-avatar-img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
+  .con-avatar-wrap{ position:relative; }
+  .con-avatar-menu{
+    position:absolute; top:calc(100% + 8px); right:0; min-width:220px;
+    background:var(--elev); border:1px solid var(--border); border-radius:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.12); padding:6px; z-index:50;
+  }
+  .con-avatar-menu-who{ padding:8px 10px 10px; border-bottom:1px solid var(--border); margin-bottom:6px; }
+  .con-avatar-menu-name{ font-size:13.5px; font-weight:600; color:var(--ink); }
+  .con-avatar-menu-email{ font-size:12px; color:var(--text-secondary); margin-top:2px; }
+  .con-avatar-menu-item{
+    display:block; width:100%; text-align:left; background:none; border:none;
+    padding:9px 10px; border-radius:7px; font-size:13.5px; font-weight:500;
+    color:var(--ink); font-family:inherit; cursor:pointer;
+  }
+  .con-avatar-menu-item:hover{ background:var(--bg); }
+  .con-avatar-menu-danger{ color:#c0392b; }
+  .con-notice{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 24px; font-size:13.5px; font-weight:500;
+  }
+  .con-notice-ok{ background:#e8f7ed; color:#1e7a3d; }
+  .con-notice-info{ background:#eef4ff; color:#274a9e; }
+  .con-notice-error{ background:#fdecea; color:#a23b2f; }
+  .con-notice-close{
+    background:none; border:none; font-size:18px; line-height:1; cursor:pointer;
+    color:inherit; opacity:0.6; font-family:inherit;
+  }
+  .con-notice-close:hover{ opacity:1; }
+  .settings-linked-list{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+  .settings-linked-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 12px; border:1px solid var(--border); border-radius:8px;
+  }
+  .settings-linked-name{ font-size:13.5px; font-weight:600; color:var(--ink); }
+  .settings-linked-status{ font-size:12.5px; color:var(--text-secondary); }
+  .settings-linked-btn{
+    background:var(--ink); color:#fff; border:none; border-radius:7px;
+    padding:6px 14px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer;
+  }
+  .settings-linked-loading{ font-size:13px; color:var(--text-secondary); }
   .con-tabs{
     display:flex; gap:4px; padding:0 24px; border-bottom:1px solid var(--border);
     background:var(--elev); overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;

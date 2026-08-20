@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import CheckoutModal from './CheckoutModal';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
@@ -53,6 +53,22 @@ function monogram(name) {
 export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
+  const [accountNotice, setAccountNotice] = useState(null);
+  const [identities, setIdentities] = useState(null);
+  const [identitiesLoading, setIdentitiesLoading] = useState(false);
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!avatarMenuOpen) return undefined;
+    function onClickOutside(e) {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
+        setAvatarMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [avatarMenuOpen]);
   const [settingsView, setSettingsView] = useState('main'); // main | delete
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -135,14 +151,49 @@ export default function Dashboard() {
 
   const active = projects.find((p) => p.id === activeId) || null;
 
+  useEffect(() => {
+    if (!user) return;
+    setIdentitiesLoading(true);
+    fetch(`${API_BASE}/me/identities`, { headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : { identities: [] }))
+      .then((data) => setIdentities(data.identities || []))
+      .catch(() => setIdentities([]))
+      .finally(() => setIdentitiesLoading(false));
+  }, [user]);
+
+  function linkProvider(provider) {
+    window.location.href = `${API_BASE}/auth/${provider}?link=1`;
+  }
+
   // ---- Initial auth + token capture ----
   useEffect(() => {
     migrateLegacyToken();
     let token = null;
-    if (window.location.hash.startsWith('#token=')) {
-      const params = new URLSearchParams(window.location.hash.slice(1));
+    const hash = window.location.hash;
+    if (hash.startsWith('#linked=')) {
+      // Came back from a Settings -> "Link a provider" flow, not a sign-in.
+      const params = new URLSearchParams(hash.slice(1));
+      const ok = params.get('linked') === '1';
+      const provider = params.get('provider') || 'that provider';
+      setAccountNotice(
+        ok
+          ? { kind: 'ok', text: `Linked ${provider === 'google' ? 'Google' : 'GitHub'} to your account.` }
+          : { kind: 'error', text: `Could not link ${provider}. It may already belong to a different account.` }
+      );
+      window.history.replaceState(null, '', window.location.pathname);
+      token = getToken();
+    } else if (hash.startsWith('#token=')) {
+      const params = new URLSearchParams(hash.slice(1));
       token = params.get('token');
       if (token) setToken(token);
+      if (params.get('provider_linked') === '1') {
+        setAccountNotice({ kind: 'ok', text: 'This sign-in matched your existing account by email, so nothing new was created.' });
+      } else if (params.get('private_email') === '1') {
+        setAccountNotice({
+          kind: 'info',
+          text: 'GitHub gave us a private email for this sign-in. If you already have a Konduyt account under a different email, sign in with that method instead, then link GitHub from Settings.',
+        });
+      }
       window.history.replaceState(null, '', window.location.pathname);
     } else {
       token = getToken();
@@ -841,11 +892,62 @@ export default function Dashboard() {
         </div>
 
         <div className="con-topbar-right">
-          <button className="con-avatar" onClick={logout} type="button" title="Sign out">
-            {(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}
-          </button>
+          <div className="con-avatar-wrap" ref={avatarMenuRef}>
+            <button
+              className="con-avatar"
+              onClick={() => setAvatarMenuOpen((v) => !v)}
+              type="button"
+              title={user?.name || user?.email || 'Account'}
+              aria-haspopup="menu"
+              aria-expanded={avatarMenuOpen}
+            >
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="con-avatar-img" referrerPolicy="no-referrer" />
+              ) : (
+                (user?.name || user?.email || '?').slice(0, 1).toUpperCase()
+              )}
+            </button>
+            {avatarMenuOpen && (
+              <div className="con-avatar-menu" role="menu">
+                <div className="con-avatar-menu-who">
+                  <div className="con-avatar-menu-name">{user?.name || 'Account'}</div>
+                  <div className="con-avatar-menu-email">{user?.email}</div>
+                </div>
+                <button
+                  className="con-avatar-menu-item"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { setTab('settings'); setAvatarMenuOpen(false); }}
+                >
+                  Settings
+                </button>
+                <button
+                  className="con-avatar-menu-item con-avatar-menu-danger"
+                  type="button"
+                  role="menuitem"
+                  onClick={logout}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
+
+      {accountNotice && (
+        <div className={`con-notice con-notice-${accountNotice.kind}`}>
+          <span>{accountNotice.text}</span>
+          <button
+            className="con-notice-close"
+            type="button"
+            onClick={() => setAccountNotice(null)}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
@@ -2261,6 +2363,45 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         <span><span className="settings-nav-k">Privacy &amp; Terms</span><span className="settings-nav-d">Terms, DPA, Privacy Notice</span></span>
                         <span className="settings-nav-arrow">↗</span>
                       </a>
+                    </section>
+
+                    {/* Linked accounts */}
+                    <section className="settings-card">
+                      <div className="settings-card-h">Linked accounts</div>
+                      <p className="settings-about">
+                        You can sign in with more than one provider. Link a second one now,
+                        so you never end up with two separate Konduyt accounts by mistake.
+                      </p>
+                      <div className="settings-linked-list">
+                        {identitiesLoading && <div className="settings-linked-loading">Loading…</div>}
+                        {!identitiesLoading && identities && (
+                          <>
+                            {['google', 'github'].map((p) => {
+                              const linked = identities.find((i) => i.provider === p);
+                              return (
+                                <div className="settings-linked-row" key={p}>
+                                  <span className="settings-linked-name">
+                                    {p === 'google' ? 'Google' : 'GitHub'}
+                                  </span>
+                                  {linked ? (
+                                    <span className="settings-linked-status">
+                                      Linked{linked.email_is_placeholder ? '' : ` · ${linked.email}`}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      className="settings-linked-btn"
+                                      type="button"
+                                      onClick={() => linkProvider(p)}
+                                    >
+                                      Link {p === 'google' ? 'Google' : 'GitHub'}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      </div>
                     </section>
 
                     {/* About */}

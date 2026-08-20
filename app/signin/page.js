@@ -11,6 +11,7 @@ const ERRORS = {
   exchange_failed: "We couldn't complete sign-in with that provider. Please try again.",
   no_email: 'That account has no email we can use. Try another provider.',
   missing_code: 'Sign-in was cancelled. Please try again.',
+  disposable_email: "We don't accept throwaway or temporary email addresses. Use a real one.",
   server_error: 'Something went wrong on our end. Please try again.',
 };
 
