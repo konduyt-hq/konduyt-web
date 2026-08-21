@@ -1269,6 +1269,17 @@
     .con-method-action .con-connect-btn{width:100%;}
   }
 
+  /* ===== Checkout preview locality intelligence ===== */
+  .locality-intel{background:var(--elev); border:1px solid var(--border); border-radius:12px;
+    padding:14px 18px; margin-bottom:12px; max-width:520px;}
+  .locality-intel-row{display:flex; align-items:center; gap:14px;}
+  .locality-intel-side{display:flex; flex-direction:column; gap:3px; flex:1; min-width:0;}
+  .locality-intel-label{font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.02em;}
+  .locality-intel-val{font-size:14px; font-weight:600; color:var(--ink);}
+  .locality-intel-arrow{font-size:16px; color:var(--text-secondary); flex-shrink:0;}
+  .locality-intel-select{padding:6px 10px; font-size:13.5px; font-weight:600;}
+  .locality-intel-note{font-size:12.5px; color:var(--text-secondary); margin:10px 0 0; line-height:1.5;}
+
   /* ===== Continent-grouped provider directory ===== */
   .continent-sections{display:flex; flex-direction:column; gap:32px; margin-top:16px;}
   .continent-section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px;}

@@ -102,6 +102,9 @@ export default function Dashboard() {
   const [methodSearch, setMethodSearch] = useState(''); // search by method (PayPal, Apple Pay, SEPA...)
   const [savingCountry, setSavingCountry] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false); // customer checkout preview
+  const [previewShopperCountry, setPreviewShopperCountry] = useState('KE');
+  const [previewEligibility, setPreviewEligibility] = useState(null);
+  const [previewEligibilityLoading, setPreviewEligibilityLoading] = useState(false);
   const [previewAmount, setPreviewAmount] = useState('1500.00'); // major units, editable
   const [previewCurrency, setPreviewCurrency] = useState('KES');
   // Routing intelligence panel
@@ -315,6 +318,27 @@ export default function Dashboard() {
       .then((d) => { setProvidersByContinent(d.continents || []); setProvidersLoading(false); })
       .catch(() => { setProvidersByContinent([]); setProvidersLoading(false); });
   }, [status]);
+
+  // Real eligibility fetch effect for the checkout preview, GET /v1/payment-methods/available -- no
+  // fabricated fallback data. Only runs when the preview is open and the
+  // project has a real publishable key (the same client-safe auth the SDK
+  // itself uses). Refetches whenever the simulated shopper's country changes,
+  // so the preview genuinely demonstrates locality-driven eligibility.
+  useEffect(() => {
+    const pubKey = keys?.live?.publishable_key;
+    if (!checkoutOpen || !pubKey || !previewShopperCountry) {
+      setPreviewEligibility(null);
+      return;
+    }
+    setPreviewEligibilityLoading(true);
+    const amt = Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100));
+    fetch(`${API_BASE}/v1/payment-methods/available?country=${previewShopperCountry}` +
+         `&currency=${previewCurrency}&amount=${amt}`,
+         { headers: { Authorization: `Bearer ${pubKey}` } })
+      .then((r) => r.json())
+      .then((d) => { setPreviewEligibility(d); setPreviewEligibilityLoading(false); })
+      .catch(() => { setPreviewEligibility(null); setPreviewEligibilityLoading(false); });
+  }, [checkoutOpen, keys, previewShopperCountry, previewCurrency, previewAmount]);
 
   // Payment-method graph, resolved for the active project's merchant country.
   useEffect(() => {
@@ -2306,47 +2330,29 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
         {/* Customer checkout preview — what the end customer sees on "Pay" */}
         {(() => {
-          // Payable methods = capabilities the connected providers actually
-          // power (enabled), mapped to display info. If nothing is connected,
-          // show a representative set so the UI is visible in preview.
-          const enabledMethodIds = new Set();
-          const viaByMethod = {};
-          (accounts || []).forEach((a) => {
-            (a.capabilities || []).forEach((cap) => {
-              if (cap.enabled) {
-                enabledMethodIds.add(cap.id);
-                if (!viaByMethod[cap.id]) viaByMethod[cap.id] = a.name;
-              }
-            });
-          });
-          let payable = methodsCatalog
-            .filter((m) => enabledMethodIds.has(m.id))
-            .map((m) => ({ id: m.id, name: m.name, connectable: true,
-                           via: viaByMethod[m.id] || ((m.available_via || [])[0] || {}).name,
-                           available_via: viaByMethod[m.id] ? [{ name: viaByMethod[m.id] }] : (m.available_via || []) }));
-          // Fallback representative set for preview when nothing is enabled yet:
-          // up to 6 methods, each with a sample fee + settlement so the
-          // intelligence (cheapest-first, Best value badge) is visible.
-          const isRepresentative = payable.length === 0;
-          if (isRepresentative) {
-            const rep = [
-              { id: 'mpesa', name: 'M-Pesa', via: 'Paystack', fee_percent: 1.5, settlement: 't1' },
-              { id: 'card', name: 'Cards', via: 'Paystack', fee_percent: 2.9, settlement: 't1' },
-              { id: 'apple_pay', name: 'Apple Pay', via: 'Paystack', fee_percent: 2.9, settlement: 't1' },
-              { id: 'paypal_wallet', name: 'PayPal', via: 'PayPal', fee_percent: 3.49, settlement: 'instant' },
-              { id: 'bank_transfer', name: 'Bank Transfer', via: 'Flutterwave', fee_percent: 1.4, settlement: 't1' },
-              { id: 'pesalink', name: 'PesaLink', via: 'Equity Bank', fee_percent: 0.5, settlement: 'instant' },
-            ];
-            payable = rep.map((m) => ({ ...m, connectable: true, available_via: [{ name: m.via }] }));
-          }
+          // REAL eligibility, from GET /v1/payment-methods/available -- the
+          // same engine that decides what the actual SDK shows a real
+          // shopper. Replaces a hardcoded fallback dataset (fabricated fee
+          // percentages attached to real provider names) that used to render
+          // whenever nothing was connected yet -- that was never sourced from
+          // anything real, so it's gone, not extended.
+          const merchantCountryName = (MERCHANT_COUNTRIES.find((c) => c.code === active?.merchant_country) || {}).name
+            || 'not set yet';
+          const prettyMethodName = (id) => (id || '').replace(/_/g, ' ')
+            .replace(/\b\w/g, (ch) => ch.toUpperCase());
+          const payable = (previewEligibility?.methods || []).map((m) => ({
+            id: m.method.toLowerCase(),
+            name: prettyMethodName(m.method),
+            connectable: true,
+            via: m.selected_provider,
+            available_via: [{ name: prettyMethodName(m.selected_provider) }],
+            eligible_providers: m.eligible_providers,
+            capability_detail: m.capability_detail,
+          }));
 
-          // Editable preview amount -> integer minor units.
           const amountMinor = Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100));
 
           async function onPay(methodId) {
-            // Attempt a real payment through the project's live key, so the
-            // preview exercises the real endpoint. The next-step / error text is
-            // honest about what would happen with a live provider connected.
             try {
               const secret = keys?.live?.secret;
               if (!secret) {
@@ -2360,11 +2366,10 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               });
               const d = await r.json().catch(() => ({}));
               if (r.ok) {
-                return { ok: true, message: '' }; // component fills the method-specific next step
+                return { ok: true, message: '' };
               }
               const detail = d.detail;
               const msg = (detail && detail.message) || (typeof detail === 'string' ? detail : 'Payment could not start.');
-              // no_provider_connected etc. — show the honest reason.
               return { ok: false, message: msg };
             } catch (e) {
               return { ok: false, message: 'Network error starting the payment.' };
@@ -2373,17 +2378,46 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
           const merchantName = active?.name || 'Your Store';
           return (
-            <CheckoutModal
-              open={checkoutOpen}
-              onClose={() => setCheckoutOpen(false)}
-              merchant={merchantName}
-              amount={amountMinor}
-              currency={previewCurrency}
-              methods={payable}
-              reference="kdu_preview_demo"
-              onPay={onPay}
-              preview
-            />
+            <>
+              {checkoutOpen && (
+                <div className="locality-intel">
+                  <div className="locality-intel-row">
+                    <div className="locality-intel-side">
+                      <span className="locality-intel-label">Your business</span>
+                      <span className="locality-intel-val">
+                        {merchantCountryName} · {previewCurrency}
+                      </span>
+                    </div>
+                    <span className="locality-intel-arrow">→</span>
+                    <div className="locality-intel-side">
+                      <span className="locality-intel-label">Shopper is in</span>
+                      <select className="con-connect-input locality-intel-select"
+                        value={previewShopperCountry}
+                        onChange={(e) => setPreviewShopperCountry(e.target.value)}>
+                        {MERCHANT_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <p className="locality-intel-note">
+                    {previewEligibilityLoading ? 'Checking eligible methods for this locality…'
+                      : payable.length > 0
+                        ? `Konduyt found ${payable.length} real, verified payment method${payable.length !== 1 ? 's' : ''} for a shopper in ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} — each traced to a connected, capability-verified provider below. Change the country to see it adapt.`
+                        : `No connected provider has verified capability for ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} yet — connect a provider that covers this market to unlock methods here.`}
+                  </p>
+                </div>
+              )}
+              <CheckoutModal
+                open={checkoutOpen}
+                onClose={() => setCheckoutOpen(false)}
+                merchant={merchantName}
+                amount={amountMinor}
+                currency={previewCurrency}
+                methods={payable}
+                reference="kdu_preview_demo"
+                onPay={onPay}
+                preview
+              />
+            </>
           );
         })()}
       </main>
