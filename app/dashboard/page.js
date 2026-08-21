@@ -140,7 +140,8 @@ export default function Dashboard() {
   const [testResult, setTestResult] = useState({}); // provider_id -> {ok, message, testing}
   const [methodDetail, setMethodDetail] = useState(null);
   // Continent-grouped provider directory (replaces the old category-drill-down browse)
-  const [providersByContinent, setProvidersByContinent] = useState([]);
+  const [topProviders, setTopProviders] = useState([]);
+  const [coverageStats, setCoverageStats] = useState(null);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [connectingProviderId, setConnectingProviderId] = useState(null);
   const [expandedProvider, setExpandedProvider] = useState(null);
@@ -308,15 +309,19 @@ export default function Dashboard() {
       .catch(() => setProviders([]));
   }, [status]);
 
-  // Real connector catalog grouped by continent, sorted by distinct payment
-  // methods available -- no project auth needed, this is catalog data.
+  // Real providers ranked by genuine global coverage, deduplicated -- no
+  // continent repetition. No project auth needed, this is catalog data.
   useEffect(() => {
     if (status !== 'ready') return;
     setProvidersLoading(true);
-    fetch(`${API_BASE}/connectors/by-continent`)
+    fetch(`${API_BASE}/connectors/top?limit=12`)
       .then((r) => r.json())
-      .then((d) => { setProvidersByContinent(d.continents || []); setProvidersLoading(false); })
-      .catch(() => { setProvidersByContinent([]); setProvidersLoading(false); });
+      .then((d) => {
+        setTopProviders(d.providers || []);
+        setCoverageStats({ countries: d.combined_country_count, regions: d.combined_region_count });
+        setProvidersLoading(false);
+      })
+      .catch(() => { setTopProviders([]); setProvidersLoading(false); });
   }, [status]);
 
   // Real eligibility fetch effect for the checkout preview, GET /v1/payment-methods/available -- no
@@ -1197,9 +1202,10 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Provider directory: grouped by continent, sorted by distinct
-                    payment methods available. Replaces the old category ->
-                    method drill-down. Every card is a real connector from
+                {/* Provider directory: flat, deduplicated, ranked by real
+                    global coverage (country count, then method count) --
+                    every provider appears exactly once, never repeated
+                    across regions. Every card is a real connector from
                     app/connectors/registry.py -- capabilities, countries, and
                     credential fields all come from the live catalog. */}
                 {(() => {
@@ -1212,28 +1218,46 @@ export default function Dashboard() {
                   const isConnected = (providerId) => accounts.some((a) => a.provider_id === providerId);
                   const accountFor = (providerId) => accounts.find((a) => a.provider_id === providerId);
 
+                  const avatarColor = (id) => {
+                    const palette = ['#0a0a0a', '#27272a', '#3f3f46', '#18181b', '#1c1917'];
+                    let hash = 0;
+                    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+                    return palette[hash % palette.length];
+                  };
+
                   const renderProviderCard = (p) => {
                     const connected = isConnected(p.id);
                     const account = accountFor(p.id);
                     const isConnecting = connectingProviderId === p.id;
                     const isExpanded = expandedProvider === p.id;
                     const test = testResult[p.id] || {};
-                    const hasOAuth = p.auth_type === 'oauth'; // never true today -- see note below card
                     return (
                       <div className={`provider-card ${connected ? 'connected' : ''}`} key={p.id}>
                         <div className="provider-card-head">
-                          <div className="provider-card-name-row">
-                            <span className="provider-card-name">{p.name}</span>
-                            {p.status === 'beta' && <span className="provider-card-tag beta">Beta — unverified</span>}
-                            {connected && <span className="provider-card-tag connected">● Connected</span>}
+                          <div className="provider-card-id">
+                            <span className="provider-avatar" style={{ background: avatarColor(p.id) }}>
+                              {p.name.slice(0, 1).toUpperCase()}
+                            </span>
+                            <div className="provider-card-name-col">
+                              <span className="provider-card-name">{p.name}</span>
+                              <span className="provider-card-reach">
+                                {p.country_count} countr{p.country_count !== 1 ? 'ies' : 'y'} · {p.regions.join(', ')}
+                              </span>
+                            </div>
                           </div>
-                          <div className="provider-card-countries">
-                            {(p.countries || []).slice(0, 6).map((c) => (
-                              <span key={c.code} className="provider-card-flag" title={c.name}>{c.flag}</span>
-                            ))}
+                          <div className="provider-card-tags">
+                            {p.status === 'beta' && <span className="provider-card-tag beta">Beta</span>}
+                            {connected && <span className="provider-card-tag connected">Connected</span>}
                           </div>
                         </div>
 
+                        <div className="provider-card-flags">
+                          {(p.countries || []).map((c) => (
+                            <span key={c.code} className="provider-card-flag" title={c.name}>{c.flag}</span>
+                          ))}
+                        </div>
+
+                        {/* Every method this provider supports -- never truncated. */}
                         <div className="provider-card-methods">
                           {(p.capabilities || []).map((cap) => (
                             <span key={cap.id} className="provider-card-method">{cap.name}</span>
@@ -1258,16 +1282,16 @@ export default function Dashboard() {
                           </div>
                         ) : (
                           <div className="provider-card-actions">
-                            <button className="con-connect-btn" type="button"
+                            {/* Only the connect path that actually works is shown.
+                                Every real connector in this catalog is api_key or
+                                custom auth -- zero support OAuth today, so no
+                                disabled "Connect automatically" placeholder here. */}
+                            <button className="con-connect-btn full" type="button"
                               onClick={() => {
                                 setConnectingProviderId(isConnecting ? null : p.id);
                                 setCredValues({}); setConnectError('');
                               }}>
                               {isConnecting ? 'Cancel' : 'Connect with API keys'}
-                            </button>
-                            <button className="con-connect-btn secondary" type="button" disabled
-                              title="Automatic (OAuth) connect isn't available for any provider yet -- only real, working connect paths are shown here.">
-                              Connect automatically
                             </button>
                           </div>
                         )}
@@ -1347,26 +1371,19 @@ export default function Dashboard() {
                     return <p className="con-sub" style={{ marginTop: 16 }}>Loading providers…</p>;
                   }
 
-                  if (q) {
-                    const allProviders = [];
-                    const seen = new Set();
-                    providersByContinent.forEach((c) => c.providers.forEach((p) => {
-                      if (!seen.has(p.id)) { seen.add(p.id); allProviders.push(p); }
-                    }));
-                    const matches = allProviders.filter(matchesQuery);
-                    if (matches.length === 0) {
-                      return (
-                        <div className="con-empty" style={{ marginTop: 16 }}>
-                          <p className="con-empty-sub">
-                            No provider matches “{methodSearch}”. Try Paystack, Stripe, PayPal, Flutterwave…
-                          </p>
-                        </div>
-                      );
-                    }
-                    return <div className="provider-grid" style={{ marginTop: 4 }}>{matches.map(renderProviderCard)}</div>;
+                  const list = q ? topProviders.filter(matchesQuery) : topProviders;
+
+                  if (q && list.length === 0) {
+                    return (
+                      <div className="con-empty" style={{ marginTop: 16 }}>
+                        <p className="con-empty-sub">
+                          No provider matches “{methodSearch}”. Try Paystack, Stripe, PayPal, Flutterwave…
+                        </p>
+                      </div>
+                    );
                   }
 
-                  if (providersByContinent.length === 0) {
+                  if (list.length === 0) {
                     return (
                       <div className="con-empty" style={{ marginTop: 16 }}>
                         <p className="con-empty-sub">No providers available yet.</p>
@@ -1375,20 +1392,17 @@ export default function Dashboard() {
                   }
 
                   return (
-                    <div className="continent-sections">
-                      {providersByContinent.map((c) => (
-                        <div className="continent-section" key={c.continent}>
-                          <div className="continent-section-head">
-                            <h2 className="continent-section-title">{c.continent}</h2>
-                            <span className="continent-section-meta">
-                              {c.total_methods} payment method{c.total_methods !== 1 ? 's' : ''} · {c.provider_count} provider{c.provider_count !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          <div className="provider-grid">
-                            {c.providers.map(renderProviderCard)}
-                          </div>
-                        </div>
-                      ))}
+                    <div className="provider-directory">
+                      {!q && coverageStats && (
+                        <p className="provider-directory-summary">
+                          These {list.length} providers alone cover {coverageStats.countries} countries
+                          across {coverageStats.regions} regions. Connect the ones you need — Konduyt
+                          figures out which methods that unlocks for each shopper.
+                        </p>
+                      )}
+                      <div className="provider-grid">
+                        {list.map(renderProviderCard)}
+                      </div>
                     </div>
                   );
                 })()}
