@@ -763,6 +763,9 @@
     border:3px solid var(--border); border-top-color:var(--ink);
     animation:spin .8s linear infinite;
   }
+  .dash-loading-note{
+    margin-top:18px; font-size:13.5px; color:var(--text-secondary); text-align:center;
+  }
 
   /* ================= CONSOLE / DASHBOARD ================= */
   .con-topbar{

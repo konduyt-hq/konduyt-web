@@ -50,6 +50,23 @@ function monogram(name) {
   return (name || '?').slice(0, 2).toUpperCase();
 }
 
+// Shown only if the initial load genuinely takes a few seconds -- doesn't
+// appear instantly (would be noise on a fast, warm load), and is honest about
+// WHY it's slow rather than a silent spinner that just looks broken past ~3s.
+function DashLoadingNote() {
+  const [showNote, setShowNote] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShowNote(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!showNote) return null;
+  return (
+    <p className="dash-loading-note">
+      Waking up your workspace — this can take a few seconds after a quiet period.
+    </p>
+  );
+}
+
 export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
@@ -888,7 +905,10 @@ export default function Dashboard() {
   if (status === 'loading') {
     return (
       <div className="dash-root">
-        <div className="dash-center"><div className="dash-spinner" /></div>
+        <div className="dash-center">
+          <div className="dash-spinner" />
+          <DashLoadingNote />
+        </div>
       </div>
     );
   }

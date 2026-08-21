@@ -1,9 +1,11 @@
 import DevPanel from './DevPanel';
 import NavCta from './NavCta';
+import WarmupPing from './WarmupPing';
 
 export default function Home() {
   return (
     <>
+      <WarmupPing />
       <div className="wrap">
         {/* NAV */}
         <nav>
