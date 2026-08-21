@@ -136,6 +136,11 @@ export default function Dashboard() {
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
   const [testResult, setTestResult] = useState({}); // provider_id -> {ok, message, testing}
   const [methodDetail, setMethodDetail] = useState(null);
+  // Continent-grouped provider directory (replaces the old category-drill-down browse)
+  const [providersByContinent, setProvidersByContinent] = useState([]);
+  const [providersLoading, setProvidersLoading] = useState(true);
+  const [connectingProviderId, setConnectingProviderId] = useState(null);
+  const [expandedProvider, setExpandedProvider] = useState(null);
   const [snippetLang, setSnippetLang] = useState('curl');
   const [projectStatus, setProjectStatus] = useState(null);
   const [activity, setActivity] = useState([]);
@@ -300,6 +305,17 @@ export default function Dashboard() {
       .catch(() => setProviders([]));
   }, [status]);
 
+  // Real connector catalog grouped by continent, sorted by distinct payment
+  // methods available -- no project auth needed, this is catalog data.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    setProvidersLoading(true);
+    fetch(`${API_BASE}/connectors/by-continent`)
+      .then((r) => r.json())
+      .then((d) => { setProvidersByContinent(d.continents || []); setProvidersLoading(false); })
+      .catch(() => { setProvidersByContinent([]); setProvidersLoading(false); });
+  }, [status]);
+
   // Payment-method graph, resolved for the active project's merchant country.
   useEffect(() => {
     if (status !== 'ready') return;
@@ -458,6 +474,55 @@ export default function Dashboard() {
     } finally {
       setDeleteBusy(false);
     }
+  }
+
+  // Connect a provider directly from the continent-grouped provider grid.
+  // Deliberately NOT reusing connectProvider() above -- that function reads
+  // activeMethod (method_id: activeMethod) and calls reloadMethodDetail(),
+  // both of which assume the old category -> method drill-down navigation.
+  // Neither exists in this provider-first flow, so this is its own handler
+  // rather than risk a silent bug from that coupling. Connecting a provider
+  // here does NOT force-enable any specific method -- the developer enables
+  // methods separately, or they become eligible automatically.
+  async function connectProviderCard(providerId, schemaFields) {
+    setConnectError('');
+    setConnectBusy(true);
+    try {
+      const credentials = {};
+      (schemaFields || []).forEach((f) => {
+        let val = credValues[f.name];
+        if ((val === undefined || val === '') && f.type === 'select' && !f.required) {
+          val = (f.options || [])[0] || '';
+        }
+        if (val !== undefined && val !== '') {
+          credentials[f.name] = typeof val === 'string' ? val.trim() : val;
+        }
+      });
+      Object.entries(credValues).forEach(([k, v]) => {
+        if (!(k in credentials) && v !== undefined && v !== '') {
+          credentials[k] = typeof v === 'string' ? v.trim() : v;
+        }
+      });
+      const r = await fetch(`${API_BASE}/projects/${activeId}/connections`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: providerId, credentials }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        const msg = typeof err.detail === 'string' ? err.detail
+          : (err.detail?.message || 'Could not connect. Check your credentials.');
+        setConnectError(msg);
+        setConnectBusy(false);
+        return;
+      }
+      setConnectingProviderId(null);
+      setCredValues({});
+      loadProjectData(activeId);
+    } catch (e) {
+      setConnectError('Network error. Please try again.');
+    }
+    setConnectBusy(false);
   }
 
   async function connectProvider(providerId, schemaFields) {
@@ -1108,441 +1173,201 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Search results — flat, filtered by method name */}
-                {methodSearch && (() => {
+                {/* Provider directory: grouped by continent, sorted by distinct
+                    payment methods available. Replaces the old category ->
+                    method drill-down. Every card is a real connector from
+                    app/connectors/registry.py -- capabilities, countries, and
+                    credential fields all come from the live catalog. */}
+                {(() => {
                   const q = methodSearch.trim().toLowerCase();
-                  const matches = methodsCatalog.filter((m) =>
-                    m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
-                  if (matches.length === 0) {
+                  const matchesQuery = (p) => {
+                    if (!q) return true;
+                    if (p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)) return true;
+                    return (p.capabilities || []).some((c) => (c.name || '').toLowerCase().includes(q));
+                  };
+                  const isConnected = (providerId) => accounts.some((a) => a.provider_id === providerId);
+                  const accountFor = (providerId) => accounts.find((a) => a.provider_id === providerId);
+
+                  const renderProviderCard = (p) => {
+                    const connected = isConnected(p.id);
+                    const account = accountFor(p.id);
+                    const isConnecting = connectingProviderId === p.id;
+                    const isExpanded = expandedProvider === p.id;
+                    const test = testResult[p.id] || {};
+                    const hasOAuth = p.auth_type === 'oauth'; // never true today -- see note below card
                     return (
-                      <div className="con-empty" style={{ marginTop: 16 }}>
-                        <p className="con-empty-sub">
-                          No payment method matches “{methodSearch}”. Try PayPal, Apple Pay, M-Pesa, SEPA, UPI, ACH, Pix…
-                        </p>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div className="pm-grid" style={{ marginTop: 4 }}>
-                      {matches.map((m) => {
-                        const treatment = m.treatment || 'method';
-                        const via = (m.available_via || []).map((v) => v.name);
-                        const connectable = m.connectable !== false;
-                        let statusText, statusClass;
-                        if (!connectable) { statusText = 'Connect a provider that supports this'; statusClass = 'needs'; }
-                        else if (treatment === 'capability') { statusText = `Turns on via ${via[0] || 'a processor'}`; statusClass = 'ready'; }
-                        else if (treatment === 'direct') { statusText = 'Direct connect'; statusClass = 'ready'; }
-                        else { statusText = via.length ? `Via ${via.join(', ')}` : 'Available'; statusClass = 'ready'; }
-                        return (
-                          <button className={`pm-tile ${!connectable ? 'needs' : ''}`} key={m.id} type="button"
-                            onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}>
-                            <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
-                            <span className="pm-tile-name">{m.name}</span>
-                            {treatment === 'capability' && <span className="pm-tile-tag">capability</span>}
-                            {treatment === 'direct' && <span className="pm-tile-tag direct">direct</span>}
-                            <span className={`pm-tile-status ${statusClass}`}>{statusText}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                      <div className={`provider-card ${connected ? 'connected' : ''}`} key={p.id}>
+                        <div className="provider-card-head">
+                          <div className="provider-card-name-row">
+                            <span className="provider-card-name">{p.name}</span>
+                            {p.status === 'beta' && <span className="provider-card-tag beta">Beta — unverified</span>}
+                            {connected && <span className="provider-card-tag connected">● Connected</span>}
+                          </div>
+                          <div className="provider-card-countries">
+                            {(p.countries || []).slice(0, 6).map((c) => (
+                              <span key={c.code} className="provider-card-flag" title={c.name}>{c.flag}</span>
+                            ))}
+                          </div>
+                        </div>
 
-                {methodGroups.length === 0 && !methodSearch && (
-                  <div style={{ marginTop: 12 }}>
-                    {!activeId ? (
-                      <div className="con-empty">
-                        <p className="con-empty-sub">
-                          You don&apos;t have a project yet. Create one to see payment methods.
-                        </p>
-                        <button
-                          className="dash-btn-primary"
-                          type="button"
-                          style={{ marginTop: 14 }}
-                          onClick={async () => {
-                            try {
-                              const r = await fetch(`${API_BASE}/projects`, {
-                                method: 'POST',
-                                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ name: 'My First Project' }),
-                              });
-                              if (!r.ok) { alert('Could not create project (status ' + r.status + ')'); return; }
-                              const proj = await r.json();
-                              setProjects([proj]);
-                              setActiveId(proj.id);
-                            } catch (e) {
-                              alert('Network error creating project: ' + e.message);
-                            }
-                          }}
-                        >
-                          Create your first project
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="con-sub">Loading payment methods…</p>
-                    )}
-                  </div>
-                )}
-                {/* Category drill-down: categories first, then methods in the chosen category */}
-                {methodGroups.length > 0 && !activeCategory && !methodSearch && (
-                  <div className="cat-grid">
-                    {methodGroups.map((group) => {
-                      const catByCategory = methodsCatalog.filter((m) => m.category === group.category);
-                      const methodCount = catByCategory.length || group.methods.length;
-                      const enabledCount = group.methods.filter((m) => m.status === 'connected').length;
-                      // "Connectable" = has a provider that can connect today (from /methods).
-                      const connectableCount = catByCategory.filter((m) => m.connectable).length
-                        || group.methods.filter((m) => m.status === 'connectable').length;
-                      return (
-                        <button className="cat-tile" key={group.category} type="button"
-                          onClick={() => setActiveCategory(group.category)}>
-                          <span className="cat-tile-name">{group.label}</span>
-                          <span className="cat-tile-count">{methodCount} method{methodCount !== 1 ? 's' : ''}</span>
-                          <span className="cat-tile-meta">
-                            {enabledCount > 0 && <span className="cat-badge on">{enabledCount} enabled</span>}
-                            {enabledCount === 0 && connectableCount > 0 && <span className="cat-badge ready">{connectableCount} available</span>}
-                          </span>
-                          <span className="cat-tile-arrow">→</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                        <div className="provider-card-methods">
+                          {(p.capabilities || []).map((cap) => (
+                            <span key={cap.id} className="provider-card-method">{cap.name}</span>
+                          ))}
+                        </div>
 
-                {methodGroups.length > 0 && activeCategory && !methodSearch && (() => {
-                  const group = methodGroups.find((g) => g.category === activeCategory);
-                  if (!group) { setActiveCategory(null); return null; }
-                  // Connected/enabled status from the project's live method data.
-                  const statusById = {};
-                  group.methods.forEach((m) => { statusById[m.id] = m.status; });
-                  // Source of truth for WHAT methods exist in this category = the
-                  // country-resolved graph, so PayPal (direct) and capability
-                  // wallets always appear, in sync with search.
-                  const catMethods = methodsCatalog.filter((m) => m.category === activeCategory);
-                  const label = group.label;
-                  return (
-                    <div className="cat-detail">
-                      <button className="pm-back" type="button" onClick={() => setActiveCategory(null)}>
-                        ← All categories
-                      </button>
-                      <h2 className="cat-detail-title">{label}</h2>
-                      <div className="pm-grid">
-                        {catMethods.map((cat) => {
-                          const m = { id: cat.id, name: cat.name, status: statusById[cat.id] };
-                          const treatment = cat.treatment || 'method';
-                          const via = (cat.available_via || []).map((v) => v.name);
-                          const connectable = cat.connectable !== false;
-                          let statusText, statusClass;
-                          if (m.status === 'connected') { statusText = '✓ Enabled'; statusClass = 'connected'; }
-                          else if (!connectable) { statusText = 'Connect a provider that supports this'; statusClass = 'needs'; }
-                          else if (treatment === 'capability') { statusText = `Turns on via ${via[0] || 'a processor'}`; statusClass = 'ready'; }
-                          else if (treatment === 'direct') { statusText = 'Direct connect'; statusClass = 'ready'; }
-                          else { statusText = via.length ? `Via ${via.join(', ')}` : 'Available'; statusClass = 'ready'; }
-                          return (
-                            <button
-                              className={`pm-tile ${!connectable ? 'needs' : ''}`}
-                              key={m.id}
-                              type="button"
-                              onClick={() => { setActiveMethod(m.id); setConnectingId(null); setExpandedMethod(null); }}
-                            >
-                              <span className="pm-tile-mono" aria-hidden="true">{monogram(m.name)}</span>
-                              <span className="pm-tile-name">{m.name}</span>
-                              {treatment === 'capability' && <span className="pm-tile-tag">capability</span>}
-                              {treatment === 'direct' && <span className="pm-tile-tag direct">direct</span>}
-                              <span className={`pm-tile-status ${statusClass}`}>{statusText}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {tab === 'integrations' && intSection === 'connections' && activeMethod && methodDetail && (() => {
-              const md = methodDetail;
-              const activeConn = md.connectors.find((c) => c.status === 'connected');
-              return (
-                <div className="mpesa-page">
-                  <button className="pm-back" type="button" onClick={() => { setActiveMethod(null); setConnectingId(null); }}>
-                    ← All payment methods
-                  </button>
-                  <div className="con-home-head">
-                    <h1 className="con-h1">{md.name}</h1>
-                    <p className="con-sub">Accept payments from {md.name} customers.</p>
-                  </div>
-
-                  {(() => {
-                    const cat = methodsCatalog.find((m) => m.id === md.id) || {};
-                    if (cat.treatment !== 'capability') return null;
-                    const via = (cat.available_via || []).map((v) => v.name);
-                    return (
-                      <div className="cap-explainer">
-                        <div className="cap-explainer-title">This turns on through a processor</div>
-                        {via.length ? (
-                          <p>
-                            {md.name} isn&apos;t connected on its own — it rides on top of a card processor.
-                            Connect <strong>{via.join(' or ')}</strong> and enable it there, and {md.name} becomes
-                            available automatically at checkout for customers whose device supports it.
-                          </p>
-                        ) : (
-                          <p>
-                            {md.name} rides on top of a card processor. None of your connectable providers
-                            expose it yet — connect a provider that supports {md.name} and it will turn on here.
-                          </p>
+                        {connected && account?.mode === 'test' && (
+                          <div className="acct-testmode-note">
+                            These are <strong>test credentials</strong> — Konduyt connects live accounts only for
+                            real payments. This shouldn&apos;t normally happen; disconnect and reconnect with a live key.
+                          </div>
                         )}
-                        {via.length > 0 && (
-                          <button className="con-connect-btn" type="button" style={{ marginTop: 12 }}
-                            onClick={() => {
-                              const processor = cat.available_via[0] || {};
-                              // Land on the Cards method (which this processor provides) and
-                              // auto-open that processor's connect form, so the button lands
-                              // exactly where the developer connects it.
-                              setActiveMethod('card');
-                              setConnectingId(processor.id);
-                              setCredValues({});
-                              setConnectError('');
-                            }}>
-                            Connect {via[0]}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
 
-                  {md.id === 'card' && (
-                    <div className="pm-networks">
-                      <span className="pm-networks-label">Supported networks</span>
-                      <div className="pm-networks-list">
-                        {['Visa', 'Mastercard', 'American Express', 'Discover', 'JCB', 'UnionPay'].map((n) => (
-                          <span className="pm-network" key={n}>{n}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {activeConn ? (
-                    <div className="mpesa-success">
-                      <div className="mpesa-success-badge">✓ {md.name} Connected</div>
-                      <div className="mpesa-success-row">
-                        <span className="mpesa-success-label">Connection method</span>
-                        <span className="mpesa-success-val">{activeConn.name}</span>
-                      </div>
-                      <div className="mpesa-success-actions">
-                        <button className="con-connect-btn" type="button" disabled>Manage</button>
-                        <button className="con-disconnect-btn" type="button"
-                          onClick={() => disconnectProvider(activeConn.id)}>Disconnect</button>
-                        <button className="con-connect-btn secondary" type="button" disabled>Test Connection</button>
-                      </div>
-                    </div>
-                  ) : md.connectors.length === 0 ? (
-                    <div className="con-empty"><p className="con-empty-sub">No connectors provide this method yet.</p></div>
-                  ) : (
-                    <div className="mpesa-methods">
-                      {md.connectors.map((c) => {
-                        const isExpanded = expandedMethod === c.id;
-                        const isConnecting = connectingId === c.id && c.connectable;
-                        const statusLabel = c.status === 'available' ? 'Available'
-                          : c.status === 'beta' ? 'Beta — unverified'
-                          : 'Not available yet';
-                        return (
-                          <div className={`mpesa-card ${c.connectable ? '' : 'unavailable'}`} key={c.id}>
-                            <div className="mpesa-card-main">
-                              <div className="mpesa-card-info">
-                                <div className="mpesa-card-title-row">
-                                  <span className="mpesa-card-name">{c.name}</span>
-                                  {c.type_label && <span className="mpesa-card-tagline">{c.type_label}</span>}
-                                </div>
-                                {c.enabled_here ? (
-                                  <span className="mpesa-status available">✓ Enabled — powering {md.name}</span>
-                                ) : c.account_connected ? (
-                                  <span className="mpesa-status available">✓ Already connected</span>
-                                ) : (
-                                  <span className={
-                                    c.status === 'available' ? 'mpesa-status available'
-                                    : c.status === 'beta' ? 'mpesa-status beta' : 'mpesa-status'
-                                  }>{statusLabel}</span>
-                                )}
-                              </div>
-                              <div className="mpesa-card-action">
-                                {c.enabled_here ? (
-                                  <button className="con-disconnect-btn" type="button"
-                                    onClick={disableMethod}>Disable</button>
-                                ) : c.account_connected ? (
-                                  // Already connected — enable with NO credentials.
-                                  <button className="con-connect-btn" type="button"
-                                    onClick={() => enableMethod(c.id)}>Enable</button>
-                                ) : c.connectable ? (
-                                  <button className="con-connect-btn" type="button"
-                                    onClick={() => { setConnectingId(isConnecting ? null : c.id); setCredValues({}); setConnectError(''); }}>
-                                    {isConnecting ? 'Cancel' : 'Connect'}
-                                  </button>
-                                ) : (
-                                  <button className="con-connect-btn" type="button" disabled>Unavailable</button>
-                                )}
-                              </div>
-                            </div>
-
-                            {c.best_for && (
-                              <button className="mpesa-learn-toggle" type="button"
-                                onClick={() => setExpandedMethod(isExpanded ? null : c.id)}>
-                                {isExpanded ? '▲ Learn more' : '▼ Learn more'}
-                              </button>
-                            )}
-                            {isExpanded && (
-                              <div className="mpesa-learn">
-                                <p className="mpesa-learn-blurb">{c.best_for}</p>
-                                {c.status === 'beta' && (
-                                  <p className="mpesa-beta-note">
-                                    This connector is newly built and not yet verified against the live API.
-                                    Connect with real credentials — Konduyt validates them and connects only if they work.
-                                  </p>
-                                )}
-                                {c.docs_url && (
-                                  <a className="con-connect-docs" href={c.docs_url} target="_blank" rel="noreferrer">
-                                    Where to find your credentials ↗
-                                  </a>
-                                )}
-                              </div>
-                            )}
-
-                            {isConnecting && (
-                              <div className="con-connect-form">
-                                <div className="mpesa-connect-title">Connect {md.name} via {c.name}</div>
-                                <div className="con-connect-livehint">
-                                  Use your <strong>live</strong> keys. Konduyt connects real provider accounts —
-                                  test or sandbox credentials won&apos;t be accepted here.
-                                </div>
-                                {(c.credential_schema?.fields || []).map((field) => (
-                                  <div className="con-field" key={field.name}>
-                                    <label className="con-connect-label">
-                                      {field.label}{field.required && <span className="con-req">*</span>}
-                                    </label>
-                                    {field.type === 'select' ? (
-                                      <select className="con-connect-input"
-                                        value={credValues[field.name] || (field.required ? '' : (field.options || [])[0] || '')}
-                                        onChange={(e) => setCredValues((v) => ({ ...v, [field.name]: e.target.value }))}>
-                                        {field.required && <option value="">Select…</option>}
-                                        {(field.options || []).map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
-                                      </select>
-                                    ) : (
-                                      <input className="con-connect-input"
-                                        type={field.type === 'password' ? 'password' : 'text'}
-                                        placeholder={field.placeholder || ''}
-                                        value={credValues[field.name] || ''}
-                                        onChange={(e) => setCredValues((v) => ({ ...v, [field.name]: e.target.value }))} />
-                                    )}
-                                    {field.help && <p className="con-field-help">{field.help}</p>}
-                                  </div>
-                                ))}
-                                {connectError && <div className="con-connect-error">{connectError}</div>}
-                                <button className="con-connect-submit"
-                                  onClick={() => connectProvider(c.id, c.credential_schema?.fields || [])}
-                                  disabled={connectBusy || !schemaComplete(c, credValues)}
-                                  type="button">
-                                  {connectBusy ? 'Validating…' : 'Connect'}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {tab === 'integrations' && intSection === 'connections' && !activeMethod && (
-              <div className="acct-page">
-                <div className="con-home-head">
-                  <h1 className="con-h1">Connected accounts</h1>
-                  <p className="con-sub">
-                    Your provider accounts. Each one can power multiple payment methods — connect once, reuse everywhere.
-                  </p>
-                </div>
-
-                {accounts.length === 0 ? (
-                  <div className="con-empty">
-                    <p className="con-empty-sub">
-                      No provider accounts connected yet. Pick a payment method above, choose a provider, and connect it — it&apos;ll appear here.
-                    </p>
-                    <button className="dash-btn-primary" type="button" style={{ marginTop: 14 }}
-                      onClick={() => { setTab('integrations'); setIntSection('connections'); setActiveCategory(null); }}>
-                      Connect a provider
-                    </button>
-                  </div>
-                ) : (
-                  <div className="acct-list">
-                    {accounts.map((a) => {
-                      const test = testResult[a.provider_id] || {};
-                      return (
-                        <div className={`acct-card ${a.integration_pending ? 'pending' : ''}`} key={a.provider_id}>
-                          <div className="acct-head">
-                            <div>
-                              <div className="acct-name">
-                                {a.name}
-                                {a.mode === 'test' && <span className="acct-mode test">Test mode</span>}
-                                {a.mode === 'live' && <span className="acct-mode live">Live</span>}
-                                {a.mode === 'unknown' && <span className="acct-mode unknown">Mode unverified</span>}
-                              </div>
-                              {a.account_label && <div className="acct-label">{a.account_label}</div>}
-                            </div>
-                            {a.integration_pending ? (
-                              <span className="acct-status pending">● Connected · awaiting integration</span>
-                            ) : (
-                              <span className="acct-status">● Connected</span>
-                            )}
-                          </div>
-
-                          {a.mode === 'test' && (
-                            <div className="acct-testmode-note">
-                              These are <strong>test credentials</strong>. Payments routed through {a.name} won&apos;t
-                              move real money. Connect live keys (e.g. Paystack <code>sk_live_…</code>) to accept
-                              real payments.
-                            </div>
-                          )}
-
-                          {a.integration_pending && (
-                            <div className="acct-pending-note">
-                              Credentials stored securely. {a.name} transfers activate once its official
-                              bank integration is wired — no guessed endpoints, no fake payments.
-                            </div>
-                          )}
-
-                          <div className="acct-caps">
-                            <div className="acct-caps-label">Provides</div>
-                            <div className="acct-caps-list">
-                              {a.capabilities.map((cap) => (
-                                <span key={cap.id} className={`acct-cap ${cap.enabled ? 'on' : ''}`}>
-                                  {cap.enabled ? '✓ ' : ''}{cap.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          {test.message && (
-                            <div className={`acct-test-result ${test.ok ? 'ok' : 'err'}`}>
-                              {test.ok ? '✓ ' : '✕ '}{test.message}
-                            </div>
-                          )}
-
-                          <div className="acct-actions">
+                        {connected ? (
+                          <div className="provider-card-actions">
                             <button className="acct-btn" type="button"
-                              onClick={() => testConnection(a.provider_id)} disabled={test.testing}>
+                              onClick={() => testConnection(p.id)} disabled={test.testing}>
                               {test.testing ? 'Testing…' : 'Test connection'}
                             </button>
                             <button className="acct-btn danger" type="button"
-                              onClick={() => disconnectAccount(a.provider_id)}>
-                              Disconnect
+                              onClick={() => disconnectAccount(p.id)}>Disconnect</button>
+                          </div>
+                        ) : (
+                          <div className="provider-card-actions">
+                            <button className="con-connect-btn" type="button"
+                              onClick={() => {
+                                setConnectingProviderId(isConnecting ? null : p.id);
+                                setCredValues({}); setConnectError('');
+                              }}>
+                              {isConnecting ? 'Cancel' : 'Connect with API keys'}
+                            </button>
+                            <button className="con-connect-btn secondary" type="button" disabled
+                              title="Automatic (OAuth) connect isn't available for any provider yet -- only real, working connect paths are shown here.">
+                              Connect automatically
                             </button>
                           </div>
+                        )}
+
+                        {test.message && (
+                          <div className={`acct-test-result ${test.ok ? 'ok' : 'err'}`}>
+                            {test.ok ? '✓ ' : '✕ '}{test.message}
+                          </div>
+                        )}
+
+                        {p.best_for && (
+                          <button className="mpesa-learn-toggle" type="button"
+                            onClick={() => setExpandedProvider(isExpanded ? null : p.id)}>
+                            {isExpanded ? '▲ Learn more' : '▼ Learn more'}
+                          </button>
+                        )}
+                        {isExpanded && (
+                          <div className="mpesa-learn">
+                            <p className="mpesa-learn-blurb">{p.best_for}</p>
+                            {p.status === 'beta' && (
+                              <p className="mpesa-beta-note">
+                                This connector is newly built and not yet verified against the live API.
+                                Connect with real credentials — Konduyt validates them and connects only if they work.
+                              </p>
+                            )}
+                            {p.docs_url && (
+                              <a className="con-connect-docs" href={p.docs_url} target="_blank" rel="noreferrer">
+                                Where to find your credentials ↗
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {isConnecting && (
+                          <div className="con-connect-form">
+                            <div className="mpesa-connect-title">Connect {p.name}</div>
+                            <div className="con-connect-livehint">
+                              Use your <strong>live</strong> keys. Konduyt connects real provider accounts —
+                              test or sandbox credentials won&apos;t be accepted here.
+                            </div>
+                            {(p.credential_schema?.fields || []).map((field) => (
+                              <div className="con-field" key={field.name}>
+                                <label className="con-connect-label">
+                                  {field.label}{field.required && <span className="con-req">*</span>}
+                                </label>
+                                {field.type === 'select' ? (
+                                  <select className="con-connect-input"
+                                    value={credValues[field.name] || (field.required ? '' : (field.options || [])[0] || '')}
+                                    onChange={(e) => setCredValues((v) => ({ ...v, [field.name]: e.target.value }))}>
+                                    {field.required && <option value="">Select…</option>}
+                                    {(field.options || []).map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
+                                  </select>
+                                ) : (
+                                  <input className="con-connect-input"
+                                    type={field.type === 'password' ? 'password' : 'text'}
+                                    placeholder={field.placeholder || ''}
+                                    value={credValues[field.name] || ''}
+                                    onChange={(e) => setCredValues((v) => ({ ...v, [field.name]: e.target.value }))} />
+                                )}
+                                {field.help && <p className="con-field-help">{field.help}</p>}
+                              </div>
+                            ))}
+                            {connectError && <div className="con-connect-error">{connectError}</div>}
+                            <button className="con-connect-submit"
+                              onClick={() => connectProviderCard(p.id, p.credential_schema?.fields || [])}
+                              disabled={connectBusy || !schemaComplete(p, credValues)}
+                              type="button">
+                              {connectBusy ? 'Validating…' : 'Connect'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  };
+
+                  if (providersLoading) {
+                    return <p className="con-sub" style={{ marginTop: 16 }}>Loading providers…</p>;
+                  }
+
+                  if (q) {
+                    const allProviders = [];
+                    const seen = new Set();
+                    providersByContinent.forEach((c) => c.providers.forEach((p) => {
+                      if (!seen.has(p.id)) { seen.add(p.id); allProviders.push(p); }
+                    }));
+                    const matches = allProviders.filter(matchesQuery);
+                    if (matches.length === 0) {
+                      return (
+                        <div className="con-empty" style={{ marginTop: 16 }}>
+                          <p className="con-empty-sub">
+                            No provider matches “{methodSearch}”. Try Paystack, Stripe, PayPal, Flutterwave…
+                          </p>
                         </div>
                       );
-                    })}
-                  </div>
-                )}
+                    }
+                    return <div className="provider-grid" style={{ marginTop: 4 }}>{matches.map(renderProviderCard)}</div>;
+                  }
+
+                  if (providersByContinent.length === 0) {
+                    return (
+                      <div className="con-empty" style={{ marginTop: 16 }}>
+                        <p className="con-empty-sub">No providers available yet.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="continent-sections">
+                      {providersByContinent.map((c) => (
+                        <div className="continent-section" key={c.continent}>
+                          <div className="continent-section-head">
+                            <h2 className="continent-section-title">{c.continent}</h2>
+                            <span className="continent-section-meta">
+                              {c.total_methods} payment method{c.total_methods !== 1 ? 's' : ''} · {c.provider_count} provider{c.provider_count !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="provider-grid">
+                            {c.providers.map(renderProviderCard)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
