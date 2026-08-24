@@ -1847,6 +1847,22 @@
   }
 
   /* ===== Taxes tab ===== */
+  .tax-overview{margin-top:6px;}
+  .tax-overview-head{margin:18px 0 22px;}
+  .tax-overview-total{font-size:34px; font-weight:800; color:var(--ink); font-family:'JetBrains Mono',monospace;}
+  .tax-overview-total-label{font-size:14px; color:var(--text-secondary); margin-left:10px;}
+  .tax-overview-sub{font-size:13px; color:var(--text-secondary); margin:8px 0 0;}
+  .tax-overview-jurisdictions{display:flex; flex-direction:column; gap:12px; margin-bottom:20px;}
+  .tax-overview-card{border:1px solid var(--border); border-radius:12px; padding:18px 20px;}
+  .tax-overview-card-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;}
+  .tax-overview-card-country{font-size:15px; font-weight:700; color:var(--ink);}
+  .tax-overview-card-total{font-size:16px; font-weight:700; color:var(--ink); font-family:'JetBrains Mono',monospace;}
+  .tax-overview-card-lines{display:flex; flex-direction:column; gap:5px; margin-bottom:10px;}
+  .tax-overview-card-line{display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary);}
+  .tax-overview-card-due{font-size:12px; font-weight:600; color:var(--ink); border-top:1px solid var(--border); padding-top:8px;}
+  .tax-overview-disclaimer{font-size:12px; color:var(--text-secondary); line-height:1.6; margin:0;}
+  .tax-overview-calc-link{background:none; border:none; color:var(--ink); font-weight:700; font-size:12px;
+    cursor:pointer; padding:0; font-family:inherit; text-decoration:underline;}
   .tax-page{max-width:760px;}
   .tax-note{font-size:12.5px;line-height:1.55;color:var(--text-secondary);margin-bottom:18px;}
   .tax-result{border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;}

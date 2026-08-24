@@ -148,7 +148,7 @@ export default function Dashboard() {
   // Taxes tab
   const [taxTable, setTaxTable] = useState([]);
   const [taxDisclaimer, setTaxDisclaimer] = useState('');
-  const [taxView, setTaxView] = useState('estimate'); // 'estimate' | 'reference'
+  const [taxView, setTaxView] = useState('overview'); // 'overview' | 'estimate' | 'reference'
   const [taxCountry, setTaxCountry] = useState('GB');
   const [taxAmount, setTaxAmount] = useState('1500.00');
   const [taxCurrency, setTaxCurrency] = useState('KES');
@@ -737,6 +737,44 @@ export default function Dashboard() {
     { id: 'KDY-9280', customer: 'sarah', provider: 'stripe', amount: 8400, currency: 'KES', status: 'completed', created_at: new Date().toISOString() },
     { id: 'KDY-9279', customer: 'james', provider: 'paypal', amount: 21000, currency: 'KES', status: 'failed', created_at: new Date().toISOString() },
   ];
+  // PREVIEW ONLY, not wired to real computation yet -- this demos the
+  // proposed simplified Taxes overview (spec: "how much, where, when"), so
+  // the direction can be looked at before the real per-jurisdiction
+  // aggregation backend gets built. Numbers are the spec's own worked
+  // example, not derived from anything real -- clearly bannered as demo in
+  // the UI, same discipline as every other demo dataset in this file.
+  const DEMO_TAX_OVERVIEW = {
+    total_estimated_minor: 284000, // $2,840.00
+    total_currency: 'USD',
+    jurisdiction_count: 3,
+    next_deadline: { date: 'September 30', jurisdiction: 'Kenya' },
+    jurisdictions: [
+      {
+        country: 'Kenya', currency: 'KES', total_minor: 18400000, // KES 184,000
+        due: 'September 30',
+        lines: [
+          { label: 'VAT', amount_minor: 12000000 },
+          { label: 'Income tax', amount_minor: 6400000 },
+        ],
+      },
+      {
+        country: 'United Kingdom', currency: 'GBP', total_minor: 64000, // £640
+        due: 'October 31',
+        lines: [
+          { label: 'VAT', amount_minor: 42000 },
+          { label: 'Income tax', amount_minor: 22000 },
+        ],
+      },
+      {
+        country: 'United States', currency: 'USD', total_minor: 124000, // $1,240
+        due: 'October 15',
+        lines: [
+          { label: 'Sales tax', amount_minor: 124000 },
+        ],
+      },
+    ],
+  };
+
   const DEMO_TAX_RECEIVED = {
     has_data: true,
     countries: [
@@ -2156,11 +2194,63 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 </div>
 
                 <div className="int-subnav">
+                  <button className={taxView === 'overview' ? 'int-subtab active' : 'int-subtab'}
+                    onClick={() => setTaxView('overview')}>Overview</button>
                   <button className={taxView === 'estimate' ? 'int-subtab active' : 'int-subtab'}
                     onClick={() => setTaxView('estimate')}>Per-payment</button>
                   <button className={taxView === 'reference' ? 'int-subtab active' : 'int-subtab'}
                     onClick={() => setTaxView('reference')}>Country reference</button>
                 </div>
+
+                {taxView === 'overview' && (
+                  <div className="tax-overview">
+                    <div className="demo-banner">
+                      Preview only — this is a proposed simplified layout shown with sample numbers,
+                      not yet wired to real per-jurisdiction calculation. The Per-payment tab has your real data today.
+                    </div>
+                    {(() => {
+                      const d = DEMO_TAX_OVERVIEW;
+                      const fmt = (minor, ccy) => `${ccy} ${(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                      return (
+                        <>
+                          <div className="tax-overview-head">
+                            <span className="tax-overview-total">{fmt(d.total_estimated_minor, d.total_currency)}</span>
+                            <span className="tax-overview-total-label">estimated tax</span>
+                            <p className="tax-overview-sub">
+                              Across {d.jurisdiction_count} jurisdictions · Next deadline: <strong>{d.next_deadline.date}</strong> ({d.next_deadline.jurisdiction})
+                            </p>
+                          </div>
+
+                          <div className="tax-overview-jurisdictions">
+                            {d.jurisdictions.map((j) => (
+                              <div className="tax-overview-card" key={j.country}>
+                                <div className="tax-overview-card-head">
+                                  <span className="tax-overview-card-country">{j.country}</span>
+                                  <span className="tax-overview-card-total">{fmt(j.total_minor, j.currency)}</span>
+                                </div>
+                                <div className="tax-overview-card-lines">
+                                  {j.lines.map((l) => (
+                                    <div className="tax-overview-card-line" key={l.label}>
+                                      <span>{l.label}</span>
+                                      <span>{fmt(l.amount_minor, j.currency)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="tax-overview-card-due">Due: {j.due}</div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <p className="tax-overview-disclaimer">
+                            Estimated — based on your transactions and current tax configuration. Not an official
+                            tax assessment. <button type="button" className="tax-overview-calc-link"
+                              onClick={() => setTaxView('estimate')}>View calculation →</button>
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 {taxView === 'estimate' && (
                   <div className="tax-received">
