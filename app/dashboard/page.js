@@ -158,6 +158,13 @@ export default function Dashboard() {
   const [methodDetail, setMethodDetail] = useState(null);
   // Continent-grouped provider directory (replaces the old category-drill-down browse)
   const [topProviders, setTopProviders] = useState([]);
+  // Real, per-country eligible methods for CONNECTED providers, keyed by
+  // provider_id -> { countryName: [methodName, ...] }. Built from
+  // GET /v1/payment-methods/available (the real eligibility engine), never
+  // from a flat provider-level capabilities list -- that data has no
+  // country-to-method mapping at all, so showing "Kenya: X, Y" vs "UK: Z"
+  // from it would mean fabricating which method applies to which country.
+  const [connectedProviderMethods, setConnectedProviderMethods] = useState({});
   const [coverageStats, setCoverageStats] = useState(null);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [connectingProviderId, setConnectingProviderId] = useState(null);
@@ -340,6 +347,42 @@ export default function Dashboard() {
       })
       .catch(() => { setTopProviders([]); setProvidersLoading(false); });
   }, [status]);
+
+  // For each CONNECTED provider, fetch REAL per-country eligible methods (the
+  // "Payment methods available to you, grouped by country" view). One fetch
+  // per (provider, country) pair the connector catalog lists for that
+  // provider -- capped so a broad provider (10 countries) doesn't fire an
+  // unbounded number of requests. Countries with zero real eligible methods
+  // are simply omitted, never shown with a fabricated checkmark.
+  useEffect(() => {
+    const pubKey = keys?.live?.publishable_key;
+    if (!pubKey || !accounts.length || !topProviders.length) return;
+    const MAX_COUNTRIES_PER_PROVIDER = 8;
+
+    accounts.forEach((acct) => {
+      const providerId = acct.provider_id;
+      const catalogEntry = topProviders.find((p) => p.id === providerId);
+      const countries = (catalogEntry?.countries || []).slice(0, MAX_COUNTRIES_PER_PROVIDER);
+      if (!countries.length) return;
+
+      Promise.all(countries.map((c) =>
+        fetch(`${API_BASE}/v1/payment-methods/available?country=${c.code}`,
+             { headers: { Authorization: `Bearer ${pubKey}` } })
+          .then((r) => (r.ok ? r.json() : { methods: [] }))
+          .then((d) => ({ countryName: c.name, methods: d.methods || [] }))
+          .catch(() => ({ countryName: c.name, methods: [] }))
+      )).then((results) => {
+        const byCountry = {};
+        results.forEach(({ countryName, methods }) => {
+          const forThisProvider = methods
+            .filter((m) => (m.eligible_providers || []).includes(providerId))
+            .map((m) => m.method.replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()));
+          if (forThisProvider.length) byCountry[countryName] = forThisProvider;
+        });
+        setConnectedProviderMethods((prev) => ({ ...prev, [providerId]: byCountry }));
+      });
+    });
+  }, [accounts, topProviders, keys]);
 
   // Real eligibility fetch effect for the checkout preview, GET /v1/payment-methods/available -- no
   // fabricated fallback data. Only runs when the preview is open and the
@@ -1238,57 +1281,66 @@ export default function Dashboard() {
                   const isConnected = (providerId) => accounts.some((a) => a.provider_id === providerId);
                   const accountFor = (providerId) => accounts.find((a) => a.provider_id === providerId);
 
-                  const avatarColor = (id) => {
-                    const palette = ['#0a0a0a', '#27272a', '#3f3f46', '#18181b', '#1c1917'];
-                    let hash = 0;
-                    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-                    return palette[hash % palette.length];
-                  };
-
                   const renderProviderCard = (p) => {
                     const connected = isConnected(p.id);
                     const account = accountFor(p.id);
                     const isConnecting = connectingProviderId === p.id;
                     const isExpanded = expandedProvider === p.id;
                     const test = testResult[p.id] || {};
+                    // "Africa", "Africa + Global", "Global" -- matches the
+                    // mockup's simple region label instead of a country count.
+                    const regionLabel = p.regions.length >= 4 ? 'Global'
+                      : p.regions.length === 3 ? `${p.regions[0]} + Global`
+                      : p.regions.join(' + ');
+                    const realBreakdown = connectedProviderMethods[p.id];
                     return (
                       <div className={`provider-card ${connected ? 'connected' : ''}`} key={p.id}>
                         <div className="provider-card-head">
-                          <div className="provider-card-id">
-                            <span className="provider-avatar" style={{ background: avatarColor(p.id) }}>
-                              {p.name.slice(0, 1).toUpperCase()}
-                            </span>
-                            <div className="provider-card-name-col">
-                              <span className="provider-card-name">{p.name}</span>
-                              <span className="provider-card-reach">
-                                {p.country_count} countr{p.country_count !== 1 ? 'ies' : 'y'} · {p.regions.join(', ')}
-                              </span>
-                            </div>
+                          <div className="provider-card-name-col">
+                            <span className="provider-card-name">{p.name}</span>
+                            <span className="provider-card-region">{regionLabel}</span>
                           </div>
                           <div className="provider-card-tags">
                             {p.status === 'beta' && <span className="provider-card-tag beta">Beta</span>}
-                            {connected && <span className="provider-card-tag connected">Connected</span>}
+                            {connected && <span className="provider-card-tag connected">✓ Connected</span>}
                           </div>
                         </div>
 
-                        <div className="provider-card-flags">
-                          {(p.countries || []).map((c) => (
-                            <span key={c.code} className="provider-card-flag" title={c.name}>{c.flag}</span>
-                          ))}
-                        </div>
-
-                        {/* Every method this provider supports -- never truncated. */}
-                        <div className="provider-card-methods">
-                          {(p.capabilities || []).map((cap) => (
-                            <span key={cap.id} className="provider-card-method">{cap.name}</span>
-                          ))}
-                        </div>
+                        {/* Every method this provider supports -- never truncated,
+                            shown inline as the mockup does (name • name • name). */}
+                        <p className="provider-card-methods-line">
+                          {(p.capabilities || []).map((cap) => cap.name).join(' • ')}
+                        </p>
 
                         {connected && account?.mode === 'test' && (
                           <div className="acct-testmode-note">
                             These are <strong>test credentials</strong> — Konduyt connects live accounts only for
                             real payments. This shouldn&apos;t normally happen; disconnect and reconnect with a live key.
                           </div>
+                        )}
+
+                        {/* Real, per-country breakdown -- built from the actual
+                            eligibility engine, not the flat capabilities list
+                            above (which has no country-to-method mapping). A
+                            country only appears here if it genuinely has at
+                            least one verified method through THIS provider. */}
+                        {connected && realBreakdown && Object.keys(realBreakdown).length > 0 && (
+                          <div className="provider-card-breakdown">
+                            <div className="provider-card-breakdown-title">Payment methods available to you</div>
+                            {Object.entries(realBreakdown).map(([countryName, methods]) => (
+                              <div className="provider-card-breakdown-country" key={countryName}>
+                                <div className="provider-card-breakdown-country-name">{countryName}</div>
+                                <ul className="provider-card-breakdown-list">
+                                  {methods.map((m) => <li key={m}>✓ {m}</li>)}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {connected && realBreakdown && Object.keys(realBreakdown).length === 0 && (
+                          <p className="provider-card-breakdown-empty">
+                            No verified methods yet for this account&apos;s markets — check back shortly.
+                          </p>
                         )}
 
                         {connected ? (
