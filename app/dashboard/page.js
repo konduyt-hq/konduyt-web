@@ -143,13 +143,6 @@ export default function Dashboard() {
   // the real endpoints. Auto-ignored once real data exists.
   const [demoMode, setDemoMode] = useState(false);
   // Taxes tab
-  const [taxTable, setTaxTable] = useState([]);
-  const [taxDisclaimer, setTaxDisclaimer] = useState('');
-  const [taxView, setTaxView] = useState('overview'); // 'overview' | 'estimate' | 'reference'
-  const [taxCountry, setTaxCountry] = useState('GB');
-  const [taxAmount, setTaxAmount] = useState('1500.00');
-  const [taxCurrency, setTaxCurrency] = useState('KES');
-  const [taxEstimate, setTaxEstimate] = useState(null);
   const [taxReceived, setTaxReceived] = useState(null); // countries received-from
   const [taxExpanded, setTaxExpanded] = useState(null); // which country row is open
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
@@ -442,15 +435,9 @@ export default function Dashboard() {
 
   // Taxes tab: load reference table once; recompute estimate on input change.
   useEffect(() => {
-    if (tab === 'taxes') { loadTaxTable(); loadTaxReceived(); }
+    if (tab === 'taxes') { loadTaxReceived(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
-  useEffect(() => {
-    if (tab !== 'taxes') return;
-    const t = setTimeout(() => loadTaxEstimate(), 200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, taxCountry, taxAmount]);
 
   // Messages: load the unread badge on mount, and the feed when the tab/filter changes.
   useEffect(() => { loadUnread(); checkAdmin(); /* eslint-disable-next-line */ }, []);
@@ -725,44 +712,6 @@ export default function Dashboard() {
       { method: 'Apple Pay', currency: 'USD', transaction_count: 14, completed_volume: 290000, volume_share: 6.0 },
     ],
   };
-  // PREVIEW ONLY, not wired to real computation yet -- this demos the
-  // proposed simplified Taxes overview (spec: "how much, where, when"), so
-  // the direction can be looked at before the real per-jurisdiction
-  // aggregation backend gets built. Numbers are the spec's own worked
-  // example, not derived from anything real -- clearly bannered as demo in
-  // the UI, same discipline as every other demo dataset in this file.
-  const DEMO_TAX_OVERVIEW = {
-    total_estimated_minor: 284000, // $2,840.00
-    total_currency: 'USD',
-    jurisdiction_count: 3,
-    next_deadline: { date: 'September 30', jurisdiction: 'Kenya' },
-    jurisdictions: [
-      {
-        country: 'Kenya', currency: 'KES', total_minor: 18400000, // KES 184,000
-        due: 'September 30',
-        lines: [
-          { label: 'VAT', amount_minor: 12000000 },
-          { label: 'Income tax', amount_minor: 6400000 },
-        ],
-      },
-      {
-        country: 'United Kingdom', currency: 'GBP', total_minor: 64000, // £640
-        due: 'October 31',
-        lines: [
-          { label: 'VAT', amount_minor: 42000 },
-          { label: 'Income tax', amount_minor: 22000 },
-        ],
-      },
-      {
-        country: 'United States', currency: 'USD', total_minor: 124000, // $1,240
-        due: 'October 15',
-        lines: [
-          { label: 'Sales tax', amount_minor: 124000 },
-        ],
-      },
-    ],
-  };
-
   const DEMO_TAX_RECEIVED = {
     has_data: true,
     countries: [
@@ -800,29 +749,12 @@ export default function Dashboard() {
     } catch (e) { setMoneyData(null); }
   }
 
-  async function loadTaxTable() {
-    try {
-      const r = await fetch(`${API_BASE}/taxes`, { headers: authHeaders() });
-      const d = await r.json();
-      setTaxTable(d.taxes || []);
-      setTaxDisclaimer(d.disclaimer || '');
-    } catch (e) { setTaxTable([]); }
-  }
-
   async function loadTaxReceived() {
     if (!activeId) return;
     try {
       const r = await fetch(`${API_BASE}/projects/${activeId}/taxes/received`, { headers: authHeaders() });
       setTaxReceived(await r.json());
     } catch (e) { setTaxReceived(null); }
-  }
-
-  async function loadTaxEstimate() {
-    const amt = Math.max(0, Math.round((parseFloat(taxAmount) || 0) * 100));
-    try {
-      const r = await fetch(`${API_BASE}/taxes/estimate?country=${taxCountry}&amount=${amt}`, { headers: authHeaders() });
-      setTaxEstimate(await r.json());
-    } catch (e) { setTaxEstimate(null); }
   }
 
   async function loadSentinel() {
@@ -2025,10 +1957,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
             {tab === 'money' && (
               <div className="money-page">
                 <div className="con-home-head con-home-head-row">
-                  <div>
-                    <h1 className="con-h1">Money</h1>
-                    <p className="con-sub">What you&apos;ve received this month, by provider or by payment method.</p>
-                  </div>
+                  <div />
                   {(!moneyData || !moneyData.has_data) && (
                     <label className="demo-toggle">
                       <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
@@ -2050,10 +1979,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
                     )}
                     {!moneyView || !moneyView.has_data ? (
-                      <div className="route-empty">
-                        No transactions yet this month. Once payments come in, this splits what you&apos;ve
-                        received by connected provider — real figures from the ledger.
-                      </div>
+                      <div className="route-empty">No transactions yet this month.</div>
                     ) : (
                       <div className="money-simple-list">
                         {moneyView.providers.map((p, i) => (
@@ -2087,185 +2013,121 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 )}
 
                 <p className="money-privacy-note">
-                  Konduyt doesn&apos;t show who specifically sent you each payment — that&apos;s a privacy
-                  choice. Your provider (Paystack, Stripe, etc.) holds the full customer relationship;
-                  check their dashboard for individual sender details.
+                  We don&apos;t show individual senders — check your provider&apos;s dashboard for that.
                 </p>
               </div>
             )}
 
             {tab === 'taxes' && (
               <div className="tax-page">
-                <div className="con-home-head">
-                  <h1 className="con-h1">Taxes</h1>
-                  <p className="con-sub">
-                    Reference tax rates by the customer&apos;s country — each country&apos;s standard rate, for reference. Not a filing, and not tax advice.
-                  </p>
-                </div>
-
-                <div className="int-subnav">
-                  <button className={taxView === 'overview' ? 'int-subtab active' : 'int-subtab'}
-                    onClick={() => setTaxView('overview')}>Overview</button>
-                  <button className={taxView === 'estimate' ? 'int-subtab active' : 'int-subtab'}
-                    onClick={() => setTaxView('estimate')}>Per-payment</button>
-                  <button className={taxView === 'reference' ? 'int-subtab active' : 'int-subtab'}
-                    onClick={() => setTaxView('reference')}>Country reference</button>
-                </div>
-
-                {taxView === 'overview' && (
-                  <div className="tax-overview">
-                    <div className="demo-banner">
-                      Preview only — this is a proposed simplified layout shown with sample numbers,
-                      not yet wired to real per-jurisdiction calculation. The Per-payment tab has your real data today.
+                {(() => {
+                  // Real headline, computed from the same real data the list
+                  // below already uses -- not a separate demo dataset. Only
+                  // sums countries with a single computable national rate
+                  // (t.computable) -- a country with no single rate doesn't
+                  // contribute a number that would misleadingly inflate the total.
+                  const countries = taxReceivedView?.countries || [];
+                  const computable = countries.filter((row) => row.tax && row.tax.computable);
+                  const hasHeadline = taxReceivedView?.has_data && computable.length > 0;
+                  if (!hasHeadline) return null;
+                  const byCurrency = {};
+                  computable.forEach((row) => {
+                    byCurrency[row.currency] = (byCurrency[row.currency] || 0) + row.tax.tax_minor;
+                  });
+                  return (
+                    <div className="tax-overview-head">
+                      {Object.entries(byCurrency).map(([ccy, minor]) => (
+                        <span className="tax-overview-total" key={ccy}>
+                          {ccy} {(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      ))}
+                      <span className="tax-overview-total-label">reference tax, across {countries.length} countr{countries.length !== 1 ? 'ies' : 'y'}</span>
+                      <p className="tax-overview-sub">Estimated — not a filing, not tax advice. Details below.</p>
                     </div>
-                    {(() => {
-                      const d = DEMO_TAX_OVERVIEW;
-                      const fmt = (minor, ccy) => `${ccy} ${(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                      return (
-                        <>
-                          <div className="tax-overview-head">
-                            <span className="tax-overview-total">{fmt(d.total_estimated_minor, d.total_currency)}</span>
-                            <span className="tax-overview-total-label">estimated tax</span>
-                            <p className="tax-overview-sub">
-                              Across {d.jurisdiction_count} jurisdictions · Next deadline: <strong>{d.next_deadline.date}</strong> ({d.next_deadline.jurisdiction})
-                            </p>
-                          </div>
+                  );
+                })()}
 
-                          <div className="tax-overview-jurisdictions">
-                            {d.jurisdictions.map((j) => (
-                              <div className="tax-overview-card" key={j.country}>
-                                <div className="tax-overview-card-head">
-                                  <span className="tax-overview-card-country">{j.country}</span>
-                                  <span className="tax-overview-card-total">{fmt(j.total_minor, j.currency)}</span>
+                <div className="tax-received">
+                  {(!taxReceived || !taxReceived.has_data) && (
+                    <label className="demo-toggle demo-toggle-inline">
+                      <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
+                      <span>Preview with sample data</span>
+                    </label>
+                  )}
+                  {demoMode && taxReceivedView === DEMO_TAX_RECEIVED && (
+                    <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
+                  )}
+                  {!taxReceivedView || !taxReceivedView.has_data ? (
+                    <div className="route-empty">No payments received yet.</div>
+                  ) : (
+                    <div className="tax-country-list">
+                      {taxReceivedView.countries.map((row) => {
+                        const open = taxExpanded === row.country_code;
+                        const t = row.tax;
+                        return (
+                          <div className={`tax-country-item ${open ? 'open' : ''}`} key={row.country_code}>
+                            <button className="tax-country-row" type="button"
+                              onClick={() => setTaxExpanded(open ? null : row.country_code)}>
+                              <span className="tax-country-name">{t ? t.country : row.country_code}</span>
+                              <span className="tax-country-vol">{row.currency} {(row.received_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                              <span className="tax-country-count">{row.completed_count} payment{row.completed_count === 1 ? '' : 's'}</span>
+                              <span className="tax-country-chev">{open ? '▲' : '▼'}</span>
+                            </button>
+                            {open && t && (
+                              <div className="tax-country-detail">
+                                <div className="tax-result-head">
+                                  <span className="tax-result-type">{t.tax_type}</span>
+                                  <span className="tax-ref-badge">reference</span>
                                 </div>
-                                <div className="tax-overview-card-lines">
-                                  {j.lines.map((l) => (
-                                    <div className="tax-overview-card-line" key={l.label}>
-                                      <span>{l.label}</span>
-                                      <span>{fmt(l.amount_minor, j.currency)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="tax-overview-card-due">Due: {j.due}</div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <p className="tax-overview-disclaimer">
-                            Estimated — based on your transactions and current tax configuration. Not an official
-                            tax assessment. <button type="button" className="tax-overview-calc-link"
-                              onClick={() => setTaxView('estimate')}>View calculation →</button>
-                          </p>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {taxView === 'estimate' && (
-                  <div className="tax-received">
-                    {(!taxReceived || !taxReceived.has_data) && (
-                      <label className="demo-toggle demo-toggle-inline">
-                        <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
-                        <span>Preview with sample data</span>
-                      </label>
-                    )}
-                    {demoMode && taxReceivedView === DEMO_TAX_RECEIVED && (
-                      <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
-                    )}
-                    {!taxReceivedView || !taxReceivedView.has_data ? (
-                      <div className="route-empty">
-                        No payments received yet. Once money flows in, this lists every country your
-                        customers paid from — click a country to see the amount received, the reference
-                        tax on it, and how to account for that tax. Real data only, nothing simulated.
-                      </div>
-                    ) : (
-                      <div className="tax-country-list">
-                        {taxReceivedView.countries.map((row) => {
-                          const open = taxExpanded === row.country_code;
-                          const t = row.tax;
-                          return (
-                            <div className={`tax-country-item ${open ? 'open' : ''}`} key={row.country_code}>
-                              <button className="tax-country-row" type="button"
-                                onClick={() => setTaxExpanded(open ? null : row.country_code)}>
-                                <span className="tax-country-name">{t ? t.country : row.country_code}</span>
-                                <span className="tax-country-vol">{row.currency} {(row.received_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                <span className="tax-country-count">{row.completed_count} payment{row.completed_count === 1 ? '' : 's'}</span>
-                                <span className="tax-country-chev">{open ? '▲' : '▼'}</span>
-                              </button>
-                              {open && t && (
-                                <div className="tax-country-detail">
-                                  <div className="tax-result-head">
-                                    <span className="tax-result-type">{t.tax_type}</span>
-                                    <span className="tax-ref-badge">reference</span>
+                                {t.computable ? (
+                                  <div className="tax-breakdown">
+                                    <div className="tax-line"><span>Received</span><span>{row.currency} {(row.received_volume/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
+                                    <div className="tax-line"><span>Rate</span><span>{t.rate}%</span></div>
+                                    <div className="tax-line tax-line-total"><span>Reference tax on this</span><span>{row.currency} {(t.tax_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
                                   </div>
-                                  {t.computable ? (
-                                    <div className="tax-breakdown">
-                                      <div className="tax-line"><span>Received</span><span>{row.currency} {(row.received_volume/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
-                                      <div className="tax-line"><span>Rate</span><span>{t.rate}%</span></div>
-                                      <div className="tax-line tax-line-total"><span>Reference tax on this</span><span>{row.currency} {(t.tax_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
-                                    </div>
-                                  ) : (
-                                    <div className="tax-noncomputable">No single national rate for {t.country} — tax isn&apos;t a single number here.</div>
-                                  )}
-                                  {t.caveats && t.caveats.length > 0 && (
-                                    <ul className="tax-caveats">{t.caveats.map((c, i) => <li key={i}>{c}</li>)}</ul>
-                                  )}
-                                  {row.how_to_pay && (
-                                    <div className="tax-howto">
-                                      <div className="tax-howto-title">How to account for this tax</div>
-                                      {row.how_to_pay.filing && (
-                                        <div className={`tax-filing ${row.how_to_pay.filing.frequency === 'varies' ? 'unknown' : ''}`}>
-                                          <span className="tax-filing-badge">
-                                            {row.how_to_pay.filing.frequency === 'varies' ? 'check' : row.how_to_pay.filing.frequency}
-                                          </span>
-                                          <span className="tax-filing-text">
-                                            {row.how_to_pay.filing.frequency !== 'varies'
-                                              ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}.` : '.'} Account for all {t ? t.country : ''} sales together each period, not per payment.</>
-                                              : <>Filing frequency for {t ? t.country : 'this country'} isn&apos;t confirmed in Konduyt. Missing a deadline can be costly — confirm the cycle directly with {row.how_to_pay.authority}{row.how_to_pay.portal ? <> at <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></> : ''} before you rely on it.</>}
-                                          </span>
-                                        </div>
-                                      )}
-                                      <div className="tax-howto-auth">
-                                        {row.how_to_pay.authority}
-                                        {row.how_to_pay.portal && (
-                                          <> · <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></>
-                                        )}
+                                ) : (
+                                  <div className="tax-noncomputable">No single national rate for {t.country} — tax isn&apos;t a single number here.</div>
+                                )}
+                                {t.caveats && t.caveats.length > 0 && (
+                                  <ul className="tax-caveats">{t.caveats.map((c, i) => <li key={i}>{c}</li>)}</ul>
+                                )}
+                                {row.how_to_pay && (
+                                  <div className="tax-howto">
+                                    <div className="tax-howto-title">How to account for this tax</div>
+                                    {row.how_to_pay.filing && (
+                                      <div className={`tax-filing ${row.how_to_pay.filing.frequency === 'varies' ? 'unknown' : ''}`}>
+                                        <span className="tax-filing-badge">
+                                          {row.how_to_pay.filing.frequency === 'varies' ? 'check' : row.how_to_pay.filing.frequency}
+                                        </span>
+                                        <span className="tax-filing-text">
+                                          {row.how_to_pay.filing.frequency !== 'varies'
+                                            ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}.` : '.'} Account for all {t ? t.country : ''} sales together each period, not per payment.</>
+                                            : <>Filing frequency for {t ? t.country : 'this country'} isn&apos;t confirmed in Konduyt. Missing a deadline can be costly — confirm the cycle directly with {row.how_to_pay.authority}{row.how_to_pay.portal ? <> at <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></> : ''} before you rely on it.</>}
+                                        </span>
                                       </div>
-                                      <ol className="tax-howto-steps">
-                                        {row.how_to_pay.steps.map((s, i) => <li key={i}>{s}</li>)}
-                                      </ol>
-                                      {!row.how_to_pay.detailed && (
-                                        <div className="tax-howto-note">Konduyt doesn&apos;t have step-by-step guidance for this country yet — the pointer above is your starting point.</div>
+                                    )}
+                                    <div className="tax-howto-auth">
+                                      {row.how_to_pay.authority}
+                                      {row.how_to_pay.portal && (
+                                        <> · <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></>
                                       )}
                                     </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {taxView === 'reference' && (
-                  <div className="tax-table">
-                    <div className="tax-tr tax-tr-head tax-tr-filing">
-                      <span>Country</span><span>Type</span><span>Rate</span><span>Filing</span><span>Verified</span>
+                                    <ol className="tax-howto-steps">
+                                      {row.how_to_pay.steps.map((s, i) => <li key={i}>{s}</li>)}
+                                    </ol>
+                                    {!row.how_to_pay.detailed && (
+                                      <div className="tax-howto-note">Konduyt doesn&apos;t have step-by-step guidance for this country yet — the pointer above is your starting point.</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    {taxTable.map((t) => (
-                      <div className="tax-tr tax-tr-filing" key={t.code}>
-                        <span className="tax-country">{t.country}</span>
-                        <span>{t.tax_type}</span>
-                        <span className="tax-rate">{t.rate != null ? `${t.rate}%` : 'N/A'}</span>
-                        <span className="tax-filing-cell">{t.filing ? t.filing.frequency : '—'}</span>
-                        <span>{t.verified ? '✓' : '—'}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
 

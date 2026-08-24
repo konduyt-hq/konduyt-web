@@ -43,11 +43,6 @@ export default function Labs() {
     <div className="labs-root">
       <nav className="labs-nav">
         <Link href={homeHref} className="labs-logo">Konduyt</Link>
-        <div className="labs-nav-links">
-          <Link href={homeHref} className="labs-navlink">Home</Link>
-          <Link href="/pricing/" className="labs-navlink">Pricing</Link>
-          <Link href="/signin/" className="labs-navcta">Sign in</Link>
-        </div>
       </nav>
 
       <div className="labs-wrap labs-tease">
