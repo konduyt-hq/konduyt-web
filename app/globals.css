@@ -1785,26 +1785,20 @@
   .ckt-cheapest{display:inline-block;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--ckt-accent-ink,#ffffff);background:var(--ckt-accent,var(--green));border-radius:4px;padding:1px 6px;margin-left:7px;vertical-align:middle;}
 
   /* ===== Money tab ===== */
-  .money-page{max-width:760px;}
+  .money-page{max-width:640px;}
 
   .money-view-toggle{display:flex; border:1px solid var(--border); border-radius:9px; overflow:hidden; width:fit-content;}
   .money-view-toggle button{background:none; border:none; padding:7px 14px; font-size:12.5px; font-weight:600;
     color:var(--text-secondary); cursor:pointer; font-family:inherit;}
   .money-view-toggle button.active{background:var(--ink); color:#fff;}
 
-  .money-table{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;}
-  .money-row{display:grid;grid-template-columns:1.4fr 0.7fr 0.6fr 1.3fr 1.2fr;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border);font-size:13.5px;}
-  .money-row:last-child{border-bottom:none;}
-  .money-row-head{background:var(--panel);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);}
-  .money-provider{font-weight:600;color:var(--ink);}
-  .money-vol{font-family:'JetBrains Mono',monospace;font-weight:600;}
-  .money-share{display:flex;align-items:center;gap:8px;position:relative;}
-  .money-share-bar{height:6px;background:var(--green);border-radius:3px;min-width:2px;max-width:70px;}
-  .money-share-pct{font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;}
-  @media (max-width: 640px){
-    .money-row{grid-template-columns:1fr; gap:4px; text-align:left;}
-    .money-row-head{display:none;}
-  }
+  .money-simple-list{border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:16px;}
+  .money-simple-row{display:flex; justify-content:space-between; align-items:center;
+    padding:14px 18px; border-bottom:1px solid var(--border); font-size:14px;}
+  .money-simple-row:last-child{border-bottom:none;}
+  .money-simple-name{font-weight:600; color:var(--ink); text-transform:capitalize;}
+  .money-simple-amount{font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ink);}
+  .money-privacy-note{font-size:12px; color:var(--text-secondary); line-height:1.6; margin:4px 0 0;}
 
   /* ===== Taxes tab ===== */
   .tax-overview{margin-top:6px;}
@@ -1900,11 +1894,6 @@
     .route-row{grid-template-columns:24px 1fr 64px 60px;font-size:12.5px;padding:11px 12px;gap:8px;}
     .route-c-settle{display:none;}
     .route-row-head .route-c-settle{display:none;}
-
-    /* Money table -> hide currency + txns columns on narrow, keep provider/volume/share */
-    .money-row{grid-template-columns:1.2fr 1.3fr 1fr;font-size:12.5px;padding:11px 12px;gap:8px;}
-    .money-row span:nth-child(2),.money-row span:nth-child(3){display:none;}
-    .money-totals{flex-direction:column;gap:10px;}
 
     /* Tax reference table -> drop Type + Verified, keep country/rate/filing */
     .tax-tr-filing{grid-template-columns:1.6fr 0.7fr 1fr;}

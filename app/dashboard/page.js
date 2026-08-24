@@ -2027,7 +2027,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 <div className="con-home-head con-home-head-row">
                   <div>
                     <h1 className="con-h1">Money</h1>
-                    <p className="con-sub">How much you&apos;ve received this month, by provider or by payment method.</p>
+                    <p className="con-sub">What you&apos;ve received this month, by provider or by payment method.</p>
                   </div>
                   {(!moneyData || !moneyData.has_data) && (
                     <label className="demo-toggle">
@@ -2055,23 +2055,12 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         received by connected provider — real figures from the ledger.
                       </div>
                     ) : (
-                      <div className="money-table">
-                        <div className="money-row money-row-head">
-                          <span>Provider</span><span>Currency</span><span>Txns</span><span>Received this month</span><span>Share</span>
-                        </div>
+                      <div className="money-simple-list">
                         {moneyView.providers.map((p, i) => (
-                          <div className="money-row" key={`${p.provider}-${p.currency}-${i}`}>
-                            <span className="money-provider">{p.provider}</span>
-                            <span>{p.currency}</span>
-                            <span>{p.transaction_count}</span>
-                            <span className="money-vol">{(p.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            <span>
-                              {p.volume_share != null ? (
-                                <span className="money-share">
-                                  <span className="money-share-bar" style={{ width: `${p.volume_share}%` }} />
-                                  <span className="money-share-pct">{p.volume_share}%</span>
-                                </span>
-                              ) : '—'}
+                          <div className="money-simple-row" key={`${p.provider}-${p.currency}-${i}`}>
+                            <span className="money-simple-name">{p.provider}</span>
+                            <span className="money-simple-amount">
+                              {p.currency} {(p.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </span>
                           </div>
                         ))}
@@ -2080,34 +2069,28 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   </>
                 ) : (
                   <>
-                    {/* By-method preview: payment method isn't tracked per-transaction
-                        in the real schema yet, so this always shows demo data until
-                        that's built -- clearly labeled, not passed off as real. */}
                     <div className="demo-banner">
                       Preview only — payment method isn&apos;t tracked per-transaction yet, so this is
-                      sample data showing how the breakdown will look once it is.
+                      sample data showing how it will look once it is.
                     </div>
-                    <div className="money-table">
-                      <div className="money-row money-row-head">
-                        <span>Method</span><span>Currency</span><span>Txns</span><span>Received this month</span><span>Share</span>
-                      </div>
+                    <div className="money-simple-list">
                       {DEMO_MONEY_BY_METHOD.methods.map((m, i) => (
-                        <div className="money-row" key={`${m.method}-${i}`}>
-                          <span className="money-provider">{m.method}</span>
-                          <span>{m.currency}</span>
-                          <span>{m.transaction_count}</span>
-                          <span className="money-vol">{(m.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          <span>
-                            <span className="money-share">
-                              <span className="money-share-bar" style={{ width: `${m.volume_share}%` }} />
-                              <span className="money-share-pct">{m.volume_share}%</span>
-                            </span>
+                        <div className="money-simple-row" key={`${m.method}-${i}`}>
+                          <span className="money-simple-name">{m.method}</span>
+                          <span className="money-simple-amount">
+                            {m.currency} {(m.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                         </div>
                       ))}
                     </div>
                   </>
                 )}
+
+                <p className="money-privacy-note">
+                  Konduyt doesn&apos;t show who specifically sent you each payment — that&apos;s a privacy
+                  choice. Your provider (Paystack, Stripe, etc.) holds the full customer relationship;
+                  check their dashboard for individual sender details.
+                </p>
               </div>
             )}
 
