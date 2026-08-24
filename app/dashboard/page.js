@@ -137,9 +137,6 @@ export default function Dashboard() {
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
   const [moneyData, setMoneyData] = useState(null);
-  const [moneyPosition, setMoneyPosition] = useState(null);
-  const [moneyAlerts, setMoneyAlerts] = useState(null);
-  const [moneyTransactions, setMoneyTransactions] = useState(null);
   const [moneyBreakdownView, setMoneyBreakdownView] = useState('provider'); // 'provider' | 'method'
   // Demo/preview mode — browser-only sample data so the visualizations can be
   // seen before real payments exist. NEVER written to the DB, never sent through
@@ -715,28 +712,19 @@ export default function Dashboard() {
       { provider: 'stripe', currency: 'USD', transaction_count: 8, completed_count: 7, completed_volume: 230000, volume_share: 4.7 },
     ],
   };
-  const DEMO_POSITION = {
-    processed_this_month: 1284000, // $12,840.00 -- the spec's own example figure
-    transaction_count: 214,
-    average_payment: 6000,
-    provider_fees: 32000,
-    konduyt_fees: 6000,
-    total_fees: 38000,
-    net: 1284000 - 38000,
-    month_over_month_pct: 18.4,
-    refunds_tracked: false, // stays honestly false even in demo mode -- this
-                            // isn't a real feature yet, demo mode previews
-                            // real numbers, not features that don't exist
+  // Preview only -- payment method isn't tracked per-transaction in the real
+  // schema yet, so there's no real endpoint behind this. Same total volume as
+  // DEMO_MONEY above so both toggles look internally consistent.
+  const DEMO_MONEY_BY_METHOD = {
+    has_data: true,
+    methods: [
+      { method: 'M-Pesa', currency: 'KES', transaction_count: 96, completed_volume: 1980000, volume_share: 41.1 },
+      { method: 'Card', currency: 'KES', transaction_count: 58, completed_volume: 1340000, volume_share: 27.8 },
+      { method: 'PayPal', currency: 'USD', transaction_count: 16, completed_volume: 620000, volume_share: 12.9 },
+      { method: 'Bank Transfer', currency: 'KES', transaction_count: 30, completed_volume: 590000, volume_share: 12.2 },
+      { method: 'Apple Pay', currency: 'USD', transaction_count: 14, completed_volume: 290000, volume_share: 6.0 },
+    ],
   };
-  const DEMO_ALERTS = [
-    { type: 'failed_payments', severity: 'warning', message: '3 payments failed in the last 7 days' },
-    { type: 'fee_change', severity: 'info', message: "Paystack's fees changed recently" },
-  ];
-  const DEMO_TRANSACTIONS = [
-    { id: 'KDY-9281', customer: 'john', provider: 'paystack', amount: 12000, currency: 'KES', status: 'completed', created_at: new Date().toISOString() },
-    { id: 'KDY-9280', customer: 'sarah', provider: 'stripe', amount: 8400, currency: 'KES', status: 'completed', created_at: new Date().toISOString() },
-    { id: 'KDY-9279', customer: 'james', provider: 'paypal', amount: 21000, currency: 'KES', status: 'failed', created_at: new Date().toISOString() },
-  ];
   // PREVIEW ONLY, not wired to real computation yet -- this demos the
   // proposed simplified Taxes overview (spec: "how much, where, when"), so
   // the direction can be looked at before the real per-jurisdiction
@@ -802,27 +790,14 @@ export default function Dashboard() {
   // What the tabs actually render: real data, unless demo is on AND there's no
   // real data (demo can never mask real numbers).
   const moneyView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_MONEY : moneyData;
-  const positionView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_POSITION : moneyPosition;
-  const alertsView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_ALERTS : moneyAlerts;
-  const transactionsView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_TRANSACTIONS : moneyTransactions;
   const taxReceivedView = (demoMode && (!taxReceived || !taxReceived.has_data)) ? DEMO_TAX_RECEIVED : taxReceived;
 
   async function loadMoney() {
     if (!activeId) return;
     try {
-      const [byProvider, position, alerts, transactions] = await Promise.all([
-        fetch(`${API_BASE}/projects/${activeId}/money/by-provider`, { headers: authHeaders() }).then((r) => r.json()),
-        fetch(`${API_BASE}/projects/${activeId}/money/position`, { headers: authHeaders() }).then((r) => r.json()),
-        fetch(`${API_BASE}/projects/${activeId}/money/alerts`, { headers: authHeaders() }).then((r) => r.json()),
-        fetch(`${API_BASE}/projects/${activeId}/money/transactions?limit=8`, { headers: authHeaders() }).then((r) => r.json()),
-      ]);
-      setMoneyData(byProvider);
-      setMoneyPosition(position);
-      setMoneyAlerts(alerts.alerts || []);
-      setMoneyTransactions(transactions.transactions || []);
-    } catch (e) {
-      setMoneyData(null); setMoneyPosition(null); setMoneyAlerts([]); setMoneyTransactions([]);
-    }
+      const r = await fetch(`${API_BASE}/projects/${activeId}/money/by-provider`, { headers: authHeaders() });
+      setMoneyData(await r.json());
+    } catch (e) { setMoneyData(null); }
   }
 
   async function loadTaxTable() {
@@ -2052,7 +2027,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 <div className="con-home-head con-home-head-row">
                   <div>
                     <h1 className="con-h1">Money</h1>
-                    <p className="con-sub">Where your money went, and where it&apos;s going.</p>
+                    <p className="con-sub">How much you&apos;ve received this month, by provider or by payment method.</p>
                   </div>
                   {(!moneyData || !moneyData.has_data) && (
                     <label className="demo-toggle">
@@ -2061,79 +2036,28 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     </label>
                   )}
                 </div>
-                {demoMode && moneyView === DEMO_MONEY && (
-                  <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
-                )}
-                {!moneyView || !moneyView.has_data ? (
-                  <div className="route-empty">
-                    No transactions yet. Once live payments flow, Money shows what came in, what it cost,
-                    and where it went — real figures from the ledger, nothing simulated.
-                  </div>
-                ) : (
+
+                <div className="money-view-toggle" style={{ marginBottom: 16 }}>
+                  <button type="button" className={moneyBreakdownView === 'provider' ? 'active' : ''}
+                    onClick={() => setMoneyBreakdownView('provider')}>By Provider</button>
+                  <button type="button" className={moneyBreakdownView === 'method' ? 'active' : ''}
+                    onClick={() => setMoneyBreakdownView('method')}>By Payment Method</button>
+                </div>
+
+                {moneyBreakdownView === 'provider' ? (
                   <>
-                    {/* A. Money position */}
-                    {positionView && (
-                      <div className="money-position">
-                        <span className="money-position-value">
-                          {(positionView.processed_this_month / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                        <span className="money-position-label">Processed this month</span>
-                        {positionView.month_over_month_pct != null && (
-                          <span className={`money-position-mom ${positionView.month_over_month_pct >= 0 ? 'up' : 'down'}`}>
-                            {positionView.month_over_month_pct >= 0 ? '↑' : '↓'} {Math.abs(positionView.month_over_month_pct)}%
-                          </span>
-                        )}
-                        <div className="money-position-sub">
-                          <span>{positionView.transaction_count} payment{positionView.transaction_count !== 1 ? 's' : ''}</span>
-                          <span>Avg {(positionView.average_payment / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      </div>
+                    {demoMode && moneyView === DEMO_MONEY && (
+                      <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
                     )}
-
-                    {/* B. Money flow */}
-                    {positionView && (
-                      <div className="money-flow">
-                        <div className="money-flow-row">
-                          <span className="money-flow-label">Processed</span>
-                          <span className="money-flow-val">{(positionView.processed_this_month / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="money-flow-row minus">
-                          <span className="money-flow-label">− Provider &amp; Konduyt fees</span>
-                          <span className="money-flow-val">{(positionView.total_fees / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="money-flow-row net">
-                          <span className="money-flow-label">= Net</span>
-                          <span className="money-flow-val">{(positionView.net / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        {positionView.refunds_tracked === false && (
-                          <p className="money-flow-note">Refunds aren&apos;t tracked yet — this figure doesn&apos;t include them.</p>
-                        )}
+                    {!moneyView || !moneyView.has_data ? (
+                      <div className="route-empty">
+                        No transactions yet this month. Once payments come in, this splits what you&apos;ve
+                        received by connected provider — real figures from the ledger.
                       </div>
-                    )}
-
-                    {/* E. Money alerts */}
-                    {alertsView && alertsView.length > 0 && (
-                      <div className="money-alerts">
-                        {alertsView.map((a, i) => (
-                          <div className={`money-alert money-alert-${a.severity}`} key={i}>{a.message}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* C. Where the money went */}
-                    <div className="money-section-head">
-                      <h2 className="money-section-title">Where the money went</h2>
-                      <div className="money-view-toggle">
-                        <button type="button" className={moneyBreakdownView === 'provider' ? 'active' : ''}
-                          onClick={() => setMoneyBreakdownView('provider')}>By Provider</button>
-                        <button type="button" className={moneyBreakdownView === 'method' ? 'active' : ''}
-                          onClick={() => setMoneyBreakdownView('method')}>By Payment Method</button>
-                      </div>
-                    </div>
-                    {moneyBreakdownView === 'provider' ? (
+                    ) : (
                       <div className="money-table">
                         <div className="money-row money-row-head">
-                          <span>Provider</span><span>Currency</span><span>Txns</span><span>Completed volume</span><span>Share</span>
+                          <span>Provider</span><span>Currency</span><span>Txns</span><span>Received this month</span><span>Share</span>
                         </div>
                         {moneyView.providers.map((p, i) => (
                           <div className="money-row" key={`${p.provider}-${p.currency}-${i}`}>
@@ -2152,33 +2076,36 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <p className="money-method-unavailable">
-                        Payment method isn&apos;t tracked per-transaction yet, so this breakdown isn&apos;t real
-                        yet — it&apos;ll show here once that&apos;s built. Provider breakdown above is real today.
-                      </p>
                     )}
-
-                    {/* D. Recent transactions */}
-                    {transactionsView && transactionsView.length > 0 && (
-                      <>
-                        <h2 className="money-section-title" style={{ marginTop: 28 }}>Recent transactions</h2>
-                        <div className="money-table money-txn-table">
-                          <div className="money-row money-row-head">
-                            <span>Payment</span><span>Customer</span><span>Provider</span><span>Amount</span><span>Status</span>
-                          </div>
-                          {transactionsView.map((t) => (
-                            <div className="money-row" key={t.id}>
-                              <span className="money-txn-id">#{t.id}</span>
-                              <span>{t.customer || '—'}</span>
-                              <span className="money-provider">{t.provider}</span>
-                              <span className="money-vol">{(t.amount / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })} {t.currency}</span>
-                              <span className={`money-txn-status status-${t.status}`}>{t.status}</span>
-                            </div>
-                          ))}
+                  </>
+                ) : (
+                  <>
+                    {/* By-method preview: payment method isn't tracked per-transaction
+                        in the real schema yet, so this always shows demo data until
+                        that's built -- clearly labeled, not passed off as real. */}
+                    <div className="demo-banner">
+                      Preview only — payment method isn&apos;t tracked per-transaction yet, so this is
+                      sample data showing how the breakdown will look once it is.
+                    </div>
+                    <div className="money-table">
+                      <div className="money-row money-row-head">
+                        <span>Method</span><span>Currency</span><span>Txns</span><span>Received this month</span><span>Share</span>
+                      </div>
+                      {DEMO_MONEY_BY_METHOD.methods.map((m, i) => (
+                        <div className="money-row" key={`${m.method}-${i}`}>
+                          <span className="money-provider">{m.method}</span>
+                          <span>{m.currency}</span>
+                          <span>{m.transaction_count}</span>
+                          <span className="money-vol">{(m.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          <span>
+                            <span className="money-share">
+                              <span className="money-share-bar" style={{ width: `${m.volume_share}%` }} />
+                              <span className="money-share-pct">{m.volume_share}%</span>
+                            </span>
+                          </span>
                         </div>
-                      </>
-                    )}
+                      ))}
+                    </div>
                   </>
                 )}
               </div>
