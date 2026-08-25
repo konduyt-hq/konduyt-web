@@ -146,7 +146,7 @@ export default function Dashboard() {
   // Taxes tab
   const [taxReceived, setTaxReceived] = useState(null); // countries received-from, for the currently-open provider
   const [taxExpanded, setTaxExpanded] = useState(null); // which country row is open
-  const [taxDetailProvider, setTaxDetailProvider] = useState(null); // null = money list; string = viewing that provider's tax detail
+  const [taxDetailOpen, setTaxDetailOpen] = useState(false); // false = money list; true = viewing the per-country tax detail
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -341,12 +341,19 @@ export default function Dashboard() {
   // real documented local presence surface first -- reordered, never hidden.
   // TEMPORARY: testMerchantCountry, when set, overrides this for locality
   // testing -- client-side only, never touches the real project setting.
+  // limit=24 covers the full real catalog (confirmed count), not an arbitrary
+  // top-N -- this same fetch also powers the Money tab's docs_url lookup for
+  // "View account" links, and a smaller limit was silently dropping real
+  // providers whose catalog entry uses a single "Global" country placeholder
+  // (e.g. PayPal) instead of an enumerated list, ranking them artificially
+  // low under the country-count metric even though they're real and
+  // commonly used.
   useEffect(() => {
     if (status !== 'ready') return;
     setProvidersLoading(true);
     const effectiveCountry = testMerchantCountry || active?.merchant_country;
     const countryParam = effectiveCountry ? `&merchant_country=${effectiveCountry}` : '';
-    fetch(`${API_BASE}/connectors/top?limit=12${countryParam}`)
+    fetch(`${API_BASE}/connectors/top?limit=24${countryParam}`)
       .then((r) => r.json())
       .then((d) => {
         setTopProviders(d.providers || []);
@@ -470,9 +477,9 @@ export default function Dashboard() {
 
   // Tax detail (per-provider, entered from a Money row): fetch when opened.
   useEffect(() => {
-    if (taxDetailProvider) { loadTaxReceived(taxDetailProvider); }
+    if (taxDetailOpen) { loadTaxReceived(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taxDetailProvider]);
+  }, [taxDetailOpen]);
 
   // Messages: load the unread badge on mount, and the feed when the tab/filter changes.
   useEffect(() => { loadUnread(); checkAdmin(); /* eslint-disable-next-line */ }, []);
@@ -742,21 +749,27 @@ export default function Dashboard() {
     providers: [
       { provider: 'paystack', currency: 'KES', transaction_count: 142, completed_count: 138, completed_volume: 2760000, volume_share: 57.3 },
       { provider: 'flutterwave', currency: 'KES', transaction_count: 48, completed_count: 45, completed_volume: 1210000, volume_share: 25.1 },
-      { provider: 'paypal', currency: 'USD', transaction_count: 16, completed_count: 15, completed_volume: 620000, volume_share: 12.9 },
-      { provider: 'stripe', currency: 'USD', transaction_count: 8, completed_count: 7, completed_volume: 230000, volume_share: 4.7 },
+      { provider: 'paypal', currency: 'KES', transaction_count: 16, completed_count: 15, completed_volume: 620000, volume_share: 12.9 },
+      { provider: 'stripe', currency: 'KES', transaction_count: 8, completed_count: 7, completed_volume: 230000, volume_share: 4.7 },
     ],
   };
   // Preview only -- payment method isn't tracked per-transaction in the real
   // schema yet, so there's no real endpoint behind this. Same total volume as
-  // DEMO_MONEY above so both toggles look internally consistent.
+  // DEMO_MONEY above so both toggles look internally consistent. One currency
+  // throughout (matches the provider list above) -- a real merchant's
+  // received-money list wouldn't jump between currencies row to row.
+  // PayPal is deliberately NOT repeated here as a method: PayPal-as-a-payment-
+  // method and PayPal-the-provider are the same thing, unlike M-Pesa (a real,
+  // distinct method offered BY Paystack) -- listing it twice was a real
+  // demo-data mistake, not two different things.
   const DEMO_MONEY_BY_METHOD = {
     has_data: true,
     methods: [
       { method: 'M-Pesa', provider: 'paystack', currency: 'KES', transaction_count: 96, completed_volume: 1980000, volume_share: 41.1 },
       { method: 'Card', provider: 'paystack', currency: 'KES', transaction_count: 58, completed_volume: 1340000, volume_share: 27.8 },
-      { method: 'PayPal', provider: 'paypal', currency: 'USD', transaction_count: 16, completed_volume: 620000, volume_share: 12.9 },
+      { method: 'Airtel Money', provider: 'flutterwave', currency: 'KES', transaction_count: 16, completed_volume: 620000, volume_share: 12.9 },
       { method: 'Bank Transfer', provider: 'flutterwave', currency: 'KES', transaction_count: 30, completed_volume: 590000, volume_share: 12.2 },
-      { method: 'Apple Pay', provider: 'stripe', currency: 'USD', transaction_count: 14, completed_volume: 290000, volume_share: 6.0 },
+      { method: 'T-Kash', provider: 'paystack', currency: 'KES', transaction_count: 14, completed_volume: 290000, volume_share: 6.0 },
     ],
   };
   // What the tabs actually render: real data, unless demo is on AND there's no
@@ -2020,7 +2033,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               </div>
             )}
 
-            {tab === 'money' && !taxDetailProvider && (
+            {tab === 'money' && !taxDetailOpen && (
               <div className="money-page">
                 <div className="con-home-head con-home-head-row">
                   <div />
@@ -2039,25 +2052,31 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 {/* Total combined, this month -- the real by-provider total,
                     never a sum of providers+methods together (method rows are
                     the SAME money re-sliced a different way, not additional
-                    money -- summing both would double-count). */}
-                {moneyView?.has_data && (
-                  <div className="money-total-headline">
-                    <span className="money-total-headline-label">Received this month</span>
-                    <span className="money-total-headline-value">
-                      {(() => {
-                        const byCcy = {};
-                        (moneyView.providers || []).forEach((p) => {
-                          byCcy[p.currency] = (byCcy[p.currency] || 0) + p.completed_volume;
-                        });
-                        return Object.entries(byCcy).map(([ccy, minor]) => (
-                          <span key={ccy} className="money-total-headline-ccy">
-                            {ccy} {(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                        ));
-                      })()}
-                    </span>
-                  </div>
-                )}
+                    money -- summing both would double-count). Shows ONLY the
+                    single currency with the most real volume -- not every
+                    currency the merchant happens to have received in, mixed
+                    together. If real volume genuinely exists in more than one
+                    currency, the rest are still visible per-row below, just
+                    not crammed into this one headline number. */}
+                {moneyView?.has_data && (() => {
+                  const byCcy = {};
+                  (moneyView.providers || []).forEach((p) => {
+                    byCcy[p.currency] = (byCcy[p.currency] || 0) + p.completed_volume;
+                  });
+                  const entries = Object.entries(byCcy);
+                  if (entries.length === 0) return null;
+                  const [dominantCcy, dominantMinor] = entries.sort((a, b) => b[1] - a[1])[0];
+                  return (
+                    <div className="money-total-headline">
+                      <span className="money-total-headline-label">Received this month</span>
+                      <span className="money-total-headline-value">
+                        <span className="money-total-headline-ccy">
+                          {dominantCcy} {(dominantMinor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })()}
 
                 {(() => {
                   const docsUrlFor = (providerId) => {
@@ -2069,14 +2088,12 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     key: `p-${p.provider}-${p.currency}-${i}`,
                     type: 'Provider', name: p.provider, currency: p.currency,
                     amount: p.completed_volume, docsUrl: docsUrlFor(p.provider),
-                    canViewTaxes: true,
                   }));
                   const showMethodPreview = moneyView === DEMO_MONEY;
                   const methodRows = showMethodPreview ? DEMO_MONEY_BY_METHOD.methods.map((m, i) => ({
                     key: `m-${m.method}-${i}`,
                     type: 'Method', name: m.method, currency: m.currency,
                     amount: m.completed_volume, docsUrl: docsUrlFor(m.provider),
-                    canViewTaxes: false, // no real per-method tax data exists yet
                   })) : [];
                   const rows = [...providerRows, ...methodRows];
 
@@ -2098,12 +2115,10 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                                 View account →
                               </a>
                             )}
-                            {row.canViewTaxes && (
-                              <button type="button" className="money-row-link money-row-link-btn"
-                                onClick={() => setTaxDetailProvider(row.name)}>
-                                View taxes →
-                              </button>
-                            )}
+                            <button type="button" className="money-row-link money-row-link-btn"
+                              onClick={() => setTaxDetailOpen(true)}>
+                              View taxes →
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -2144,23 +2159,24 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               </div>
             )}
 
-            {/* Tax detail: entered from a specific provider row's "View taxes"
-                link above. Real per-provider, per-country tax data -- not the
-                old all-providers-combined Taxes tab, which is gone. */}
-            {tab === 'money' && taxDetailProvider && (
+            {/* Tax detail: entered by clicking "View taxes" on any row --
+                every row links to the SAME account-wide, per-country view
+                (not scoped to that specific provider/method). Replaces the
+                old standalone Taxes tab, which is gone. */}
+            {tab === 'money' && taxDetailOpen && (
               <div className="tax-page">
                 <button type="button" className="money-row-link money-row-link-btn" style={{ marginBottom: 16 }}
-                  onClick={() => { setTaxDetailProvider(null); setTaxReceived(null); setTaxExpanded(null); }}>
+                  onClick={() => { setTaxDetailOpen(false); setTaxReceived(null); setTaxExpanded(null); }}>
                   ← Back to Money
                 </button>
                 <div className="con-home-head">
-                  <h1 className="con-h1" style={{ textTransform: 'capitalize' }}>{taxDetailProvider} — Taxes</h1>
-                  <p className="con-sub">By country, based on where each payment through {taxDetailProvider} was sent from.</p>
+                  <h1 className="con-h1">Taxes by country</h1>
+                  <p className="con-sub">Based on where each payment was sent from, across every connected provider.</p>
                 </div>
 
                 <div className="tax-received">
                   {!taxReceivedView || !taxReceivedView.has_data ? (
-                    <div className="route-empty">No payments received through {taxDetailProvider} yet.</div>
+                    <div className="route-empty">No payments received yet.</div>
                   ) : (
                     <div className="tax-country-list">
                       {taxReceivedView.countries.map((row) => {
