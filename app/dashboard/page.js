@@ -152,6 +152,12 @@ export default function Dashboard() {
   const [methodDetail, setMethodDetail] = useState(null);
   // Continent-grouped provider directory (replaces the old category-drill-down browse)
   const [topProviders, setTopProviders] = useState([]);
+  // TEMPORARY test-only override for the Integrations locality feature --
+  // client-side only, never saved to the project's real merchant_country.
+  // Lets locality reordering be checked instantly without a Settings round
+  // trip. Remove this once locality testing is done; it isn't meant to be a
+  // permanent way to set a project's country.
+  const [testMerchantCountry, setTestMerchantCountry] = useState('');
   // Real, per-country eligible methods for CONNECTED providers, keyed by
   // provider_id -> { countryName: [methodName, ...] }. Built from
   // GET /v1/payment-methods/available (the real eligibility engine), never
@@ -331,10 +337,13 @@ export default function Dashboard() {
   // continent repetition. No project auth needed, this is catalog data.
   // Passes the project's real merchant_country (if set) so providers with a
   // real documented local presence surface first -- reordered, never hidden.
+  // TEMPORARY: testMerchantCountry, when set, overrides this for locality
+  // testing -- client-side only, never touches the real project setting.
   useEffect(() => {
     if (status !== 'ready') return;
     setProvidersLoading(true);
-    const countryParam = active?.merchant_country ? `&merchant_country=${active.merchant_country}` : '';
+    const effectiveCountry = testMerchantCountry || active?.merchant_country;
+    const countryParam = effectiveCountry ? `&merchant_country=${effectiveCountry}` : '';
     fetch(`${API_BASE}/connectors/top?limit=12${countryParam}`)
       .then((r) => r.json())
       .then((d) => {
@@ -343,7 +352,7 @@ export default function Dashboard() {
         setProvidersLoading(false);
       })
       .catch(() => { setTopProviders([]); setProvidersLoading(false); });
-  }, [status, active?.merchant_country]);
+  }, [status, active?.merchant_country, testMerchantCountry]);
 
   // For each CONNECTED provider, fetch REAL per-country eligible methods (the
   // "Payment methods available to you, grouped by country" view). One fetch
@@ -1462,6 +1471,26 @@ export default function Dashboard() {
                             onClick={() => setTab('settings')}>Set location</button>
                         </div>
                       )}
+                      <div className="test-locality-box">
+                        <span className="test-locality-tag">TEMPORARY — TEST ONLY</span>
+                        <span className="test-locality-label">Preview this list as a merchant in:</span>
+                        <select className="con-connect-input test-locality-select"
+                          value={testMerchantCountry}
+                          onChange={(e) => setTestMerchantCountry(e.target.value)}>
+                          <option value="">
+                            {active?.merchant_country ? `Your real setting (${MERCHANT_COUNTRIES.find((c) => c.code === active.merchant_country)?.name || active.merchant_country})` : 'No country set — global order'}
+                          </option>
+                          {MERCHANT_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                        </select>
+                        {testMerchantCountry && (
+                          <button type="button" className="test-locality-clear"
+                            onClick={() => setTestMerchantCountry('')}>Reset</button>
+                        )}
+                        <span className="test-locality-note">
+                          Doesn&apos;t change your real project setting — this is only for checking how the
+                          reordering behaves.
+                        </span>
+                      </div>
                       {!q && coverageStats && (
                         <p className="provider-directory-summary">
                           These {list.length} providers alone cover {coverageStats.countries} countries
