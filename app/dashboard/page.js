@@ -555,6 +555,18 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, keys, activeId, connectionsLoaded, connections, landingChosen]);
 
+  // Safety net: the effect above also waits on keys !== null. If that fetch
+  // fails outright (network error, not just "no keys yet"), keys stays null
+  // forever and landingChosen would never resolve -- which, combined with the
+  // loading gate below, would spin forever instead of just keeping the
+  // pre-fix default tab like before. This guarantees it can't hang: after 4s
+  // with no resolution, proceed anyway with whatever tab is already set.
+  useEffect(() => {
+    if (landingChosen || status !== 'ready' || !activeId) return;
+    const t = setTimeout(() => setLandingChosen(true), 4000);
+    return () => clearTimeout(t);
+  }, [landingChosen, status, activeId]);
+
   function logout() {
     clearToken();
     window.location.href = '/';
@@ -963,7 +975,16 @@ export default function Dashboard() {
   }
 
   // ---- Render states ----
-  if (status === 'loading') {
+  // Keep showing the loading state until the correct landing tab (Money for
+  // a returning user, Integrations for a new one) has actually been decided
+  // -- not just until auth/projects are ready. Fixes a real glitch: without
+  // this, every returning user briefly saw Integrations (tab's hardcoded
+  // initial value) before the tab visibly jumped to Money once connections
+  // finished loading a moment later. Safe from ever hanging: activeId is
+  // always set by the time status is 'ready' (even a brand-new user gets an
+  // auto-created project first), and connectionsLoaded is set to true on
+  // both success AND failure of that fetch, so landingChosen always resolves.
+  if (status === 'loading' || (status === 'ready' && activeId && !landingChosen)) {
     return (
       <div className="dash-root">
         <div className="dash-center">
