@@ -329,10 +329,13 @@ export default function Dashboard() {
 
   // Real providers ranked by genuine global coverage, deduplicated -- no
   // continent repetition. No project auth needed, this is catalog data.
+  // Passes the project's real merchant_country (if set) so providers with a
+  // real documented local presence surface first -- reordered, never hidden.
   useEffect(() => {
     if (status !== 'ready') return;
     setProvidersLoading(true);
-    fetch(`${API_BASE}/connectors/top?limit=12`)
+    const countryParam = active?.merchant_country ? `&merchant_country=${active.merchant_country}` : '';
+    fetch(`${API_BASE}/connectors/top?limit=12${countryParam}`)
       .then((r) => r.json())
       .then((d) => {
         setTopProviders(d.providers || []);
@@ -340,7 +343,7 @@ export default function Dashboard() {
         setProvidersLoading(false);
       })
       .catch(() => { setTopProviders([]); setProvidersLoading(false); });
-  }, [status]);
+  }, [status, active?.merchant_country]);
 
   // For each CONNECTED provider, fetch REAL per-country eligible methods (the
   // "Payment methods available to you, grouped by country" view). One fetch
@@ -1449,6 +1452,16 @@ export default function Dashboard() {
 
                   return (
                     <div className="provider-directory">
+                      {!active?.merchant_country && (
+                        <div className="location-nudge">
+                          <span>
+                            Set your business location and we&apos;ll put your real local providers first —
+                            right now this list is sorted globally, not for where you are.
+                          </span>
+                          <button type="button" className="location-nudge-btn"
+                            onClick={() => setTab('settings')}>Set location</button>
+                        </div>
+                      )}
                       {!q && coverageStats && (
                         <p className="provider-directory-summary">
                           These {list.length} providers alone cover {coverageStats.countries} countries
