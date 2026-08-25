@@ -2316,6 +2316,9 @@
   .about-logo{font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--ink);text-decoration:none;}
   .about-doc{max-width:640px;margin:0 auto;padding:20px 24px 100px;font-size:16px;line-height:1.8;color:var(--body);}
   .about-doc p{margin-bottom:22px;}
+  .about-doc a{color:var(--ink);font-weight:600;text-decoration:none;}
+  .about-doc a:hover{text-decoration:underline;}
+  .about-doc p:last-child{margin-top:14px;padding-top:22px;border-top:1px solid var(--border);}
 
   .settings-about-link{font-size:13.5px;color:var(--green-ink);text-decoration:none;font-weight:600;}
   .settings-about-link:hover{text-decoration:underline;}
