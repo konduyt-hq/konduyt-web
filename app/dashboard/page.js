@@ -144,8 +144,9 @@ export default function Dashboard() {
   // the real endpoints. Auto-ignored once real data exists.
   const [demoMode, setDemoMode] = useState(false);
   // Taxes tab
-  const [taxReceived, setTaxReceived] = useState(null); // countries received-from
+  const [taxReceived, setTaxReceived] = useState(null); // countries received-from, for the currently-open provider
   const [taxExpanded, setTaxExpanded] = useState(null); // which country row is open
+  const [taxDetailProvider, setTaxDetailProvider] = useState(null); // null = money list; string = viewing that provider's tax detail
   const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
   const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
@@ -467,11 +468,11 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, activeId]);
 
-  // Taxes tab: load reference table once; recompute estimate on input change.
+  // Tax detail (per-provider, entered from a Money row): fetch when opened.
   useEffect(() => {
-    if (tab === 'taxes') { loadTaxReceived(); }
+    if (taxDetailProvider) { loadTaxReceived(taxDetailProvider); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [taxDetailProvider]);
 
   // Messages: load the unread badge on mount, and the feed when the tab/filter changes.
   useEffect(() => { loadUnread(); checkAdmin(); /* eslint-disable-next-line */ }, []);
@@ -758,34 +759,10 @@ export default function Dashboard() {
       { method: 'Apple Pay', provider: 'stripe', currency: 'USD', transaction_count: 14, completed_volume: 290000, volume_share: 6.0 },
     ],
   };
-  const DEMO_TAX_RECEIVED = {
-    has_data: true,
-    countries: [
-      { country_code: 'KE', currency: 'KES', completed_count: 138, received_volume: 2760000,
-        tax: { country: 'Kenya', tax_type: 'VAT', rate: 16.0, computable: true, tax_minor: 441600,
-               caveats: ['16% VAT applies to taxable goods/services including digital supply to Kenyan consumers.',
-                         'Online/digital businesses: the Significant Economic Presence (SEP) tax replaced the 1.5% Digital Service Tax for non-resident digital businesses.'] },
-        how_to_pay: { authority: 'Kenya Revenue Authority (KRA)', portal: 'https://itax.kra.go.ke', detailed: true,
-          steps: ['Register for a KRA PIN and VAT obligation on iTax if you\u2019re VAT-registered.',
-                  'For non-resident digital supply, register under the VAT on digital / SEP regime.',
-                  'File and pay VAT monthly via iTax by the 20th of the following month.'] } },
-      { country_code: 'GB', currency: 'GBP', completed_count: 15, received_volume: 480000,
-        tax: { country: 'United Kingdom', tax_type: 'VAT', rate: 20.0, computable: true, tax_minor: 96000,
-               caveats: ['20% VAT applies to digital services to UK consumers.'] },
-        how_to_pay: { authority: 'HM Revenue & Customs (HMRC)', portal: 'https://www.gov.uk/vat-registration', detailed: true,
-          steps: ['Register for UK VAT if you supply digital services to UK consumers.',
-                  'File VAT returns through Making Tax Digital.'] } },
-      { country_code: 'US', currency: 'USD', completed_count: 22, received_volume: 850000,
-        tax: { country: 'United States', tax_type: 'Sales Tax', rate: null, computable: false,
-               caveats: ['No federal sales tax; rate varies by state and locality.', 'Economic nexus determines whether tax is due.'] },
-        how_to_pay: { authority: 'State revenue departments (no federal sales tax)', portal: 'https://www.taxadmin.org/state-tax-agencies', detailed: true,
-          steps: ['Sales tax is state/local — determine nexus per state.', 'Register with each state where you have economic nexus.'] } },
-    ],
-  };
   // What the tabs actually render: real data, unless demo is on AND there's no
   // real data (demo can never mask real numbers).
   const moneyView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_MONEY : moneyData;
-  const taxReceivedView = (demoMode && (!taxReceived || !taxReceived.has_data)) ? DEMO_TAX_RECEIVED : taxReceived;
+  const taxReceivedView = taxReceived;
 
   async function loadMoney() {
     if (!activeId) return;
@@ -799,10 +776,11 @@ export default function Dashboard() {
     } catch (e) { setMoneyData(null); setMoneyOrchestration(null); }
   }
 
-  async function loadTaxReceived() {
+  async function loadTaxReceived(provider) {
     if (!activeId) return;
     try {
-      const r = await fetch(`${API_BASE}/projects/${activeId}/taxes/received`, { headers: authHeaders() });
+      const q = provider ? `?provider=${provider}` : '';
+      const r = await fetch(`${API_BASE}/projects/${activeId}/taxes/received${q}`, { headers: authHeaders() });
       setTaxReceived(await r.json());
     } catch (e) { setTaxReceived(null); }
   }
@@ -1154,7 +1132,6 @@ export default function Dashboard() {
         {[
           ['money', 'Money'],
           ['integrations', 'Integrations'],
-          ['taxes', 'Taxes'],
           ['messages', 'Messages'],
           ['settings', 'Settings'],
         ].map(([id, label]) => (
@@ -2043,7 +2020,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               </div>
             )}
 
-            {tab === 'money' && (
+            {tab === 'money' && !taxDetailProvider && (
               <div className="money-page">
                 <div className="con-home-head con-home-head-row">
                   <div />
@@ -2059,11 +2036,30 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
                 )}
 
+                {/* Total combined, this month -- the real by-provider total,
+                    never a sum of providers+methods together (method rows are
+                    the SAME money re-sliced a different way, not additional
+                    money -- summing both would double-count). */}
+                {moneyView?.has_data && (
+                  <div className="money-total-headline">
+                    <span className="money-total-headline-label">Received this month</span>
+                    <span className="money-total-headline-value">
+                      {(() => {
+                        const byCcy = {};
+                        (moneyView.providers || []).forEach((p) => {
+                          byCcy[p.currency] = (byCcy[p.currency] || 0) + p.completed_volume;
+                        });
+                        return Object.entries(byCcy).map(([ccy, minor]) => (
+                          <span key={ccy} className="money-total-headline-ccy">
+                            {ccy} {(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        ));
+                      })()}
+                    </span>
+                  </div>
+                )}
+
                 {(() => {
-                  // Real provider docs/dashboard links, from the same
-                  // catalog the Integrations tab already fetches -- no
-                  // second source of truth. A provider not in the top-12
-                  // coverage list simply gets no link, never a guessed one.
                   const docsUrlFor = (providerId) => {
                     const p = topProviders.find((tp) => tp.id === providerId);
                     return p?.docs_url || null;
@@ -2072,19 +2068,15 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   const providerRows = (moneyView?.providers || []).map((p, i) => ({
                     key: `p-${p.provider}-${p.currency}-${i}`,
                     type: 'Provider', name: p.provider, currency: p.currency,
-                    amount: p.completed_volume, docsUrl: docsUrlFor(p.provider), preview: false,
+                    amount: p.completed_volume, docsUrl: docsUrlFor(p.provider),
+                    canViewTaxes: true,
                   }));
-                  // Payment method isn't tracked per-transaction in the real
-                  // schema yet -- these rows only appear during EXPLICIT demo
-                  // preview mode (moneyView === DEMO_MONEY), never mixed in
-                  // by default and never shown alongside genuinely real
-                  // provider data. Combining them is only honest when both
-                  // sides of the combined list are equally clearly sample data.
                   const showMethodPreview = moneyView === DEMO_MONEY;
                   const methodRows = showMethodPreview ? DEMO_MONEY_BY_METHOD.methods.map((m, i) => ({
                     key: `m-${m.method}-${i}`,
                     type: 'Method', name: m.method, currency: m.currency,
-                    amount: m.completed_volume, docsUrl: docsUrlFor(m.provider), preview: true,
+                    amount: m.completed_volume, docsUrl: docsUrlFor(m.provider),
+                    canViewTaxes: false, // no real per-method tax data exists yet
                   })) : [];
                   const rows = [...providerRows, ...methodRows];
 
@@ -2096,18 +2088,23 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     <div className="money-simple-list">
                       {rows.map((row) => (
                         <div className="money-simple-row" key={row.key}>
-                          <span className={`money-row-type money-row-type-${row.type.toLowerCase()}`}>
-                            {row.type}{row.preview ? ' · preview' : ''}
-                          </span>
                           <span className="money-simple-name">{row.name}</span>
                           <span className="money-simple-amount">
                             {row.currency} {(row.amount / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
-                          {row.docsUrl && (
-                            <a className="money-row-link" href={row.docsUrl} target="_blank" rel="noreferrer">
-                              View account →
-                            </a>
-                          )}
+                          <div className="money-row-links">
+                            {row.docsUrl && (
+                              <a className="money-row-link" href={row.docsUrl} target="_blank" rel="noreferrer">
+                                View account →
+                              </a>
+                            )}
+                            {row.canViewTaxes && (
+                              <button type="button" className="money-row-link money-row-link-btn"
+                                onClick={() => setTaxDetailProvider(row.name)}>
+                                View taxes →
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -2118,9 +2115,6 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   We don&apos;t show individual senders — check your provider&apos;s dashboard for that.
                 </p>
 
-                {/* What this project owes Konduyt this month -- real, from the
-                    actual pricing engine (0.25% of live volume, active since
-                    2026-08-14), never a placeholder. */}
                 {moneyOrchestration && (
                   <div className="money-owed">
                     <div className="money-owed-head">
@@ -2150,47 +2144,23 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               </div>
             )}
 
-            {tab === 'taxes' && (
+            {/* Tax detail: entered from a specific provider row's "View taxes"
+                link above. Real per-provider, per-country tax data -- not the
+                old all-providers-combined Taxes tab, which is gone. */}
+            {tab === 'money' && taxDetailProvider && (
               <div className="tax-page">
-                {(() => {
-                  // Real headline, computed from the same real data the list
-                  // below already uses -- not a separate demo dataset. Only
-                  // sums countries with a single computable national rate
-                  // (t.computable) -- a country with no single rate doesn't
-                  // contribute a number that would misleadingly inflate the total.
-                  const countries = taxReceivedView?.countries || [];
-                  const computable = countries.filter((row) => row.tax && row.tax.computable);
-                  const hasHeadline = taxReceivedView?.has_data && computable.length > 0;
-                  if (!hasHeadline) return null;
-                  const byCurrency = {};
-                  computable.forEach((row) => {
-                    byCurrency[row.currency] = (byCurrency[row.currency] || 0) + row.tax.tax_minor;
-                  });
-                  return (
-                    <div className="tax-overview-head">
-                      {Object.entries(byCurrency).map(([ccy, minor]) => (
-                        <span className="tax-overview-total" key={ccy}>
-                          {ccy} {(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
-                      ))}
-                      <span className="tax-overview-total-label">reference tax, across {countries.length} countr{countries.length !== 1 ? 'ies' : 'y'}</span>
-                      <p className="tax-overview-sub">Estimated — not a filing, not tax advice. Details below.</p>
-                    </div>
-                  );
-                })()}
+                <button type="button" className="money-row-link money-row-link-btn" style={{ marginBottom: 16 }}
+                  onClick={() => { setTaxDetailProvider(null); setTaxReceived(null); setTaxExpanded(null); }}>
+                  ← Back to Money
+                </button>
+                <div className="con-home-head">
+                  <h1 className="con-h1" style={{ textTransform: 'capitalize' }}>{taxDetailProvider} — Taxes</h1>
+                  <p className="con-sub">By country, based on where each payment through {taxDetailProvider} was sent from.</p>
+                </div>
 
                 <div className="tax-received">
-                  {(!taxReceived || !taxReceived.has_data) && (
-                    <label className="demo-toggle demo-toggle-inline">
-                      <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
-                      <span>Preview with sample data</span>
-                    </label>
-                  )}
-                  {demoMode && taxReceivedView === DEMO_TAX_RECEIVED && (
-                    <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
-                  )}
                   {!taxReceivedView || !taxReceivedView.has_data ? (
-                    <div className="route-empty">No payments received yet.</div>
+                    <div className="route-empty">No payments received through {taxDetailProvider} yet.</div>
                   ) : (
                     <div className="tax-country-list">
                       {taxReceivedView.countries.map((row) => {
