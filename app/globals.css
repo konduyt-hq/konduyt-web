@@ -180,6 +180,18 @@
     padding-bottom:14px; cursor:pointer;
   }
   .tab.active{color:var(--ink); border-bottom:2px solid var(--ink);}
+
+  /* TEMPORARY -- test-only control for checking the landing-page payment
+     intelligence demo across different countries. Same dashed/amber styling
+     as the Integrations tab's test tool, so both read as temporary, not
+     permanent product surfaces. Remove once real automatic location
+     detection ships. */
+  .demo-country-box{display:flex; align-items:center; gap:8px; border:1px dashed var(--border);
+    border-radius:8px; padding:5px 10px; background:repeating-linear-gradient(135deg, var(--panel), var(--panel) 8px, var(--bg) 8px, var(--bg) 16px);}
+  .demo-country-tag{font-size:9px; font-weight:800; letter-spacing:.03em; color:#9a6400;
+    background:#fff4e0; padding:2px 6px; border-radius:4px; white-space:nowrap;}
+  .demo-country-select{border:1px solid var(--border); border-radius:6px; padding:4px 8px;
+    font-size:12.5px; font-family:inherit; background:var(--bg); color:var(--ink);}
   .btn-test{
     background:var(--panel);
     border:1px solid var(--border);

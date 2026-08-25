@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LANG_ICONS, LANG_BRAND } from './dashboard/langicons';
+import { MERCHANT_COUNTRIES } from './dashboard/countries';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
 const ICON_KEY = {
@@ -370,6 +371,12 @@ export default function DevPanel() {
   const [showIntel, setShowIntel] = useState(false);
   const [showEnv, setShowEnv] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  // TEMPORARY, test-only: lets payment intelligence be checked for different
+  // countries on the landing-page demo before shipping real, automatic
+  // location detection. Client-side only -- picks what gets sent to
+  // /v1/demo/run, nothing persisted anywhere. Remove once real location
+  // detection ships and this demo shows a shopper's actual country automatically.
+  const [demoCountry, setDemoCountry] = useState('KE');
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -380,7 +387,7 @@ export default function DevPanel() {
       const res = await fetch(`${API_BASE}/v1/demo/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 500000, currency: 'KES' }),
+        body: JSON.stringify({ amount: 500000, currency: 'KES', country: demoCountry }),
       });
       const data = await res.json();
       setResult(data);
@@ -402,6 +409,13 @@ export default function DevPanel() {
       <div className="panel-head">
         <div className="tabs">
           <div className="tab active">Quick start</div>
+        </div>
+        <div className="demo-country-box">
+          <span className="demo-country-tag">TEMP — TEST ONLY</span>
+          <select className="demo-country-select" value={demoCountry}
+            onChange={(e) => { setDemoCountry(e.target.value); setRunState('idle'); setResult(null); }}>
+            {MERCHANT_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
         </div>
         <button className="btn-test" type="button" onClick={handleRun}>Test before you sign up</button>
       </div>

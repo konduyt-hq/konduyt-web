@@ -122,6 +122,7 @@ export default function Dashboard() {
   const [previewShopperCountry, setPreviewShopperCountry] = useState('KE');
   const [previewEligibility, setPreviewEligibility] = useState(null);
   const [previewEligibilityLoading, setPreviewEligibilityLoading] = useState(false);
+  const [previewRanked, setPreviewRanked] = useState(null);
   const [previewAmount, setPreviewAmount] = useState('1500.00'); // major units, editable
   const [previewCurrency, setPreviewCurrency] = useState('KES');
   // Routing intelligence panel
@@ -409,6 +410,27 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => { setPreviewEligibility(d); setPreviewEligibilityLoading(false); })
       .catch(() => { setPreviewEligibility(null); setPreviewEligibilityLoading(false); });
+  }, [checkoutOpen, keys, previewShopperCountry, previewCurrency, previewAmount]);
+
+  // Real fee ranking (GET /v1/payment-methods/ranked) alongside plain
+  // eligibility -- the actual "payment intelligence layer": what would this
+  // genuinely cost, cheapest first, sourced from the real cost engine. A
+  // method missing here (no real fee data) simply shows no fee badge below
+  // -- never a fabricated number filling the gap.
+  useEffect(() => {
+    const pubKey = keys?.live?.publishable_key;
+    if (!checkoutOpen || !pubKey || !previewShopperCountry) {
+      setPreviewRanked(null);
+      return;
+    }
+    const amt = Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100));
+    if (amt <= 0) { setPreviewRanked(null); return; }
+    fetch(`${API_BASE}/v1/payment-methods/ranked?country=${previewShopperCountry}` +
+         `&currency=${previewCurrency}&amount=${amt}`,
+         { headers: { Authorization: `Bearer ${pubKey}` } })
+      .then((r) => (r.ok ? r.json() : { methods: [] }))
+      .then((d) => setPreviewRanked(d.methods || []))
+      .catch(() => setPreviewRanked([]));
   }, [checkoutOpen, keys, previewShopperCountry, previewCurrency, previewAmount]);
 
   // Payment-method graph, resolved for the active project's merchant country.
@@ -2447,15 +2469,25 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
             || 'not set yet';
           const prettyMethodName = (id) => (id || '').replace(/_/g, ' ')
             .replace(/\b\w/g, (ch) => ch.toUpperCase());
-          const payable = (previewEligibility?.methods || []).map((m) => ({
-            id: m.method.toLowerCase(),
-            name: prettyMethodName(m.method),
-            connectable: true,
-            via: m.selected_provider,
-            available_via: [{ name: prettyMethodName(m.selected_provider) }],
-            eligible_providers: m.eligible_providers,
-            capability_detail: m.capability_detail,
-          }));
+          const rankedByMethod = {};
+          (previewRanked || []).forEach((r) => { rankedByMethod[r.method] = r; });
+          const payable = (previewEligibility?.methods || []).map((m) => {
+            const rank = rankedByMethod[m.method];
+            return {
+              id: m.method.toLowerCase(),
+              name: prettyMethodName(m.method),
+              connectable: true,
+              via: m.selected_provider,
+              available_via: [{ name: prettyMethodName(m.selected_provider) }],
+              eligible_providers: m.eligible_providers,
+              capability_detail: m.capability_detail,
+              // Real fee data where it exists (never fabricated when it
+              // doesn't) -- this is what makes CheckoutModal actually show
+              // the "Best value" payment intelligence badge.
+              fee_percent: rank ? rank.fee_percent : undefined,
+              fee_amount: rank ? rank.fee_amount : undefined,
+            };
+          });
 
           const amountMinor = Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100));
 
