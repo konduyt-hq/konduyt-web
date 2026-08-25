@@ -1,8 +1,11 @@
 'use client';
 
+import Link from 'next/link';
+import { useHomeHref } from '../useHomeHref';
 import Logo from '../Logo';
 
 export default function About() {
+  const homeHref = useHomeHref();
   return (
     <div className="about-root">
       <nav className="about-nav">
@@ -45,6 +48,8 @@ export default function About() {
           Konduyt is our answer to one of the biggest problems in global commerce:
           payments should work wherever your customers are.
         </p>
+
+        <p><Link href={homeHref}>&larr; Back to Konduyt</Link></p>
       </main>
     </div>
   );
