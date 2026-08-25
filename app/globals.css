@@ -1818,20 +1818,34 @@
   .ckt-cheapest{display:inline-block;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--ckt-accent-ink,#ffffff);background:var(--ckt-accent,var(--green));border-radius:4px;padding:1px 6px;margin-left:7px;vertical-align:middle;}
 
   /* ===== Money tab ===== */
-  .money-page{max-width:640px;}
-
-  .money-view-toggle{display:flex; border:1px solid var(--border); border-radius:9px; overflow:hidden; width:fit-content;}
-  .money-view-toggle button{background:none; border:none; padding:7px 14px; font-size:12.5px; font-weight:600;
-    color:var(--text-secondary); cursor:pointer; font-family:inherit;}
-  .money-view-toggle button.active{background:var(--ink); color:#fff;}
+  .money-page{max-width:680px;}
 
   .money-simple-list{border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:16px;}
-  .money-simple-row{display:flex; justify-content:space-between; align-items:center;
-    padding:14px 18px; border-bottom:1px solid var(--border); font-size:14px;}
+  .money-simple-row{display:flex; align-items:center; gap:12px;
+    padding:14px 18px; border-bottom:1px solid var(--border); font-size:14px; flex-wrap:wrap;}
   .money-simple-row:last-child{border-bottom:none;}
-  .money-simple-name{font-weight:600; color:var(--ink); text-transform:capitalize;}
+  .money-row-type{font-size:10.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+    padding:3px 8px; border-radius:5px; flex-shrink:0; white-space:nowrap;}
+  .money-row-type-provider{background:#f0f0f0; color:var(--ink);}
+  .money-row-type-method{background:#fff4e0; color:#9a6400;}
+  .money-simple-name{font-weight:600; color:var(--ink); text-transform:capitalize; flex:1; min-width:80px;}
   .money-simple-amount{font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ink);}
-  .money-privacy-note{font-size:12px; color:var(--text-secondary); line-height:1.6; margin:4px 0 0;}
+  .money-row-link{font-size:12px; font-weight:600; color:var(--ink); text-decoration:none;
+    white-space:nowrap; border-bottom:1px solid var(--border);}
+  .money-row-link:hover{text-decoration:none; border-bottom-color:var(--ink);}
+  .money-privacy-note{font-size:12px; color:var(--text-secondary); line-height:1.6; margin:4px 0 24px;}
+
+  /* What the merchant owes Konduyt this month -- real, from the pricing engine */
+  .money-owed{border:1px solid var(--border); border-radius:12px; padding:18px 20px;}
+  .money-owed-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+    margin-bottom:12px; flex-wrap:wrap;}
+  .money-owed-title{font-size:14px; font-weight:700; color:var(--ink);}
+  .money-owed-rate{font-size:12px; color:var(--text-secondary);}
+  .money-owed-empty{font-size:13px; color:var(--text-secondary); margin:0;}
+  .money-owed-lines{display:flex; flex-direction:column; gap:8px;}
+  .money-owed-line{display:flex; justify-content:space-between; align-items:baseline; font-size:13.5px;
+    color:var(--text-secondary);}
+  .money-owed-amount{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:16px; color:var(--ink);}
 
   /* ===== Taxes tab ===== */
   .tax-overview{margin-top:6px;}

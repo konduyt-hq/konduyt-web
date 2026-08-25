@@ -138,7 +138,7 @@ export default function Dashboard() {
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
   const [moneyData, setMoneyData] = useState(null);
-  const [moneyBreakdownView, setMoneyBreakdownView] = useState('provider'); // 'provider' | 'method'
+  const [moneyOrchestration, setMoneyOrchestration] = useState(null);
   // Demo/preview mode — browser-only sample data so the visualizations can be
   // seen before real payments exist. NEVER written to the DB, never sent through
   // the real endpoints. Auto-ignored once real data exists.
@@ -751,11 +751,11 @@ export default function Dashboard() {
   const DEMO_MONEY_BY_METHOD = {
     has_data: true,
     methods: [
-      { method: 'M-Pesa', currency: 'KES', transaction_count: 96, completed_volume: 1980000, volume_share: 41.1 },
-      { method: 'Card', currency: 'KES', transaction_count: 58, completed_volume: 1340000, volume_share: 27.8 },
-      { method: 'PayPal', currency: 'USD', transaction_count: 16, completed_volume: 620000, volume_share: 12.9 },
-      { method: 'Bank Transfer', currency: 'KES', transaction_count: 30, completed_volume: 590000, volume_share: 12.2 },
-      { method: 'Apple Pay', currency: 'USD', transaction_count: 14, completed_volume: 290000, volume_share: 6.0 },
+      { method: 'M-Pesa', provider: 'paystack', currency: 'KES', transaction_count: 96, completed_volume: 1980000, volume_share: 41.1 },
+      { method: 'Card', provider: 'paystack', currency: 'KES', transaction_count: 58, completed_volume: 1340000, volume_share: 27.8 },
+      { method: 'PayPal', provider: 'paypal', currency: 'USD', transaction_count: 16, completed_volume: 620000, volume_share: 12.9 },
+      { method: 'Bank Transfer', provider: 'flutterwave', currency: 'KES', transaction_count: 30, completed_volume: 590000, volume_share: 12.2 },
+      { method: 'Apple Pay', provider: 'stripe', currency: 'USD', transaction_count: 14, completed_volume: 290000, volume_share: 6.0 },
     ],
   };
   const DEMO_TAX_RECEIVED = {
@@ -790,9 +790,13 @@ export default function Dashboard() {
   async function loadMoney() {
     if (!activeId) return;
     try {
-      const r = await fetch(`${API_BASE}/projects/${activeId}/money/by-provider`, { headers: authHeaders() });
-      setMoneyData(await r.json());
-    } catch (e) { setMoneyData(null); }
+      const [byProvider, orch] = await Promise.all([
+        fetch(`${API_BASE}/projects/${activeId}/money/by-provider`, { headers: authHeaders() }).then((r) => r.json()),
+        fetch(`${API_BASE}/projects/${activeId}/orchestration`, { headers: authHeaders() }).then((r) => r.json()),
+      ]);
+      setMoneyData(byProvider);
+      setMoneyOrchestration(orch);
+    } catch (e) { setMoneyData(null); setMoneyOrchestration(null); }
   }
 
   async function loadTaxReceived() {
@@ -2051,55 +2055,98 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   )}
                 </div>
 
-                <div className="money-view-toggle" style={{ marginBottom: 16 }}>
-                  <button type="button" className={moneyBreakdownView === 'provider' ? 'active' : ''}
-                    onClick={() => setMoneyBreakdownView('provider')}>By Provider</button>
-                  <button type="button" className={moneyBreakdownView === 'method' ? 'active' : ''}
-                    onClick={() => setMoneyBreakdownView('method')}>By Payment Method</button>
-                </div>
+                {demoMode && moneyView === DEMO_MONEY && (
+                  <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
+                )}
 
-                {moneyBreakdownView === 'provider' ? (
-                  <>
-                    {demoMode && moneyView === DEMO_MONEY && (
-                      <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
-                    )}
-                    {!moneyView || !moneyView.has_data ? (
-                      <div className="route-empty">No transactions yet this month.</div>
+                {(() => {
+                  // Real provider docs/dashboard links, from the same
+                  // catalog the Integrations tab already fetches -- no
+                  // second source of truth. A provider not in the top-12
+                  // coverage list simply gets no link, never a guessed one.
+                  const docsUrlFor = (providerId) => {
+                    const p = topProviders.find((tp) => tp.id === providerId);
+                    return p?.docs_url || null;
+                  };
+
+                  const providerRows = (moneyView?.providers || []).map((p, i) => ({
+                    key: `p-${p.provider}-${p.currency}-${i}`,
+                    type: 'Provider', name: p.provider, currency: p.currency,
+                    amount: p.completed_volume, docsUrl: docsUrlFor(p.provider), preview: false,
+                  }));
+                  // Payment method isn't tracked per-transaction in the real
+                  // schema yet -- these rows only appear during EXPLICIT demo
+                  // preview mode (moneyView === DEMO_MONEY), never mixed in
+                  // by default and never shown alongside genuinely real
+                  // provider data. Combining them is only honest when both
+                  // sides of the combined list are equally clearly sample data.
+                  const showMethodPreview = moneyView === DEMO_MONEY;
+                  const methodRows = showMethodPreview ? DEMO_MONEY_BY_METHOD.methods.map((m, i) => ({
+                    key: `m-${m.method}-${i}`,
+                    type: 'Method', name: m.method, currency: m.currency,
+                    amount: m.completed_volume, docsUrl: docsUrlFor(m.provider), preview: true,
+                  })) : [];
+                  const rows = [...providerRows, ...methodRows];
+
+                  if (rows.length === 0) {
+                    return <div className="route-empty">No transactions yet this month.</div>;
+                  }
+
+                  return (
+                    <div className="money-simple-list">
+                      {rows.map((row) => (
+                        <div className="money-simple-row" key={row.key}>
+                          <span className={`money-row-type money-row-type-${row.type.toLowerCase()}`}>
+                            {row.type}{row.preview ? ' · preview' : ''}
+                          </span>
+                          <span className="money-simple-name">{row.name}</span>
+                          <span className="money-simple-amount">
+                            {row.currency} {(row.amount / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                          {row.docsUrl && (
+                            <a className="money-row-link" href={row.docsUrl} target="_blank" rel="noreferrer">
+                              View account →
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                <p className="money-privacy-note">
+                  We don&apos;t show individual senders — check your provider&apos;s dashboard for that.
+                </p>
+
+                {/* What this project owes Konduyt this month -- real, from the
+                    actual pricing engine (0.25% of live volume, active since
+                    2026-08-14), never a placeholder. */}
+                {moneyOrchestration && (
+                  <div className="money-owed">
+                    <div className="money-owed-head">
+                      <span className="money-owed-title">What you owe Konduyt this month</span>
+                      {moneyOrchestration.rate_set && (
+                        <span className="money-owed-rate">{(moneyOrchestration.rate * 100).toFixed(2)}% of what you received</span>
+                      )}
+                    </div>
+                    {!moneyOrchestration.rate_set ? (
+                      <p className="money-owed-empty">Orchestration rate not yet set for your account.</p>
+                    ) : moneyOrchestration.lines.length === 0 ? (
+                      <p className="money-owed-empty">Nothing owed yet — no completed live payments this month.</p>
                     ) : (
-                      <div className="money-simple-list">
-                        {moneyView.providers.map((p, i) => (
-                          <div className="money-simple-row" key={`${p.provider}-${p.currency}-${i}`}>
-                            <span className="money-simple-name">{p.provider}</span>
-                            <span className="money-simple-amount">
-                              {p.currency} {(p.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      <div className="money-owed-lines">
+                        {moneyOrchestration.lines.map((l) => (
+                          <div className="money-owed-line" key={l.currency}>
+                            <span>{l.currency} {(l.orchestrated_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })} received</span>
+                            <span className="money-owed-amount">
+                              {l.currency} {(l.konduyt_fee_total / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </span>
                           </div>
                         ))}
                       </div>
                     )}
-                  </>
-                ) : (
-                  <>
-                    <div className="demo-banner">
-                      Preview only — payment method isn&apos;t tracked per-transaction yet, so this is
-                      sample data showing how it will look once it is.
-                    </div>
-                    <div className="money-simple-list">
-                      {DEMO_MONEY_BY_METHOD.methods.map((m, i) => (
-                        <div className="money-simple-row" key={`${m.method}-${i}`}>
-                          <span className="money-simple-name">{m.method}</span>
-                          <span className="money-simple-amount">
-                            {m.currency} {(m.completed_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
+                  </div>
                 )}
-
-                <p className="money-privacy-note">
-                  We don&apos;t show individual senders — check your provider&apos;s dashboard for that.
-                </p>
               </div>
             )}
 
