@@ -138,6 +138,11 @@ export default function Dashboard() {
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
   const [moneyData, setMoneyData] = useState(null);
+  // Real current month by default ('YYYY-MM'), navigable to past months.
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [moneyOrchestration, setMoneyOrchestration] = useState(null);
   // Demo/preview mode — browser-only sample data so the visualizations can be
   // seen before real payments exist. NEVER written to the DB, never sent through
@@ -469,11 +474,12 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  // Money tab: load real ledger split when opened.
+  // Money tab: load real ledger split for the selected month when opened,
+  // and re-load whenever the month navigator changes.
   useEffect(() => {
-    if (tab === 'money' && activeId) loadMoney();
+    if (tab === 'money' && activeId) loadMoney(selectedMonth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, activeId]);
+  }, [tab, activeId, selectedMonth]);
 
   // Tax detail (per-provider, entered from a Money row): fetch when opened.
   useEffect(() => {
@@ -777,12 +783,13 @@ export default function Dashboard() {
   const moneyView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_MONEY : moneyData;
   const taxReceivedView = taxReceived;
 
-  async function loadMoney() {
+  async function loadMoney(period) {
     if (!activeId) return;
     try {
+      const q = period ? `?period=${period}` : '';
       const [byProvider, orch] = await Promise.all([
-        fetch(`${API_BASE}/projects/${activeId}/money/by-provider`, { headers: authHeaders() }).then((r) => r.json()),
-        fetch(`${API_BASE}/projects/${activeId}/orchestration`, { headers: authHeaders() }).then((r) => r.json()),
+        fetch(`${API_BASE}/projects/${activeId}/money/by-provider${q}`, { headers: authHeaders() }).then((r) => r.json()),
+        fetch(`${API_BASE}/projects/${activeId}/orchestration${q}`, { headers: authHeaders() }).then((r) => r.json()),
       ]);
       setMoneyData(byProvider);
       setMoneyOrchestration(orch);
@@ -2049,6 +2056,28 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   <div className="demo-banner">Demo data — not real transactions. Nothing here is stored or counted.</div>
                 )}
 
+                {(() => {
+                  // Real month navigation. Never allows going past the actual
+                  // current calendar month (no browsing into the future).
+                  const [y, m] = selectedMonth.split('-').map(Number);
+                  const monthLabel = new Date(y, m - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+                  const shiftMonth = (delta) => {
+                    const d = new Date(y, m - 1 + delta, 1);
+                    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                  };
+                  const now = new Date();
+                  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
+
+                  return (
+                    <div className="money-month-nav">
+                      <button type="button" className="money-month-nav-btn" onClick={() => shiftMonth(-1)} aria-label="Previous month">‹</button>
+                      <span className="money-month-nav-label">{monthLabel}</span>
+                      <button type="button" className="money-month-nav-btn" onClick={() => shiftMonth(1)}
+                        disabled={isCurrentMonth} aria-label="Next month">›</button>
+                    </div>
+                  );
+                })()}
+
                 {/* Total combined, this month -- the real by-provider total,
                     never a sum of providers+methods together (method rows are
                     the SAME money re-sliced a different way, not additional
@@ -2057,23 +2086,58 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     currency the merchant happens to have received in, mixed
                     together. If real volume genuinely exists in more than one
                     currency, the rest are still visible per-row below, just
-                    not crammed into this one headline number. */}
-                {moneyView?.has_data && (() => {
+                    not crammed into this one headline number. Konduyt-owed
+                    sits right alongside it -- both real figures for the same
+                    selected month, not one buried further down the page. */}
+                {(() => {
+                  const [y, m] = selectedMonth.split('-').map(Number);
+                  const monthLabel = new Date(y, m - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+
                   const byCcy = {};
-                  (moneyView.providers || []).forEach((p) => {
+                  (moneyView?.providers || []).forEach((p) => {
                     byCcy[p.currency] = (byCcy[p.currency] || 0) + p.completed_volume;
                   });
                   const entries = Object.entries(byCcy);
-                  if (entries.length === 0) return null;
-                  const [dominantCcy, dominantMinor] = entries.sort((a, b) => b[1] - a[1])[0];
+                  const hasReceived = moneyView?.has_data && entries.length > 0;
+                  const [dominantCcy, dominantMinor] = hasReceived
+                    ? entries.sort((a, b) => b[1] - a[1])[0] : [null, 0];
+
+                  const owedLine = moneyOrchestration?.rate_set && moneyOrchestration.lines?.length > 0
+                    ? moneyOrchestration.lines.slice().sort((a, b) => b.konduyt_fee_total - a.konduyt_fee_total)[0]
+                    : null;
+
                   return (
-                    <div className="money-total-headline">
-                      <span className="money-total-headline-label">Received this month</span>
-                      <span className="money-total-headline-value">
-                        <span className="money-total-headline-ccy">
-                          {dominantCcy} {(dominantMinor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <div className="money-headline-row">
+                      <div className="money-total-headline">
+                        <span className="money-total-headline-label">Received on {monthLabel}</span>
+                        <span className="money-total-headline-value">
+                          {hasReceived ? (
+                            <span className="money-total-headline-ccy">
+                              {dominantCcy} {(dominantMinor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          ) : (
+                            <span className="money-total-headline-empty">No payments this month</span>
+                          )}
                         </span>
-                      </span>
+                      </div>
+                      <div className="money-total-headline money-total-headline-owed">
+                        <span className="money-total-headline-label">
+                          You owe Konduyt{moneyOrchestration?.rate_set ? ` (${(moneyOrchestration.rate * 100).toFixed(2)}%)` : ''}
+                        </span>
+                        <span className="money-total-headline-value">
+                          {!moneyOrchestration ? (
+                            <span className="money-total-headline-empty">—</span>
+                          ) : !moneyOrchestration.rate_set ? (
+                            <span className="money-total-headline-empty">Rate not yet set</span>
+                          ) : owedLine ? (
+                            <span className="money-total-headline-ccy">
+                              {owedLine.currency} {(owedLine.konduyt_fee_total / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          ) : (
+                            <span className="money-total-headline-empty">Nothing owed yet</span>
+                          )}
+                        </span>
+                      </div>
                     </div>
                   );
                 })()}
@@ -2130,30 +2194,25 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   We don&apos;t show individual senders — check your provider&apos;s dashboard for that.
                 </p>
 
-                {moneyOrchestration && (
+                {/* Only shown when Konduyt fees are genuinely accruing in MORE
+                    THAN ONE currency this month -- the headline above already
+                    covers the single-currency case (the common one), showing
+                    this too then would just repeat it. */}
+                {moneyOrchestration?.rate_set && moneyOrchestration.lines?.length > 1 && (
                   <div className="money-owed">
                     <div className="money-owed-head">
-                      <span className="money-owed-title">What you owe Konduyt this month</span>
-                      {moneyOrchestration.rate_set && (
-                        <span className="money-owed-rate">{(moneyOrchestration.rate * 100).toFixed(2)}% of what you received</span>
-                      )}
+                      <span className="money-owed-title">Other currencies owed to Konduyt this month</span>
                     </div>
-                    {!moneyOrchestration.rate_set ? (
-                      <p className="money-owed-empty">Orchestration rate not yet set for your account.</p>
-                    ) : moneyOrchestration.lines.length === 0 ? (
-                      <p className="money-owed-empty">Nothing owed yet — no completed live payments this month.</p>
-                    ) : (
-                      <div className="money-owed-lines">
-                        {moneyOrchestration.lines.map((l) => (
-                          <div className="money-owed-line" key={l.currency}>
-                            <span>{l.currency} {(l.orchestrated_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })} received</span>
-                            <span className="money-owed-amount">
-                              {l.currency} {(l.konduyt_fee_total / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div className="money-owed-lines">
+                      {moneyOrchestration.lines.map((l) => (
+                        <div className="money-owed-line" key={l.currency}>
+                          <span>{l.currency} {(l.orchestrated_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })} received</span>
+                          <span className="money-owed-amount">
+                            {l.currency} {(l.konduyt_fee_total / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

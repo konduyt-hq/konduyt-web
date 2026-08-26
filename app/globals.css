@@ -1820,11 +1820,22 @@
   /* ===== Money tab ===== */
   .money-page{max-width:680px;}
 
-  .money-total-headline{margin-bottom:22px;}
+  .money-month-nav{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+  .money-month-nav-btn{background:none; border:1px solid var(--border); border-radius:7px;
+    width:30px; height:30px; font-size:17px; line-height:1; color:var(--ink); cursor:pointer;
+    font-family:inherit; display:flex; align-items:center; justify-content:center;}
+  .money-month-nav-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .money-month-nav-btn:not(:disabled):hover{border-color:var(--ink);}
+  .money-month-nav-label{font-size:14px; font-weight:700; color:var(--ink); min-width:140px;}
+
+  .money-headline-row{display:flex; gap:32px; flex-wrap:wrap; margin-bottom:22px;}
+  .money-total-headline{flex:1; min-width:180px;}
+  .money-total-headline-owed{border-left:1px solid var(--border); padding-left:32px;}
   .money-total-headline-label{display:block; font-size:12px; font-weight:600; color:var(--text-secondary);
     text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;}
   .money-total-headline-value{display:flex; flex-wrap:wrap; gap:14px; align-items:baseline;}
   .money-total-headline-ccy{font-family:'JetBrains Mono',monospace; font-weight:800; font-size:28px; color:var(--ink);}
+  .money-total-headline-empty{font-size:15px; color:var(--text-secondary); font-weight:500;}
 
   .money-simple-list{border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:16px;}
   .money-simple-row{display:flex; align-items:center; gap:12px;
@@ -1845,8 +1856,6 @@
   .money-owed-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px;
     margin-bottom:12px; flex-wrap:wrap;}
   .money-owed-title{font-size:14px; font-weight:700; color:var(--ink);}
-  .money-owed-rate{font-size:12px; color:var(--text-secondary);}
-  .money-owed-empty{font-size:13px; color:var(--text-secondary); margin:0;}
   .money-owed-lines{display:flex; flex-direction:column; gap:8px;}
   .money-owed-line{display:flex; justify-content:space-between; align-items:baseline; font-size:13.5px;
     color:var(--text-secondary);}
