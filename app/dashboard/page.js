@@ -2102,9 +2102,23 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                   const [dominantCcy, dominantMinor] = hasReceived
                     ? entries.sort((a, b) => b[1] - a[1])[0] : [null, 0];
 
-                  const owedLine = moneyOrchestration?.rate_set && moneyOrchestration.lines?.length > 0
-                    ? moneyOrchestration.lines.slice().sort((a, b) => b.konduyt_fee_total - a.konduyt_fee_total)[0]
-                    : null;
+                  const isDemo = moneyView === DEMO_MONEY;
+                  // In demo mode, the received figure above is a preview
+                  // number -- showing a real "Nothing owed yet" right next to
+                  // it was internally inconsistent (a real KES 48,200.00
+                  // received implies a real amount owed, not zero). The RATE
+                  // itself is genuinely real and decided (0.25%, confirmed
+                  // active) -- only the volume being multiplied is demo, so
+                  // this applies the real rate to the demo volume rather than
+                  // fabricating a rate too. Still fully gated on rate_set:
+                  // if the rate genuinely weren't set, this would honestly
+                  // say so even in demo mode, never invent one.
+                  const owedLine = !moneyOrchestration?.rate_set ? null
+                    : isDemo
+                      ? (hasReceived ? { currency: dominantCcy, konduyt_fee_total: Math.round(dominantMinor * moneyOrchestration.rate) } : null)
+                      : (moneyOrchestration.lines?.length > 0
+                          ? moneyOrchestration.lines.slice().sort((a, b) => b.konduyt_fee_total - a.konduyt_fee_total)[0]
+                          : null);
 
                   return (
                     <div className="money-headline-row">
