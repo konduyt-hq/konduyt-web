@@ -11,14 +11,40 @@
  *     currency: "KES",
  *     reference: "order_123",
  *     onSuccess: function (result) { ... },  // customer completed the step
- *     onClose:   function () { ... }          // customer closed the popup
+ *     onClose:   function () { ... },        // customer closed the popup
+ *
+ *     // ---- Appearance: you control the brand and experience ----
+ *     theme: "light",          // "light" | "dark" | "system" (default "light")
+ *     brandColor: "#2563eb",   // your accent color -- buttons, selection state
+ *     logo: "https://you.com/logo.png",  // shown in the popup header
+ *     borderRadius: 18,        // px, corners of the popup and its buttons
+ *     font: "'Inter', sans-serif",       // font-family for the whole popup
+ *     layout: "comfortable",   // "comfortable" | "compact"
+ *
+ *     // ---- Checkout behavior: you narrow, Konduyt still decides what's real ----
+ *     allowedMethods: ["mpesa", "card"], // only show these IDs -- but only ones
+ *                                        // Konduyt actually finds eligible for
+ *                                        // THIS shopper are ever shown; this can
+ *                                        // never add a method that isn't real.
+ *     hiddenMethods: ["paypal_wallet"],  // never show these, even if eligible
+ *     preferredMethod: "mpesa",          // shown first WHEN it's eligible --
+ *                                        // never forced if it genuinely can't
+ *                                        // be used for this shopper/transaction
  *   });
  *
- * The popup fetches the merchant's enabled methods from Konduyt using the
- * publishable key and shows the customer their options. It NEVER handles your
- * secret key — the actual charge is created by YOUR server with the secret key
+ * The popup fetches the merchant's REAL eligible methods from Konduyt for the
+ * actual shopper and transaction (country, currency, amount) using the
+ * publishable key -- not a static list. It NEVER handles your secret key —
+ * the actual charge is created by YOUR server with the secret key
  * (POST /v1/payments). This mirrors PayPal: the popup collects intent, your
  * server captures the money.
+ *
+ * Customization changes what's SHOWN and in what ORDER. It can never change
+ * what's ELIGIBLE -- allowedMethods/hiddenMethods/preferredMethod only ever
+ * filter or reorder the real methods Konduyt's eligibility engine already
+ * returned for this shopper; they can't inject a method that isn't genuinely
+ * available. "The merchant controls the brand and experience. Konduyt
+ * controls the payment intelligence."
  */
 (function () {
   "use strict";
@@ -47,46 +73,157 @@
 
   // ---- Styles injected once -------------------------------------------------
   var STYLE_ID = "konduyt-dropin-styles";
+  function darken(hex, amount) {
+    // Used for the button's hover shade -- can't hardcode a "darker green"
+    // when the brand color is now whatever the merchant chose.
+    var h = (hex || "").replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
+    var r = Math.max(0, parseInt(h.substr(0, 2), 16) - amount);
+    var g = Math.max(0, parseInt(h.substr(2, 2), 16) - amount);
+    var b = Math.max(0, parseInt(h.substr(4, 2), 16) - amount);
+    function pad(n) { var s = n.toString(16); return s.length === 1 ? "0" + s : s; }
+    return "#" + pad(r) + pad(g) + pad(b);
+  }
+
+  function lighten(hex, amount) {
+    // For the soft-tint background behind a selected method / spinner ring --
+    // mixed toward white, not just a lower-opacity overlay, so it reads
+    // correctly as a solid background regardless of what's behind it.
+    var h = (hex || "").replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return hex;
+    var r = Math.min(255, parseInt(h.substr(0, 2), 16) + amount);
+    var g = Math.min(255, parseInt(h.substr(2, 2), 16) + amount);
+    var b = Math.min(255, parseInt(h.substr(4, 2), 16) + amount);
+    function pad(n) { var s = n.toString(16); return s.length === 1 ? "0" + s : s; }
+    return "#" + pad(r) + pad(g) + pad(b);
+  }
+
+  function contrastText(hex) {
+    // Picks readable text for the brand-colored Pay button -- a bright
+    // brand color (e.g. yellow) needs dark text; a dark one needs white.
+    var h = (hex || "").replace("#", "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return "#04120a";
+    var r = parseInt(h.substr(0, 2), 16), g = parseInt(h.substr(2, 2), 16), b = parseInt(h.substr(4, 2), 16);
+    var brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 150 ? "#04120a" : "#ffffff";
+  }
+
+  function resolveTheme(opts) {
+    if (opts.theme === "dark") return "dark";
+    if (opts.theme === "system") {
+      return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    }
+    return "light";
+  }
+
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     var css =
-      ".kdu-ov{position:fixed;inset:0;background:rgba(10,10,10,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:2147483000;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif}" +
-      ".kdu-m{position:relative;background:#fff;width:100%;max-width:400px;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.3);padding:26px 24px 16px;animation:kduIn .2s ease}" +
+      // Light theme (default) values live as var() fallbacks so a merchant
+      // who sets nothing gets exactly the original look. brandColor/
+      // borderRadius/font are set as inline custom properties per-instance
+      // on .kdu-m (see checkout()), not baked into this shared stylesheet --
+      // this file is injected once and shared by every checkout() call on
+      // the page, which could each want a different brand color.
+      ".kdu-ov{position:fixed;inset:0;background:rgba(10,10,10,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:2147483000;padding:20px;font-family:var(--kdu-font,-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif)}" +
+      ".kdu-m{position:relative;background:#fff;width:100%;max-width:400px;border-radius:var(--kdu-radius,18px);box-shadow:0 24px 70px rgba(0,0,0,.3);padding:26px 24px 16px;animation:kduIn .2s ease}" +
+      ".kdu-m.compact{max-width:340px;padding:18px 16px 12px}" +
+      ".kdu-m.dark{background:#18181b;box-shadow:0 24px 70px rgba(0,0,0,.55)}" +
       "@keyframes kduIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}" +
       ".kdu-x{position:absolute;top:14px;right:16px;background:none;border:none;font-size:15px;color:#6b6b6b;cursor:pointer;line-height:1}" +
+      ".kdu-m.dark .kdu-x{color:#a1a1aa}" +
+      ".kdu-logo{display:block;max-height:28px;max-width:140px;margin:0 auto 10px;object-fit:contain}" +
       ".kdu-hd{text-align:center;padding:8px 0 20px;border-bottom:1px solid #e7e7e7;margin-bottom:18px}" +
+      ".kdu-m.compact .kdu-hd{padding:4px 0 14px;margin-bottom:12px}" +
+      ".kdu-m.dark .kdu-hd{border-bottom-color:#2c2c31}" +
       ".kdu-mer{font-size:14px;font-weight:600;color:#6b6b6b}" +
+      ".kdu-m.dark .kdu-mer{color:#a1a1aa}" +
       ".kdu-amt{font-size:34px;font-weight:800;color:#0a0a0a;letter-spacing:-.02em;margin:4px 0 6px}" +
+      ".kdu-m.compact .kdu-amt{font-size:28px;margin:2px 0 4px}" +
+      ".kdu-m.dark .kdu-amt{color:#fafafa}" +
       ".kdu-ref{font-size:11px;color:#a3a3a3;font-family:'JetBrains Mono',monospace}" +
       ".kdu-lbl{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b6b6b;margin-bottom:10px}" +
+      ".kdu-m.dark .kdu-lbl{color:#a1a1aa}" +
       ".kdu-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}" +
-      ".kdu-mtd{display:flex;align-items:center;gap:12px;width:100%;border:1.5px solid #e7e7e7;background:#fff;border-radius:11px;padding:13px 14px;cursor:pointer;transition:border-color .12s,background .12s;text-align:left}" +
+      ".kdu-m.compact .kdu-list{gap:6px;margin-bottom:12px}" +
+      ".kdu-mtd{display:flex;align-items:center;gap:12px;width:100%;border:1.5px solid #e7e7e7;background:#fff;border-radius:calc(var(--kdu-radius,18px) * 0.6);padding:13px 14px;cursor:pointer;transition:border-color .12s,background .12s;text-align:left}" +
+      ".kdu-m.compact .kdu-mtd{padding:10px 12px}" +
+      ".kdu-m.dark .kdu-mtd{background:#212126;border-color:#2c2c31}" +
       ".kdu-mtd:hover{border-color:#c9c9c9}" +
-      ".kdu-mtd.sel{border-color:#22c55e;background:#dcfce7}" +
+      ".kdu-m.dark .kdu-mtd:hover{border-color:#3f3f46}" +
+      ".kdu-mtd.sel{border-color:var(--kdu-brand,#22c55e);background:var(--kdu-brand-soft,#dcfce7)}" +
       ".kdu-mtd-t{display:flex;flex-direction:column;flex:1}" +
       ".kdu-mtd-n{font-size:14.5px;font-weight:600;color:#0a0a0a}" +
+      ".kdu-m.dark .kdu-mtd-n{color:#fafafa}" +
       ".kdu-mtd-v{font-size:11.5px;color:#6b6b6b}" +
+      ".kdu-m.dark .kdu-mtd-v{color:#a1a1aa}" +
       ".kdu-rd{width:18px;height:18px;border-radius:50%;border:2px solid #e7e7e7;flex-shrink:0;position:relative}" +
-      ".kdu-rd.on{border-color:#22c55e}" +
-      ".kdu-rd.on:after{content:'';position:absolute;inset:3px;border-radius:50%;background:#22c55e}" +
-      ".kdu-pay{width:100%;background:#22c55e;color:#04120a;border:none;border-radius:11px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}" +
-      ".kdu-pay:hover:not(:disabled){background:#16a34a}" +
+      ".kdu-m.dark .kdu-rd{border-color:#3f3f46}" +
+      ".kdu-rd.on{border-color:var(--kdu-brand,#22c55e)}" +
+      ".kdu-rd.on:after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--kdu-brand,#22c55e)}" +
+      ".kdu-pay{width:100%;background:var(--kdu-brand,#22c55e);color:var(--kdu-brand-text,#04120a);border:none;border-radius:calc(var(--kdu-radius,18px) * 0.6);padding:15px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}" +
+      ".kdu-m.compact .kdu-pay{padding:12px;font-size:14px}" +
+      ".kdu-pay:hover:not(:disabled){background:var(--kdu-brand-dark,#16a34a)}" +
       ".kdu-pay:disabled{background:#e7e7e7;color:#a3a3a3;cursor:not-allowed}" +
-      ".kdu-empty{font-size:13.5px;color:#6b6b6b;text-align:center;padding:20px 10px;line-height:1.6;background:#fafafa;border-radius:11px;margin-bottom:16px}" +
+      ".kdu-m.dark .kdu-pay:disabled{background:#2c2c31;color:#71717a}" +
+      ".kdu-empty{font-size:13.5px;color:#6b6b6b;text-align:center;padding:20px 10px;line-height:1.6;background:#fafafa;border-radius:calc(var(--kdu-radius,18px) * 0.6);margin-bottom:16px}" +
+      ".kdu-m.dark .kdu-empty{background:#212126;color:#a1a1aa}" +
       ".kdu-proc{text-align:center;padding:36px 0;color:#6b6b6b;font-size:14px}" +
-      ".kdu-sp{width:34px;height:34px;border:3px solid #dcfce7;border-top-color:#22c55e;border-radius:50%;margin:0 auto 14px;animation:kduSpin .8s linear infinite}" +
+      ".kdu-m.compact .kdu-proc{padding:22px 0}" +
+      ".kdu-m.dark .kdu-proc{color:#a1a1aa}" +
+      ".kdu-sp{width:34px;height:34px;border:3px solid var(--kdu-brand-soft,#dcfce7);border-top-color:var(--kdu-brand,#22c55e);border-radius:50%;margin:0 auto 14px;animation:kduSpin .8s linear infinite}" +
       "@keyframes kduSpin{to{transform:rotate(360deg)}}" +
       ".kdu-nx{text-align:center;padding:16px 0 6px}" +
-      ".kdu-nx-i{width:46px;height:46px;border-radius:50%;background:#dcfce7;color:#15803d;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}" +
+      ".kdu-nx-i{width:46px;height:46px;border-radius:50%;background:var(--kdu-brand-soft,#dcfce7);color:var(--kdu-brand-dark,#15803d);font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}" +
       ".kdu-nx-i.err{background:#fef2f2;color:#b91c1c}" +
+      ".kdu-m.dark .kdu-nx-i.err{background:#3f1d1d;color:#f87171}" +
       ".kdu-nx-t{font-size:16px;font-weight:700;color:#0a0a0a;margin-bottom:8px}" +
+      ".kdu-m.dark .kdu-nx-t{color:#fafafa}" +
       ".kdu-nx-m{font-size:13.5px;color:#6b6b6b;line-height:1.6;margin-bottom:18px;padding:0 6px}" +
+      ".kdu-m.dark .kdu-nx-m{color:#a1a1aa}" +
       ".kdu-ft{display:flex;align-items:center;justify-content:center;gap:6px;padding:14px 0 6px;margin-top:8px;border-top:1px solid #e7e7e7;font-size:12px;color:#6b6b6b}" +
-      ".kdu-br{color:#0a0a0a;font-weight:700;text-decoration:none}";
+      ".kdu-m.dark .kdu-ft{border-top-color:#2c2c31;color:#a1a1aa}" +
+      ".kdu-br{color:#0a0a0a;font-weight:700;text-decoration:none}" +
+      ".kdu-m.dark .kdu-br{color:#fafafa}";
     var el = document.createElement("style");
     el.id = STYLE_ID;
     el.textContent = css;
     document.head.appendChild(el);
+  }
+
+  function applyMerchantPreferences(methods, opts) {
+    // Can only ever NARROW or REORDER what the server already said is
+    // eligible for this real shopper/transaction -- every operation here is
+    // a .filter() or a reorder of existing items, never an addition, so
+    // there's no way for allowedMethods/preferredMethod to inject a method
+    // Konduyt's eligibility engine didn't actually return. "The merchant
+    // enables capabilities, Konduyt determines what's appropriate" --
+    // enforced structurally here, not just by convention.
+    var result = methods || [];
+    if (opts.allowedMethods && opts.allowedMethods.length) {
+      var allowed = {};
+      opts.allowedMethods.forEach(function (m) { allowed[m] = true; });
+      result = result.filter(function (m) { return allowed[m.id]; });
+    }
+    if (opts.hiddenMethods && opts.hiddenMethods.length) {
+      var hidden = {};
+      opts.hiddenMethods.forEach(function (m) { hidden[m] = true; });
+      result = result.filter(function (m) { return !hidden[m.id]; });
+    }
+    if (opts.preferredMethod) {
+      var idx = -1;
+      for (var i = 0; i < result.length; i++) {
+        if (result[i].id === opts.preferredMethod) { idx = i; break; }
+      }
+      if (idx > 0) {
+        var preferred = result.splice(idx, 1)[0];
+        result.unshift(preferred);
+      }
+    }
+    return result;
   }
 
   function el(tag, cls, html) {
@@ -109,6 +246,19 @@
 
     var overlay = el("div", "kdu-ov");
     var modal = el("div", "kdu-m");
+    var theme = resolveTheme(opts);
+    if (theme === "dark") modal.className += " dark";
+    if (opts.layout === "compact") modal.className += " compact";
+    // Per-instance custom properties -- NOT baked into the shared stylesheet
+    // (injectStyles runs once per page and could serve several checkout()
+    // calls, potentially for different merchants/brand colors).
+    var brand = opts.brandColor || "#22c55e";
+    modal.style.setProperty("--kdu-brand", brand);
+    modal.style.setProperty("--kdu-brand-dark", darken(brand, 32));
+    modal.style.setProperty("--kdu-brand-soft", lighten(brand, 150));
+    modal.style.setProperty("--kdu-brand-text", contrastText(brand));
+    if (opts.borderRadius != null) modal.style.setProperty("--kdu-radius", opts.borderRadius + "px");
+    if (opts.font) modal.style.setProperty("--kdu-font", opts.font);
     overlay.appendChild(modal);
 
     function close() {
@@ -119,13 +269,27 @@
 
     function header() {
       var h = el("div", "kdu-hd");
+      if (opts.logo) {
+        var img = document.createElement("img");
+        img.className = "kdu-logo";
+        img.src = opts.logo;
+        img.alt = modal._merchant || "Merchant";
+        // A broken/unreachable logo URL should never break the checkout --
+        // just remove it and carry on with the text merchant name.
+        img.addEventListener("error", function () { if (img.parentNode) img.parentNode.removeChild(img); });
+        h.appendChild(img);
+      }
       h.appendChild(el("div", "kdu-mer", modal._merchant || "Merchant"));
       h.appendChild(el("div", "kdu-amt", fmt(opts.amount, opts.currency)));
       if (opts.reference) h.appendChild(el("div", "kdu-ref", "Ref: " + opts.reference));
       return h;
     }
 
-    function render(methods) {
+    function render(rawMethods) {
+      // Filter/reorder within the server's real eligible list -- never adds
+      // to it. See applyMerchantPreferences for why this is safe by
+      // construction, not just by convention.
+      var methods = applyMerchantPreferences(rawMethods, opts);
       modal.innerHTML = "";
       var x = el("button", "kdu-x", "\u2715");
       x.addEventListener("click", close);
@@ -133,8 +297,15 @@
       modal.appendChild(header());
 
       if (!methods || methods.length === 0) {
-        modal.appendChild(el("div", "kdu-empty",
-          "No payment methods are available yet. The merchant needs to connect a provider."));
+        var emptyMsg = (rawMethods && rawMethods.length > 0)
+          // The server genuinely found eligible methods -- it was the
+          // merchant's OWN allowedMethods/hiddenMethods config that filtered
+          // them all out. Different problem, different message: don't
+          // wrongly tell the shopper "the merchant needs to connect a
+          // provider" when they already have.
+          ? "No payment methods are available for this checkout's configuration."
+          : "No payment methods are available yet. The merchant needs to connect a provider.";
+        modal.appendChild(el("div", "kdu-empty", emptyMsg));
         modal.appendChild(footer());
         return;
       }
@@ -231,5 +402,5 @@
     boot();
   }
 
-  window.Konduyt = { checkout: checkout, version: "1.0.0" };
+  window.Konduyt = { checkout: checkout, version: "1.1.0" };
 })();
