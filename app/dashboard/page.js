@@ -1226,11 +1226,21 @@ export default function Dashboard() {
                     app/connectors/registry.py -- capabilities, countries, and
                     credential fields all come from the live catalog. */}
                 {(() => {
-                  const q = methodSearch.trim().toLowerCase();
+                  // Normalizes away spaces/hyphens so "MPesa" matches the
+                  // real capability name "M-Pesa" -- a literal substring
+                  // search was failing on exactly this, the real bug behind
+                  // "the search bar is not working".
+                  const norm = (s) => (s || '').toLowerCase().replace(/[\s-]/g, '');
+                  const q = norm(methodSearch);
                   const matchesQuery = (p) => {
                     if (!q) return true;
-                    if (p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)) return true;
-                    return (p.capabilities || []).some((c) => (c.name || '').toLowerCase().includes(q));
+                    if (norm(p.name).includes(q) || norm(p.id).includes(q)) return true;
+                    if ((p.capabilities || []).some((c) => norm(c.name).includes(q))) return true;
+                    // Country search: match on the real country name (e.g.
+                    // "Kenya") -- code matching left out deliberately, a
+                    // 2-letter code substring match would false-positive
+                    // constantly (e.g. "us" inside "Australia").
+                    return (p.countries || []).some((c) => norm(c.name).includes(q));
                   };
                   const isConnected = (providerId) => accounts.some((a) => a.provider_id === providerId);
                   const accountFor = (providerId) => accounts.find((a) => a.provider_id === providerId);
@@ -1265,6 +1275,18 @@ export default function Dashboard() {
                         <p className="provider-card-methods-line">
                           {(p.capabilities || []).map((cap) => cap.name).join(' • ')}
                         </p>
+
+                        {/* Real, actual country names -- not a region-level
+                            summary standing in for a country list. "European
+                            Union" and "Global" are the provider's own real
+                            catalog entries where that's genuinely broader
+                            than a single country, not filtered out or
+                            relabeled. */}
+                        {p.countries && p.countries.length > 0 && (
+                          <p className="provider-card-countries-line">
+                            {p.countries.map((c) => c.name).join(', ')}
+                          </p>
+                        )}
 
                         {connected && account?.mode === 'test' && (
                           <div className="acct-testmode-note">
@@ -1421,9 +1443,9 @@ export default function Dashboard() {
                     <div className="provider-directory">
                       {!q && coverageStats && (
                         <p className="provider-directory-summary">
-                          These {list.length} providers alone cover {coverageStats.countries} countries
-                          across {coverageStats.regions} regions. Connect the ones you need — Konduyt
-                          figures out which methods that unlocks for each shopper.
+                          {list.length} real payment providers, spanning {coverageStats.regions} regions
+                          of the world. Connect the ones you need — Konduyt figures out which methods
+                          that unlocks for each shopper.
                         </p>
                       )}
                       <div className="provider-grid">
