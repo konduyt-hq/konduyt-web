@@ -48,25 +48,53 @@ export default function Pricing() {
     // Requires a signed-in user; if not signed in, send to signup first.
     const token = typeof window !== 'undefined' ? localStorage.getItem('kdu_token') : null;
     if (!token) { window.location.href = '/signup/'; return; }
-    if (calc(live) <= 0) { window.location.href = '/signup/'; return; }
     setSubBusy(true); setSubMsg('');
     try {
-      const r = await fetch(`${API_BASE}/billing/subscribe`, {
+      // The real amount is computed server-side from the developer's ACTUAL
+      // projects (billing.calculate(), fixed a real bug where this returned
+      // $0 for everyone) -- not from the exploratory "live projects" number
+      // above, which is just a what-if calculator for visitors who aren't
+      // signed in yet and have no real projects to count.
+      const r = await fetch(`${API_BASE}/billing/checkout_session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ live_projects: live, currency: 'USD' }),
+        body: JSON.stringify({ purpose: 'subscription' }),
       });
       const d = await r.json();
-      if (d.ok && d.authorization_url) {
-        window.location.href = d.authorization_url; // redirect to Paystack
-      } else {
-        setSubMsg(d.detail || d.error || 'Could not start checkout. Please try again.');
+      if (!r.ok) {
+        if (d.detail && d.detail.error === 'nothing_owed') {
+          setSubMsg("Your free allowance covers your current projects — nothing to charge yet.");
+        } else if (r.status === 503) {
+          setSubMsg('Billing isn\u2019t set up yet. Please try again shortly.');
+        } else {
+          setSubMsg((d.detail && (d.detail.message || d.detail)) || 'Could not start checkout. Please try again.');
+        }
+        setSubBusy(false);
+        return;
       }
+      // Real dogfooded checkout -- Konduyt's own SDK, Konduyt's own session,
+      // not a separate bespoke redirect flow.
+      await loadKonduytSdk();
+      window.Konduyt.checkout({
+        sessionId: d.session_id,
+        onSuccess: function () { setSubMsg('Subscribed! You can close this and return to your dashboard.'); setSubBusy(false); },
+        onClose: function () { setSubBusy(false); },
+      });
     } catch (e) {
       setSubMsg('Could not reach billing. Please try again.');
-    } finally {
       setSubBusy(false);
     }
+  }
+
+  function loadKonduytSdk() {
+    if (typeof window !== 'undefined' && window.Konduyt) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://konduyt.dev/konduyt.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
   }
 
   return (
