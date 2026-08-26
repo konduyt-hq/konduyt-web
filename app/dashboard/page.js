@@ -159,12 +159,6 @@ export default function Dashboard() {
   const [methodDetail, setMethodDetail] = useState(null);
   // Continent-grouped provider directory (replaces the old category-drill-down browse)
   const [topProviders, setTopProviders] = useState([]);
-  // TEMPORARY test-only override for the Integrations locality feature --
-  // client-side only, never saved to the project's real merchant_country.
-  // Lets locality reordering be checked instantly without a Settings round
-  // trip. Remove this once locality testing is done; it isn't meant to be a
-  // permanent way to set a project's country.
-  const [testMerchantCountry, setTestMerchantCountry] = useState('');
   // Real, per-country eligible methods for CONNECTED providers, keyed by
   // provider_id -> { countryName: [methodName, ...] }. Built from
   // GET /v1/payment-methods/available (the real eligibility engine), never
@@ -344,8 +338,6 @@ export default function Dashboard() {
   // continent repetition. No project auth needed, this is catalog data.
   // Passes the project's real merchant_country (if set) so providers with a
   // real documented local presence surface first -- reordered, never hidden.
-  // TEMPORARY: testMerchantCountry, when set, overrides this for locality
-  // testing -- client-side only, never touches the real project setting.
   // limit=24 covers the full real catalog (confirmed count), not an arbitrary
   // top-N -- this same fetch also powers the Money tab's docs_url lookup for
   // "View account" links, and a smaller limit was silently dropping real
@@ -356,8 +348,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (status !== 'ready') return;
     setProvidersLoading(true);
-    const effectiveCountry = testMerchantCountry || active?.merchant_country;
-    const countryParam = effectiveCountry ? `&merchant_country=${effectiveCountry}` : '';
+    const countryParam = active?.merchant_country ? `&merchant_country=${active.merchant_country}` : '';
     fetch(`${API_BASE}/connectors/top?limit=24${countryParam}`)
       .then((r) => r.json())
       .then((d) => {
@@ -366,7 +357,7 @@ export default function Dashboard() {
         setProvidersLoading(false);
       })
       .catch(() => { setTopProviders([]); setProvidersLoading(false); });
-  }, [status, active?.merchant_country, testMerchantCountry]);
+  }, [status, active?.merchant_country]);
 
   // For each CONNECTED provider, fetch REAL per-country eligible methods (the
   // "Payment methods available to you, grouped by country" view). One fetch
@@ -1184,6 +1175,11 @@ export default function Dashboard() {
                   onClick={() => { setIntSection('languages'); setActiveMethod(null); }}
                   type="button"
                 >Languages</button>
+                <button
+                  className={intSection === 'checkouts' ? 'int-subtab active' : 'int-subtab'}
+                  onClick={() => { setIntSection('checkouts'); setActiveMethod(null); }}
+                  type="button"
+                >Preview checkouts</button>
               </div>
             )}
 
@@ -1196,66 +1192,7 @@ export default function Dashboard() {
                       Choose what your customers can pay with. Konduyt connects the provider behind each one.
                     </p>
                   </div>
-                  <div className="preview-checkout-controls">
-                    <div className="preview-amount-field">
-                      <select className="preview-cur" value={previewCurrency}
-                        onChange={(e) => setPreviewCurrency(e.target.value)} aria-label="Currency">
-                        {['KES', 'USD', 'GBP', 'EUR', 'NGN', 'GHS', 'ZAR', 'INR', 'BRL'].map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                      <input className="preview-amt" type="text" inputMode="decimal"
-                        value={previewAmount}
-                        onChange={(e) => setPreviewAmount(e.target.value)}
-                        placeholder="1500.00" aria-label="Preview amount" />
-                    </div>
-                    <button className="preview-checkout-btn" type="button" onClick={() => setCheckoutOpen(true)}>
-                      <span aria-hidden="true">▶</span> Preview checkout
-                    </button>
-                  </div>
                 </div>
-
-                {/* Drop-in checkout: copy-paste embed for the developer's own site */}
-                {liveKeys && (
-                  <details className="dropin-box">
-                    <summary className="dropin-summary">
-                      <span>▶ Add the checkout popup to your own site</span>
-                      <span className="dropin-hint">PayPal-style drop-in</span>
-                    </summary>
-                    <div className="dropin-body">
-                      <p className="dropin-note">
-                        Drop this into your site. The popup opens with your publishable key (safe in the browser)
-                        and shows customers the methods you&apos;ve enabled. Your server creates the actual charge with your secret key.
-                      </p>
-                      <pre className="dropin-code"><code>{`<script src="https://konduyt.dev/konduyt.js"></script>
-<script>
-  Konduyt.checkout({
-    publishableKey: "${liveKeys.publishable_key}",
-    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},        // minor units (${previewCurrency})
-    currency: "${previewCurrency}",
-    reference: "order_123",
-    onSuccess: function (r) { console.log("paid step", r); },
-    onClose: function () { console.log("closed"); }
-  });
-</script>`}</code></pre>
-                      <button className="dropin-copy" type="button"
-                        onClick={() => copyToClipboard(
-`<script src="https://konduyt.dev/konduyt.js"></script>
-<script>
-  Konduyt.checkout({
-    publishableKey: "${liveKeys.publishable_key}",
-    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},
-    currency: "${previewCurrency}",
-    reference: "order_123",
-    onSuccess: function (r) { console.log("paid step", r); },
-    onClose: function () { console.log("closed"); }
-  });
-</script>`, 'embed')}>
-                        {copied === 'embed' ? '✓ Copied' : 'Copy embed code'}
-                      </button>
-                    </div>
-                  </details>
-                )}
 
                 <div className="method-search">
                   <svg className="method-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1279,29 +1216,6 @@ export default function Dashboard() {
                       <strong>You cannot receive money yet.</strong> Connect a payment provider below to give
                       payments somewhere to settle. Until you do, any payment your app attempts will fail.
                     </div>
-                  </div>
-                )}
-
-                {/* Project status: Live requires a connected provider AND an enabled method */}
-                {projectStatus && !methodSearch && (
-                  <div className={`proj-status ${projectStatus.live ? 'live' : 'notlive'}`}>
-                    <span className="proj-status-dot" />
-                    <div className="proj-status-text">
-                      <span className="proj-status-label">
-                        {projectStatus.live ? 'Live' : 'Not live'}
-                      </span>
-                      <span className="proj-status-reason">{projectStatus.reason}</span>
-                    </div>
-                    {!projectStatus.live && (
-                      <div className="proj-status-steps">
-                        <span className={projectStatus.has_connection ? 'step done' : 'step'}>
-                          {projectStatus.has_connection ? '✓' : '1'} Connect a provider
-                        </span>
-                        <span className={projectStatus.has_enabled_method ? 'step done' : 'step'}>
-                          {projectStatus.has_enabled_method ? '✓' : '2'} Enable a method
-                        </span>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -1505,36 +1419,6 @@ export default function Dashboard() {
 
                   return (
                     <div className="provider-directory">
-                      {!active?.merchant_country && (
-                        <div className="location-nudge">
-                          <span>
-                            Set your business location and we&apos;ll put your real local providers first —
-                            right now this list is sorted globally, not for where you are.
-                          </span>
-                          <button type="button" className="location-nudge-btn"
-                            onClick={() => setTab('settings')}>Set location</button>
-                        </div>
-                      )}
-                      <div className="test-locality-box">
-                        <span className="test-locality-tag">TEMPORARY — TEST ONLY</span>
-                        <span className="test-locality-label">Preview this list as a merchant in:</span>
-                        <select className="con-connect-input test-locality-select"
-                          value={testMerchantCountry}
-                          onChange={(e) => setTestMerchantCountry(e.target.value)}>
-                          <option value="">
-                            {active?.merchant_country ? `Your real setting (${MERCHANT_COUNTRIES.find((c) => c.code === active.merchant_country)?.name || active.merchant_country})` : 'No country set — global order'}
-                          </option>
-                          {MERCHANT_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                        </select>
-                        {testMerchantCountry && (
-                          <button type="button" className="test-locality-clear"
-                            onClick={() => setTestMerchantCountry('')}>Reset</button>
-                        )}
-                        <span className="test-locality-note">
-                          Doesn&apos;t change your real project setting — this is only for checking how the
-                          reordering behaves.
-                        </span>
-                      </div>
                       {!q && coverageStats && (
                         <p className="provider-directory-summary">
                           These {list.length} providers alone cover {coverageStats.countries} countries
@@ -2319,6 +2203,77 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {tab === 'integrations' && intSection === 'checkouts' && (
+              <div className="mpesa-page">
+                <div className="con-home-head">
+                  <h1 className="con-h1">Preview checkouts</h1>
+                  <p className="con-sub">
+                    See what your customers see, and drop the same checkout into your own site.
+                  </p>
+                </div>
+
+                <div className="preview-checkout-controls">
+                  <div className="preview-amount-field">
+                    <select className="preview-cur" value={previewCurrency}
+                      onChange={(e) => setPreviewCurrency(e.target.value)} aria-label="Currency">
+                      {['KES', 'USD', 'GBP', 'EUR', 'NGN', 'GHS', 'ZAR', 'INR', 'BRL'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <input className="preview-amt" type="text" inputMode="decimal"
+                      value={previewAmount}
+                      onChange={(e) => setPreviewAmount(e.target.value)}
+                      placeholder="1500.00" aria-label="Preview amount" />
+                  </div>
+                  <button className="preview-checkout-btn" type="button" onClick={() => setCheckoutOpen(true)}>
+                    <span aria-hidden="true">▶</span> Preview checkout
+                  </button>
+                </div>
+
+                {/* Drop-in checkout: copy-paste embed for the developer's own site */}
+                {liveKeys && (
+                  <details className="dropin-box" open>
+                    <summary className="dropin-summary">
+                      <span>▶ Add the checkout popup to your own site</span>
+                      <span className="dropin-hint">PayPal-style drop-in</span>
+                    </summary>
+                    <div className="dropin-body">
+                      <p className="dropin-note">
+                        Drop this into your site. The popup opens with your publishable key (safe in the browser)
+                        and shows customers the methods you&apos;ve enabled. Your server creates the actual charge with your secret key.
+                      </p>
+                      <pre className="dropin-code"><code>{`<script src="https://konduyt.dev/konduyt.js"></script>
+<script>
+  Konduyt.checkout({
+    publishableKey: "${liveKeys.publishable_key}",
+    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},        // minor units (${previewCurrency})
+    currency: "${previewCurrency}",
+    reference: "order_123",
+    onSuccess: function (r) { console.log("paid step", r); },
+    onClose: function () { console.log("closed"); }
+  });
+</script>`}</code></pre>
+                      <button className="dropin-copy" type="button"
+                        onClick={() => copyToClipboard(
+`<script src="https://konduyt.dev/konduyt.js"></script>
+<script>
+  Konduyt.checkout({
+    publishableKey: "${liveKeys.publishable_key}",
+    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},
+    currency: "${previewCurrency}",
+    reference: "order_123",
+    onSuccess: function (r) { console.log("paid step", r); },
+    onClose: function () { console.log("closed"); }
+  });
+</script>`, 'embed')}>
+                        {copied === 'embed' ? '✓ Copied' : 'Copy embed code'}
+                      </button>
+                    </div>
+                  </details>
+                )}
               </div>
             )}
 
