@@ -21,6 +21,14 @@
  *     // currency and reference come from what your server fixed at
  *     // creation, never from anything editable in the browser:
  *     // sessionId: "kdu_sess_xxx",   // instead of publishableKey+amount+currency+reference
+ *     //
+ *     // If your server created the session with recurring: true (Netflix-
+ *     // style, billed automatically going forward -- see POST
+ *     // /v1/payment_sessions), the popup automatically shows a clear
+ *     // "Recurring — charged every month" disclosure and changes the button
+ *     // to "Subscribe" instead of "Pay". This is never something YOU
+ *     // declare in checkout() itself -- only your server, at session
+ *     // creation, decides it.
  *
  *     // ---- Appearance: you control the brand and experience ----
  *     theme: "light",          // "light" | "dark" | "system" (default "light")
@@ -161,6 +169,9 @@
       ".kdu-m.compact .kdu-amt{font-size:28px;margin:2px 0 4px}" +
       ".kdu-m.dark .kdu-amt{color:#fafafa}" +
       ".kdu-ref{font-size:11px;color:#a3a3a3;font-family:'JetBrains Mono',monospace}" +
+      ".kdu-recurring-badge{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;" +
+      "text-transform:uppercase;letter-spacing:.04em;color:var(--kdu-brand-dark,#15803d);" +
+      "background:var(--kdu-brand-soft,#dcfce7);padding:4px 9px;border-radius:6px}" +
       ".kdu-lbl{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b6b6b;margin-bottom:10px}" +
       ".kdu-m.dark .kdu-lbl{color:#a1a1aa}" +
       ".kdu-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}" +
@@ -312,6 +323,9 @@
     modal._amount = opts.amount;
     modal._currency = opts.currency;
     modal._reference = opts.reference;
+    modal._recurring = false;  // only ever true via session mode -- publishable-key
+                                // mode has no server-declared recurring intent to trust
+    modal._interval = null;
     overlay.appendChild(modal);
 
     function close() {
@@ -334,6 +348,14 @@
       }
       h.appendChild(el("div", "kdu-mer", modal._merchant || "Merchant"));
       if (modal._amount != null) h.appendChild(el("div", "kdu-amt", fmt(modal._amount, modal._currency)));
+      if (modal._recurring) {
+        // Real disclosure, not a cosmetic label -- many jurisdictions
+        // require a shopper to clearly see they're agreeing to a RECURRING
+        // charge, not a single purchase, before they pay.
+        var intervalLabel = modal._interval === "monthly" ? "month" : (modal._interval || "cycle");
+        h.appendChild(el("div", "kdu-recurring-badge",
+          "Recurring \u2014 charged every " + intervalLabel));
+      }
       if (modal._reference) h.appendChild(el("div", "kdu-ref", "Ref: " + modal._reference));
       return h;
     }
@@ -381,7 +403,8 @@
           Array.prototype.forEach.call(list.children, function (c) { c.className = "kdu-mtd"; c.querySelector(".kdu-rd").className = "kdu-rd"; });
           b.className = "kdu-mtd sel"; rd.className = "kdu-rd on";
           payBtn.disabled = false;
-          payBtn.textContent = "Pay " + fmt(modal._amount, modal._currency);
+          var amtLabel = fmt(modal._amount, modal._currency);
+          payBtn.textContent = modal._recurring ? "Subscribe \u2014 " + amtLabel : "Pay " + amtLabel;
         });
         list.appendChild(b);
       });
@@ -456,6 +479,8 @@
             modal._amount = res.d.amount;
             modal._currency = res.d.currency;
             modal._reference = res.d.reference;
+            modal._recurring = !!res.d.recurring;
+            modal._interval = res.d.interval;
           }
           render(res.d.methods || []);
         })
@@ -469,5 +494,5 @@
     boot();
   }
 
-  window.Konduyt = { checkout: checkout, version: "1.2.0" };
+  window.Konduyt = { checkout: checkout, version: "1.3.0" };
 })();
