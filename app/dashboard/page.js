@@ -166,7 +166,6 @@ export default function Dashboard() {
   // country-to-method mapping at all, so showing "Kenya: X, Y" vs "UK: Z"
   // from it would mean fabricating which method applies to which country.
   const [connectedProviderMethods, setConnectedProviderMethods] = useState({});
-  const [coverageStats, setCoverageStats] = useState(null);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [connectingProviderId, setConnectingProviderId] = useState(null);
   const [expandedProvider, setExpandedProvider] = useState(null);
@@ -353,7 +352,6 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => {
         setTopProviders(d.providers || []);
-        setCoverageStats({ countries: d.combined_country_count, regions: d.combined_region_count });
         setProvidersLoading(false);
       })
       .catch(() => { setTopProviders([]); setProvidersLoading(false); });
@@ -1226,6 +1224,23 @@ export default function Dashboard() {
                     app/connectors/registry.py -- capabilities, countries, and
                     credential fields all come from the live catalog. */}
                 {(() => {
+                  // Deterministic, distinct color per provider for a small
+                  // monogram badge -- NOT claimed as each company's real
+                  // brand color (getting that wrong for even one of 24 real
+                  // companies would misrepresent their actual identity).
+                  // Just a consistent, pleasant visual anchor next to each
+                  // name, hashed from the provider id so it's stable across
+                  // reloads and re-sorts, not randomized per render.
+                  const MONOGRAM_PALETTE = [
+                    '#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c',
+                    '#d97706', '#65a30d', '#059669', '#0891b2', '#4338ca',
+                  ];
+                  const monogramColor = (id) => {
+                    let hash = 0;
+                    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+                    return MONOGRAM_PALETTE[hash % MONOGRAM_PALETTE.length];
+                  };
+
                   // Normalizes away spaces/hyphens so "MPesa" matches the
                   // real capability name "M-Pesa" -- a literal substring
                   // search was failing on exactly this, the real bug behind
@@ -1261,7 +1276,12 @@ export default function Dashboard() {
                       <div className={`provider-card ${connected ? 'connected' : ''}`} key={p.id}>
                         <div className="provider-card-head">
                           <div className="provider-card-name-col">
-                            <span className="provider-card-name">{p.name}</span>
+                            <div className="provider-card-name-row">
+                              <span className="provider-card-monogram" style={{ background: monogramColor(p.id) }}>
+                                {(p.name || '?').charAt(0).toUpperCase()}
+                              </span>
+                              <span className="provider-card-name">{p.name}</span>
+                            </div>
                             <span className="provider-card-region">{regionLabel}</span>
                           </div>
                           <div className="provider-card-tags">
@@ -1334,7 +1354,7 @@ export default function Dashboard() {
                                 Every real connector in this catalog is api_key or
                                 custom auth -- zero support OAuth today, so no
                                 disabled "Connect automatically" placeholder here. */}
-                            <button className="con-connect-btn full" type="button"
+                            <button className={`con-connect-btn full ${isConnecting ? 'is-cancel' : ''}`} type="button"
                               onClick={() => {
                                 setConnectingProviderId(isConnecting ? null : p.id);
                                 setCredValues({}); setConnectError('');
@@ -1441,13 +1461,6 @@ export default function Dashboard() {
 
                   return (
                     <div className="provider-directory">
-                      {!q && coverageStats && (
-                        <p className="provider-directory-summary">
-                          {list.length} real payment providers, spanning {coverageStats.regions} regions
-                          of the world. Connect the ones you need — Konduyt figures out which methods
-                          that unlocks for each shopper.
-                        </p>
-                      )}
                       <div className="provider-grid">
                         {list.map(renderProviderCard)}
                       </div>
