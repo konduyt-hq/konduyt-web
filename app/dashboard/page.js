@@ -144,6 +144,8 @@ export default function Dashboard() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [moneyOrchestration, setMoneyOrchestration] = useState(null);
+  const [payOrchestrationBusy, setPayOrchestrationBusy] = useState(false);
+  const [payOrchestrationMsg, setPayOrchestrationMsg] = useState('');
   // Demo/preview mode — browser-only sample data so the visualizations can be
   // seen before real payments exist. NEVER written to the DB, never sent through
   // the real endpoints. Auto-ignored once real data exists.
@@ -783,6 +785,57 @@ export default function Dashboard() {
       setMoneyData(byProvider);
       setMoneyOrchestration(orch);
     } catch (e) { setMoneyData(null); setMoneyOrchestration(null); }
+  }
+
+  // Real, dogfooded payment of the accrued orchestration fee -- Konduyt's own
+  // checkout, same SDK a merchant's own customers would go through. Always
+  // pay-as-you-go: no month-end gate, matches the earlier decision that
+  // disabling this until some arbitrary date would add friction with no
+  // real benefit.
+  async function payOrchestrationFee() {
+    if (!activeId) return;
+    setPayOrchestrationBusy(true); setPayOrchestrationMsg('');
+    try {
+      const token = localStorage.getItem('kdu_token');
+      const r = await fetch(`${API_BASE}/billing/checkout_session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ purpose: 'orchestration', project_id: activeId }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        if (d.detail && d.detail.error === 'nothing_owed') {
+          setPayOrchestrationMsg('Nothing owed yet this month.');
+        } else if (r.status === 503) {
+          setPayOrchestrationMsg('Billing isn\u2019t set up yet. Please try again shortly.');
+        } else {
+          setPayOrchestrationMsg((d.detail && (d.detail.message || d.detail)) || 'Could not start payment.');
+        }
+        setPayOrchestrationBusy(false);
+        return;
+      }
+      if (typeof window !== 'undefined' && !window.Konduyt) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://konduyt.dev/konduyt.js';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+      window.Konduyt.checkout({
+        sessionId: d.session_id,
+        onSuccess: function () {
+          setPayOrchestrationMsg('Paid. Refreshing your balance\u2026');
+          setPayOrchestrationBusy(false);
+          loadMoney(selectedMonth);
+        },
+        onClose: function () { setPayOrchestrationBusy(false); },
+      });
+    } catch (e) {
+      setPayOrchestrationMsg('Could not reach billing. Please try again.');
+      setPayOrchestrationBusy(false);
+    }
   }
 
   async function loadTaxReceived(provider) {
@@ -2070,6 +2123,21 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                             <span className="money-total-headline-empty">Nothing owed yet</span>
                           )}
                         </span>
+                        {/* Real payment only -- never wired to demo data. isDemo
+                            here means moneyView is the DEMO_MONEY object, in
+                            which case owedLine (built from moneyOrchestration,
+                            always the real API response) would only coincide
+                            by accident; excluding isDemo explicitly means a
+                            demo-mode viewer can never trigger a real charge. */}
+                        {!isDemo && owedLine && (
+                          <button type="button" className="money-owed-pay-btn"
+                            disabled={payOrchestrationBusy} onClick={payOrchestrationFee}>
+                            {payOrchestrationBusy ? 'Starting\u2026' : 'Pay now'}
+                          </button>
+                        )}
+                        {payOrchestrationMsg && (
+                          <p className="money-owed-pay-msg">{payOrchestrationMsg}</p>
+                        )}
                       </div>
                     </div>
                   );

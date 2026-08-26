@@ -1801,6 +1801,11 @@
   .money-headline-row{display:flex; gap:32px; flex-wrap:wrap; margin-bottom:22px;}
   .money-total-headline{flex:1; min-width:180px;}
   .money-total-headline-owed{border-left:1px solid var(--border); padding-left:32px;}
+  .money-owed-pay-btn{margin-top:10px; background:var(--ink); color:#fff; border:none; border-radius:8px;
+    padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;}
+  .money-owed-pay-btn:hover:not(:disabled){opacity:.85;}
+  .money-owed-pay-btn:disabled{opacity:.5; cursor:not-allowed;}
+  .money-owed-pay-msg{font-size:12px; color:var(--text-secondary); margin:8px 0 0;}
   .money-total-headline-label{display:block; font-size:12px; font-weight:600; color:var(--text-secondary);
     text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;}
   .money-total-headline-value{display:flex; flex-wrap:wrap; gap:14px; align-items:baseline;}
