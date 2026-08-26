@@ -13,6 +13,15 @@
  *     onSuccess: function (result) { ... },  // customer completed the step
  *     onClose:   function () { ... },        // customer closed the popup
  *
+ *     // ---- OR: session mode (section 5) -- recommended when possible ----
+ *     // Your server creates the session first (secret key):
+ *     //   POST /v1/payment_sessions { amount, currency, customer_country, reference }
+ *     //   -> { session_id, expires_at }
+ *     // Then the browser only ever holds the opaque session_id -- amount,
+ *     // currency and reference come from what your server fixed at
+ *     // creation, never from anything editable in the browser:
+ *     // sessionId: "kdu_sess_xxx",   // instead of publishableKey+amount+currency+reference
+ *
  *     // ---- Appearance: you control the brand and experience ----
  *     theme: "light",          // "light" | "dark" | "system" (default "light")
  *     brandColor: "#2563eb",   // your accent color -- buttons, selection state
@@ -27,9 +36,16 @@
  *                                        // THIS shopper are ever shown; this can
  *                                        // never add a method that isn't real.
  *     hiddenMethods: ["paypal_wallet"],  // never show these, even if eligible
- *     preferredMethod: "mpesa",          // shown first WHEN it's eligible --
- *                                        // never forced if it genuinely can't
- *                                        // be used for this shopper/transaction
+ *     preferredMethods: ["mpesa","card"], // shown in THIS order, for whichever
+ *                                        // of them are eligible -- methods not
+ *                                        // listed keep their smart order,
+ *                                        // appended after. (preferredMethod,
+ *                                        // singular, still works as shorthand
+ *                                        // for a one-item list.)
+ *     smartOrdering: true,               // default. false = a neutral,
+ *                                        // alphabetical order instead of
+ *                                        // Konduyt's cheapest-first ranking --
+ *                                        // ignored if preferredMethods is set.
  *   });
  *
  * The popup fetches the merchant's REAL eligible methods from Konduyt for the
@@ -198,7 +214,7 @@
     // Can only ever NARROW or REORDER what the server already said is
     // eligible for this real shopper/transaction -- every operation here is
     // a .filter() or a reorder of existing items, never an addition, so
-    // there's no way for allowedMethods/preferredMethod to inject a method
+    // there's no way for allowedMethods/preferredMethods to inject a method
     // Konduyt's eligibility engine didn't actually return. "The merchant
     // enables capabilities, Konduyt determines what's appropriate" --
     // enforced structurally here, not just by convention.
@@ -213,16 +229,44 @@
       opts.hiddenMethods.forEach(function (m) { hidden[m] = true; });
       result = result.filter(function (m) { return !hidden[m.id]; });
     }
-    if (opts.preferredMethod) {
-      var idx = -1;
-      for (var i = 0; i < result.length; i++) {
-        if (result[i].id === opts.preferredMethod) { idx = i; break; }
-      }
-      if (idx > 0) {
-        var preferred = result.splice(idx, 1)[0];
-        result.unshift(preferred);
-      }
+
+    // Ordering. preferredMethods (a full ordered list) is the general form;
+    // preferredMethod (singular, section 2) is kept working as shorthand for
+    // a one-item list, only when preferredMethods isn't ALSO given.
+    var orderList = (opts.preferredMethods && opts.preferredMethods.length)
+      ? opts.preferredMethods
+      : (opts.preferredMethod ? [opts.preferredMethod] : null);
+
+    if (orderList) {
+      // MERCHANT ORDERING: the server's response already comes back cheapest-
+      // first (smart-ordered by real fee data). This is a STABLE re-sort:
+      // methods present in orderList move to the front, in the order given;
+      // everything else keeps its existing relative order (still the smart
+      // order) and is appended after. A method named in orderList that isn't
+      // actually eligible simply never appears -- same guardrail as
+      // allowedMethods, nothing here can add an entry.
+      var rank = {};
+      orderList.forEach(function (id, i) { rank[id] = i; });
+      var ranked = [], unranked = [];
+      result.forEach(function (m) {
+        if (rank.hasOwnProperty(m.id)) ranked.push(m); else unranked.push(m);
+      });
+      ranked.sort(function (a, b) { return rank[a.id] - rank[b.id]; });
+      result = ranked.concat(unranked);
+    } else if (opts.smartOrdering === false) {
+      // SMART ORDERING explicitly turned off, and no merchant order given
+      // either: fall back to a neutral, predictable order (alphabetical by
+      // name) instead of the fee-based "recommended" order -- a merchant who
+      // opts out of Konduyt's cost-optimized ranking shouldn't still see an
+      // implicit opinion about which method is "best" baked into the order.
+      result = result.slice().sort(function (a, b) {
+        return (a.name || "").localeCompare(b.name || "");
+      });
     }
+    // smartOrdering true (the default) or unset: leave the server's real,
+    // cheapest-first order exactly as returned -- this is the "Konduyt
+    // determines the optimal order" mode, no client-side change needed.
+
     return result;
   }
 
@@ -241,7 +285,10 @@
 
   function checkout(opts) {
     opts = opts || {};
-    if (!opts.publishableKey) { console.error("[Konduyt] publishableKey is required"); return; }
+    if (!opts.publishableKey && !opts.sessionId) {
+      console.error("[Konduyt] publishableKey or sessionId is required");
+      return;
+    }
     injectStyles();
 
     var overlay = el("div", "kdu-ov");
@@ -259,6 +306,12 @@
     modal.style.setProperty("--kdu-brand-text", contrastText(brand));
     if (opts.borderRadius != null) modal.style.setProperty("--kdu-radius", opts.borderRadius + "px");
     if (opts.font) modal.style.setProperty("--kdu-font", opts.font);
+    // Session mode (boot()) overwrites these with the server-fixed real
+    // values -- publishable-key mode uses opts directly, since there's no
+    // session to be authoritative instead.
+    modal._amount = opts.amount;
+    modal._currency = opts.currency;
+    modal._reference = opts.reference;
     overlay.appendChild(modal);
 
     function close() {
@@ -280,8 +333,8 @@
         h.appendChild(img);
       }
       h.appendChild(el("div", "kdu-mer", modal._merchant || "Merchant"));
-      h.appendChild(el("div", "kdu-amt", fmt(opts.amount, opts.currency)));
-      if (opts.reference) h.appendChild(el("div", "kdu-ref", "Ref: " + opts.reference));
+      if (modal._amount != null) h.appendChild(el("div", "kdu-amt", fmt(modal._amount, modal._currency)));
+      if (modal._reference) h.appendChild(el("div", "kdu-ref", "Ref: " + modal._reference));
       return h;
     }
 
@@ -328,7 +381,7 @@
           Array.prototype.forEach.call(list.children, function (c) { c.className = "kdu-mtd"; c.querySelector(".kdu-rd").className = "kdu-rd"; });
           b.className = "kdu-mtd sel"; rd.className = "kdu-rd on";
           payBtn.disabled = false;
-          payBtn.textContent = "Pay " + fmt(opts.amount, opts.currency);
+          payBtn.textContent = "Pay " + fmt(modal._amount, modal._currency);
         });
         list.appendChild(b);
       });
@@ -364,7 +417,7 @@
       wrap.appendChild(btn);
       modal.appendChild(wrap);
       modal.appendChild(footer());
-      if (ok && typeof opts.onSuccess === "function") opts.onSuccess({ method: methodId, reference: opts.reference });
+      if (ok && typeof opts.onSuccess === "function") opts.onSuccess({ method: methodId, reference: modal._reference });
     }
 
     function pay(methodId) {
@@ -379,17 +432,31 @@
 
     function boot() {
       processing();
-      var url = API_BASE + "/checkout/config?pk=" + encodeURIComponent(opts.publishableKey);
+      var url = opts.sessionId
+        ? API_BASE + "/checkout/session/" + encodeURIComponent(opts.sessionId)
+        : API_BASE + "/checkout/config?pk=" + encodeURIComponent(opts.publishableKey);
       fetch(url)
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
           if (!res.ok) {
             modal._merchant = "Merchant";
-            result(null, false, res.d && res.d.error === "invalid_publishable_key"
-              ? "This publishable key isn't valid." : "Could not load checkout.");
+            var msg = "Could not load checkout.";
+            if (res.d && res.d.error === "invalid_publishable_key") msg = "This publishable key isn't valid.";
+            if (res.d && res.d.error === "invalid_or_expired_session") msg = "This checkout session has expired. Please try again.";
+            result(null, false, msg);
             return;
           }
           modal._merchant = res.d.merchant || "Merchant";
+          // Session mode: amount/currency/reference come from the server --
+          // the merchant's OWN server fixed these at session creation, not
+          // from anything this browser supplied. Publishable-key mode keeps
+          // using what was passed into checkout() directly, since there's no
+          // session to be authoritative instead.
+          if (opts.sessionId) {
+            modal._amount = res.d.amount;
+            modal._currency = res.d.currency;
+            modal._reference = res.d.reference;
+          }
           render(res.d.methods || []);
         })
         .catch(function () {
@@ -402,5 +469,5 @@
     boot();
   }
 
-  window.Konduyt = { checkout: checkout, version: "1.1.0" };
+  window.Konduyt = { checkout: checkout, version: "1.2.0" };
 })();
