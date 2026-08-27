@@ -193,6 +193,10 @@ export default function Dashboard() {
   }, [projectMenuOpen]);
   const [renaming, setRenaming] = useState(false);
   const [renameVal, setRenameVal] = useState('');
+  const [projectDeleting, setProjectDeleting] = useState(false);
+  const [projectDeleteConfirm, setProjectDeleteConfirm] = useState('');
+  const [projectDeleteBusy, setProjectDeleteBusy] = useState(false);
+  const [projectDeleteError, setProjectDeleteError] = useState('');
   const [rotating, setRotating] = useState(false);
 
   const active = projects.find((p) => p.id === activeId) || null;
@@ -590,9 +594,9 @@ export default function Dashboard() {
 
   async function deleteAccount() {
     setDeleteError('');
-    const confirmName = (active?.name || projects[0]?.name || '').trim();
-    if (deleteConfirm.trim() !== confirmName || !confirmName) {
-      setDeleteError(`Type the project name exactly: ${confirmName}`);
+    const confirmEmail = (user?.email || '').trim().toLowerCase();
+    if (deleteConfirm.trim().toLowerCase() !== confirmEmail || !confirmEmail) {
+      setDeleteError(`Type your account email exactly: ${confirmEmail}`);
       return;
     }
     setDeleteBusy(true);
@@ -990,26 +994,20 @@ export default function Dashboard() {
     const rl = await fetch(`${API_BASE}/projects`, { headers: authHeaders() });
     const data = await rl.json();
     const newProjects = data.projects || [];
-    setProjects(newProjects);
-    setActiveId(p.id);
 
     // Real pricing model: 3 free projects, $10/mo per project beyond that
-    // once a project is actually live. This is a heads-up at the moment the
-    // total crosses the free allowance -- not a hard block, since a brand
-    // new project isn't live (and so isn't billable) yet, but the developer
-    // should know the implication now, not be surprised by it later.
-    if (newProjects.length === 4) {
-      setAccountNotice({
-        kind: 'info',
-        text: (
-          <>
-            You&apos;re now past the 3 free live projects on your plan. Projects only
-            cost once they go live, but worth knowing ahead of time —{' '}
-            <a href="/pricing/" className="link-inline">view pricing</a>.
-          </>
-        ),
-      });
+    // once a project is actually live. The project is still created either
+    // way (a brand new project isn't live yet, so nothing is actually owed
+    // the instant it's created) -- but the developer is sent straight to
+    // pricing right now, not just shown a dismissible note, since that's
+    // what was actually asked for.
+    if (newProjects.length > 3) {
+      window.location.href = '/pricing/';
+      return;
     }
+
+    setProjects(newProjects);
+    setActiveId(p.id);
   }
 
   async function saveRename() {
@@ -1025,6 +1023,36 @@ export default function Dashboard() {
     });
     setProjects((ps) => ps.map((p) => (p.id === activeId ? { ...p, name } : p)));
     setRenaming(false);
+  }
+
+  async function deleteProject() {
+    setProjectDeleteError('');
+    const confirmName = (active?.name || '').trim();
+    if (projectDeleteConfirm.trim() !== confirmName || !confirmName) {
+      setProjectDeleteError(`Type the project name exactly: ${confirmName}`);
+      return;
+    }
+    setProjectDeleteBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/projects/${activeId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        const remaining = projects.filter((p) => p.id !== activeId);
+        setProjects(remaining);
+        setActiveId(remaining[0]?.id || null);
+        setProjectDeleting(false);
+        setProjectDeleteConfirm('');
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setProjectDeleteError(d.detail || 'Could not delete the project. Please try again.');
+      }
+    } catch (e) {
+      setProjectDeleteError('Could not reach the server. Please try again.');
+    } finally {
+      setProjectDeleteBusy(false);
+    }
   }
 
   async function rotateTestKey() {
@@ -1144,7 +1172,11 @@ export default function Dashboard() {
             title="Messages"
             aria-label="Messages"
           >
-            <span aria-hidden="true">🔔</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
             {msgUnread > 0 && (
               <span className="con-icon-badge">{msgUnread > 99 ? '99+' : msgUnread}</span>
             )}
@@ -1156,7 +1188,11 @@ export default function Dashboard() {
             title="Settings"
             aria-label="Settings"
           >
-            <span aria-hidden="true">⚙</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
           <div className="con-avatar-wrap" ref={avatarMenuRef}>
             <button
@@ -1221,7 +1257,7 @@ export default function Dashboard() {
           ['money', 'Payments'],
           ['connections', 'Providers'],
           ['quickstart', 'Quickstart'],
-          ['checkout', 'Checkout'],
+          ['checkout', 'Preview Checkout'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -2331,7 +2367,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
             {tab === 'checkout' && (
               <div className="mpesa-page">
                 <div className="con-home-head">
-                  <h1 className="con-h1">Checkout</h1>
+                  <h1 className="con-h1">Preview Checkout</h1>
                   <p className="con-sub">
                     See what your customers see, and drop the same checkout into your own site.
                   </p>
@@ -2377,66 +2413,6 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     </div>
                   </div>
                 </div>
-
-                <div className="preview-checkout-controls">
-                  <div className="preview-amount-field">
-                    <select className="preview-cur" value={previewCurrency}
-                      onChange={(e) => setPreviewCurrency(e.target.value)} aria-label="Currency">
-                      {['KES', 'USD', 'GBP', 'EUR', 'NGN', 'GHS', 'ZAR', 'INR', 'BRL'].map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                    <input className="preview-amt" type="text" inputMode="decimal"
-                      value={previewAmount}
-                      onChange={(e) => setPreviewAmount(e.target.value)}
-                      placeholder="1500.00" aria-label="Preview amount" />
-                  </div>
-                  <button className="preview-checkout-btn" type="button" onClick={() => setCheckoutOpen(true)}>
-                    <span aria-hidden="true">▶</span> Preview checkout
-                  </button>
-                </div>
-
-                {/* Drop-in checkout: copy-paste embed for the developer's own site */}
-                {liveKeys && (
-                  <details className="dropin-box" open>
-                    <summary className="dropin-summary">
-                      <span>▶ Add the checkout popup to your own site</span>
-                      <span className="dropin-hint">PayPal-style drop-in</span>
-                    </summary>
-                    <div className="dropin-body">
-                      <p className="dropin-note">
-                        Drop this into your site. The popup opens with your publishable key (safe in the browser)
-                        and shows customers the methods you&apos;ve enabled. Your server creates the actual charge with your secret key.
-                      </p>
-                      <pre className="dropin-code"><code>{`<script src="https://konduyt.dev/konduyt.js"></script>
-<script>
-  Konduyt.checkout({
-    publishableKey: "${liveKeys.publishable_key}",
-    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},        // minor units (${previewCurrency})
-    currency: "${previewCurrency}",
-    reference: "order_123",
-    onSuccess: function (r) { console.log("paid step", r); },
-    onClose: function () { console.log("closed"); }
-  });
-</script>`}</code></pre>
-                      <button className="dropin-copy" type="button"
-                        onClick={() => copyToClipboard(
-`<script src="https://konduyt.dev/konduyt.js"></script>
-<script>
-  Konduyt.checkout({
-    publishableKey: "${liveKeys.publishable_key}",
-    amount: ${Math.max(0, Math.round((parseFloat(previewAmount) || 0) * 100))},
-    currency: "${previewCurrency}",
-    reference: "order_123",
-    onSuccess: function (r) { console.log("paid step", r); },
-    onClose: function () { console.log("closed"); }
-  });
-</script>`, 'embed')}>
-                        {copied === 'embed' ? '✓ Copied' : 'Copy embed code'}
-                      </button>
-                    </div>
-                  </details>
-                )}
               </div>
             )}
 
@@ -2560,6 +2536,49 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                             </button>
                           )}
                         </div>
+
+                        {!projectDeleting && (
+                          <div className="settings-row">
+                            <div>
+                              <div className="settings-row-k settings-danger-k">Delete this project</div>
+                              <div className="settings-row-d">
+                                Permanently deletes "{active.name}" — its keys, connections, and payment
+                                history. Your Konduyt account and other projects are not affected.
+                              </div>
+                            </div>
+                            <button type="button" className="settings-danger-btn"
+                              onClick={() => { setProjectDeleteConfirm(''); setProjectDeleteError(''); setProjectDeleting(true); }}>
+                              Delete
+                            </button>
+                          </div>
+                        )}
+
+                        {projectDeleting && (
+                          <div className="settings-delete-inline">
+                            <p className="settings-delete-label">
+                              Type this project's name <strong>{active.name}</strong> to confirm deleting
+                              only <strong>this project</strong> — not your account:
+                            </p>
+                            <input
+                              className="settings-delete-input"
+                              value={projectDeleteConfirm}
+                              onChange={(e) => setProjectDeleteConfirm(e.target.value)}
+                              placeholder={active.name}
+                              autoFocus
+                            />
+                            {projectDeleteError && <div className="settings-delete-error">{projectDeleteError}</div>}
+                            <div className="settings-delete-actions">
+                              <button type="button" className="settings-link-btn"
+                                onClick={() => setProjectDeleting(false)} disabled={projectDeleteBusy}>
+                                Cancel
+                              </button>
+                              <button type="button" className="settings-danger-btn" onClick={deleteProject}
+                                disabled={projectDeleteBusy || projectDeleteConfirm.trim() !== active.name.trim()}>
+                                {projectDeleteBusy ? 'Deleting…' : 'Delete this project'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </section>
                     )}
 
@@ -2705,25 +2724,30 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                 {settingsView === 'delete' && (
                   <div className="settings-delete">
                     <div className="settings-delete-card">
-                      <div className="settings-delete-h">Delete your account?</div>
+                      <div className="settings-delete-h">Delete your Konduyt account?</div>
                       <p className="settings-delete-p">
-                        This permanently deletes your Konduyt account, all your projects, and every connected
-                        provider credential. This cannot be undone.
+                        This permanently deletes your entire Konduyt account — every project, key,
+                        connection, and payment record you have. This cannot be undone.
+                      </p>
+                      <p className="settings-delete-note">
+                        Looking to delete just one project instead? Go to that project's Settings
+                        tab — this is for your whole account.
                       </p>
                       <p className="settings-delete-label">
-                        Type your project name <strong>{active?.name || projects[0]?.name || ''}</strong> to confirm:
+                        Type your account email <strong>{user?.email || ''}</strong> to confirm:
                       </p>
                       <input
                         className="settings-delete-input"
                         value={deleteConfirm}
                         onChange={(e) => setDeleteConfirm(e.target.value)}
-                        placeholder={active?.name || projects[0]?.name || 'Project name'}
+                        placeholder={user?.email || 'you@example.com'}
                         autoFocus
                       />
                       {deleteError && <div className="settings-delete-error">{deleteError}</div>}
                       <div className="settings-delete-actions">
                         <button type="button" className="settings-link-btn" onClick={() => setSettingsView('main')} disabled={deleteBusy}>Cancel</button>
-                        <button type="button" className="settings-danger-btn" onClick={deleteAccount} disabled={deleteBusy || deleteConfirm.trim() !== (active?.name || projects[0]?.name || '').trim() || !(active?.name || projects[0]?.name)}>
+                        <button type="button" className="settings-danger-btn" onClick={deleteAccount}
+                          disabled={deleteBusy || deleteConfirm.trim().toLowerCase() !== (user?.email || '').trim().toLowerCase() || !user?.email}>
                           {deleteBusy ? 'Deleting…' : 'Delete my account'}
                         </button>
                       </div>
