@@ -14,11 +14,11 @@
        changed to black on request ("the greenish color looks depressing").
        Variable names kept as-is so every usage site cascades correctly
        without needing to be touched individually. */
-    --green:#2563eb;
-    --green-dark:#1d4ed8;
-    --green-ink:#1e40af;
-    --green-soft:#eff6ff;
-    --green-border:#bfdbfe;
+    --green:#0a0a0a;
+    --green-dark:#000000;
+    --green-ink:#0a0a0a;
+    --green-soft:#f0f0f0;
+    --green-border:#d4d4d4;
     --amber-soft:#fffbeb;
     --amber-border:#fde68a;
     --amber-ink:#92600a;

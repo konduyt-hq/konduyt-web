@@ -1284,11 +1284,27 @@ export default function Dashboard() {
                   // Just a consistent, pleasant visual anchor next to each
                   // name, hashed from the provider id so it's stable across
                   // reloads and re-sorts, not randomized per render.
+                  // Real, multi-source-verified official brand colors --
+                  // only for providers actually checked and confirmed (not
+                  // guessed from memory). Stripe #635BFF, PayPal #003087,
+                  // Adyen #0abf53 -- each confirmed against several
+                  // independent sources before being used here. Every other
+                  // provider intentionally still uses the deterministic
+                  // hash-based palette below, since getting even one of the
+                  // other ~20 real companies' colors wrong would misrepresent
+                  // their actual identity -- not worth the risk without
+                  // verifying each one individually.
+                  const VERIFIED_BRAND_COLORS = {
+                    stripe: '#635BFF',
+                    paypal: '#003087',
+                    adyen: '#0abf53',
+                  };
                   const MONOGRAM_PALETTE = [
                     '#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c',
                     '#d97706', '#65a30d', '#059669', '#0891b2', '#4338ca',
                   ];
                   const monogramColor = (id) => {
+                    if (VERIFIED_BRAND_COLORS[id]) return VERIFIED_BRAND_COLORS[id];
                     let hash = 0;
                     for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
                     return MONOGRAM_PALETTE[hash % MONOGRAM_PALETTE.length];
