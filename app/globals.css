@@ -800,18 +800,16 @@
     box-shadow:0 8px 24px rgba(0,0,0,0.10); padding:6px; min-width:220px;
   }
   .con-proj-item{
-    display:block; width:100%; text-align:left; background:none; border:none;
+    display:flex; align-items:center; gap:8px; width:100%; text-align:left; background:none; border:none;
     padding:9px 12px; border-radius:7px; font-size:14px; color:var(--ink);
     font-family:inherit; cursor:pointer;
   }
   .con-proj-item:hover{background:var(--panel);}
+  .con-proj-item.active{background:var(--ink); color:#fff; font-weight:600;}
+  .con-proj-item.active:hover{background:var(--ink);}
+  .con-proj-item-check{width:14px; flex-shrink:0; font-size:12px; font-weight:700;}
   .con-proj-divider{height:1px; background:var(--border); margin:6px 0;}
   .con-proj-new{color:var(--ink); font-weight:600;}
-  .con-rename{
-    background:none; border:none; color:var(--text-secondary); font-size:13px;
-    font-family:inherit; cursor:pointer; padding:4px 6px;
-  }
-  .con-rename:hover{color:var(--ink);}
   .con-rename-edit{display:flex; align-items:center; gap:6px;}
   .con-rename-input{
     border:1px solid var(--border); border-radius:7px; padding:6px 10px;
@@ -833,6 +831,19 @@
   .con-kyc{
     background:var(--ink); color:#fff; border:none; border-radius:9px;
     padding:8px 16px; font-size:13.5px; font-weight:600; font-family:inherit; cursor:pointer;
+  }
+  .con-icon-btn{
+    position:relative; width:34px; height:34px; border-radius:50%; background:none;
+    border:1px solid transparent; font-size:16px; cursor:pointer; font-family:inherit;
+    display:flex; align-items:center; justify-content:center; color:var(--text-secondary);
+    transition:background 0.12s, border-color 0.12s;
+  }
+  .con-icon-btn:hover{background:var(--panel); border-color:var(--border);}
+  .con-icon-btn.active{background:var(--ink); color:#fff;}
+  .con-icon-badge{
+    position:absolute; top:-2px; right:-2px; display:inline-flex; align-items:center;
+    justify-content:center; min-width:16px; height:16px; padding:0 4px; border-radius:8px;
+    background:#dc2626; color:#fff; font-size:10px; font-weight:700; border:2px solid #fff;
   }
   .con-avatar{
     width:34px; height:34px; border-radius:50%; background:var(--ink); color:#fff;
@@ -1004,7 +1015,6 @@
     .con-logo{font-size:16px;}
     .con-proj-btn{padding:7px 11px; font-size:13.5px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
     .con-proj-menu{min-width:200px;}
-    .con-rename{font-size:12px; padding:4px;}
     .con-kyc{padding:7px 12px; font-size:12.5px;}
     .con-mode-opt{padding:6px 11px; font-size:12.5px;}
 
@@ -1688,6 +1698,19 @@
   .preview-checkout-btn span{font-size:10px;}
 
   /* Editable preview amount controls */
+  /* Real deployed example storefronts */
+  .scenario-list{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:20px 0 24px;}
+  .scenario-card{border:1px solid var(--border); border-radius:12px; padding:16px; background:var(--panel);}
+  .scenario-card-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;}
+  .scenario-card-name{font-size:14.5px; font-weight:700; color:var(--ink);}
+  .scenario-card-tag{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-secondary); background:var(--elev); padding:3px 8px; border-radius:6px;}
+  .scenario-card-desc{font-size:12.5px; color:var(--text-secondary); line-height:1.55; margin-bottom:14px;}
+  .scenario-card-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .scenario-card-btn{font-size:12.5px; font-weight:600; padding:7px 12px; border-radius:8px;
+    background:var(--ink); color:#fff; text-decoration:none; display:inline-block;}
+  .scenario-card-btn:hover{opacity:.85;}
+  .scenario-card-btn-ghost{background:none; color:var(--ink); border:1px solid var(--border);}
   .preview-checkout-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;}
   .preview-amount-field{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--elev);flex-shrink:0;}
   .preview-cur{border:none;background:var(--panel);font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);padding:0 8px;cursor:pointer;border-right:1px solid var(--border);outline:none;}
@@ -1911,6 +1934,7 @@
     /* Header rows with side controls stack vertically */
     .con-home-head-row{flex-direction:column;align-items:stretch;gap:12px;}
     .preview-checkout-controls{flex-wrap:wrap;}
+    .scenario-list{grid-template-columns:1fr;}
     .preview-amount-field{flex:1; min-width:0;}
     .preview-amt{width:auto; max-width:none; flex:1; min-width:0;}
     .preview-checkout-btn{flex:1; justify-content:center;}
@@ -2246,8 +2270,6 @@
   .msg-empty-icon{width:44px;height:44px;border-radius:50%;background:var(--green-soft);color:var(--green-ink);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;margin:0 auto 14px;}
   .msg-empty-title{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;}
   .msg-empty-sub{font-size:13.5px;}
-  /* Unread badge on the Messages nav tab */
-  .con-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;vertical-align:middle;}
 
   /* ===== Admin · Messages ===== */
   .admin-wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px;}

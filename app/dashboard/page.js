@@ -101,7 +101,6 @@ export default function Dashboard() {
   const [msgFilter, setMsgFilter] = useState('all'); // all | unread | important
   const [msgCategory, setMsgCategory] = useState('');
   const [msgLoading, setMsgLoading] = useState(false);
-  const [intSection, setIntSection] = useState('connections'); // connections | languages
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
   const [envOpen, setEnvOpen] = useState(false); // ".env setup" explainer expand
   const [providers, setProviders] = useState([]);
@@ -180,6 +179,18 @@ export default function Dashboard() {
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState('');
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const projectMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!projectMenuOpen) return undefined;
+    function onClickOutside(e) {
+      if (projectMenuRef.current && !projectMenuRef.current.contains(e.target)) {
+        setProjectMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [projectMenuOpen]);
   const [renaming, setRenaming] = useState(false);
   const [renameVal, setRenameVal] = useState('');
   const [rotating, setRotating] = useState(false);
@@ -978,8 +989,27 @@ export default function Dashboard() {
     const p = await r.json();
     const rl = await fetch(`${API_BASE}/projects`, { headers: authHeaders() });
     const data = await rl.json();
-    setProjects(data.projects || []);
+    const newProjects = data.projects || [];
+    setProjects(newProjects);
     setActiveId(p.id);
+
+    // Real pricing model: 3 free projects, $10/mo per project beyond that
+    // once a project is actually live. This is a heads-up at the moment the
+    // total crosses the free allowance -- not a hard block, since a brand
+    // new project isn't live (and so isn't billable) yet, but the developer
+    // should know the implication now, not be surprised by it later.
+    if (newProjects.length === 4) {
+      setAccountNotice({
+        kind: 'info',
+        text: (
+          <>
+            You&apos;re now past the 3 free live projects on your plan. Projects only
+            cost once they go live, but worth knowing ahead of time —{' '}
+            <a href="/pricing/" className="link-inline">view pricing</a>.
+          </>
+        ),
+      });
+    }
   }
 
   async function saveRename() {
@@ -1073,7 +1103,7 @@ export default function Dashboard() {
           <Link href="/dashboard/" className="con-logo">Konduyt</Link>
 
           {/* Project switcher */}
-          <div className="con-proj">
+          <div className="con-proj" ref={projectMenuRef}>
             <button
               className="con-proj-btn"
               onClick={() => setProjectMenuOpen((o) => !o)}
@@ -1086,14 +1116,15 @@ export default function Dashboard() {
                 {projects.map((p) => (
                   <button
                     key={p.id}
-                    className="con-proj-item"
+                    className={p.id === activeId ? 'con-proj-item active' : 'con-proj-item'}
                     onClick={() => {
                       setActiveId(p.id);
                       setProjectMenuOpen(false);
                     }}
                     type="button"
                   >
-                    <span>{p.id === activeId ? '✓ ' : ''}{p.name}</span>
+                    <span className="con-proj-item-check">{p.id === activeId ? '✓' : ''}</span>
+                    <span>{p.name}</span>
                   </button>
                 ))}
                 <div className="con-proj-divider" />
@@ -1103,35 +1134,30 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-
-          {active && !renaming && (
-            <button
-              className="con-rename"
-              onClick={() => {
-                setRenameVal(active.name);
-                setRenaming(true);
-              }}
-              type="button"
-              title="Rename project"
-            >
-              ✎ Rename
-            </button>
-          )}
-          {active && renaming && (
-            <span className="con-rename-edit">
-              <input
-                className="con-rename-input"
-                value={renameVal}
-                onChange={(e) => setRenameVal(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && saveRename()}
-                autoFocus
-              />
-              <button className="con-rename-save" onClick={saveRename} type="button">Save</button>
-            </span>
-          )}
         </div>
 
         <div className="con-topbar-right">
+          <button
+            className={tab === 'messages' ? 'con-icon-btn active' : 'con-icon-btn'}
+            onClick={() => setTab('messages')}
+            type="button"
+            title="Messages"
+            aria-label="Messages"
+          >
+            <span aria-hidden="true">🔔</span>
+            {msgUnread > 0 && (
+              <span className="con-icon-badge">{msgUnread > 99 ? '99+' : msgUnread}</span>
+            )}
+          </button>
+          <button
+            className={tab === 'settings' ? 'con-icon-btn active' : 'con-icon-btn'}
+            onClick={() => setTab('settings')}
+            type="button"
+            title="Settings"
+            aria-label="Settings"
+          >
+            <span aria-hidden="true">⚙</span>
+          </button>
           <div className="con-avatar-wrap" ref={avatarMenuRef}>
             <button
               className="con-avatar"
@@ -1192,10 +1218,10 @@ export default function Dashboard() {
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
         {[
-          ['money', 'Money'],
-          ['integrations', 'Integrations'],
-          ['messages', 'Messages'],
-          ['settings', 'Settings'],
+          ['money', 'Payments'],
+          ['connections', 'Providers'],
+          ['quickstart', 'Quickstart'],
+          ['checkout', 'Checkout'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -1204,9 +1230,6 @@ export default function Dashboard() {
             type="button"
           >
             {label}
-            {id === 'messages' && msgUnread > 0 && (
-              <span className="con-tab-badge">{msgUnread > 99 ? '99+' : msgUnread}</span>
-            )}
           </button>
         ))}
       </nav>
@@ -1214,27 +1237,7 @@ export default function Dashboard() {
       {/* ===== Body ===== */}
       <main className="con-body">
         <>
-            {tab === 'integrations' && (
-              <div className="int-subnav">
-                <button
-                  className={intSection === 'connections' ? 'int-subtab active' : 'int-subtab'}
-                  onClick={() => { setIntSection('connections'); setActiveMethod(null); }}
-                  type="button"
-                >Connections</button>
-                <button
-                  className={intSection === 'languages' ? 'int-subtab active' : 'int-subtab'}
-                  onClick={() => { setIntSection('languages'); setActiveMethod(null); }}
-                  type="button"
-                >Languages</button>
-                <button
-                  className={intSection === 'checkouts' ? 'int-subtab active' : 'int-subtab'}
-                  onClick={() => { setIntSection('checkouts'); setActiveMethod(null); }}
-                  type="button"
-                >Preview checkouts</button>
-              </div>
-            )}
-
-            {tab === 'integrations' && intSection === 'connections' && !activeMethod && (
+            {tab === 'connections' && !activeMethod && (
               <div className="mpesa-page">
                 <div className="con-home-head con-home-head-row">
                   <div>
@@ -1539,7 +1542,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {tab === 'integrations' && intSection === 'languages' && (
+            {tab === 'quickstart' && (
               <div className="lang-page">
                 <div className="con-home-head">
                   <h1 className="con-h1">Languages</h1>
@@ -1737,7 +1740,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         <span>
                           <strong>You cannot receive money yet.</strong> Your keys work, but a payment needs
                           somewhere to go. Go to <button className="link-inline" type="button"
-                            onClick={() => setIntSection('connections')}>Connections</button>, connect a
+                            onClick={() => setTab('connections')}>Providers</button>, connect a
                           provider account and enable a payment method — until then, payment attempts will
                           fail with <code className="inline-code">no_provider_connected</code>.
                         </span>
@@ -2325,13 +2328,54 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
               </div>
             )}
 
-            {tab === 'integrations' && intSection === 'checkouts' && (
+            {tab === 'checkout' && (
               <div className="mpesa-page">
                 <div className="con-home-head">
-                  <h1 className="con-h1">Preview checkouts</h1>
+                  <h1 className="con-h1">Checkout</h1>
                   <p className="con-sub">
                     See what your customers see, and drop the same checkout into your own site.
                   </p>
+                </div>
+
+                {/* Real, deployed example storefronts -- not mockups. Each is
+                    a genuine standalone site testing one real scenario end to
+                    end (a session-based recurring subscription, and a
+                    publishable-key one-time purchase), with its own real
+                    source on GitHub to inspect or copy from directly. */}
+                <div className="scenario-list">
+                  <div className="scenario-card">
+                    <div className="scenario-card-head">
+                      <span className="scenario-card-name">Recurring subscription</span>
+                      <span className="scenario-card-tag">Netflix-style</span>
+                    </div>
+                    <p className="scenario-card-desc">
+                      A real session-based checkout with <code className="inline-code">recurring: true</code> --
+                      the shopper sees the "Recurring — charged every month" disclosure and a Subscribe button.
+                    </p>
+                    <div className="scenario-card-actions">
+                      <a href="https://konduyt-test-recurring-subscription.onrender.com" target="_blank"
+                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
+                      <a href="https://github.com/konduyt-hq/konduyt-test-recurring-subscription" target="_blank"
+                        rel="noreferrer" className="scenario-card-btn scenario-card-btn-ghost">View code ↗</a>
+                    </div>
+                  </div>
+
+                  <div className="scenario-card">
+                    <div className="scenario-card-head">
+                      <span className="scenario-card-name">One-time purchase</span>
+                      <span className="scenario-card-tag">Shopping</span>
+                    </div>
+                    <p className="scenario-card-desc">
+                      A real publishable-key checkout for a single item -- no session, no recurring intent,
+                      just <code className="inline-code">Konduyt.checkout()</code> called directly.
+                    </p>
+                    <div className="scenario-card-actions">
+                      <a href="https://konduyt-test-onetime-purchase.onrender.com" target="_blank"
+                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
+                      <a href="https://github.com/konduyt-hq/konduyt-test-onetime-purchase" target="_blank"
+                        rel="noreferrer" className="scenario-card-btn scenario-card-btn-ghost">View code ↗</a>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="preview-checkout-controls">
@@ -2487,6 +2531,38 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
 
                 {settingsView === 'main' && (
                   <div className="settings-sections">
+                    {/* Project */}
+                    {active && (
+                      <section className="settings-card">
+                        <div className="settings-card-h">Project</div>
+                        <div className="settings-row">
+                          <div>
+                            <div className="settings-row-k">Name</div>
+                            {!renaming ? (
+                              <div className="settings-row-d">{active.name}</div>
+                            ) : (
+                              <span className="con-rename-edit">
+                                <input
+                                  className="con-rename-input"
+                                  value={renameVal}
+                                  onChange={(e) => setRenameVal(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && saveRename()}
+                                  autoFocus
+                                />
+                                <button className="con-rename-save" onClick={saveRename} type="button">Save</button>
+                              </span>
+                            )}
+                          </div>
+                          {!renaming && (
+                            <button className="settings-link-btn" type="button"
+                              onClick={() => { setRenameVal(active.name); setRenaming(true); }}>
+                              Rename
+                            </button>
+                          )}
+                        </div>
+                      </section>
+                    )}
+
                     {/* Profile */}
                     <section className="settings-card">
                       <div className="settings-card-h">Profile</div>
