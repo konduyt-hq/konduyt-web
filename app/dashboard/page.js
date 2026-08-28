@@ -99,7 +99,7 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [tab, setTab] = useState('money'); // money | connections | quickstart | checkout | messages | settings
+  const [tab, setTab] = useState('checkout'); // money | connections | quickstart | checkout | messages | settings
 
   useEffect(() => {
     const TAB_TITLES = {
