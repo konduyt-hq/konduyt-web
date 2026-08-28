@@ -173,11 +173,8 @@ export default function Dashboard() {
   const [taxReceived, setTaxReceived] = useState(null); // countries received-from, for the currently-open provider
   const [taxExpanded, setTaxExpanded] = useState(null); // which country row is open
   const [taxDetailOpen, setTaxDetailOpen] = useState(false); // false = money list; true = viewing the per-country tax detail
-  const [activeMethod, setActiveMethod] = useState(null); // method id when viewing a method page
-  const [activeCategory, setActiveCategory] = useState(null); // category id in Discover drill-down
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
   const [testResult, setTestResult] = useState({}); // provider_id -> {ok, message, testing}
-  const [methodDetail, setMethodDetail] = useState(null);
   // Continent-grouped provider directory (replaces the old category-drill-down browse)
   const [topProviders, setTopProviders] = useState([]);
   // Real, per-country eligible methods for CONNECTED providers, keyed by
@@ -573,15 +570,6 @@ export default function Dashboard() {
     } catch (e) {}
   }
 
-  // Load the detail for the currently open payment method.
-  useEffect(() => {
-    if (!activeId || !activeMethod) { setMethodDetail(null); return; }
-    fetch(`${API_BASE}/projects/${activeId}/payment-methods/${activeMethod}`, { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((d) => setMethodDetail(d))
-      .catch(() => setMethodDetail(null));
-  }, [activeId, activeMethod, connections]);
-
   // Landing tab: a NEW user (no provider connected yet) starts on Integrations —
   // the first meaningful action. A returning user (has at least one connection)
   // lands on Money. Runs once per session, after the initial data has loaded, so
@@ -642,14 +630,10 @@ export default function Dashboard() {
     }
   }
 
-  // Connect a provider directly from the continent-grouped provider grid.
-  // Deliberately NOT reusing connectProvider() above -- that function reads
-  // activeMethod (method_id: activeMethod) and calls reloadMethodDetail(),
-  // both of which assume the old category -> method drill-down navigation.
-  // Neither exists in this provider-first flow, so this is its own handler
-  // rather than risk a silent bug from that coupling. Connecting a provider
-  // here does NOT force-enable any specific method -- the developer enables
-  // methods separately, or they become eligible automatically.
+  // Connect a provider from the continent-grouped provider grid. Does NOT
+  // force-enable any specific method -- the developer enables methods
+  // separately (or they become eligible automatically), then can add a
+  // fallback provider for a method that already has a primary connected.
   async function connectProviderCard(providerId, schemaFields) {
     setConnectError('');
     setConnectBusy(true);
@@ -691,54 +675,6 @@ export default function Dashboard() {
     setConnectBusy(false);
   }
 
-  async function connectProvider(providerId, schemaFields) {
-    setConnectError('');
-    setConnectBusy(true);
-    try {
-      // Send whatever fields the schema collected, trimmed. For optional
-      // selects the user never touched, fall back to the first option so a
-      // default (e.g. PayPal environment=live) is actually transmitted.
-      const credentials = {};
-      (schemaFields || []).forEach((f) => {
-        let val = credValues[f.name];
-        if ((val === undefined || val === '') && f.type === 'select' && !f.required) {
-          val = (f.options || [])[0] || '';
-        }
-        if (val !== undefined && val !== '') {
-          credentials[f.name] = typeof val === 'string' ? val.trim() : val;
-        }
-      });
-      // Include any collected fields not present in the schema list (safety).
-      Object.entries(credValues).forEach(([k, v]) => {
-        if (!(k in credentials) && v !== undefined && v !== '') {
-          credentials[k] = typeof v === 'string' ? v.trim() : v;
-        }
-      });
-      const r = await fetch(`${API_BASE}/projects/${activeId}/connections`, {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        // Pass the method being enabled, so connecting also enables it.
-        body: JSON.stringify({ provider_id: providerId, credentials, method_id: activeMethod }),
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        const msg = typeof err.detail === 'string' ? err.detail
-          : (err.detail?.message || 'Could not connect. Check your credentials.');
-        setConnectError(msg);
-        setConnectBusy(false);
-        return;
-      }
-      setConnectingId(null);
-      setCredValues({});
-      loadProjectData(activeId);
-      reloadMethodDetail();
-    } catch (e) {
-      setConnectError('Network error. Please try again.');
-    }
-    setConnectBusy(false);
-  }
-
-  // Enable a method using an ALREADY-CONNECTED account — no credentials.
   async function testConnection(providerId) {
     setTestResult((prev) => ({ ...prev, [providerId]: { testing: true } }));
     try {
@@ -975,35 +911,12 @@ export default function Dashboard() {
     } catch (e) {}
   }
 
-  async function enableMethod(providerId) {
-    try {
-      const r = await fetch(`${API_BASE}/projects/${activeId}/enabled-methods`, {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method_id: activeMethod, provider_id: providerId }),
-      });
-      if (r.ok) { loadProjectData(activeId); reloadMethodDetail(); }
-    } catch (e) {}
-  }
-
-  function disableMethod() {
-    fetch(`${API_BASE}/projects/${activeId}/enabled-methods/${activeMethod}`, {
-      method: 'DELETE', headers: authHeaders(),
-    }).then(() => { loadProjectData(activeId); reloadMethodDetail(); });
-  }
-
-  function reloadMethodDetail() {
-    if (!activeId || !activeMethod) return;
-    fetch(`${API_BASE}/projects/${activeId}/payment-methods/${activeMethod}`, { headers: authHeaders() })
-      .then((r) => r.json()).then((d) => setMethodDetail(d)).catch(() => {});
-  }
-
   function disconnectProvider(providerId) {
     if (!confirm('Disconnect this provider?')) return;
     fetch(`${API_BASE}/projects/${activeId}/connections/${providerId}`, {
       method: 'DELETE',
       headers: authHeaders(),
-    }).then(() => { loadProjectData(activeId); reloadMethodDetail(); });
+    }).then(() => { loadProjectData(activeId); });
   }
 
   async function createProject() {
@@ -1296,7 +1209,7 @@ export default function Dashboard() {
       {/* ===== Body ===== */}
       <main className="con-body">
         <>
-            {tab === 'connections' && !activeMethod && (
+            {tab === 'connections' && (
               <div className="mpesa-page">
                 <div className="con-home-head con-home-head-row">
                   <div>
