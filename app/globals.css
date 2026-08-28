@@ -1626,6 +1626,25 @@
   .cap-explainer strong{font-weight:700;}
 
   /* Method search */
+  /* Method routing (primary provider + fallbacks) */
+  .routing-section{border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:22px; background:var(--panel);}
+  .routing-section-h{font-size:15px; font-weight:700; color:var(--ink); margin-bottom:4px;}
+  .routing-section-sub{font-size:12.5px; color:var(--text-secondary); line-height:1.55; margin-bottom:16px; max-width:640px;}
+  .routing-method{padding:10px 0; border-top:1px solid var(--border);}
+  .routing-method:first-of-type{border-top:none; padding-top:0;}
+  .routing-method-name{font-size:13.5px; font-weight:600; color:var(--ink); margin-bottom:8px;}
+  .routing-chain{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .routing-step{display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--border);
+    border-radius:8px; padding:6px 10px;}
+  .routing-step-label{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--text-secondary);}
+  .routing-step-provider{font-size:13px; font-weight:600; color:var(--ink);}
+  .routing-step-remove{background:none; border:none; color:var(--text-secondary); font-size:11px; cursor:pointer; padding:0 0 0 4px;}
+  .routing-step-remove:hover{color:#dc2626;}
+  .routing-step-arrow{color:var(--text-secondary); font-size:13px;}
+  .routing-add-select{border:1px dashed var(--border); background:none; border-radius:8px; padding:6px 10px;
+    font-size:12.5px; color:var(--text-secondary); cursor:pointer; font-family:inherit;}
+  .routing-error{font-size:12px; color:#dc2626; margin-top:8px;}
+
   .method-search{display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:20px; background:var(--elev);}
   .method-search:focus-within{border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft);}
   .method-search-icon{color:var(--text-secondary); flex-shrink:0;}

@@ -127,6 +127,7 @@ export default function Dashboard() {
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
   const [connections, setConnections] = useState([]);
+  const [enabledMethods, setEnabledMethods] = useState([]);
   const [connectionsLoaded, setConnectionsLoaded] = useState(false);
   const [connectingId, setConnectingId] = useState(null);
   const [credValues, setCredValues] = useState({});
@@ -359,6 +360,10 @@ export default function Dashboard() {
       .then((r) => r.json())
       .then((d) => setLatestPayment(d.payment || null))
       .catch(() => setLatestPayment(null));
+    fetch(`${API_BASE}/projects/${pid}/enabled-methods`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((d) => setEnabledMethods(d.enabled || []))
+      .catch(() => setEnabledMethods([]));
   }, []);
 
   // Load the provider catalog once.
@@ -673,6 +678,37 @@ export default function Dashboard() {
       setConnectError('Network error. Please try again.');
     }
     setConnectBusy(false);
+  }
+
+  const [fallbackBusy, setFallbackBusy] = useState({}); // method_id -> boolean
+  const [fallbackError, setFallbackError] = useState({}); // method_id -> message
+
+  async function addFallback(methodId, providerId) {
+    setFallbackBusy((prev) => ({ ...prev, [methodId]: true }));
+    setFallbackError((prev) => ({ ...prev, [methodId]: '' }));
+    try {
+      const r = await fetch(`${API_BASE}/projects/${activeId}/enabled-methods/${methodId}/fallback`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: providerId }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        setFallbackError((prev) => ({ ...prev, [methodId]: err.detail || 'Could not add fallback.' }));
+      } else {
+        loadProjectData(activeId);
+      }
+    } catch (e) {
+      setFallbackError((prev) => ({ ...prev, [methodId]: 'Network error. Please try again.' }));
+    }
+    setFallbackBusy((prev) => ({ ...prev, [methodId]: false }));
+  }
+
+  async function removeFallback(methodId, providerId) {
+    await fetch(`${API_BASE}/projects/${activeId}/enabled-methods/${methodId}/fallback/${providerId}`, {
+      method: 'DELETE', headers: authHeaders(),
+    });
+    loadProjectData(activeId);
   }
 
   async function testConnection(providerId) {
@@ -1219,6 +1255,77 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
+
+                {/* Real method routing: each enabled method's primary
+                    provider, and any configured fallback -- Konduyt tries
+                    the primary first, and only automatically tries a
+                    fallback on a genuinely SAFE failure (never on an
+                    ambiguous one). See the Preview Checkouts tab's "Failed
+                    payment + rerouting" scenario to see this live. */}
+                {enabledMethods.length > 0 && (() => {
+                  const prettyName = (id) => (id || '').replace(/_/g, ' ')
+                    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+                  const byMethod = {};
+                  enabledMethods.forEach((row) => {
+                    (byMethod[row.method_id] = byMethod[row.method_id] || []).push(row);
+                  });
+                  Object.values(byMethod).forEach((rows) => rows.sort((a, b) => a.priority - b.priority));
+
+                  return (
+                    <div className="routing-section">
+                      <div className="routing-section-h">Method routing</div>
+                      <p className="routing-section-sub">
+                        The order Konduyt tries providers for each method. A fallback is only tried if the
+                        one before it fails safely -- never on an ambiguous result.
+                      </p>
+                      {Object.entries(byMethod).map(([methodId, rows]) => {
+                        const usedProviderIds = rows.map((r) => r.provider_id);
+                        const availableToAdd = connections.filter(
+                          (c) => c.status === 'connected' && !usedProviderIds.includes(c.provider_id)
+                        );
+                        return (
+                          <div className="routing-method" key={methodId}>
+                            <div className="routing-method-name">{prettyName(methodId)}</div>
+                            <div className="routing-chain">
+                              {rows.map((r, i) => (
+                                <div className="routing-step" key={r.provider_id}>
+                                  <span className="routing-step-label">
+                                    {i === 0 ? 'Primary' : `Fallback ${i}`}
+                                  </span>
+                                  <span className="routing-step-provider">{prettyName(r.provider_id)}</span>
+                                  {i > 0 && (
+                                    <button type="button" className="routing-step-remove"
+                                      onClick={() => removeFallback(methodId, r.provider_id)}
+                                      aria-label={`Remove ${r.provider_id} as fallback`}>
+                                      ✕
+                                    </button>
+                                  )}
+                                  {i < rows.length - 1 && <span className="routing-step-arrow">→</span>}
+                                </div>
+                              ))}
+                              {availableToAdd.length > 0 && (
+                                <select className="routing-add-select"
+                                  value=""
+                                  disabled={!!fallbackBusy[methodId]}
+                                  onChange={(e) => { if (e.target.value) addFallback(methodId, e.target.value); }}>
+                                  <option value="">+ Add fallback…</option>
+                                  {availableToAdd.map((c) => (
+                                    <option key={c.provider_id} value={c.provider_id}>
+                                      {prettyName(c.provider_id)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            {fallbackError[methodId] && (
+                              <p className="routing-error">{fallbackError[methodId]}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
                 <div className="method-search">
                   <svg className="method-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
