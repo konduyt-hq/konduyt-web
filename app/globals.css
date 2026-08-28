@@ -652,6 +652,13 @@
     .docs-content{padding:32px 24px;}
     .docs-search-wrap{max-width:none;}
   }
+  @media (max-width:480px){
+    .docs-topbar{padding:12px 14px; gap:12px;}
+    .docs-brand-tag{display:none;}
+    .docs-home-link{font-size:12.5px;}
+    .docs-content{padding:24px 16px;}
+    .docs-title{font-size:26px;}
+  }
 
   /* ---------- AUTH / SIGNUP ---------- */
   .auth-root{
