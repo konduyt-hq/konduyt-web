@@ -5,6 +5,11 @@ import CheckoutModal from './CheckoutModal';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
+import {
+  RECURRING_SERVER_CODE, RECURRING_CLIENT_CODE,
+  ONETIME_SERVER_CODE, ONETIME_CLIENT_CODE,
+  SCENARIO_SERVER_LANGUAGES,
+} from './scenariocode';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP, ENV_STEPS } from './envsetup';
 import { MERCHANT_COUNTRIES } from './countries';
@@ -190,6 +195,9 @@ export default function Dashboard() {
   const [lang, setLang] = useState('curl');
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState('');
+  const [codeViewerScenario, setCodeViewerScenario] = useState(null); // null | 'recurring' | 'onetime'
+  const [codeViewerFile, setCodeViewerFile] = useState('server'); // 'server' | 'client'
+  const [codeViewerLang, setCodeViewerLang] = useState('js');
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const projectMenuRef = useRef(null);
 
@@ -2403,8 +2411,10 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     <div className="scenario-card-actions">
                       <a href="https://konduyt-test-recurring-subscription.onrender.com" target="_blank"
                         rel="noreferrer" className="scenario-card-btn">View site ↗</a>
-                      <a href="https://github.com/konduyt-hq/konduyt-test-recurring-subscription" target="_blank"
-                        rel="noreferrer" className="scenario-card-btn scenario-card-btn-ghost">View code ↗</a>
+                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
+                        onClick={() => { setCodeViewerScenario('recurring'); setCodeViewerFile('server'); }}>
+                        View code
+                      </button>
                     </div>
                   </div>
 
@@ -2420,11 +2430,83 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     <div className="scenario-card-actions">
                       <a href="https://konduyt-test-onetime-purchase.onrender.com" target="_blank"
                         rel="noreferrer" className="scenario-card-btn">View site ↗</a>
-                      <a href="https://github.com/konduyt-hq/konduyt-test-onetime-purchase" target="_blank"
-                        rel="noreferrer" className="scenario-card-btn scenario-card-btn-ghost">View code ↗</a>
+                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
+                        onClick={() => { setCodeViewerScenario('onetime'); setCodeViewerFile('server'); }}>
+                        View code
+                      </button>
                     </div>
                   </div>
                 </div>
+
+                {/* In-dashboard code viewer -- never leaves Konduyt. Server
+                    file is language-switchable (reuses the same LANG_SNIPPETS
+                    languages/icons as Quickstart, for one consistent look);
+                    the client file is plain browser JS regardless of server
+                    language, since that's inherently what runs in a browser. */}
+                {codeViewerScenario && (() => {
+                  const isRecurring = codeViewerScenario === 'recurring';
+                  const serverCode = (isRecurring ? RECURRING_SERVER_CODE : ONETIME_SERVER_CODE)[codeViewerLang];
+                  const clientCode = isRecurring ? RECURRING_CLIENT_CODE : ONETIME_CLIENT_CODE;
+                  const scenarioLabel = isRecurring ? 'Recurring subscription' : 'One-time purchase';
+                  const displayedCode = codeViewerFile === 'server' ? serverCode : clientCode;
+                  return (
+                    <div className="code-viewer">
+                      <div className="code-viewer-head">
+                        <span className="code-viewer-title">{scenarioLabel} — source</span>
+                        <button type="button" className="code-viewer-close"
+                          onClick={() => setCodeViewerScenario(null)} aria-label="Close">✕</button>
+                      </div>
+
+                      <div className="code-viewer-files">
+                        <button type="button"
+                          className={codeViewerFile === 'server' ? 'code-viewer-file sel' : 'code-viewer-file'}
+                          onClick={() => setCodeViewerFile('server')}>
+                          server.{codeViewerLang === 'cpp' ? 'cpp' : codeViewerLang === 'python' ? 'py' : 'js'}
+                        </button>
+                        <button type="button"
+                          className={codeViewerFile === 'client' ? 'code-viewer-file sel' : 'code-viewer-file'}
+                          onClick={() => setCodeViewerFile('client')}>
+                          public/index.html
+                        </button>
+                      </div>
+
+                      {codeViewerFile === 'server' && (
+                        <div className="lang-chips code-viewer-langs">
+                          {LANG_SNIPPETS.filter((l) => SCENARIO_SERVER_LANGUAGES.includes(l.id)).map((l) => {
+                            const brand = LANG_BRAND[l.icon] || '#0a0a0a';
+                            const selected = codeViewerLang === l.id;
+                            return (
+                              <button key={l.id} type="button"
+                                className={`lang-chip ${selected ? 'sel' : ''}`}
+                                style={{ '--brand': brand }}
+                                onClick={() => setCodeViewerLang(l.id)}>
+                                {LANG_ICONS[l.icon] && (
+                                  <span className="lang-chip-icon"
+                                    dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
+                                )}
+                                {l.label}
+                              </button>
+                            );
+                          })}
+                          <span className="code-viewer-more-langs">
+                            More languages coming soon
+                          </span>
+                        </div>
+                      )}
+                      {codeViewerFile === 'client' && (
+                        <p className="code-viewer-note">
+                          Browser code — always JavaScript, whatever your server language is.
+                        </p>
+                      )}
+
+                      <pre className="code-viewer-block"><code>{displayedCode}</code></pre>
+                      <button className="code-viewer-copy" type="button"
+                        onClick={() => copyToClipboard(displayedCode, 'scenario-code')}>
+                        {copied === 'scenario-code' ? '✓ Copied' : 'Copy code'}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
