@@ -70,7 +70,7 @@ const DOCS = [
     id: 'authentication',
     group: 'Getting started',
     title: 'Authentication',
-    body: 'Authenticate every server request with your project secret key as a Bearer token. Use the publishable key on the client, for checkout config and the embedded checkout. It exposes no secrets. Keys are issued per project at creation. Konduyt projects are live-only: there is no separate test mode inside Konduyt; you test with your provider\'s own test keys.',
+    body: 'Authenticate every server request with your project secret key as a Bearer token. Use the publishable key on the client, for checkout config and the embedded checkout. It exposes no secrets. Keys are issued per project at creation, and every Konduyt secret key is always live — there is no separate Konduyt-level test mode. What you connect underneath it can be live or your provider\'s own sandbox credentials instead: a project holds one connection per provider, in either mode. A payment routed through a sandbox connection is honestly recorded as a test payment; through a live connection, as live. Connect your provider\'s sandbox keys from the dashboard to test the real integration end to end before going live.',
   },
   {
     id: 'projects-keys',
@@ -95,7 +95,7 @@ const DOCS = [
     id: 'checkout',
     group: 'Payments',
     title: 'Embedded checkout',
-    body: 'Drop konduyt.js onto any site and call Konduyt.checkout({ publishableKey, amount, currency, reference }). It renders a hosted-style popup with the available methods, each ranked cheapest-first with its fee and settlement time, the cheapest pre-selected. The popup never sees your secret key. A React CheckoutModal is also available with a theme prop (accent, radius, font, logo) so you can match your own UI.',
+    body: 'Drop konduyt.js onto any site and call Konduyt.checkout({ publishableKey, amount, currency, reference }). It renders a hosted-style popup with the available methods, each ranked cheapest-first with its fee and settlement time, the cheapest pre-selected. The popup never sees your secret key. Where the amount is decided server-side instead — a subscription, an invoice, a computed usage bill — create a payment session from your server first and call Konduyt.checkout({ sessionId }) instead; the browser never sees or can tamper with the amount. A React CheckoutModal is also available with a theme prop (accent, radius, font, logo) so you can match your own UI.',
   },
   {
     id: 'providers',
@@ -116,10 +116,34 @@ const DOCS = [
     body: 'Pass an idempotency key when creating a payment to safely retry without creating duplicates. Konduyt stores the first result and returns it for any retry with the same key.',
   },
   {
+    id: 'recurring',
+    group: 'Payments',
+    title: 'Recurring payments',
+    body: 'Declare recurring: true when creating a payment session from your server, along with interval: \'monthly\' (the only interval supported today). The customer authorizes once through the checkout popup; Konduyt securely stores the resulting authorization and automatically bills the same amount every month using the provider\'s own recurring-charge capability. A failed automatic charge is retried daily; after repeated failures the project owner is notified. Recurring intent is declared once, server-side, at session creation — never something the browser or the checkout options can change. Today this works with providers whose connector supports storing and charging a saved authorization.',
+  },
+  {
+    id: 'payment-links',
+    group: 'Payments',
+    title: 'Payment links',
+    body: 'A payment link is a long-lived, shareable URL you send a customer directly — email, WhatsApp, SMS — never embedded on your own site. Create one from your server with an amount, currency and optional description; Konduyt returns a URL hosted on konduyt.dev. Unlike a checkout session, a link has no 30-minute expiry by default: an invoice needs to survive being opened whenever the customer gets to it. Once paid, a link is marked paid and further visits are honestly refused — this is invoice semantics, a link for one specific bill, not a reusable donate-or-tip-jar link.',
+  },
+  {
+    id: 'marketplace',
+    group: 'Payments',
+    title: 'Marketplace payments',
+    body: 'One checkout, proceeds split across multiple sellers — orchestrated using the connected provider\'s own real split-payment capability. Konduyt never holds funds or redistributes them internally; the provider performs the actual split. Register each seller\'s provider-specific sub-account reference once (a Paystack subaccount code, a Stripe connected account id, and so on — created directly with the provider through its own onboarding, never by Konduyt on your behalf), then pass a list of seller/amount splits when creating the payment. Whatever isn\'t allocated to a seller is your own commission, handled entirely by the provider\'s own mechanics. Support varies meaningfully by provider — check a connector\'s real, verified capability, including its exact requirements, before building against it. Never assume support from a provider\'s general marketplace documentation.',
+  },
+  {
     id: 'routing',
     group: 'Intelligence',
     title: 'Routing intelligence',
     body: 'Konduyt ranks the rails that can serve a payment using published facts: each provider\'s fees, its settlement time, and the customer\'s location (which selects domestic vs cross-border fees and triggers FX). It is smart from the first transaction; it needs no history. Ranking is cheapest-first, with the settlement time shown so you can trade cost against speed.',
+  },
+  {
+    id: 'failover',
+    group: 'Intelligence',
+    title: 'Failover & rerouting',
+    body: 'For a payment method, configure more than one provider — a primary, and one or more fallbacks, in order, from the dashboard\'s Payment Providers tab. If the primary fails in a way that\'s genuinely safe to retry elsewhere — it was unreachable, or it rejected the request before creating anything — Konduyt automatically tries the next configured provider. If the outcome is ambiguous instead — a timeout, an unclear response — Konduyt stops and never guesses; guessing wrong is exactly how a customer ends up double-charged. Every attempt, safe or not, is recorded and available on the payment record.',
   },
   {
     id: 'fee-model',
