@@ -39,6 +39,7 @@ function Section({ s, providers }) {
 }
 
 export default function Terms() {
+  useEffect(() => { document.title = 'Konduyt Terms'; }, []);
   const homeHref = useHomeHref();
   const [docId, setDocId] = useState('tos');
   const [providers, setProviders] = useState([]);

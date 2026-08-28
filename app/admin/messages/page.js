@@ -28,6 +28,7 @@ const BLANK = {
 };
 
 export default function AdminMessages() {
+  useEffect(() => { document.title = 'Konduyt Admin'; }, []);
   const [gate, setGate] = useState('checking'); // checking | ok | denied | unconfigured
   const [list, setList] = useState([]);
   const [form, setForm] = useState(BLANK);

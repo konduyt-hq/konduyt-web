@@ -21,6 +21,8 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [lastMethod, setLastMethod] = useState(null);
 
+  useEffect(() => { document.title = 'Konduyt Sign Up'; }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const e = params.get('error');

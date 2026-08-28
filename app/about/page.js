@@ -1,11 +1,15 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useHomeHref } from '../useHomeHref';
 import Logo from '../Logo';
 
 export default function About() {
   const homeHref = useHomeHref();
+
+  useEffect(() => { document.title = 'Konduyt About'; }, []);
+
   return (
     <div className="about-root">
       <nav className="about-nav">

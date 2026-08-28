@@ -94,7 +94,19 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [tab, setTab] = useState('integrations'); // money | integrations | taxes | messages | settings
+  const [tab, setTab] = useState('money'); // money | connections | quickstart | checkout | messages | settings
+
+  useEffect(() => {
+    const TAB_TITLES = {
+      money: 'Konduyt Payments',
+      connections: 'Konduyt Payment Providers',
+      quickstart: 'Konduyt Quickstart',
+      checkout: 'Konduyt Preview Checkouts',
+      messages: 'Konduyt Messages',
+      settings: 'Konduyt Settings',
+    };
+    document.title = TAB_TITLES[tab] || 'Konduyt Dashboard';
+  }, [tab]);
   const [msgs, setMsgs] = useState([]);
   const [msgUnread, setMsgUnread] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1254,10 +1266,10 @@ export default function Dashboard() {
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
         {[
-          ['money', 'Payments'],
-          ['connections', 'Providers'],
           ['quickstart', 'Quickstart'],
-          ['checkout', 'Preview Checkout'],
+          ['connections', 'Payment Providers'],
+          ['money', 'Payments'],
+          ['checkout', 'Preview Checkouts'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -1776,7 +1788,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                         <span>
                           <strong>You cannot receive money yet.</strong> Your keys work, but a payment needs
                           somewhere to go. Go to <button className="link-inline" type="button"
-                            onClick={() => setTab('connections')}>Providers</button>, connect a
+                            onClick={() => setTab('connections')}>Payment Providers</button>, connect a
                           provider account and enable a payment method — until then, payment attempts will
                           fail with <code className="inline-code">no_provider_connected</code>.
                         </span>
@@ -2367,7 +2379,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
             {tab === 'checkout' && (
               <div className="mpesa-page">
                 <div className="con-home-head">
-                  <h1 className="con-h1">Preview Checkout</h1>
+                  <h1 className="con-h1">Preview Checkouts</h1>
                   <p className="con-sub">
                     See what your customers see, and drop the same checkout into your own site.
                   </p>

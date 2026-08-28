@@ -162,6 +162,7 @@ const DOCS = [
 const GROUPS = ['Getting started', 'Payments', 'Intelligence', 'Dashboard', 'Reference'];
 
 export default function Docs() {
+  useEffect(() => { document.title = 'Konduyt Docs'; }, []);
   const [query, setQuery] = useState('');
   const [activeId, setActiveId] = useState('introduction');
   const [lang, setLang] = useState('javascript');

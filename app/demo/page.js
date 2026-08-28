@@ -44,6 +44,7 @@ function fmt(amountMinor, currency) {
 }
 
 export default function DemoCheckout() {
+  useEffect(() => { document.title = 'Konduyt Demo'; }, []);
   const [selected, setSelected] = useState('pesalink');
   const [stage, setStage] = useState('form');
   const [phone, setPhone] = useState('');

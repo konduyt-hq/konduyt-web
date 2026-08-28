@@ -16,6 +16,7 @@ const ERRORS = {
 };
 
 export default function Signin() {
+  useEffect(() => { document.title = 'Konduyt Sign In'; }, []);
   const [error, setError] = useState('');
   const [lastMethod, setLastMethod] = useState(null);
 

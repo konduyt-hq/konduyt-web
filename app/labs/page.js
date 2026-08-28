@@ -13,6 +13,8 @@ export default function Labs() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
+  useEffect(() => { document.title = 'Konduyt Labs'; }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setHasAccount(!!localStorage.getItem('kdu_token'));

@@ -18,6 +18,8 @@ export default function Pricing() {
   const [live, setLive] = useState(4);
   const [subMsg, setSubMsg] = useState('');
   const [subBusy, setSubBusy] = useState(false);
+
+  useEffect(() => { document.title = 'Konduyt Pricing'; }, []);
   const [localCur, setLocalCur] = useState(null);
   const [localRate, setLocalRate] = useState(null);
 
