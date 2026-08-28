@@ -18,40 +18,57 @@ export default function About() {
 
       <main className="about-doc">
         <p>
-          Konduyt is a payment infrastructure company built by Collective Brains,
-          based in Thika, Kenya.
+          Konduyt is a payment infrastructure company built by Collective Brains
+          in Thika, Kenya.
         </p>
 
         <p>
-          Businesses should not have to rebuild their payment systems every time
-          they enter a new country.
+          A business should not have to rebuild its payment system every time
+          it enters a new country.
+        </p>
+
+        <p>But that is usually what happens.</p>
+
+        <p>
+          One provider here. Another there. Different APIs. Different payment
+          methods. Different currencies. Different rules.
+        </p>
+
+        <p>Konduyt puts them behind one integration.</p>
+
+        <p>
+          Connect your providers. Write your integration once. We handle the
+          messy parts underneath — payment methods, currencies, routing, and
+          the differences between markets.
         </p>
 
         <p>
-          Konduyt gives developers one integration for payments across providers,
-          payment methods, currencies, and markets. Instead of building and
-          maintaining separate integrations for every payment rail, businesses
-          connect to Konduyt and let the platform handle the complexity behind
-          the scenes.
+          And when a payment gets complicated, Konduyt helps figure it out.
+          Which provider should take it? Which payment method fits? What
+          happens if a route fails?
         </p>
 
         <p>
-          From cards and bank payments to mobile money and local payment methods,
-          Konduyt is built around one simple idea: however they pay, you get paid.
+          Tax is part of the same problem. Different countries have different
+          rules. Konduyt helps you understand what applies to each sale and
+          what you need to do about it.
         </p>
+
+        <p>Your customers pay the way they already do.</p>
+
+        <p>Your money stays in your own accounts.</p>
+
+        <p>We never touch it.</p>
+
+        <p>However they pay, you get paid.</p>
 
         <p>
           Konduyt is part of Collective Brains, a technology company based in
-          Thika, Kenya, building products that remove unnecessary complexity from
-          the systems people and businesses depend on.
+          Thika, Kenya. We build things that make complicated systems easier
+          to use.
         </p>
 
-        <p>We believe great technology should make complicated things feel simple.</p>
-
-        <p>
-          Konduyt is our answer to one of the biggest problems in global commerce:
-          payments should work wherever your customers are.
-        </p>
+        <p>Payments are just where we started.</p>
 
         <p><Link href={homeHref}>&larr; Back to Konduyt</Link></p>
       </main>

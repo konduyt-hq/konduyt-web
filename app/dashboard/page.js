@@ -105,7 +105,7 @@ export default function Dashboard() {
     const TAB_TITLES = {
       money: 'Konduyt Payments',
       connections: 'Konduyt Payment Providers',
-      quickstart: 'Konduyt Quickstart',
+      quickstart: 'Konduyt Code Samples',
       checkout: 'Konduyt Preview Checkouts',
       messages: 'Konduyt Messages',
       settings: 'Konduyt Settings',
@@ -1274,7 +1274,7 @@ export default function Dashboard() {
       {/* ===== Tabs ===== */}
       <nav className="con-tabs">
         {[
-          ['quickstart', 'Quickstart'],
+          ['quickstart', 'Code Samples'],
           ['connections', 'Payment Providers'],
           ['money', 'Payments'],
           ['checkout', 'Preview Checkouts'],
@@ -1601,7 +1601,7 @@ export default function Dashboard() {
             {tab === 'quickstart' && (
               <div className="lang-page">
                 <div className="con-home-head">
-                  <h1 className="con-h1">Languages</h1>
+                  <h1 className="con-h1">Code Samples</h1>
                   <p className="con-sub">
                     Pick your language to see how to create a payment with Konduyt. Then grab your keys below.
                   </p>
