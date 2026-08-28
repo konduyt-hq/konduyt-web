@@ -225,8 +225,120 @@ export const ONETIME_CLIENT_CODE = `<!-- public/index.html -->
   });
 </script>`;
 
+export const FAILOVER_SERVER_CODE = {
+  js: `// server.js -- Node.js + Express
+const express = require('express');
+const app = express();
+
+const SECRET_KEY = process.env.KONDUYT_SECRET_KEY;
+
+app.post('/create-payment', async (req, res) => {
+  // The key difference from a normal payment: pass 'method', not
+  // 'provider'. This is what actually triggers real failover -- Konduyt
+  // tries every provider configured for this method, in order, stopping
+  // on success and only continuing on a genuinely SAFE failure. An
+  // ambiguous outcome (timeout, unclear response) is never auto-retried.
+  const r = await fetch('https://konduyt-api.onrender.com/v1/payments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: \`Bearer \${SECRET_KEY}\`,
+    },
+    body: JSON.stringify({ amount: 500000, currency: 'KES', method: 'mpesa' }),
+  });
+  const data = await r.json();
+
+  // Fetch it back to see the real routing_attempts -- which provider(s)
+  // were tried, in what order, and why.
+  const r2 = await fetch(\`https://konduyt-api.onrender.com/v1/payments/\${data.id}\`, {
+    headers: { Authorization: \`Bearer \${SECRET_KEY}\` },
+  });
+  res.json(await r2.json());
+});
+
+app.listen(3003);`,
+
+  python: `# server.py -- Flask
+import os
+import requests
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+SECRET_KEY = os.environ["KONDUYT_SECRET_KEY"]
+
+@app.route("/create-payment", methods=["POST"])
+def create_payment():
+    # 'method', not 'provider' -- this is what triggers real failover.
+    r = requests.post(
+        "https://konduyt-api.onrender.com/v1/payments",
+        headers={"Authorization": f"Bearer {SECRET_KEY}"},
+        json={"amount": 500000, "currency": "KES", "method": "mpesa"},
+    )
+    data = r.json()
+
+    # The real attempt history -- which provider(s), in what order, why.
+    r2 = requests.get(
+        f"https://konduyt-api.onrender.com/v1/payments/{data['id']}",
+        headers={"Authorization": f"Bearer {SECRET_KEY}"},
+    )
+    return jsonify(r2.json())
+
+if __name__ == "__main__":
+    app.run(port=3003)`,
+
+  cpp: `// server.cpp -- using libcurl for the HTTP calls
+#include <curl/curl.h>
+#include <string>
+#include <cstdlib>
+
+std::string create_payment() {
+    CURL* curl = curl_easy_init();
+    std::string response;
+
+    const char* secret_key = std::getenv("KONDUYT_SECRET_KEY");
+    std::string auth_header = std::string("Authorization: Bearer ") + secret_key;
+
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, auth_header.c_str());
+
+    // "method", not "provider" -- triggers real failover across every
+    // provider configured for this method, stopping on success or on a
+    // genuinely unsafe/ambiguous outcome, never guessing.
+    std::string body = R"({"amount": 500000, "currency": "KES", "method": "mpesa"})";
+
+    curl_easy_setopt(curl, CURLOPT_URL, "https://konduyt-api.onrender.com/v1/payments");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    // ... set CURLOPT_WRITEFUNCTION to capture the response ...
+    curl_easy_perform(curl);
+
+    // A second GET to /v1/payments/{id} (same pattern, GET instead of POST)
+    // returns the real routing_attempts history for display.
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    return response;
+}`,
+};
+
+export const FAILOVER_CLIENT_CODE = `<!-- public/index.html -->
+<script>
+  document.getElementById('buyBtn').addEventListener('click', async () => {
+    const r = await fetch('/create-payment', { method: 'POST' });
+    const data = await r.json();
+
+    // data.routing_attempts: [{ attempt_number, provider, outcome, fallback_class }, ...]
+    // Render each attempt -- which provider, what happened, safe or not.
+    data.routing_attempts.forEach((attempt) => {
+      console.log(attempt.attempt_number, attempt.provider, attempt.outcome);
+    });
+  });
+</script>`;
+
 // Which languages have a real server-side sample right now. The rest of
 // LANG_SNIPPETS' languages (PHP, Go, Ruby, Rust, C#, Java, Kotlin, Swift)
 // aren't written yet -- listed honestly as "coming soon" in the UI rather
 // than silently missing or showing wrong/placeholder code.
 export const SCENARIO_SERVER_LANGUAGES = ['js', 'python', 'cpp'];
+

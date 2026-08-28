@@ -8,6 +8,7 @@ import { LANG_SNIPPETS } from './langsnippets';
 import {
   RECURRING_SERVER_CODE, RECURRING_CLIENT_CODE,
   ONETIME_SERVER_CODE, ONETIME_CLIENT_CODE,
+  FAILOVER_SERVER_CODE, FAILOVER_CLIENT_CODE,
   SCENARIO_SERVER_LANGUAGES,
 } from './scenariocode';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
@@ -2436,6 +2437,26 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       </button>
                     </div>
                   </div>
+
+                  <div className="scenario-card">
+                    <div className="scenario-card-head">
+                      <span className="scenario-card-name">Failed payment + rerouting</span>
+                      <span className="scenario-card-tag">Real failover</span>
+                    </div>
+                    <p className="scenario-card-desc">
+                      A real payment routed by <code className="inline-code">method</code>, not an explicit
+                      provider -- Konduyt tries every configured provider in order, stopping on success,
+                      continuing only on a genuinely safe failure. Never on an ambiguous one.
+                    </p>
+                    <div className="scenario-card-actions">
+                      <a href="https://konduyt-test-failover-demo.onrender.com" target="_blank"
+                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
+                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
+                        onClick={() => { setCodeViewerScenario('failover'); setCodeViewerFile('server'); }}>
+                        View code
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* In-dashboard code viewer -- never leaves Konduyt. Server
@@ -2444,10 +2465,15 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     the client file is plain browser JS regardless of server
                     language, since that's inherently what runs in a browser. */}
                 {codeViewerScenario && (() => {
-                  const isRecurring = codeViewerScenario === 'recurring';
-                  const serverCode = (isRecurring ? RECURRING_SERVER_CODE : ONETIME_SERVER_CODE)[codeViewerLang];
-                  const clientCode = isRecurring ? RECURRING_CLIENT_CODE : ONETIME_CLIENT_CODE;
-                  const scenarioLabel = isRecurring ? 'Recurring subscription' : 'One-time purchase';
+                  const SCENARIOS = {
+                    recurring: { label: 'Recurring subscription', server: RECURRING_SERVER_CODE, client: RECURRING_CLIENT_CODE },
+                    onetime: { label: 'One-time purchase', server: ONETIME_SERVER_CODE, client: ONETIME_CLIENT_CODE },
+                    failover: { label: 'Failed payment + rerouting', server: FAILOVER_SERVER_CODE, client: FAILOVER_CLIENT_CODE },
+                  };
+                  const scenario = SCENARIOS[codeViewerScenario];
+                  const serverCode = scenario.server[codeViewerLang];
+                  const clientCode = scenario.client;
+                  const scenarioLabel = scenario.label;
                   const displayedCode = codeViewerFile === 'server' ? serverCode : clientCode;
                   return (
                     <div className="code-viewer">
