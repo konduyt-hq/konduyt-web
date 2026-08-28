@@ -1,6 +1,7 @@
 import DevPanel from './DevPanel';
 import NavCta from './NavCta';
 import WarmupPing from './WarmupPing';
+import MobileNav from './MobileNav';
 
 export default function Home() {
   return (
@@ -114,6 +115,7 @@ export default function Home() {
             <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
             <a href="/labs/">Labs</a>
           </div>
+          <MobileNav />
           <div className="nav-right">
             <a href="/signin/" className="signin">Sign in</a>
             <NavCta />

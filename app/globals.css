@@ -56,6 +56,17 @@
   }
   .nav-links a:hover{color:var(--ink);}
   .nav-right{display:flex; align-items:center; gap:22px;}
+  .mobile-nav{display:none; position:relative;}
+  .mobile-nav-toggle{background:none; border:1px solid var(--border); border-radius:8px;
+    width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+    color:var(--ink); cursor:pointer;}
+  .mobile-nav-toggle:hover{background:var(--elev);}
+  .mobile-nav-panel{position:absolute; top:calc(100% + 8px); left:0; z-index:50;
+    background:#fff; border:1px solid var(--border); border-radius:12px; padding:8px;
+    min-width:180px; box-shadow:0 8px 24px rgba(0,0,0,0.10); display:flex; flex-direction:column;}
+  .mobile-nav-link{display:block; padding:11px 12px; border-radius:8px; color:var(--ink);
+    text-decoration:none; font-size:14.5px; font-weight:500;}
+  .mobile-nav-link:hover{background:var(--elev);}
   .signin{font-size:14.5px; font-weight:500; color:var(--ink); text-decoration:none;}
   .btn-start{
     background:var(--elev);
@@ -337,6 +348,7 @@
     h1{font-size:30px;}
     .code-grid{grid-template-columns:1fr;}
     .nav-links{display:none;}
+    .mobile-nav{display:block;}
     .wrap{padding:0 20px;}
   }
 
@@ -1158,6 +1170,9 @@
     .pricing-ex-grid{grid-template-columns:repeat(2,1fr);}
     .pricing-what{grid-template-columns:1fr; gap:22px;}
     .pricing-wrap{padding:40px 18px 60px;}
+  }
+  @media (max-width: 420px){
+    .pricing-ex-grid{grid-template-columns:1fr; gap:8px;}
   }
 
   /* Intelligence teaser on pricing page */
