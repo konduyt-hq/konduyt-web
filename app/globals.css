@@ -2370,3 +2370,38 @@
 
   .settings-about-link{font-size:13.5px;color:var(--green-ink);text-decoration:none;font-weight:600;}
   .settings-about-link:hover{text-decoration:underline;}
+
+  /* Standalone payment link page (/pay/) */
+  .pay-root{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding:48px 20px;
+    background-color:var(--bg);
+    background-image:radial-gradient(var(--dot) 1px, transparent 1px);
+    background-size:24px 24px;
+  }
+  .pay-header{position:absolute; top:32px; left:32px;}
+  .pay-brand{font-weight:800; font-size:16px; letter-spacing:-0.01em; color:var(--ink);}
+  .pay-card{
+    background:#fff; border:1px solid var(--border); border-radius:16px;
+    padding:40px 32px; max-width:400px; width:100%; text-align:center;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .pay-status{font-size:14px; color:var(--text-secondary);}
+  .pay-merchant{font-size:13px; color:var(--text-secondary); font-weight:600;
+    text-transform:uppercase; letter-spacing:0.04em; margin-bottom:10px;}
+  .pay-amount{font-size:34px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin-bottom:14px;}
+  .pay-description{font-size:14px; color:var(--text-secondary); line-height:1.6; margin-bottom:26px;}
+  .pay-btn{
+    width:100%; background:var(--ink); color:#fff; border:none; border-radius:10px;
+    padding:15px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .pay-btn:hover:not(:disabled){opacity:0.85;}
+  .pay-btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .pay-icon{
+    width:52px; height:52px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:24px; font-weight:700; margin:0 auto 18px;
+  }
+  .pay-icon-success{background:#e8f5ee; color:#0a7a3e;}
+  .pay-icon-error{background:#fdecea; color:#a23b2f;}
+  .pay-message{font-size:15px; color:var(--ink); line-height:1.6;}
+  .pay-footer{margin-top:32px; font-size:12px; color:var(--text-secondary); font-weight:600;}
