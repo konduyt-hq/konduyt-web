@@ -9,6 +9,8 @@ import {
   RECURRING_SERVER_CODE, RECURRING_CLIENT_CODE,
   ONETIME_SERVER_CODE, ONETIME_CLIENT_CODE,
   FAILOVER_SERVER_CODE, FAILOVER_CLIENT_CODE,
+  CROSSBORDER_SERVER_CODE, CROSSBORDER_CLIENT_CODE,
+  PAYG_SERVER_CODE, PAYG_CLIENT_CODE,
   SCENARIO_SERVER_LANGUAGES,
 } from './scenariocode';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
@@ -2457,6 +2459,46 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       </button>
                     </div>
                   </div>
+
+                  <div className="scenario-card">
+                    <div className="scenario-card-head">
+                      <span className="scenario-card-name">Cross-border payment</span>
+                      <span className="scenario-card-tag">Shopper-aware</span>
+                    </div>
+                    <p className="scenario-card-desc">
+                      The same merchant, the same checkout call -- but real eligible methods change based
+                      on the shopper's real country, via <code className="inline-code">customer_country</code>.
+                      Never a fixed list.
+                    </p>
+                    <div className="scenario-card-actions">
+                      <a href="https://konduyt-test-crossborder.onrender.com" target="_blank"
+                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
+                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
+                        onClick={() => { setCodeViewerScenario('crossborder'); setCodeViewerFile('server'); }}>
+                        View code
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="scenario-card">
+                    <div className="scenario-card-head">
+                      <span className="scenario-card-name">Pay-as-you-go</span>
+                      <span className="scenario-card-tag">Usage-based</span>
+                    </div>
+                    <p className="scenario-card-desc">
+                      A real bill computed from usage, then a real checkout for that exact amount --
+                      not a fixed price. Automated recurring metered billing isn't built yet; this shows
+                      the part that is.
+                    </p>
+                    <div className="scenario-card-actions">
+                      <a href="https://konduyt-test-payg.onrender.com" target="_blank"
+                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
+                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
+                        onClick={() => { setCodeViewerScenario('payg'); setCodeViewerFile('server'); }}>
+                        View code
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* In-dashboard code viewer -- never leaves Konduyt. Server
@@ -2469,6 +2511,8 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                     recurring: { label: 'Recurring subscription', server: RECURRING_SERVER_CODE, client: RECURRING_CLIENT_CODE },
                     onetime: { label: 'One-time purchase', server: ONETIME_SERVER_CODE, client: ONETIME_CLIENT_CODE },
                     failover: { label: 'Failed payment + rerouting', server: FAILOVER_SERVER_CODE, client: FAILOVER_CLIENT_CODE },
+                    crossborder: { label: 'Cross-border payment', server: CROSSBORDER_SERVER_CODE, client: CROSSBORDER_CLIENT_CODE },
+                    payg: { label: 'Pay-as-you-go', server: PAYG_SERVER_CODE, client: PAYG_CLIENT_CODE },
                   };
                   const scenario = SCENARIOS[codeViewerScenario];
                   const serverCode = scenario.server[codeViewerLang];
