@@ -1591,6 +1591,14 @@ export default function Dashboard() {
                   }
 
                   const list = q ? topProviders.filter(matchesQuery) : topProviders;
+                  // Connected providers first, for easier visibility --
+                  // a stable sort, so within "connected" and "not connected"
+                  // each keeps its original relative order.
+                  const sortedList = [...list].sort((a, b) => {
+                    const aConnected = isConnected(a.id) ? 0 : 1;
+                    const bConnected = isConnected(b.id) ? 0 : 1;
+                    return aConnected - bConnected;
+                  });
 
                   if (q && list.length === 0) {
                     return (
@@ -1613,7 +1621,7 @@ export default function Dashboard() {
                   return (
                     <div className="provider-directory">
                       <div className="provider-grid">
-                        {list.map(renderProviderCard)}
+                        {sortedList.map(renderProviderCard)}
                       </div>
                     </div>
                   );
