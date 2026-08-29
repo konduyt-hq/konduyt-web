@@ -2275,6 +2275,14 @@
 
   /* DevPanel: env help + view more */
   .step-hint{font-size:12.5px;color:var(--text-secondary);line-height:1.55;margin:0 0 14px;}
+  .devpanel-keys-warning{display:flex; align-items:flex-start; gap:10px; background:#fdecea;
+    border:1px solid #f0c9c2; color:#7a2e24; border-radius:12px; padding:13px 16px;
+    margin-bottom:18px; font-size:13px; line-height:1.55;}
+  .devpanel-keys-warning-icon{font-size:15px; flex-shrink:0; margin-top:1px; color:#a23b2f;}
+  .devpanel-keys-warning a{color:inherit; font-weight:700; text-decoration:underline;}
+  @media (max-width:640px){
+    .devpanel-keys-warning{padding:11px 13px; font-size:12.5px; margin-bottom:14px;}
+  }
   .view-more-btn{width:100%;margin-top:12px;background:none;border:1px dashed var(--border);border-radius:8px;padding:10px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-secondary);}
   .view-more-btn:hover{border-color:var(--ink);color:var(--ink);}
   .test-more{margin-top:12px;display:flex;flex-direction:column;gap:14px;}

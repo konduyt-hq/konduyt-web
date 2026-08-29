@@ -369,7 +369,6 @@ export default function DevPanel() {
   const [runState, setRunState] = useState('idle'); // idle | running | done
   const [result, setResult] = useState(null);
   const [showIntel, setShowIntel] = useState(false);
-  const [showEnv, setShowEnv] = useState(false);
   const [showMore, setShowMore] = useState(false);
   // TEMPORARY, test-only: lets payment intelligence be checked for different
   // countries on the landing-page demo before shipping real, automatic
@@ -420,6 +419,19 @@ export default function DevPanel() {
         <button className="btn-test" type="button" onClick={handleRun}>Test before you sign up</button>
       </div>
       <div className="panel-body">
+        {/* Real, honest warning -- these are Konduyt's own shared demo keys,
+            not a real merchant's, and this page has no concept of a
+            separate "test mode": it's simply this universal key against a
+            dedicated test endpoint that never moves real money. */}
+        <div className="devpanel-keys-warning">
+          <span className="devpanel-keys-warning-icon">⚠</span>
+          <span>
+            You&apos;re using Konduyt&apos;s universal demo keys, shared by everyone who visits this page —
+            not your own. <a href="/signup/">Sign up</a> to get your own real keys and connect your own
+            payment provider.
+          </span>
+        </div>
+
         {/* Universal keys — stacked (secret above publishable) */}
         <div className="keys-stack">
           <div className="key-block">
@@ -435,24 +447,13 @@ export default function DevPanel() {
         {/* 1. Set your key */}
         <div className="step-label">1. Set your key</div>
         <p className="step-hint">
-          Keep your secret key out of your code — put it in an environment variable your app reads at runtime.
-          {' '}
-          <button type="button" className="env-toggle" onClick={() => setShowEnv((v) => !v)}>
-            New to .env files? Set one up (2 minutes) {showEnv ? '▲' : '▼'}
-          </button>
+          The key above is Konduyt&apos;s own universal demo key — it only works against the test endpoint
+          below and moves no real money, so it&apos;s fine to paste directly like this. It is <strong>not</strong> an
+          example of how to handle a real key. Once you sign up, you get your own secret key, and that one
+          works completely differently: never hardcode it and never put it in a <code>.env</code> file — set
+          it as a real environment variable on whatever host runs your code (Render, Vercel, Railway, and
+          so on), the same way explained in the dashboard&apos;s Code Samples tab.
         </p>
-        {showEnv && (
-          <div className="env-help">
-            <div className="env-step"><span className="env-num">1</span> In your project root, create a file named <code>.env</code></div>
-            <div className="env-step"><span className="env-num">2</span> Add this line:</div>
-            <div className="code-box env-code">
-              <div className="code-box-head"><span>.env</span><CopyButton text={`KONDUYT_SECRET_KEY=${KEYS.secret}`} /></div>
-              <pre className="code-pre">{`KONDUYT_SECRET_KEY=${KEYS.secret}`}</pre>
-            </div>
-            <div className="env-step"><span className="env-num">3</span> Add <code>.env</code> to your <code>.gitignore</code> so it&apos;s never committed</div>
-            <div className="env-step"><span className="env-num">4</span> Read it in code (e.g. <code>process.env.KONDUYT_SECRET_KEY</code> in Node, <code>os.environ[&quot;KONDUYT_SECRET_KEY&quot;]</code> in Python)</div>
-          </div>
-        )}
 
         {/* 2. Language selector — matches the dashboard set */}
         <div className="step-label">2. Choose your language</div>
