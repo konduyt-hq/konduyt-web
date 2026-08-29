@@ -172,6 +172,11 @@
       ".kdu-recurring-badge{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;" +
       "text-transform:uppercase;letter-spacing:.04em;color:var(--kdu-brand-dark,#15803d);" +
       "background:var(--kdu-brand-soft,#dcfce7);padding:4px 9px;border-radius:6px}" +
+      ".kdu-demo-warn{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;" +
+      "color:#7a2e24;background:#fdecea;border:1px solid #f0c9c2;border-radius:10px;" +
+      "padding:10px 12px;margin-bottom:14px}" +
+      ".kdu-demo-warn a{color:inherit;font-weight:700;text-decoration:underline}" +
+      ".kdu-m.dark .kdu-demo-warn{background:#3a1f1c;color:#f5b8ac;border-color:#5c2e28}" +
       ".kdu-lbl{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b6b6b;margin-bottom:10px}" +
       ".kdu-m.dark .kdu-lbl{color:#a1a1aa}" +
       ".kdu-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}" +
@@ -360,7 +365,7 @@
       return h;
     }
 
-    function render(rawMethods, reason) {
+    function render(rawMethods, reason, isDemoKey) {
       // Filter/reorder within the server's real eligible list -- never adds
       // to it. See applyMerchantPreferences for why this is safe by
       // construction, not just by convention.
@@ -370,6 +375,18 @@
       x.addEventListener("click", close);
       modal.appendChild(x);
       modal.appendChild(header());
+
+      if (isDemoKey) {
+        // A REAL signal from the server (is_demo_key), never inferred from
+        // the key string client-side -- see app/demo_project.py. Shown
+        // regardless of whether methods are empty or not: whoever's
+        // looking at this checkout, on any site using these keys, should
+        // know they're using Konduyt's own shared demo project.
+        var warn = el("div", "kdu-demo-warn");
+        warn.innerHTML = "You're using Konduyt's universal demo keys, shared by everyone \u2014 not your own. " +
+          "<a href=\"https://konduyt.dev/signup/\" target=\"_blank\" rel=\"noreferrer\">Sign up</a> to get your own real keys.";
+        modal.appendChild(warn);
+      }
 
       if (!methods || methods.length === 0) {
         var emptyMsg;
@@ -495,7 +512,7 @@
             modal._recurring = !!res.d.recurring;
             modal._interval = res.d.interval;
           }
-          render(res.d.methods || [], res.d.reason);
+          render(res.d.methods || [], res.d.reason, res.d.is_demo_key);
         })
         .catch(function () {
           modal._merchant = "Merchant";
