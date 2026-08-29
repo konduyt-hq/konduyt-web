@@ -18,6 +18,7 @@ import {
 import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP } from './envsetup';
 import { HOSTING_PLATFORMS } from './hostingplatforms';
+import { INTELLIGENCE_TESTING_SDK } from './intelligencesdk';
 import { MERCHANT_COUNTRIES } from './countries';
 
 const API_BASE =
@@ -1857,7 +1858,9 @@ export default function Dashboard() {
                                 const platform = HOSTING_PLATFORMS.find((p) => p.id === envPlatform) || HOSTING_PLATFORMS[0];
                                 return (
                                   <ol className="env-platform-steps-list">
-                                    {platform.steps.map((s, i) => <li key={i}>{s}</li>)}
+                                    {platform.steps.map((s, i) => (
+                                      <li key={i}>{s.replace('{{KEY_VALUE}}', 'your real key').replace('{{KEY_VALUE_INLINE}}', 'your_real_key')}</li>
+                                    ))}
                                   </ol>
                                 );
                               })()}
@@ -1915,6 +1918,39 @@ export default function Dashboard() {
                           </div>
                         );
                       })}
+
+                      {/* Real, standalone testing SDK -- one self-contained
+                          HTML file (HTML + CSS + JS together), not tied to
+                          any one backend language. Save it, open it in a
+                          browser, it calls your own real /checkout/config
+                          and renders the actual payment intelligence layer. */}
+                      {(() => {
+                        const pubKey = keys?.live?.publishable_key || 'YOUR_PUBLISHABLE_KEY';
+                        const intelHtml = INTELLIGENCE_TESTING_SDK
+                          .replaceAll('{{API}}', API_BASE)
+                          .replaceAll('{{PUBLISHABLE_KEY}}', pubKey);
+                        const intelCopyId = 'intelligence_sdk';
+                        return (
+                          <div className="lang-block">
+                            <div className="lang-block-head">
+                              <span className="lang-block-title">Test the payment intelligence layer — standalone (HTML)</span>
+                              <button className="keys-code-copy static" type="button"
+                                onClick={() => copyToClipboard(intelHtml, intelCopyId)}>
+                                {copied === intelCopyId ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                            <p className="env-p">
+                              Save this as <code className="inline-code">intelligence.html</code> and open it directly
+                              in a browser — no build step, no server. It calls your real publishable key and shows
+                              the actual ranked methods, real fees, and the cheapest one highlighted, exactly what a
+                              real checkout is built on.
+                            </p>
+                            <div className="keys-codeblock">
+                              <pre><code>{intelHtml}</code></pre>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                     </>
                   );

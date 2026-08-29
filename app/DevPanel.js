@@ -437,7 +437,9 @@ export default function DevPanel() {
           const platform = HOSTING_PLATFORMS.find((p) => p.id === devPlatform) || HOSTING_PLATFORMS[0];
           return (
             <ol className="env-platform-steps-list">
-              {platform.steps.map((s, i) => <li key={i}>{s}</li>)}
+              {platform.steps.map((s, i) => (
+                <li key={i}>{s.replace('{{KEY_VALUE}}', 'the universal secret key above').replace('{{KEY_VALUE_INLINE}}', KEYS.secret)}</li>
+              ))}
             </ol>
           );
         })()}
