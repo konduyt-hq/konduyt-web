@@ -5,6 +5,7 @@ import CheckoutModal from './CheckoutModal';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
+import { buildGreeting } from './greeting';
 import {
   RECURRING_SERVER_CODE, RECURRING_CLIENT_CODE,
   ONETIME_SERVER_CODE, ONETIME_CLIENT_CODE,
@@ -112,9 +113,34 @@ export default function Dashboard() {
       checkout: 'Konduyt Preview Checkouts',
       messages: 'Konduyt Messages',
       settings: 'Konduyt Settings',
+      analytics: 'Konduyt Analytics',
     };
     document.title = TAB_TITLES[tab] || 'Konduyt Dashboard';
   }, [tab]);
+
+  // Keeps the periodic heartbeat below reporting the CURRENT tab, not a
+  // stale value captured when the interval was first set up.
+  const tabRef = useRef(tab);
+  useEffect(() => { tabRef.current = tab; }, [tab]);
+
+  // Real presence: a heartbeat every 45s while the dashboard stays open --
+  // the same signal a real "online now" / session-duration reading in the
+  // admin analytics tool depends on. The FIRST heartbeat (which the
+  // greeting reacts to) is sent separately, right after login is
+  // confirmed -- this interval is only the ongoing "still here" signal.
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(() => {
+      const t = getToken();
+      if (!t) return;
+      fetch(`${API_BASE}/v1/heartbeat`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tab: tabRef.current }),
+      }).catch(() => {});
+    }, 45000);
+    return () => clearInterval(id);
+  }, [user]);
   const [msgs, setMsgs] = useState([]);
   const [msgUnread, setMsgUnread] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -280,6 +306,20 @@ export default function Dashboard() {
       })
       .then((u) => {
         setUser(u);
+        // Real presence + greeting: fired independently of the rest of the
+        // load sequence (never awaited into it) so a heartbeat failure can
+        // never block or delay the dashboard actually loading.
+        fetch(`${API_BASE}/v1/heartbeat`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tab: 'money' }),
+        })
+          .then((r) => r.json())
+          .then((hb) => {
+            const text = buildGreeting(u?.name, hb.previous_last_seen_at, hb.is_first_ever);
+            if (text) setAccountNotice({ kind: 'ok', text });
+          })
+          .catch(() => {});
         return fetch(`${API_BASE}/projects`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -527,6 +567,28 @@ export default function Dashboard() {
       if (r.ok) { const d = await r.json(); setIsAdmin(!!d.is_admin); }
     } catch (e) {}
   }
+
+  const [analyticsOverview, setAnalyticsOverview] = useState(null);
+  const [analyticsUsers, setAnalyticsUsers] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  async function loadAnalytics() {
+    setAnalyticsLoading(true);
+    try {
+      const [ovR, usersR] = await Promise.all([
+        fetch(`${API_BASE}/admin/analytics/overview`, { headers: authHeaders() }),
+        fetch(`${API_BASE}/admin/analytics/users`, { headers: authHeaders() }),
+      ]);
+      if (ovR.ok) setAnalyticsOverview(await ovR.json());
+      if (usersR.ok) setAnalyticsUsers((await usersR.json()).users || []);
+    } catch (e) {}
+    setAnalyticsLoading(false);
+  }
+
+  useEffect(() => {
+    if (tab === 'analytics' && isAdmin && !analyticsOverview) loadAnalytics();
+    // eslint-disable-next-line
+  }, [tab, isAdmin]);
   useEffect(() => {
     if (tab === 'messages') loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1137,6 +1199,22 @@ export default function Dashboard() {
         </div>
 
         <div className="con-topbar-right">
+          {isAdmin && (
+            <button
+              className={tab === 'analytics' ? 'con-icon-btn active' : 'con-icon-btn'}
+              onClick={() => setTab('analytics')}
+              type="button"
+              title="Analytics"
+              aria-label="Analytics"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </button>
+          )}
           <button
             className={tab === 'messages' ? 'con-icon-btn active' : 'con-icon-btn'}
             onClick={() => setTab('messages')}
@@ -2945,6 +3023,112 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       </div>
                     </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {tab === 'analytics' && isAdmin && (
+              <div className="mpesa-page">
+                <div className="con-home-head con-home-head-row">
+                  <div>
+                    <h1 className="con-h1">Analytics</h1>
+                    <p className="con-sub">Real, aggregate developer activity — internal, admin only.</p>
+                  </div>
+                </div>
+
+                {analyticsLoading && !analyticsOverview && <p className="con-sub">Loading…</p>}
+
+                {analyticsOverview && (
+                  <>
+                    <div className="ov-stats an-stats">
+                      <div className="ov-stat">
+                        <span className="ov-stat-label">Active today</span>
+                        <span className="ov-stat-value">{analyticsOverview.dau}</span>
+                      </div>
+                      <div className="ov-stat">
+                        <span className="ov-stat-label">Active this week</span>
+                        <span className="ov-stat-value">{analyticsOverview.wau}</span>
+                      </div>
+                      <div className="ov-stat">
+                        <span className="ov-stat-label">Active this month</span>
+                        <span className="ov-stat-value">{analyticsOverview.mau}</span>
+                      </div>
+                      <div className="ov-stat">
+                        <span className="ov-stat-label">Total developers</span>
+                        <span className="ov-stat-value">{analyticsOverview.total_users}</span>
+                      </div>
+                      <div className="ov-stat">
+                        <span className="ov-stat-label">New this week</span>
+                        <span className="ov-stat-value">{analyticsOverview.new_users_this_week}</span>
+                      </div>
+                      <div className="ov-stat">
+                        <span className="ov-stat-label">Avg. session</span>
+                        <span className="ov-stat-value">
+                          {analyticsOverview.avg_session_duration_seconds
+                            ? `${Math.round(analyticsOverview.avg_session_duration_seconds / 60)}m`
+                            : '—'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="an-section">
+                      <h2 className="an-section-h">Signups, last 30 days</h2>
+                      <div className="an-bars">
+                        {analyticsOverview.signups_last_30_days.map((d) => {
+                          const max = Math.max(1, ...analyticsOverview.signups_last_30_days.map((x) => x.signups));
+                          const pct = Math.max(3, Math.round((d.signups / max) * 100));
+                          return (
+                            <div key={d.date} className="an-bar-col" title={`${d.date}: ${d.signups}`}>
+                              <div className="an-bar" style={{ height: `${pct}%` }} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="an-section">
+                      <h2 className="an-section-h">Most-visited tabs</h2>
+                      <div className="money-simple-list">
+                        {analyticsOverview.top_tabs.length === 0 && (
+                          <div className="money-simple-row">
+                            <span className="money-simple-name">No data yet</span>
+                          </div>
+                        )}
+                        {analyticsOverview.top_tabs.map((t) => (
+                          <div className="money-simple-row" key={t.tab}>
+                            <span className="money-simple-name">{t.tab}</span>
+                            <span className="money-simple-amount">{t.visits}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="an-section">
+                      <h2 className="an-section-h">Developers</h2>
+                      <div className="an-user-list">
+                        {(analyticsUsers || []).map((u) => (
+                          <div className="an-user-row" key={u.user_id}>
+                            <div className="an-user-main">
+                              <span className={u.online_now ? 'an-user-dot online' : 'an-user-dot'} />
+                              <div>
+                                <div className="an-user-name">{u.name || u.email}</div>
+                                <div className="an-user-email">{u.email}</div>
+                              </div>
+                            </div>
+                            <div className="an-user-stats">
+                              <span>{u.online_now ? 'Online now' : (u.last_seen_at ? new Date(u.last_seen_at).toLocaleString() : 'Never')}</span>
+                              <span>{u.session_count} session{u.session_count === 1 ? '' : 's'}</span>
+                              <span>
+                                {u.avg_session_duration_seconds
+                                  ? `${Math.round(u.avg_session_duration_seconds / 60)}m avg`
+                                  : '—'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
