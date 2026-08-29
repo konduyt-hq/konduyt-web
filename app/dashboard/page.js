@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import CheckoutModal from './CheckoutModal';
+import LogoMark from '../LogoMark';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
@@ -80,6 +81,7 @@ export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
   const [accountNotice, setAccountNotice] = useState(null);
+  const [greetingText, setGreetingText] = useState('');
   const [identities, setIdentities] = useState(null);
   const [identitiesLoading, setIdentitiesLoading] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
@@ -317,7 +319,7 @@ export default function Dashboard() {
           .then((r) => r.json())
           .then((hb) => {
             const text = buildGreeting(u?.name, hb.previous_last_seen_at, hb.is_first_ever);
-            if (text) setAccountNotice({ kind: 'ok', text });
+            if (text) setGreetingText(text);
           })
           .catch(() => {});
         return fetch(`${API_BASE}/projects`, {
@@ -1161,44 +1163,20 @@ export default function Dashboard() {
     <div className="dash-root">
       {/* ===== Top bar ===== */}
       <header className="con-topbar">
-        <div className="con-topbar-left">
-          <Link href="/dashboard/" className="con-logo">Konduyt</Link>
-
-          {/* Project switcher */}
-          <div className="con-proj" ref={projectMenuRef}>
-            <button
-              className="con-proj-btn"
-              onClick={() => setProjectMenuOpen((o) => !o)}
-              type="button"
-            >
-              {active ? active.name : 'No project'} <span className="con-caret">▾</span>
-            </button>
-            {projectMenuOpen && (
-              <div className="con-proj-menu">
-                {projects.map((p) => (
-                  <button
-                    key={p.id}
-                    className={p.id === activeId ? 'con-proj-item active' : 'con-proj-item'}
-                    onClick={() => {
-                      setActiveId(p.id);
-                      setProjectMenuOpen(false);
-                    }}
-                    type="button"
-                  >
-                    <span className="con-proj-item-check">{p.id === activeId ? '✓' : ''}</span>
-                    <span>{p.name}</span>
-                  </button>
-                ))}
-                <div className="con-proj-divider" />
-                <button className="con-proj-item con-proj-new" onClick={createProject} type="button">
-                  + New Project
-                </button>
-              </div>
+        <div className="con-topbar-main">
+          <div className="con-topbar-left">
+            <Link href="/dashboard/" className="con-logo-icon" aria-label="Konduyt dashboard">
+              <LogoMark className="con-logo-mark" />
+            </Link>
+            {greetingText && (
+              <>
+                <span className="con-topbar-sep">|</span>
+                <span className="con-topbar-greeting">{greetingText}</span>
+              </>
             )}
           </div>
-        </div>
 
-        <div className="con-topbar-right">
+          <div className="con-topbar-right">
           {isAdmin && (
             <button
               className={tab === 'analytics' ? 'con-icon-btn active' : 'con-icon-btn'}
@@ -1280,6 +1258,44 @@ export default function Dashboard() {
                   onClick={logout}
                 >
                   Sign out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        </div>
+
+        <div className="con-topbar-project">
+          <span className="con-topbar-project-label">
+            You&apos;re currently working on <strong>{active ? active.name : 'no project'}</strong>
+          </span>
+          <div className="con-proj" ref={projectMenuRef}>
+            <button
+              className="con-proj-btn con-proj-btn-secondary"
+              onClick={() => setProjectMenuOpen((o) => !o)}
+              type="button"
+            >
+              Change <span className="con-caret">▾</span>
+            </button>
+            {projectMenuOpen && (
+              <div className="con-proj-menu">
+                {projects.map((p) => (
+                  <button
+                    key={p.id}
+                    className={p.id === activeId ? 'con-proj-item active' : 'con-proj-item'}
+                    onClick={() => {
+                      setActiveId(p.id);
+                      setProjectMenuOpen(false);
+                    }}
+                    type="button"
+                  >
+                    <span className="con-proj-item-check">{p.id === activeId ? '✓' : ''}</span>
+                    <span>{p.name}</span>
+                  </button>
+                ))}
+                <div className="con-proj-divider" />
+                <button className="con-proj-item con-proj-new" onClick={createProject} type="button">
+                  + New Project
                 </button>
               </div>
             )}
