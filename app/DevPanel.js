@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { LANG_ICONS, LANG_BRAND } from './dashboard/langicons';
-import { MERCHANT_COUNTRIES } from './dashboard/countries';
+import { HOSTING_PLATFORMS } from './dashboard/hostingplatforms';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
 const ICON_KEY = {
@@ -370,12 +370,7 @@ export default function DevPanel() {
   const [result, setResult] = useState(null);
   const [showIntel, setShowIntel] = useState(false);
   const [showMore, setShowMore] = useState(false);
-  // TEMPORARY, test-only: lets payment intelligence be checked for different
-  // countries on the landing-page demo before shipping real, automatic
-  // location detection. Client-side only -- picks what gets sent to
-  // /v1/demo/run, nothing persisted anywhere. Remove once real location
-  // detection ships and this demo shows a shopper's actual country automatically.
-  const [demoCountry, setDemoCountry] = useState('KE');
+  const [devPlatform, setDevPlatform] = useState('render');
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -386,7 +381,7 @@ export default function DevPanel() {
       const res = await fetch(`${API_BASE}/v1/demo/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 500000, currency: 'KES', country: demoCountry }),
+        body: JSON.stringify({ amount: 500000, currency: 'KES' }),
       });
       const data = await res.json();
       setResult(data);
@@ -409,29 +404,9 @@ export default function DevPanel() {
         <div className="tabs">
           <div className="tab active">Quick start</div>
         </div>
-        <div className="demo-country-box">
-          <span className="demo-country-tag">TEMP — TEST ONLY</span>
-          <select className="demo-country-select" value={demoCountry}
-            onChange={(e) => { setDemoCountry(e.target.value); setRunState('idle'); setResult(null); }}>
-            {MERCHANT_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-          </select>
-        </div>
         <button className="btn-test" type="button" onClick={handleRun}>Test before you sign up</button>
       </div>
       <div className="panel-body">
-        {/* Real, honest warning -- these are Konduyt's own shared demo keys,
-            not a real merchant's, and this page has no concept of a
-            separate "test mode": it's simply this universal key against a
-            dedicated test endpoint that never moves real money. */}
-        <div className="devpanel-keys-warning">
-          <span className="devpanel-keys-warning-icon">⚠</span>
-          <span>
-            You&apos;re using Konduyt&apos;s universal demo keys, shared by everyone who visits this page —
-            not your own. <a href="/signup/">Sign up</a> to get your own real keys and connect your own
-            payment provider.
-          </span>
-        </div>
-
         {/* Universal keys — stacked (secret above publishable) */}
         <div className="keys-stack">
           <div className="key-block">
@@ -447,13 +422,25 @@ export default function DevPanel() {
         {/* 1. Set your key */}
         <div className="step-label">1. Set your key</div>
         <p className="step-hint">
-          The key above is Konduyt&apos;s own universal demo key — it only works against the test endpoint
-          below and moves no real money, so it&apos;s fine to paste directly like this. It is <strong>not</strong> an
-          example of how to handle a real key. Once you sign up, you get your own secret key, and that one
-          works completely differently: never hardcode it and never put it in a <code>.env</code> file — set
-          it as a real environment variable on whatever host runs your code (Render, Vercel, Railway, and
-          so on), the same way explained in the dashboard&apos;s Code Samples tab.
+          A real key goes on your host, never in code. Pick yours:
         </p>
+        <div className="env-platform-tabs">
+          {HOSTING_PLATFORMS.map((p) => (
+            <button key={p.id} type="button"
+              className={devPlatform === p.id ? 'env-platform-tab active' : 'env-platform-tab'}
+              onClick={() => setDevPlatform(p.id)}>
+              {p.name}
+            </button>
+          ))}
+        </div>
+        {(() => {
+          const platform = HOSTING_PLATFORMS.find((p) => p.id === devPlatform) || HOSTING_PLATFORMS[0];
+          return (
+            <ol className="env-platform-steps-list">
+              {platform.steps.map((s, i) => <li key={i}>{s}</li>)}
+            </ol>
+          );
+        })()}
 
         {/* 2. Language selector — matches the dashboard set */}
         <div className="step-label">2. Choose your language</div>

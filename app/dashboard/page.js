@@ -16,7 +16,8 @@ import {
   SCENARIO_SERVER_LANGUAGES,
 } from './scenariocode';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
-import { ENV_SETUP, HOSTING_PLATFORMS } from './envsetup';
+import { ENV_SETUP } from './envsetup';
+import { HOSTING_PLATFORMS } from './hostingplatforms';
 import { MERCHANT_COUNTRIES } from './countries';
 
 const API_BASE =
@@ -151,6 +152,7 @@ export default function Dashboard() {
   const [msgLoading, setMsgLoading] = useState(false);
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
   const [envOpen, setEnvOpen] = useState(false); // ".env setup" explainer expand
+  const [envPlatform, setEnvPlatform] = useState('render'); // which hosting platform's steps are shown
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
@@ -1840,17 +1842,26 @@ export default function Dashboard() {
                               <div className="env-step-title">Set it as a real environment variable on whatever host runs your {isPlatform ? 'backend' : 'code'}</div>
                               <p className="env-p">
                                 Not a file on your computer — a setting on the actual server or platform your
-                                {isPlatform ? ' backend' : ' code'} runs on. A few concrete examples:
+                                {isPlatform ? ' backend' : ' code'} runs on. Pick your host to see the real steps:
                               </p>
-                              <div className="env-platforms">
+                              <div className="env-platform-tabs">
                                 {HOSTING_PLATFORMS.map((p) => (
-                                  <div className="env-platform-row" key={p.name}>
-                                    <span className="env-platform-name">{p.name}</span>
-                                    <span className="env-platform-steps">{p.steps}</span>
-                                  </div>
+                                  <button key={p.id} type="button"
+                                    className={envPlatform === p.id ? 'env-platform-tab active' : 'env-platform-tab'}
+                                    onClick={() => setEnvPlatform(p.id)}>
+                                    {p.name}
+                                  </button>
                                 ))}
                               </div>
-                              <p className="env-p">Any host that lets you set environment variables works the same way — these are just the common ones.</p>
+                              {(() => {
+                                const platform = HOSTING_PLATFORMS.find((p) => p.id === envPlatform) || HOSTING_PLATFORMS[0];
+                                return (
+                                  <ol className="env-platform-steps-list">
+                                    {platform.steps.map((s, i) => <li key={i}>{s}</li>)}
+                                  </ol>
+                                );
+                              })()}
+                              <p className="env-p">Any host with real environment-variable settings works the same way — these are just the common ones.</p>
                             </div>
                           </div>
 

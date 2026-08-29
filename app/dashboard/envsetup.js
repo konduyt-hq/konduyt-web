@@ -21,14 +21,3 @@ export const ENV_SETUP = {
   swift:  { runtimeNote: 'iOS apps ship to users -- there is no safe way to hold this key on-device, ever. Your app calls your own backend; that backend (wherever it runs) holds the key.' },
   cpp:    { runtimeNote: 'C++ reads it directly via std::getenv("KONDUYT_SECRET_KEY"). No library needed.' },
 };
-
-// A few concrete, named hosting platforms -- shown once, shared across every
-// language, rather than repeated per-language. Not exhaustive; any host that
-// lets you set environment variables works the same way.
-export const HOSTING_PLATFORMS = [
-  { name: 'Render', steps: 'Your service → Environment → Add Environment Variable' },
-  { name: 'Vercel', steps: 'Your project → Settings → Environment Variables' },
-  { name: 'Railway', steps: 'Your service → Variables tab → New Variable' },
-  { name: 'Heroku', steps: 'Your app → Settings → Config Vars → Reveal Config Vars' },
-  { name: 'Fly.io', steps: 'fly secrets set KONDUYT_SECRET_KEY=your_key (from your terminal)' },
-];
