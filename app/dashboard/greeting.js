@@ -16,49 +16,69 @@ function pick(arr) {
 
 const TIME_OF_DAY = {
   earlyBird: [ // 5am - 8am
-    (n) => `Hey early bird, ${n}`,
-    (n) => `Up with the sun, ${n}?`,
-    (n) => `Early start today, ${n}`,
+    (n) => `Rise and grind, ${n}`,
+    (n) => `Up before the coffee, ${n}?`,
+    (n) => `The early dev catches the checkout bug, ${n}`,
+    (n) => `Sun's barely up and you're already here, ${n}`,
+    (n) => `Early start, ${n} — respect`,
   ],
   morning: [ // 8am - 12pm
-    (n) => `Morning, ${n}`,
+    (n) => `Morning, ${n} — let's ship something`,
     (n) => `Good morning, ${n}`,
+    (n) => `Top of the morning, ${n}`,
+    (n) => `Fresh coffee, fresh dashboard, ${n}`,
   ],
   afternoon: [ // 12pm - 5pm
     (n) => `Afternoon, ${n}`,
-    (n) => `Hey ${n}`,
+    (n) => `Hey ${n} — how's the day treating you?`,
+    (n) => `Midday check-in, ${n}`,
+    (n) => `Hope lunch was good, ${n}`,
   ],
   evening: [ // 5pm - 9pm
     (n) => `Evening, ${n}`,
-    (n) => `Hey ${n}, how's the day been?`,
+    (n) => `Winding down or just getting started, ${n}?`,
+    (n) => `Hey ${n}, good time to catch up on things`,
+    (n) => `Evening check-in, ${n}`,
   ],
   nightOwl: [ // 9pm - 1am
-    (n) => `Up late, ${n}?`,
+    (n) => `Still at it, ${n}? Respect`,
+    (n) => `The dashboard never sleeps, and apparently neither do you, ${n}`,
     (n) => `Burning the midnight oil, ${n}?`,
-    (n) => `Night owl mode, ${n}`,
+    (n) => `Night owl mode: activated, ${n}`,
+    (n) => `Late-night shipping session, ${n}?`,
   ],
   veryLate: [ // 1am - 5am
-    (n) => `Still going, ${n}? Don't forget to sleep`,
     (n) => `It's really late, ${n} — everything okay?`,
+    (n) => `Whatever bug you're chasing, ${n}, go easy on yourself`,
+    (n) => `The dedication is real, ${n} — but so is sleep`,
+    (n) => `${n}, at this hour even the servers are impressed`,
   ],
 };
 
 const GAP_TIER = {
   aFewDays: [ // 3-14 days
+    (n) => `Look who wandered back — hey ${n}`,
+    (n) => `Missed you around here, ${n}`,
+    (n) => `Welcome back, ${n} — the dashboard kept your seat warm`,
     (n) => `Good to see you again, ${n}`,
-    (n) => `Welcome back, ${n} — it's been a few days`,
   ],
   longTimeNoSee: [ // 14-30 days
     (n) => `Long time no see, ${n}!`,
+    (n) => `Well well well, if it isn't ${n}`,
     (n) => `Look who's back — hey ${n}`,
+    (n) => `${n}! It's been a minute`,
   ],
   reallyLongTime: [ // 30+ days
-    (n) => `Well, well, well — welcome back, ${n}!`,
-    (n) => `It's been a while, ${n}. Great to have you back`,
+    (n) => `${n}?! Is that really you?`,
+    (n) => `Someone dust off the welcome mat — ${n}'s back`,
+    (n) => `It's been ages, ${n}. Welcome home`,
+    (n) => `Well, well, well — welcome back, ${n}`,
   ],
   firstEver: [
-    (n) => `Welcome to Konduyt, ${n}!`,
-    (n) => `Hey ${n}, great to have you here`,
+    (n) => `Welcome aboard, ${n}`,
+    (n) => `Hey ${n}, glad you're here — let's build something`,
+    (n) => `${n}, welcome to Konduyt. Let's get you shipping`,
+    (n) => `Welcome in, ${n} — good to have you`,
   ],
 };
 

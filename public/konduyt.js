@@ -360,7 +360,7 @@
       return h;
     }
 
-    function render(rawMethods) {
+    function render(rawMethods, reason) {
       // Filter/reorder within the server's real eligible list -- never adds
       // to it. See applyMerchantPreferences for why this is safe by
       // construction, not just by convention.
@@ -372,14 +372,27 @@
       modal.appendChild(header());
 
       if (!methods || methods.length === 0) {
-        var emptyMsg = (rawMethods && rawMethods.length > 0)
+        var emptyMsg;
+        if (rawMethods && rawMethods.length > 0) {
           // The server genuinely found eligible methods -- it was the
           // merchant's OWN allowedMethods/hiddenMethods config that filtered
           // them all out. Different problem, different message: don't
           // wrongly tell the shopper "the merchant needs to connect a
           // provider" when they already have.
-          ? "No payment methods are available for this checkout's configuration."
-          : "No payment methods are available yet. The merchant needs to connect a provider.";
+          emptyMsg = "No payment methods are available for this checkout's configuration.";
+        } else if (reason === "no_country_set") {
+          // A provider IS connected -- the real gap is that neither the
+          // shopper's country nor the merchant's own country is known yet.
+          // Telling a merchant who's already connected a provider to "go
+          // connect a provider" is actively misleading.
+          emptyMsg = "No payment methods are available yet. The merchant needs to set their country in Konduyt settings.";
+        } else if (reason === "no_coverage") {
+          // A provider IS connected and a country IS known -- genuinely no
+          // connected provider serves this specific country yet.
+          emptyMsg = "No payment methods are available for shoppers in this country yet.";
+        } else {
+          emptyMsg = "No payment methods are available yet. The merchant needs to connect a provider.";
+        }
         modal.appendChild(el("div", "kdu-empty", emptyMsg));
         modal.appendChild(footer());
         return;
@@ -482,7 +495,7 @@
             modal._recurring = !!res.d.recurring;
             modal._interval = res.d.interval;
           }
-          render(res.d.methods || []);
+          render(res.d.methods || [], res.d.reason);
         })
         .catch(function () {
           modal._merchant = "Merchant";
