@@ -519,6 +519,27 @@ export default function Dashboard() {
       .catch(() => setPreviewRanked([]));
   }, [checkoutOpen, keys, previewShopperCountry, previewCurrency, previewAmount]);
 
+  // Real, proactive coverage check for the project's OWN country -- run
+  // whenever the Payment Providers tab is open, not just when someone opens
+  // the checkout preview. Uses the exact same real eligibility endpoint --
+  // never a guess, never inferred, just what's actually configured.
+  const [homeCoverage, setHomeCoverage] = useState(null);
+  const [homeCoverageLoading, setHomeCoverageLoading] = useState(false);
+  useEffect(() => {
+    const pubKey = keys?.live?.publishable_key;
+    const country = active?.merchant_country;
+    if (tab !== 'connections' || !pubKey || !country) {
+      setHomeCoverage(null);
+      return;
+    }
+    setHomeCoverageLoading(true);
+    fetch(`${API_BASE}/v1/payment-methods/available?country=${country}&currency=KES&amount=100000`,
+         { headers: { Authorization: `Bearer ${pubKey}` } })
+      .then((r) => r.json())
+      .then((d) => { setHomeCoverage(d); setHomeCoverageLoading(false); })
+      .catch(() => { setHomeCoverage(null); setHomeCoverageLoading(false); });
+  }, [tab, keys, active?.merchant_country]);
+
   // Payment-method graph, resolved for the active project's merchant country.
   useEffect(() => {
     if (status !== 'ready') return;
@@ -1350,6 +1371,44 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                {/* Real, proactive coverage check for the project's OWN
+                    country -- never a guess, never inferred: exactly what
+                    the real eligibility engine says is genuinely
+                    configured, so a gap is caught here rather than
+                    discovered later by a confused customer. */}
+                {!active?.merchant_country && (
+                  <div className="coverage-banner coverage-warn">
+                    <span className="coverage-banner-icon">⚠</span>
+                    <span>
+                      Your project doesn&apos;t have a country set yet, so Konduyt can&apos;t tell customers what
+                      they can pay with. <button type="button" className="coverage-banner-link"
+                        onClick={() => setTab('settings')}>Set it in Settings</button> — this takes one minute
+                      and unblocks checkout for real customers.
+                    </span>
+                  </div>
+                )}
+                {active?.merchant_country && !homeCoverageLoading && homeCoverage && homeCoverage.methods.length === 0 && (
+                  <div className="coverage-banner coverage-warn">
+                    <span className="coverage-banner-icon">⚠</span>
+                    <span>
+                      No connected provider has verified capability for{' '}
+                      {MERCHANT_COUNTRIES.find((c) => c.code === active.merchant_country)?.name || active.merchant_country}{' '}
+                      yet — customers there won&apos;t see any payment methods. Connect a provider below that covers
+                      this market.
+                    </span>
+                  </div>
+                )}
+                {active?.merchant_country && !homeCoverageLoading && homeCoverage && homeCoverage.methods.length > 0 && (
+                  <div className="coverage-banner coverage-ok">
+                    <span className="coverage-banner-icon">✓</span>
+                    <span>
+                      {homeCoverage.methods.length} real payment method{homeCoverage.methods.length !== 1 ? 's' : ''}{' '}
+                      verified for customers in{' '}
+                      {MERCHANT_COUNTRIES.find((c) => c.code === active.merchant_country)?.name || active.merchant_country}.
+                    </span>
+                  </div>
+                )}
+
                 {/* Real method routing: each enabled method's primary
                     provider, and any configured fallback -- Konduyt tries
                     the primary first, and only automatically tries a
@@ -1771,6 +1830,9 @@ export default function Dashboard() {
                               shipped inside the app can be extracted — so the secret key must <strong>never</strong> live
                               in the app. Keep it on <strong>your own server</strong>: your app calls your server, and your
                               server (holding the key) calls Konduyt. {env.loaderNote}
+                              {' '}<strong>Test with a sandbox provider key on your server first</strong> — Konduyt accepts
+                              your provider&apos;s own sandbox credentials the same way it accepts live ones. Run a real
+                              checkout through before your server ever holds a live key.
                             </p>
                           ) : (
                             <>
@@ -1809,6 +1871,14 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                                   <div className="env-step-title">Paste this line inside it</div>
                                   <p className="env-p">No spaces around the <code className="inline-code">=</code>. No quotes. One key per line:</p>
                                   <pre className="env-tree"><code>KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here</code></pre>
+                                  <p className="env-p env-warn">
+                                    <strong>Test with real money before you go live with it.</strong> Konduyt connects to your
+                                    provider — Paystack, PayPal, and others — using your provider&apos;s own sandbox
+                                    credentials just as easily as live ones. Connect a sandbox account first in
+                                    Payment Providers, use its key here instead of a live one, and run through a
+                                    real checkout before you ever touch a live key. This isn&apos;t optional advice —
+                                    it&apos;s real payments and real customer money once you switch to live.
+                                  </p>
                                 </div>
                               </div>
 

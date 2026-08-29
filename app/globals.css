@@ -1698,6 +1698,20 @@
   .routing-add-select{border:1px dashed var(--border); background:none; border-radius:8px; padding:6px 10px;
     font-size:12.5px; color:var(--text-secondary); cursor:pointer; font-family:inherit;}
   .routing-error{font-size:12px; color:#dc2626; margin-top:8px;}
+
+  /* Proactive coverage banner (Payment Providers tab) */
+  .coverage-banner{display:flex; align-items:flex-start; gap:10px; border-radius:12px;
+    padding:13px 16px; margin-bottom:20px; font-size:13.5px; line-height:1.55;}
+  .coverage-banner-icon{font-size:15px; flex-shrink:0; margin-top:1px;}
+  .coverage-warn{background:#fdecea; color:#7a2e24; border:1px solid #f0c9c2;}
+  .coverage-warn .coverage-banner-icon{color:#a23b2f;}
+  .coverage-ok{background:#e8f5ee; color:#0a5c30; border:1px solid #c9e9d6;}
+  .coverage-ok .coverage-banner-icon{color:#0a7a3e;}
+  .coverage-banner-link{background:none; border:none; padding:0; font:inherit; font-weight:700;
+    color:inherit; text-decoration:underline; cursor:pointer;}
+  @media (max-width:640px){
+    .coverage-banner{padding:11px 13px; font-size:12.5px; margin-bottom:16px;}
+  }
   @media (max-width:640px){
     .provider-card{padding:15px; border-radius:12px; gap:9px;}
     .provider-card-name{font-size:14.5px;}
