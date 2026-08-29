@@ -2518,7 +2518,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       the shopper sees the "Recurring — charged every month" disclosure and a Subscribe button.
                     </p>
                     <div className="scenario-card-actions">
-                      <a href="https://konduyt-test-recurring-subscription.onrender.com" target="_blank"
+                      <a href="https://konduyt-demos.onrender.com/?highlight=recurring" target="_blank"
                         rel="noreferrer" className="scenario-card-btn">View site ↗</a>
                       <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
                         onClick={() => { setCodeViewerScenario('recurring'); setCodeViewerFile('server'); }}>
@@ -2537,7 +2537,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       just <code className="inline-code">Konduyt.checkout()</code> called directly.
                     </p>
                     <div className="scenario-card-actions">
-                      <a href="https://konduyt-test-onetime-purchase.onrender.com" target="_blank"
+                      <a href="https://konduyt-demos.onrender.com/?highlight=onetime" target="_blank"
                         rel="noreferrer" className="scenario-card-btn">View site ↗</a>
                       <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
                         onClick={() => { setCodeViewerScenario('onetime'); setCodeViewerFile('server'); }}>
@@ -2557,7 +2557,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       continuing only on a genuinely safe failure. Never on an ambiguous one.
                     </p>
                     <div className="scenario-card-actions">
-                      <a href="https://konduyt-test-failover-demo.onrender.com" target="_blank"
+                      <a href="https://konduyt-demos.onrender.com/?highlight=failover" target="_blank"
                         rel="noreferrer" className="scenario-card-btn">View site ↗</a>
                       <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
                         onClick={() => { setCodeViewerScenario('failover'); setCodeViewerFile('server'); }}>
@@ -2577,7 +2577,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       Never a fixed list.
                     </p>
                     <div className="scenario-card-actions">
-                      <a href="https://konduyt-test-crossborder.onrender.com" target="_blank"
+                      <a href="https://konduyt-demos.onrender.com/?highlight=crossborder" target="_blank"
                         rel="noreferrer" className="scenario-card-btn">View site ↗</a>
                       <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
                         onClick={() => { setCodeViewerScenario('crossborder'); setCodeViewerFile('server'); }}>
@@ -2597,7 +2597,7 @@ ${ENV_STEPS.create_terminal_win}`}</code></pre>
                       the part that is.
                     </p>
                     <div className="scenario-card-actions">
-                      <a href="https://konduyt-test-payg.onrender.com" target="_blank"
+                      <a href="https://konduyt-demos.onrender.com/?highlight=payg" target="_blank"
                         rel="noreferrer" className="scenario-card-btn">View site ↗</a>
                       <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
                         onClick={() => { setCodeViewerScenario('payg'); setCodeViewerFile('server'); }}>

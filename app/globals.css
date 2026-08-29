@@ -305,6 +305,7 @@
     line-height:1.85;
     padding:6px 18px 20px;
     overflow-x:auto;
+    max-width:100%;
     color:#d4d4d8;
   }
   .status-dot{width:7px; height:7px; border-radius:50%; background:#3ecb6b; display:inline-block;}
@@ -928,6 +929,7 @@
     background-image: radial-gradient(var(--dot) 1px, transparent 1px);
     background-size:24px 24px;
     min-height:calc(100vh - 110px);
+    overflow-x:hidden;
   }
   .con-home-head{margin-bottom:28px;}
   .con-h1{font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin-bottom:6px;}
@@ -1500,7 +1502,7 @@
   .keys-langs{display:flex; gap:6px; flex-wrap:wrap;}
   .keys-lang{font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--elev); color:var(--text-secondary); border-radius:6px; padding:5px 11px; cursor:pointer; font-family:inherit;}
   .keys-lang.sel{background:var(--green); color:#ffffff; border-color:var(--green);}
-  .keys-codeblock{position:relative; background:#0f0f0f; border-radius:10px; overflow:hidden;}
+  .keys-codeblock{position:relative; background:#0f0f0f; border-radius:10px; overflow-x:auto; overflow-y:hidden; max-width:100%;}
   .keys-codeblock pre{margin:0; padding:16px; overflow-x:auto;}
   .keys-codeblock code{font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.6; color:#e6e6e6; white-space:pre;}
   .keys-code-copy{position:absolute; top:10px; right:10px; font-size:12px; font-weight:700; border:1px solid #333; background:#1a1a1a; color:#e6e6e6; border-radius:6px; padding:5px 10px; cursor:pointer; z-index:1; font-family:inherit;}
@@ -1556,8 +1558,8 @@
   .lang-chip:hover{border-color:var(--brand); background:color-mix(in srgb, var(--brand) 7%, #fff);}
   .lang-chip.sel{font-weight:700; color:var(--ink); border-color:var(--brand); background:color-mix(in srgb, var(--brand) 8%, #fff);}
   .lang-platform-note{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--green-ink); background:var(--green-soft); border-radius:6px; padding:5px 10px; display:inline-block; margin-bottom:14px;}
-  .lang-blocks{display:flex; flex-direction:column; gap:16px;}
-  .lang-block{}
+  .lang-blocks{display:flex; flex-direction:column; gap:16px; min-width:0;}
+  .lang-block{min-width:0;}
   .lang-block-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
   .lang-block-title{font-size:13px; font-weight:700; color:var(--ink);}
   .keys-code-copy.static{position:static;}
