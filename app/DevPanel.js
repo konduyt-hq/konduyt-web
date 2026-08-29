@@ -424,6 +424,10 @@ export default function DevPanel() {
         <p className="step-hint">
           A real key goes on your host, never in code. Pick yours:
         </p>
+        <p className="step-hint">
+          We&apos;re assuming you already have an account with whichever host you pick below — Vercel, Heroku,
+          Render, Fly.io, or another. This is just where the key goes once you do, not how to sign up for one.
+        </p>
         <div className="env-platform-tabs">
           {HOSTING_PLATFORMS.map((p) => (
             <button key={p.id} type="button"
