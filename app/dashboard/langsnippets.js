@@ -2,21 +2,23 @@
 //
 // SHOW, DON'T TELL: each snippet reads the secret key from an ENVIRONMENT
 // VARIABLE (KONDUYT_SECRET_KEY) the way that language does it — never pasted
-// inline — so the developer sees exactly where the key belongs and how it's
-// used. The amount is a parameter (from user input / the clicked item), not
-// hardcoded. Platform languages (Android/iOS) show a Dependency block separate
-// from Implementation. {{API}} is replaced at render time with the API base URL.
-// (The secret is intentionally NOT injected — it comes from the env var.)
+// inline. Where to actually SET that variable is covered once, in the shared
+// "Where does my secret key go?" panel above these snippets (your hosting
+// platform's environment variables -- Render, Vercel, Railway, and so on --
+// not a .env file), rather than repeated per-language here. The amount is a
+// parameter (from user input / the clicked item), not hardcoded. Platform
+// languages (Android/iOS) call the developer's OWN backend, never Konduyt
+// directly -- there is no safe way to hold a secret key on a device.
+// {{API}} is replaced at render time with the API base URL.
 
 export const LANG_SNIPPETS = [
   {
     id: 'curl', label: 'cURL', icon: 'curl',
     sections: [
-      { title: 'Set your key (shell)', code:
-`# Keep the key in your environment, not in the command history/script.
-export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Request', code:
 `# amount comes from your app (a donation input, or the clicked item's price)
+# $KONDUYT_SECRET_KEY is set as an environment variable on your server/host --
+# see "Where does my secret key go?" above, never pasted into a command directly.
 AMOUNT=1000
 
 curl -X POST {{API}}/v1/payments \\
@@ -33,9 +35,6 @@ curl -X POST {{API}}/v1/payments \\
   {
     id: 'js', label: 'JavaScript', icon: 'js',
     sections: [
-      { title: 'Set your key (.env)', code:
-`# .env  — never commit this file
-KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Implementation', code:
 `// Runs server-side (Node). The key is read from the environment — never
 // hardcoded, never sent to the browser.
@@ -63,9 +62,6 @@ const payment = await createPayment({ amount, email: req.body.email });
   {
     id: 'python', label: 'Python', icon: 'python',
     sections: [
-      { title: 'Set your key (.env)', code:
-`# .env  — never commit this file
-KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Dependency', code: `pip install requests` },
       { title: 'Implementation', code:
 `import os
@@ -96,9 +92,6 @@ payment = create_payment(amount, request.form["email"])` },
   {
     id: 'php', label: 'PHP', icon: 'php',
     sections: [
-      { title: 'Set your key (.env)', code:
-`# .env  — never commit this file
-KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Implementation', code:
 `<?php
 // Read the key from the environment — never hardcode it.
@@ -134,8 +127,6 @@ $payment = create_payment($secret, $amount, $_POST["email"]);` },
   {
     id: 'go', label: 'Go', icon: 'go',
     sections: [
-      { title: 'Set your key (shell)', code:
-`export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Implementation', code:
 `package main
 
@@ -176,9 +167,6 @@ func createPayment(amount int, email string) (map[string]any, error) {
   {
     id: 'ruby', label: 'Ruby', icon: 'ruby',
     sections: [
-      { title: 'Set your key (.env)', code:
-`# .env  — never commit this file
-KONDUYT_SECRET_KEY=kdu_live_sk_your_key_here` },
       { title: 'Implementation', code:
 `require "net/http"
 require "json"
@@ -210,8 +198,6 @@ payment = create_payment(params[:amount].to_i, params[:email])` },
   {
     id: 'rust', label: 'Rust', icon: 'rust',
     sections: [
-      { title: 'Set your key (shell)', code:
-`export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Dependency (Cargo.toml)', code:
 `[dependencies]
 reqwest = { version = "0.12", features = ["json", "blocking"] }
@@ -241,9 +227,6 @@ fn create_payment(amount: u64, email: &str) -> Result<serde_json::Value, reqwest
   {
     id: 'csharp', label: 'C#', icon: 'csharp',
     sections: [
-      { title: 'Set your key (shell)', code:
-`setx KONDUYT_SECRET_KEY "kdu_live_sk_your_key_here"   # Windows
-# export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here" # macOS/Linux` },
       { title: 'Implementation', code:
 `using System;
 using System.Net.Http;
@@ -278,36 +261,34 @@ async Task<string> CreatePayment(int amount, string email, string method = "mpes
 
 // AndroidManifest.xml — allow internet
 // <uses-permission android:name="android.permission.INTERNET" />` },
-      { title: 'Set your key (do NOT ship it in the app)', code:
-`// The secret key must live on YOUR server, not inside the Android app —
-// anything shipped in the APK can be extracted. Your app should call your
-// backend, which holds KONDUYT_SECRET_KEY and calls Konduyt. If you must read
-// a value on-device, inject it at build time via BuildConfig, never commit it:
-//
-// app/build.gradle:
-//   buildConfigField "String", "KONDUYT_SECRET_KEY", "\\"\${System.getenv('KONDUYT_SECRET_KEY')}\\""` },
-      { title: 'Implementation (server-style call)', code:
-`// amount is a parameter — pass the value from an input or the tapped item.
+      { title: 'Implementation — call YOUR backend, not Konduyt directly', code:
+`// The secret key must live on YOUR server, never inside the Android app --
+// anything shipped in the APK can be extracted, including a value injected
+// via BuildConfig at build time. There is no safe way to hold
+// KONDUYT_SECRET_KEY on-device. Your app calls YOUR OWN backend endpoint
+// below; that backend (in Node, Python, or whatever you run) holds
+// KONDUYT_SECRET_KEY as an environment variable on its own host, and is the
+// only thing that ever calls Konduyt directly.
+
+// amount is a parameter — pass the value from an input or the tapped item.
 void createPayment(int amount, String email) throws IOException {
-    String secret = BuildConfig.KONDUYT_SECRET_KEY; // injected at build, not hardcoded
     OkHttpClient client = new OkHttpClient();
 
     String json = "{"
         + "\\"amount\\": " + amount + ","
-        + "\\"currency\\": \\"KES\\","
-        + "\\"method\\": \\"mpesa\\","
-        + "\\"customer\\": { \\"email\\": \\"" + email + "\\" }"
+        + "\\"email\\": \\"" + email + "\\""
         + "}";
 
+    // Your own backend, not Konduyt -- e.g. https://yourapp.com/api/create-payment
     Request request = new Request.Builder()
-        .url("{{API}}/v1/payments")
-        .addHeader("Authorization", "Bearer " + secret)
+        .url("https://yourapp.com/api/create-payment")
         .post(RequestBody.create(json, MediaType.parse("application/json")))
         .build();
 
     try (Response response = client.newCall(request).execute()) {
         String payment = response.body().string();
-        // open authorization_url in a Chrome Custom Tab
+        // your backend returns whatever Konduyt gave it -- open
+        // authorization_url in a Chrome Custom Tab
     }
 }
 
@@ -325,34 +306,33 @@ void createPayment(int amount, String email) throws IOException {
 
 // AndroidManifest.xml
 // <uses-permission android:name="android.permission.INTERNET" />` },
-      { title: 'Set your key (do NOT ship it in the app)', code:
-`// The secret belongs on YOUR server, not in the APK (it can be extracted).
-// Have the app call your backend, which holds KONDUYT_SECRET_KEY. If you must
-// read it on-device, inject at build time, never commit:
-//
-// app/build.gradle.kts:
-//   buildConfigField("String", "KONDUYT_SECRET_KEY", "\\"\${System.getenv("KONDUYT_SECRET_KEY")}\\"")` },
-      { title: 'Implementation (server-style call)', code:
-`// amount is a parameter — pass user input or the tapped item's price.
+      { title: 'Implementation — call YOUR backend, not Konduyt directly', code:
+`// The secret key must live on YOUR server, never inside the Android app --
+// anything shipped in the APK can be extracted, including a value injected
+// via BuildConfig at build time. There is no safe way to hold
+// KONDUYT_SECRET_KEY on-device. Your app calls YOUR OWN backend endpoint
+// below; that backend holds KONDUYT_SECRET_KEY as an environment variable
+// on its own host, and is the only thing that ever calls Konduyt directly.
+
+// amount is a parameter — pass user input or the tapped item's price.
 // Call from a coroutine (Dispatchers.IO).
 fun createPayment(amount: Int, email: String) {
-    val secret = BuildConfig.KONDUYT_SECRET_KEY  // injected at build, not hardcoded
     val client = OkHttpClient()
 
     val json = """
-        { "amount": $amount, "currency": "KES", "method": "mpesa",
-          "customer": { "email": "$email" } }
+        { "amount": $amount, "email": "$email" }
     """.trimIndent()
 
+    // Your own backend, not Konduyt -- e.g. https://yourapp.com/api/create-payment
     val request = Request.Builder()
-        .url("{{API}}/v1/payments")
-        .addHeader("Authorization", "Bearer $secret")
+        .url("https://yourapp.com/api/create-payment")
         .post(json.toRequestBody("application/json".toMediaType()))
         .build()
 
     client.newCall(request).execute().use { response ->
         val payment = response.body?.string()
-        // open authorization_url in a Chrome Custom Tab
+        // your backend returns whatever Konduyt gave it -- open
+        // authorization_url in a Chrome Custom Tab
     }
 }
 
@@ -363,29 +343,26 @@ fun createPayment(amount: Int, email: String) {
   {
     id: 'swift', label: 'Swift', icon: 'swift', platform: 'iOS',
     sections: [
-      { title: 'Set your key (do NOT ship it in the app)', code:
-`// The secret belongs on YOUR server, not in the iOS binary (it can be
-// extracted). Your app should call your backend, which holds
-// KONDUYT_SECRET_KEY. If reading on-device for a prototype, use an xcconfig /
-// Info.plist value injected at build time — never commit the real key.` },
-      { title: 'Implementation (server-style call)', code:
-`// amount is a parameter — pass user input or the tapped item's price.
-func createPayment(amount: Int, email: String) async throws -> [String: Any] {
-    // Read from Info.plist (injected at build) — not hardcoded.
-    let secret = Bundle.main.object(forInfoDictionaryKey: "KONDUYT_SECRET_KEY") as! String
+      { title: 'Implementation — call YOUR backend, not Konduyt directly', code:
+`// The secret key must live on YOUR server, never inside the iOS app --
+// anything shipped in the binary can be extracted, including a value
+// injected via Info.plist at build time. There is no safe way to hold
+// KONDUYT_SECRET_KEY on-device. Your app calls YOUR OWN backend endpoint
+// below; that backend holds KONDUYT_SECRET_KEY as an environment variable
+// on its own host, and is the only thing that ever calls Konduyt directly.
 
-    var request = URLRequest(url: URL(string: "{{API}}/v1/payments")!)
+// amount is a parameter — pass user input or the tapped item's price.
+func createPayment(amount: Int, email: String) async throws -> [String: Any] {
+    // Your own backend, not Konduyt -- e.g. https://yourapp.com/api/create-payment
+    var request = URLRequest(url: URL(string: "https://yourapp.com/api/create-payment")!)
     request.httpMethod = "POST"
-    request.setValue("Bearer \\(secret)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-    let body: [String: Any] = [
-        "amount": amount, "currency": "KES", "method": "mpesa",
-        "customer": ["email": email]
-    ]
+    let body: [String: Any] = ["amount": amount, "email": email]
     request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
     let (data, _) = try await URLSession.shared.data(for: request)
+    // your backend returns whatever Konduyt gave it
     return try JSONSerialization.jsonObject(with: data) as! [String: Any]
 }
 
@@ -396,8 +373,6 @@ func createPayment(amount: Int, email: String) async throws -> [String: Any] {
   {
     id: 'cpp', label: 'C++', icon: 'cpp',
     sections: [
-      { title: 'Set your key (shell)', code:
-`export KONDUYT_SECRET_KEY="kdu_live_sk_your_key_here"` },
       { title: 'Dependency', code:
 `# Using libcurl (install via your package manager)
 sudo apt-get install libcurl4-openssl-dev   # Debian/Ubuntu` },
