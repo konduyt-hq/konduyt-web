@@ -418,25 +418,87 @@ end`,
   },
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
-    deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"   —   Run: cargo run',
-    code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json
+    deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json tiny_http
 use reqwest::blocking::Client;
-use serde_json::json;
+use serde_json::{json, Value};
+use tiny_http::{Server, Response, Method};
+use std::io::Read;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let res = Client::new()
-        .post("{{API}}/v1/payments/test")
-        .bearer_auth("{{SECRET}}")
-        .json(&json!({
-            "amount": 5000,
-            "currency": "KES",
-            "provider": "test",
-            "customer": { "email": "customer@example.com" }
-        }))
-        .send()?;
+// SECRET KEY -- stays on the server, never sent to a browser. This is
+// Konduyt's own universal demo key (safe here since it's already public),
+// but a real key works exactly the same way -- see "Where does my secret
+// key go?" above for where a real one belongs (never hardcoded like this).
+const KONDUYT_SECRET_KEY: &str = "{{SECRET}}";
+const API: &str = "{{API}}";
 
-    println!("{}", res.text()?);
-    Ok(())
+fn konduyt(path: &str, body: Value) -> String {
+    Client::new()
+        .post(format!("{}{}", API, path))
+        .bearer_auth(KONDUYT_SECRET_KEY)
+        .json(&body)
+        .send()
+        .and_then(|r| r.text())
+        .unwrap_or_else(|e| format!("{{\\"error\\": \\"{}\\"}}", e))
+}
+
+fn main() {
+    let server = Server::http("0.0.0.0:3000").unwrap();
+    println!("Backend running on http://localhost:3000");
+
+    for mut request in server.incoming_requests() {
+        if request.method() != &Method::Post {
+            request.respond(Response::from_string("").with_status_code(404)).ok();
+            continue;
+        }
+
+        let mut body_str = String::new();
+        request.as_reader().read_to_string(&mut body_str).ok();
+        let body: Value = serde_json::from_str(&body_str).unwrap_or(json!({}));
+
+        let result = match request.url() {
+            "/api/create-payment" => {
+                // One-time: amount either comes from the shopper (a donation), or
+                // is a fixed price you already know (a product) -- same field either way.
+                let amount = body["amount"].clone(); // whatever the shopper typed in, OR
+                // let amount = json!(5000);           // a fixed price you already know
+                konduyt("/v1/payments/test", json!({
+                    "amount": amount, "currency": "KES", "provider": "test"
+                }))
+            }
+            "/api/create-subscription" => {
+                // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+                konduyt("/v1/payment_sessions", json!({
+                    "amount": 100000, "currency": "KES",
+                    "recurring": true, "interval": "monthly",
+                    "reference": "sub_pro_plan"
+                })) // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
+            }
+            "/api/create-split-payment" => {
+                // Split: one checkout, proceeds split across sellers using the
+                // provider's own real split capability -- Konduyt never holds funds.
+                konduyt("/v1/marketplace_payments", json!({
+                    "provider": "paystack", "amount": 500000, "currency": "KES",
+                    "splits": [{ "seller_id": "seller_123", "amount": 400000 }]
+                })) // the remainder is your own commission
+            }
+            "/api/create-usage-bill" => {
+                // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+                let (units_used, price_per_unit) = (340, 25);
+                let amount = units_used * price_per_unit;
+                let reference = format!("usage_{}", std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs());
+                konduyt("/v1/payment_sessions", json!({
+                    "amount": amount, "currency": "KES", "recurring": false,
+                    "reference": reference
+                }))
+            }
+            _ => { request.respond(Response::from_string("").with_status_code(404)).ok(); continue; }
+        };
+
+        request.respond(Response::from_string(result)).ok();
+    }
 }`,
   },
   {
