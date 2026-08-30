@@ -372,6 +372,7 @@ export default function DevPanel() {
   const [showIntel, setShowIntel] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [devPlatform, setDevPlatform] = useState('render');
+  const [htmlOpen, setHtmlOpen] = useState(false);
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -449,8 +450,41 @@ export default function DevPanel() {
           );
         })()}
 
-        {/* 2. Language selector — matches the dashboard set */}
-        <div className="step-label">2. Choose your language</div>
+        {/* 2. Copy HTML and CSS — the frontend. Collapsed by default: this is
+            the shopper-facing half of a full project (frontend = HTML/CSS,
+            backend = whichever language is picked below), shown collapsed
+            so it doesn't compete with "Set your key" for attention on load. */}
+        <div className="step-row">
+          <button type="button" className="env-setup-head" style={{ width: '100%' }}
+            onClick={() => setHtmlOpen((o) => !o)}>
+            <span className="step-label" style={{ marginBottom: 0 }}>2. Copy HTML and CSS</span>
+            <span className="env-setup-chevron">{htmlOpen ? '▲' : '▼'}</span>
+          </button>
+        </div>
+        {htmlOpen && (() => {
+          const intelHtml = INTELLIGENCE_TESTING_SDK
+            .replaceAll('{{API}}', API_BASE)
+            .replaceAll('{{PUBLISHABLE_KEY}}', KEYS.publishable);
+          return (
+            <>
+              <p className="step-hint">
+                This is the shopper-facing half of a full project — the frontend, HTML and CSS together in one
+                file. The 12 languages below are the backend half: whichever one you pick serves the endpoints
+                this file calls out to.
+              </p>
+              <div className="code-box">
+                <div className="code-box-head">
+                  <span>intelligence.html</span>
+                  <CopyButton text={intelHtml} />
+                </div>
+                <pre className="code-pre">{intelHtml}</pre>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* 3. Language selector — matches the dashboard set */}
+        <div className="step-label">3. Choose your language</div>
         <div className="lang-pills">
           {LANGUAGES.map((l) => {
             const key = ICON_KEY[l.id] || l.id;
@@ -471,9 +505,9 @@ export default function DevPanel() {
           })}
         </div>
 
-        {/* 3. Real code */}
+        {/* 4. Real code */}
         <div className="step-row">
-          <div className="step-label" style={{ marginBottom: 0 }}>3. Copy, run, and see it work</div>
+          <div className="step-label" style={{ marginBottom: 0 }}>4. Copy, run, and see it work</div>
           <a href="/docs/" className="view-docs">View full docs →</a>
         </div>
 
@@ -569,36 +603,6 @@ export default function DevPanel() {
             </div>
           </div>
         )}
-
-        {/* 4. Real, standalone testing SDK -- one self-contained HTML file
-            (HTML + CSS + JS together). Save it, open it in a browser, it
-            calls the universal publishable key against Konduyt's real
-            /checkout/config and renders the actual payment intelligence
-            layer. Uses the shared universal keys, same as everything else
-            on this page -- fine to embed directly, since they're already
-            public and work only against Konduyt's own demo project. */}
-        <div className="step-row">
-          <div className="step-label" style={{ marginBottom: 0 }}>4. Test the payment intelligence layer — standalone (HTML)</div>
-        </div>
-        <p className="step-hint">
-          The publishable key above (safe to expose client-side — it can only open a checkout, never move money)
-          goes directly into frontend code like this, not on a host. Save this as
-          {' '}<code>intelligence.html</code>{' '}and open it directly in a browser — no build step, no server.
-        </p>
-        {(() => {
-          const intelHtml = INTELLIGENCE_TESTING_SDK
-            .replaceAll('{{API}}', API_BASE)
-            .replaceAll('{{PUBLISHABLE_KEY}}', KEYS.publishable);
-          return (
-            <div className="code-box">
-              <div className="code-box-head">
-                <span>intelligence.html</span>
-                <CopyButton text={intelHtml} />
-              </div>
-              <pre className="code-pre">{intelHtml}</pre>
-            </div>
-          );
-        })()}
       </div>
 
       {/* Payment intelligence popup — the real ranked vendors from the engine */}

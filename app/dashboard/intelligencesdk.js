@@ -1,22 +1,27 @@
 // A real, standalone testing SDK -- one self-contained HTML file, HTML +
-// CSS + JS together, no build step, no dependency. Copy it, save it as
-// intelligence.html, open it directly in a browser: it calls Konduyt's
-// real /checkout/config endpoint with your own publishable key and
-// renders the actual payment intelligence layer -- ranked methods, real
-// fees, real settlement times, cheapest highlighted -- exactly what a real
-// shopper's checkout would be built on, not a mockup.
+// CSS + JS together, no build step, no dependency. This is the FRONTEND
+// half of a full project: the backend half is whichever of the 12
+// languages is picked -- pick one, and its code implements the exact
+// endpoints this file calls out to.
 //
-// Deliberately separate from the per-language payment-creation snippets in
-// langsnippets.js -- those show CREATING a payment; this shows Konduyt's
-// own routing intelligence for a given amount, standalone. {{API}} and
-// {{PUBLISHABLE_KEY}} are substituted at render time, the same pattern as
-// every other snippet.
+// Two clearly separate things happen here, on purpose:
+//   1. Payment intelligence (real fees, ranked methods) -- calls Konduyt's
+//      /checkout/config DIRECTLY, using the PUBLISHABLE key. Safe to do
+//      client-side: a publishable key can only ask "what can this shopper
+//      pay with", never move money.
+//   2. Actually creating a payment -- calls YOUR OWN backend
+//      (/api/create-payment) instead, never Konduyt directly. Creating a
+//      real payment needs the SECRET key, which must never exist in
+//      frontend code -- that's what the 12 backend languages below hold.
+//
+// {{API}} and {{PUBLISHABLE_KEY}} are substituted at render time, the same
+// pattern as every other snippet.
 
 export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Konduyt Payment Intelligence — Test</title>
+<title>Konduyt — Frontend (HTML + CSS)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   * { box-sizing: border-box; }
@@ -28,6 +33,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     color: #0a0a0a;
   }
   h1 { font-size: 20px; margin-bottom: 4px; }
+  h2 { font-size: 15px; margin: 32px 0 4px; }
   .sub { color: #6b6b6b; font-size: 13px; margin-bottom: 24px; }
   .controls { display: flex; gap: 10px; margin-bottom: 24px; }
   .controls input {
@@ -38,7 +44,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     font-size: 14px;
     font-family: inherit;
   }
-  .controls button {
+  .controls button, .buy button {
     background: #0a0a0a;
     color: #fff;
     border: none;
@@ -49,7 +55,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     font-family: inherit;
     cursor: pointer;
   }
-  .controls button:disabled { opacity: 0.5; cursor: default; }
+  .controls button:disabled, .buy button:disabled { opacity: 0.5; cursor: default; }
   .method {
     display: flex;
     justify-content: space-between;
@@ -75,6 +81,11 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   .method-fee { font-size: 13px; color: #6b6b6b; text-align: right; }
   .empty, .error { color: #6b6b6b; font-size: 13px; padding: 20px 0; text-align: center; }
   .error { color: #a23b2f; }
+  .buy { border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px; }
+  .buy input { width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px;
+    font-size: 14px; font-family: inherit; margin-bottom: 10px; }
+  .buy button { width: 100%; }
+  .result { font-size: 13px; margin-top: 10px; color: #6b6b6b; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -88,9 +99,20 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 
   <div id="results"></div>
 
+  <h2>Buy now</h2>
+  <p class="sub">This part calls YOUR OWN backend below, never Konduyt directly — creating a real payment needs the secret key, which must never live in this file.</p>
+  <div class="buy">
+    <input id="buyEmail" type="email" value="customer@example.com" placeholder="Customer email" />
+    <button id="buyBtn">Create payment</button>
+    <div id="buyResult" class="result"></div>
+  </div>
+
   <script>
-    var API = '{{API}}';
+    // PUBLISHABLE KEY -- safe to put directly in frontend code like this.
+    // It can only open a checkout / ask what a shopper can pay with, never
+    // move money or create a charge on its own.
     var PUBLISHABLE_KEY = '{{PUBLISHABLE_KEY}}';
+    var API = '{{API}}';
 
     function checkMethods() {
       var amountInput = document.getElementById('amount');
@@ -143,7 +165,38 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
         });
     }
 
+    // "Buy now" -- deliberately does NOT call Konduyt. It calls YOUR OWN
+    // backend, which is whichever of the 12 languages you picked below.
+    // That backend holds the SECRET key and makes the real Konduyt call.
+    function createPayment() {
+      var amountInput = document.getElementById('amount');
+      var emailInput = document.getElementById('buyEmail');
+      var button = document.getElementById('buyBtn');
+      var result = document.getElementById('buyResult');
+
+      var amount = Math.round(parseFloat(amountInput.value || '0') * 100);
+      button.disabled = true;
+      result.textContent = 'Creating payment\u2026';
+
+      fetch('/api/create-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amount, email: emailInput.value }),
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          result.textContent = JSON.stringify(data);
+        })
+        .catch(function () {
+          result.textContent = 'Could not reach /api/create-payment -- is your backend running?';
+        })
+        .finally(function () {
+          button.disabled = false;
+        });
+    }
+
     document.getElementById('run').addEventListener('click', checkMethods);
+    document.getElementById('buyBtn').addEventListener('click', createPayment);
     checkMethods(); // run once on load
   </script>
 </body>
