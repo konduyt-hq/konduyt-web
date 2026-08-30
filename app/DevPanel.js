@@ -344,26 +344,77 @@ func main() {
 }`,
   },
   {
-    id: 'ruby', label: 'Ruby', filename: 'main.rb',
-    deps: 'Standard library only (net/http). Run: ruby main.rb',
-    code: `# main.rb  —  run with:  ruby main.rb
+    id: 'ruby', label: 'Ruby', filename: 'server.rb',
+    deps: 'Install: gem install sinatra net-http   ·   Run: ruby server.rb -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    code: `# server.rb  —  gem install sinatra net-http, then: ruby server.rb
+require "sinatra"
 require "net/http"
 require "json"
 require "uri"
 
-uri = URI("{{API}}/v1/payments/test")
-http = Net::HTTP.new(uri.host, uri.port)
-http.use_ssl = true
+set :port, 3000
 
-req = Net::HTTP::Post.new(uri)
-req["Authorization"] = "Bearer {{SECRET}}"
-req["Content-Type"] = "application/json"
-req.body = {
-  amount: 5000, currency: "KES", provider: "test",
-  customer: { email: "customer@example.com" }
-}.to_json
+# SECRET KEY -- stays on the server, never sent to a browser. This is
+# Konduyt's own universal demo key (safe here since it's already public),
+# but a real key works exactly the same way -- see "Where does my secret
+# key go?" above for where a real one belongs (never hardcoded like this).
+KONDUYT_SECRET_KEY = "{{SECRET}}"
+API = "{{API}}"
 
-puts http.request(req).body`,
+def konduyt(path, body)
+  uri = URI(API + path)
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = uri.scheme == "https"
+
+  req = Net::HTTP::Post.new(uri)
+  req["Authorization"] = "Bearer #{KONDUYT_SECRET_KEY}"
+  req["Content-Type"] = "application/json"
+  req.body = body.to_json
+
+  http.request(req).body
+end
+
+post "/api/create-payment" do
+  # One-time: amount either comes from the shopper (a donation), or is a
+  # fixed price you already know (a product) -- same field either way.
+  body = JSON.parse(request.body.read)
+  amount = body["amount"]     # whatever the shopper typed in, OR
+  # amount = 5000               # a fixed price you already know
+  content_type :json
+  konduyt("/v1/payments/test", { amount: amount, currency: "KES", provider: "test" })
+end
+
+post "/api/create-subscription" do
+  # Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+  content_type :json
+  konduyt("/v1/payment_sessions", {
+    amount: 100000, currency: "KES",
+    recurring: true, interval: "monthly",
+    reference: "sub_pro_plan",
+  }) # {"id" => "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
+end
+
+post "/api/create-split-payment" do
+  # Split: one checkout, proceeds split across sellers using the
+  # provider's own real split capability -- Konduyt never holds funds.
+  content_type :json
+  konduyt("/v1/marketplace_payments", {
+    provider: "paystack", amount: 500000, currency: "KES",
+    splits: [{ seller_id: "seller_123", amount: 400000 }],
+  }) # the remainder is your own commission
+end
+
+post "/api/create-usage-bill" do
+  # Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+  units_used, price_per_unit = 340, 25
+  amount = units_used * price_per_unit
+  content_type :json
+  konduyt("/v1/payment_sessions", {
+    amount: amount, currency: "KES", recurring: false,
+    reference: "usage_#{Time.now.to_i}",
+  })
+end`,
   },
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
