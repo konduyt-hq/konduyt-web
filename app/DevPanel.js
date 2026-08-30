@@ -503,23 +503,73 @@ fn main() {
   },
   {
     id: 'csharp', label: 'C#', filename: 'Program.cs',
-    deps: '.NET 6+ (HttpClient is built in). Run: dotnet run',
-    code: `// Program.cs  —  dotnet new console, paste, then: dotnet run
-using System.Net.Http;
+    deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs. Run: dotnet run -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    code: `// Program.cs  —  dotnet new web -o ., paste over Program.cs, then: dotnet run
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 
-using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization =
-    new AuthenticationHeaderValue("Bearer", "{{SECRET}}");
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
 
-var body = new StringContent("""
-{ "amount": 5000, "currency": "KES", "provider": "test",
-  "customer": { "email": "customer@example.com" } }
-""", Encoding.UTF8, "application/json");
+// SECRET KEY -- stays on the server, never sent to a browser. This is
+// Konduyt's own universal demo key (safe here since it's already public),
+// but a real key works exactly the same way -- see "Where does my secret
+// key go?" above for where a real one belongs (never hardcoded like this).
+const string KonduytSecretKey = "{{SECRET}}";
+const string Api = "{{API}}";
 
-var res = await client.PostAsync("{{API}}/v1/payments/test", body);
-Console.WriteLine(await res.Content.ReadAsStringAsync());`,
+async Task<string> Konduyt(string path, object body) {
+    using var client = new HttpClient();
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", KonduytSecretKey);
+    var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+    var res = await client.PostAsync(Api + path, content);
+    return await res.Content.ReadAsStringAsync();
+}
+
+app.MapPost("/api/create-payment", async (HttpRequest req) => {
+    // One-time: amount either comes from the shopper (a donation), or is a
+    // fixed price you already know (a product) -- same field either way.
+    var body = await JsonSerializer.DeserializeAsync<Dictionary<string, JsonElement>>(req.Body);
+    var amount = body!["amount"].GetInt32();   // whatever the shopper typed in, OR
+    // var amount = 5000;                         // a fixed price you already know
+    return Results.Content(await Konduyt("/v1/payments/test", new {
+        amount, currency = "KES", provider = "test"
+    }), "application/json");
+});
+
+app.MapPost("/api/create-subscription", async () => {
+    // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+    return Results.Content(await Konduyt("/v1/payment_sessions", new {
+        amount = 100000, currency = "KES",
+        recurring = true, interval = "monthly",
+        reference = "sub_pro_plan"
+    }), "application/json"); // { "id": "sess_...", ... } -- open with Konduyt.checkout({ sessionId })
+});
+
+app.MapPost("/api/create-split-payment", async () => {
+    // Split: one checkout, proceeds split across sellers using the
+    // provider's own real split capability -- Konduyt never holds funds.
+    return Results.Content(await Konduyt("/v1/marketplace_payments", new {
+        provider = "paystack", amount = 500000, currency = "KES",
+        splits = new[] { new { seller_id = "seller_123", amount = 400000 } }
+    }), "application/json"); // the remainder is your own commission
+});
+
+app.MapPost("/api/create-usage-bill", async () => {
+    // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+    int unitsUsed = 340, pricePerUnit = 25;
+    int amount = unitsUsed * pricePerUnit;
+    return Results.Content(await Konduyt("/v1/payment_sessions", new {
+        amount, currency = "KES", recurring = false,
+        reference = $"usage_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}"
+    }), "application/json");
+});
+
+app.Urls.Add("http://localhost:3000");
+Console.WriteLine("Backend running on http://localhost:3000");
+app.Run();`,
   },
   {
     id: 'java', label: 'Java', filename: 'Main.java',
