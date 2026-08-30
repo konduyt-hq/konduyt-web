@@ -28,17 +28,35 @@ const KEYS = {
 // {{SECRET}} / {{API}} are filled at render time.
 const LANGUAGES = [
   {
-    id: 'curl', label: 'cURL', filename: 'request.sh',
+    id: 'curl', label: 'cURL', filename: 'test.sh',
     deps: 'No dependencies — cURL is built into macOS and Linux.',
-    code: `curl -X POST {{API}}/v1/payments/test \\
-  -H "Authorization: Bearer {{SECRET}}" \\
+    note: 'curl is different from the other 11 tabs: it can\'t serve an endpoint, only call one. These test whichever backend you\'re actually running (any one of the other language tabs) on localhost:3000 -- start that backend first, then run these.',
+    code: `#!/bin/bash
+# test.sh  —  run against whichever backend you have running (localhost:3000)
+
+echo "1. One-time payment"
+curl -X POST http://localhost:3000/api/create-payment \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "amount": 5000,
-    "currency": "KES",
-    "provider": "test",
-    "customer": { "email": "customer@example.com" }
-  }'`,
+  -d '{"amount": 5000, "email": "customer@example.com"}'
+echo
+
+echo "2. Recurring subscription"
+curl -X POST http://localhost:3000/api/create-subscription \\
+  -H "Content-Type: application/json" \\
+  -d '{}'
+echo
+
+echo "3. Split payment"
+curl -X POST http://localhost:3000/api/create-split-payment \\
+  -H "Content-Type: application/json" \\
+  -d '{}'
+echo
+
+echo "4. Pay-as-you-go usage bill"
+curl -X POST http://localhost:3000/api/create-usage-bill \\
+  -H "Content-Type: application/json" \\
+  -d '{}'
+echo`,
   },
   {
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
