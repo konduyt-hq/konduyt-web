@@ -41,25 +41,84 @@ const LANGUAGES = [
   }'`,
   },
   {
-    id: 'javascript', label: 'JavaScript', filename: 'index.mjs',
-    deps: 'Node 18+ (fetch is built in). Run: node index.mjs',
-    code: `// index.mjs  —  run with:  node index.mjs
-const res = await fetch("{{API}}/v1/payments/test", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer {{SECRET}}",
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    amount: 5000,
-    currency: "KES",
-    provider: "test",
-    customer: { email: "customer@example.com" },
-  }),
+    id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
+    deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    code: `// server.mjs  —  run with:  node server.mjs
+import http from "node:http";
+
+// SECRET KEY -- stays on the server, never sent to a browser. This is
+// Konduyt's own universal demo key (safe here since it's already public),
+// but a real key works exactly the same way -- see "Where does my secret
+// key go?" above for where a real one belongs (never hardcoded like this).
+const KONDUYT_SECRET_KEY = "{{SECRET}}";
+const API = "{{API}}";
+
+async function konduyt(path, body) {
+  const res = await fetch(API + path, {
+    method: "POST",
+    headers: {
+      "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+const server = http.createServer(async (req, res) => {
+  if (req.method !== "POST") { res.writeHead(404); res.end(); return; }
+
+  let raw = "";
+  for await (const chunk of req) raw += chunk;
+  const body = raw ? JSON.parse(raw) : {};
+  res.setHeader("Content-Type", "application/json");
+
+  if (req.url === "/api/create-payment") {
+    // One-time: amount either comes from the shopper (a donation), or is a
+    // fixed price you already know (a product) -- same field either way.
+    const amount = body.amount;                 // whatever the shopper typed in, OR
+    // const amount = 5000;                      // a fixed price you already know
+    const payment = await konduyt("/v1/payments/test", {
+      amount, currency: "KES", provider: "test",
+    });
+    res.end(JSON.stringify(payment));
+
+  } else if (req.url === "/api/create-subscription") {
+    // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+    const session = await konduyt("/v1/payment_sessions", {
+      amount: 100000, currency: "KES",
+      recurring: true, interval: "monthly",
+      reference: "sub_pro_plan",
+    });
+    res.end(JSON.stringify(session)); // { id: "sess_...", ... } -- open with Konduyt.checkout({ sessionId })
+
+  } else if (req.url === "/api/create-split-payment") {
+    // Split: one checkout, proceeds split across sellers using the
+    // provider's own real split capability -- Konduyt never holds funds.
+    const payment = await konduyt("/v1/marketplace_payments", {
+      provider: "paystack", amount: 500000, currency: "KES",
+      splits: [{ seller_id: "seller_123", amount: 400000 }],
+    });
+    res.end(JSON.stringify(payment)); // the remainder is your own commission
+
+  } else if (req.url === "/api/create-usage-bill") {
+    // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+    const unitsUsed = 340, pricePerUnit = 25;
+    const amount = unitsUsed * pricePerUnit;
+    const session = await konduyt("/v1/payment_sessions", {
+      amount, currency: "KES", recurring: false,
+      reference: \`usage_\${Date.now()}\`,
+    });
+    res.end(JSON.stringify(session));
+
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
 });
 
-const payment = await res.json();
-console.log(payment);`,
+server.listen(3000, () => console.log("Backend running on http://localhost:3000"));`,
   },
   {
     id: 'python', label: 'Python', filename: 'main.py',
