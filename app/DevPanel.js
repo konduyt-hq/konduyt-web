@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { LANG_ICONS, LANG_BRAND } from './dashboard/langicons';
 import { HOSTING_PLATFORMS } from './dashboard/hostingplatforms';
 import { INTELLIGENCE_TESTING_SDK } from './dashboard/intelligencesdk';
+import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './dashboard/frontendfiles';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
 const ICON_KEY = {
@@ -887,6 +888,25 @@ int main() {
   },
 ];
 
+// The three real frontend file types -- HTML/CSS for the web/CLI backends,
+// and Android/iOS's own real UI-definition file formats (neither renders
+// a web page, so neither has an HTML/CSS equivalent -- each gets its own
+// real file instead, not an HTML/CSS file pretending to be one).
+const FRONTEND_OPTIONS = [
+  {
+    id: 'html', label: 'HTML & CSS', filename: 'intelligence.html',
+    hint: 'The web frontend — HTML and CSS together in one file. Works with any of the 12 backend languages below.',
+  },
+  {
+    id: 'android', label: 'Android (XML)', filename: 'activity_main.xml',
+    hint: 'Android\'s own real UI-definition file — what the Java/Kotlin backend tabs\' MainActivity actually loads. Pair with either of those two.',
+  },
+  {
+    id: 'ios', label: 'iOS (Storyboard)', filename: 'Main.storyboard',
+    hint: 'iOS\'s classic UIKit UI-definition file — an XML-based alternative to the SwiftUI approach shown in the Swift backend tab. Either is valid; use whichever your project already uses.',
+  },
+];
+
 function render(code) {
   return code.replace(/\{\{API\}\}/g, API_BASE).replace(/\{\{SECRET\}\}/g, KEYS.secret);
 }
@@ -955,7 +975,7 @@ export default function DevPanel() {
   const [showIntel, setShowIntel] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [devPlatform, setDevPlatform] = useState('render');
-  const [htmlOpen, setHtmlOpen] = useState(false);
+  const [frontendId, setFrontendId] = useState('html');
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -1033,34 +1053,38 @@ export default function DevPanel() {
           );
         })()}
 
-        {/* 2. Copy HTML and CSS — the frontend. Collapsed by default: this is
-            the shopper-facing half of a full project (frontend = HTML/CSS,
-            backend = whichever language is picked below), shown collapsed
-            so it doesn't compete with "Set your key" for attention on load. */}
-        <div className="step-row">
-          <button type="button" className="env-setup-head" style={{ width: '100%' }}
-            onClick={() => setHtmlOpen((o) => !o)}>
-            <span className="step-label" style={{ marginBottom: 0 }}>2. Copy HTML and CSS</span>
-            <span className="env-setup-chevron">{htmlOpen ? '▲' : '▼'}</span>
-          </button>
+        {/* 2. Frontend — a real pill picker, matching the language pills
+            below. HTML & CSS is the web frontend; Android and iOS don't
+            render a web page at all, so they get their own real
+            UI-definition file instead (XML layout / Storyboard XML) --
+            not an HTML/CSS file pretending to be one. */}
+        <div className="step-label">2. Copy your frontend</div>
+        <div className="lang-pills">
+          {FRONTEND_OPTIONS.map((f) => (
+            <button key={f.id} type="button"
+              className={frontendId === f.id ? 'pill active' : 'pill'}
+              onClick={() => setFrontendId(f.id)}>
+              {f.label}
+            </button>
+          ))}
         </div>
-        {htmlOpen && (() => {
+        {(() => {
+          const frontend = FRONTEND_OPTIONS.find((f) => f.id === frontendId) || FRONTEND_OPTIONS[0];
           const intelHtml = INTELLIGENCE_TESTING_SDK
             .replaceAll('{{API}}', API_BASE)
             .replaceAll('{{PUBLISHABLE_KEY}}', KEYS.publishable);
+          const content = frontend.id === 'html' ? intelHtml
+            : frontend.id === 'android' ? ANDROID_LAYOUT_XML
+            : IOS_STORYBOARD_XML;
           return (
             <>
-              <p className="step-hint">
-                This is the shopper-facing half of a full project — the frontend, HTML and CSS together in one
-                file. The 12 languages below are the backend half: whichever one you pick serves the endpoints
-                this file calls out to.
-              </p>
+              <p className="step-hint">{frontend.hint}</p>
               <div className="code-box">
                 <div className="code-box-head">
-                  <span>intelligence.html</span>
-                  <CopyButton text={intelHtml} />
+                  <span>{frontend.filename}</span>
+                  <CopyButton text={content} />
                 </div>
-                <pre className="code-pre">{intelHtml}</pre>
+                <pre className="code-pre">{content}</pre>
               </div>
             </>
           );
@@ -1094,7 +1118,7 @@ export default function DevPanel() {
           <a href="/docs/" className="view-docs">View full docs →</a>
         </div>
 
-        <div className="code-grid">
+        <div className="code-grid code-grid-single">
           <div className="code-box">
             <div className="code-box-head">
               <span>{active.filename}</span>
@@ -1103,38 +1127,6 @@ export default function DevPanel() {
             {active.deps && <div className="code-deps"><span className="code-deps-tag">setup</span>{active.deps}</div>}
             <pre className="code-pre">{renderedCode}</pre>
             {active.note && <div className="code-note">{active.note}</div>}
-          </div>
-          <div className="code-box">
-            <div className="code-box-head">
-              <span>RESPONSE</span>
-              {runState === 'done' && payment ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span className="status-dot"></span>200 OK · test
-                </span>
-              ) : runState === 'running' ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#8a8a92' }}>
-                  <span className="status-dot pending"></span>Sending…
-                </span>
-              ) : (
-                <span style={{ color: '#6a6a72' }}>Awaiting request</span>
-              )}
-            </div>
-            {runState === 'idle' && (
-              <pre className="code-pre code-muted">{`// Click "Run in test mode" to send a
-// test payment and see the real API
-// response — and the routing intelligence.`}</pre>
-            )}
-            {runState === 'running' && (
-              <pre className="code-pre code-muted">{`> POST /v1/payments/test
-> Running routing intelligence…
-> Creating test payment…`}</pre>
-            )}
-            {runState === 'done' && payment && (
-              <pre className="code-pre">{JSON.stringify(payment, null, 2)}</pre>
-            )}
-            {runState === 'done' && result && result.error && (
-              <pre className="code-pre code-muted">{result.error}</pre>
-            )}
           </div>
         </div>
 
@@ -1147,6 +1139,9 @@ export default function DevPanel() {
               onClick={() => setShowIntel(true)}>
               ✓ Test payment created · see intelligence
             </button>
+          )}
+          {runState === 'done' && result && result.error && (
+            <span className="run-error">{result.error}</span>
           )}
         </div>
 
