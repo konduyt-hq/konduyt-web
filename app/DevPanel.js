@@ -984,12 +984,23 @@ export default function DevPanel() {
     if (runState === 'running') return;
     setRunState('running'); setResult(null);
     try {
-      const res = await fetch(`${API_BASE}/v1/demo/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 500000, currency: 'KES' }),
-      });
+      // Real geo-aware intelligence: real detected country, real converted
+      // price in the visitor's real local currency, real locally-eligible
+      // methods ranked by fee -- the same endpoint and the same
+      // convertToLocal behavior the real konduyt.js SDK itself uses (see
+      // /checkout/local-intelligence on the backend), not a separate,
+      // hardcoded landing-page-only demo path.
+      const res = await fetch(
+        `${API_BASE}/checkout/local-intelligence?pk=${encodeURIComponent(KEYS.publishable)}&amount=500000&currency=KES`
+      );
       const data = await res.json();
+      if (!res.ok || !data.methods || data.methods.length === 0) {
+        setResult({ error: data.reason === 'no_coverage'
+          ? 'No payment methods available for your detected location right now.'
+          : 'Could not reach the demo API. Try again in a moment.' });
+        setRunState('done');
+        return;
+      }
       setResult(data);
       setRunState('done');
       setShowIntel(true);
@@ -1001,8 +1012,19 @@ export default function DevPanel() {
 
   function selectLang(id) { setActiveId(id); setRunState('idle'); setResult(null); }
 
-  const options = (result && result.intelligence && result.intelligence.options) || [];
-  const payment = result && result.payment;
+  // Real methods from /checkout/local-intelligence, mapped into the shape
+  // the popup renders -- fee_minor computed from the real fee_percent
+  // against the real converted amount, not a separate fabricated number.
+  const options = (result && result.methods || []).map((m) => ({
+    label: m.name,
+    fee_percent_effective: m.fee_percent,
+    fee_minor: m.fee_percent != null && result.display_amount != null
+      ? Math.round(result.display_amount * m.fee_percent / 100)
+      : null,
+  }));
+  const payment = result && result.display_amount != null
+    ? { amount: result.display_amount, currency: result.display_currency }
+    : null;
 
   return (
     <div className="panel">
@@ -1209,6 +1231,9 @@ export default function DevPanel() {
               <div className="intel-modal-sub">
                 A {fmtMoney(payment.amount, payment.currency)} payment, every way your customer can pay —
                 ranked cheapest-first by real charges. This is exactly what you get on a real project once you connect a provider.
+                {result && result.shopper_country && result.fx_status === 'KNOWN' && (
+                  <> Converted to {payment.currency} for your detected location ({result.shopper_country}).</>
+                )}
               </div>
             </div>
             <div className="intel-modal-table">
