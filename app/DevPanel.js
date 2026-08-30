@@ -572,83 +572,213 @@ Console.WriteLine("Backend running on http://localhost:3000");
 app.Run();`,
   },
   {
-    id: 'java', label: 'Java', filename: 'Main.java',
-    deps: `dependencies {
+    id: 'java', label: 'Java', filename: 'MainActivity.java',
+    deps: `// build.gradle (Module: app) — a real dependency
+dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
-// AndroidManifest.xml — allow internet
-// <uses-permission android:name="android.permission.INTERNET" />`,
-    note: 'For Android: this runs as-is on the JVM. On Android you must add the INTERNET permission in AndroidManifest.xml and make the call off the main thread (e.g. a coroutine or Executor) — a raw network call on the UI thread throws NetworkOnMainThreadException.',
-    code: `// Main.java  —  uses OkHttp (add the dependency above)
+
+// AndroidManifest.xml — a real, separate file, not a comment.
+// Goes at the project root's app/src/main/, next to your Activity.
+// This app talks to your OWN backend (see the other language tabs) —
+// never Konduyt directly, and never holds a secret key.
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:label="Konduyt Demo" android:icon="@mipmap/ic_launcher">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>`,
+    note: 'A real, minimal Android project needs all three pieces above and below: the Gradle dependency, the manifest (real permissions + the Activity declaration), and the Activity code itself. Network calls must run off the main thread on Android (a coroutine or Executor) — a raw call on the UI thread throws NetworkOnMainThreadException; the Executor below handles that.',
+    code: `// app/src/main/java/.../MainActivity.java
+package com.example.konduytdemo;
+
+import android.os.Bundle;
+import android.widget.Button;
+import androidx.appcompat.app.AppCompatActivity;
 import okhttp3.*;
+import java.util.concurrent.Executors;
 
-public class Main {
-    public static void main(String[] args) throws Exception {
+public class MainActivity extends AppCompatActivity {
+    // This app calls YOUR OWN backend, never Konduyt directly -- there is
+    // no safe way to hold a secret key on a device. Whichever of the other
+    // 11 language tabs you run as your backend, this points at it.
+    private static final String BACKEND = "http://10.0.2.2:3000"; // your backend, from the Android emulator
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main); // a real layout file: one Button, id "buyButton"
+
+        Button buyButton = findViewById(R.id.buyButton);
+        buyButton.setOnClickListener(v -> createPayment(5000, "customer@example.com"));
+    }
+
+    void createPayment(int amount, String email) {
+        // amount either comes from the shopper (a donation), or is a fixed
+        // price you already know (a product) -- same field either way.
         OkHttpClient client = new OkHttpClient();
-        MediaType JSON = MediaType.get("application/json");
-        String payload = "{ \\"amount\\": 5000, \\"currency\\": \\"KES\\", \\"provider\\": \\"test\\","
-                       + "  \\"customer\\": { \\"email\\": \\"customer@example.com\\" } }";
+        Executors.newSingleThreadExecutor().execute(() -> {
+            String json = "{\\"amount\\": " + amount + ", \\"email\\": \\"" + email + "\\"}";
+            Request request = new Request.Builder()
+                .url(BACKEND + "/api/create-payment")
+                .post(RequestBody.create(json, MediaType.get("application/json")))
+                .build();
+            try (Response res = client.newCall(request).execute()) {
+                String payment = res.body().string();
+                // your backend returns whatever Konduyt gave it -- open
+                // authorization_url in a Chrome Custom Tab on the main thread
+                runOnUiThread(() -> { /* show payment / open the checkout URL */ });
+            } catch (Exception e) {
+                // handle the real error -- backend unreachable, etc.
+            }
+        });
+    }
+}`,
+  },
+  {
+    id: 'kotlin', label: 'Kotlin', filename: 'MainActivity.kt',
+    deps: `// build.gradle.kts (Module: app) — a real dependency
+dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+}
 
-        Request request = new Request.Builder()
-            .url("{{API}}/v1/payments/test")
-            .header("Authorization", "Bearer {{SECRET}}")
-            .post(RequestBody.create(payload, JSON))
-            .build();
+// AndroidManifest.xml — a real, separate file, not a comment.
+// Goes at the project root's app/src/main/, next to your Activity.
+// This app talks to your OWN backend (see the other language tabs) —
+// never Konduyt directly, and never holds a secret key.
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application android:label="Konduyt Demo" android:icon="@mipmap/ic_launcher">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>`,
+    note: 'A real, minimal Android project needs all three pieces above and below: the Gradle dependency, the manifest (real permissions + the Activity declaration), and the Activity code itself. Call from a coroutine (Dispatchers.IO) — never the main thread.',
+    code: `// app/src/main/java/.../MainActivity.kt
+package com.example.konduytdemo
 
-        try (Response res = client.newCall(request).execute()) {
-            System.out.println(res.body().string());
+import android.os.Bundle
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.*
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+
+class MainActivity : AppCompatActivity() {
+    // This app calls YOUR OWN backend, never Konduyt directly -- there is
+    // no safe way to hold a secret key on a device. Whichever of the other
+    // 11 language tabs you run as your backend, this points at it.
+    private val backend = "http://10.0.2.2:3000" // your backend, from the Android emulator
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main) // a real layout file: one Button, id "buyButton"
+
+        findViewById<Button>(R.id.buyButton).setOnClickListener {
+            createPayment(5000, "customer@example.com")
+        }
+    }
+
+    fun createPayment(amount: Int, email: String) {
+        // amount either comes from the shopper (a donation), or is a fixed
+        // price you already know (a product) -- same field either way.
+        CoroutineScope(Dispatchers.IO).launch {
+            val client = OkHttpClient()
+            val json = "application/json".toMediaType()
+            val payload = """{ "amount": $amount, "email": "$email" }"""
+
+            val request = Request.Builder()
+                .url("$backend/api/create-payment")
+                .post(payload.toRequestBody(json))
+                .build()
+
+            client.newCall(request).execute().use { res ->
+                val payment = res.body?.string()
+                // your backend returns whatever Konduyt gave it -- open
+                // authorization_url in a Chrome Custom Tab on the main thread
+                withContext(Dispatchers.Main) { /* show payment / open the checkout URL */ }
+            }
         }
     }
 }`,
   },
   {
-    id: 'kotlin', label: 'Kotlin', filename: 'Main.kt',
-    deps: `dependencies {
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-}
-// AndroidManifest.xml
-// <uses-permission android:name="android.permission.INTERNET" />`,
-    note: 'On Android, call from a coroutine (Dispatchers.IO) — never the main thread.',
-    code: `// Main.kt  —  uses OkHttp (add the dependency above)
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
+    id: 'swift', label: 'Swift', filename: 'ContentView.swift',
+    deps: `// No package dependency needed -- URLSession is built into Foundation.
 
-fun main() {
-    val client = OkHttpClient()
-    val json = "application/json".toMediaType()
-    val payload = """{ "amount": 5000, "currency": "KES", "provider": "test",
-                       "customer": { "email": "customer@example.com" } }"""
+// Info.plist — a real, separate file, not a comment. Goes at your
+// project root. iOS blocks plain HTTP by default (App Transport
+// Security); this allows local testing against your own backend on
+// localhost. Remove this exception for a real backend on a real https
+// domain -- it should only ever apply to local development.
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>localhost</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+</plist>`,
+    note: 'A real, minimal iOS project needs both pieces above and below: Info.plist (real App Transport Security config for local testing) and the view itself. This app talks to your OWN backend (see the other language tabs) -- never Konduyt directly, and never holds a secret key.',
+    code: `// ContentView.swift
+import SwiftUI
 
-    val request = Request.Builder()
-        .url("{{API}}/v1/payments/test")
-        .header("Authorization", "Bearer {{SECRET}}")
-        .post(payload.toRequestBody(json))
-        .build()
+struct ContentView: View {
+    @State private var result: String = ""
 
-    client.newCall(request).execute().use { res ->
-        println(res.body?.string())
+    // This app calls YOUR OWN backend, never Konduyt directly -- there is
+    // no safe way to hold a secret key on a device. Whichever of the other
+    // 11 language tabs you run as your backend, this points at it.
+    let backend = "http://localhost:3000" // your backend, from the iOS Simulator
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(result).font(.footnote)
+            Button("Buy now") {
+                Task { await createPayment(amount: 5000, email: "customer@example.com") }
+            }
+        }
+        .padding()
+    }
+
+    func createPayment(amount: Int, email: String) async {
+        // amount either comes from the shopper (a donation), or is a fixed
+        // price you already know (a product) -- same field either way.
+        var request = URLRequest(url: URL(string: "\\(backend)/api/create-payment")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["amount": amount, "email": email])
+
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            // your backend returns whatever Konduyt gave it -- open
+            // authorization_url in an SFSafariViewController
+            result = String(data: data, encoding: .utf8) ?? ""
+        } catch {
+            result = "Could not reach your backend -- is it running?"
+        }
     }
 }`,
-  },
-  {
-    id: 'swift', label: 'Swift', filename: 'main.swift',
-    deps: 'Swift 5.5+ with Foundation. Run: swift main.swift',
-    note: 'Uses async/await at top level (Swift 5.5+). In an app target, call this inside a Task { } rather than at file scope.',
-    code: `// main.swift  —  swift main.swift
-import Foundation
-
-var request = URLRequest(url: URL(string: "{{API}}/v1/payments/test")!)
-request.httpMethod = "POST"
-request.setValue("Bearer {{SECRET}}", forHTTPHeaderField: "Authorization")
-request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-request.httpBody = """
-{ "amount": 5000, "currency": "KES", "provider": "test",
-  "customer": { "email": "customer@example.com" } }
-""".data(using: .utf8)
-
-let (data, _) = try await URLSession.shared.data(for: request)
-print(String(data: data, encoding: .utf8)!)`,
   },
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
