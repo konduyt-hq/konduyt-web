@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { LANG_ICONS, LANG_BRAND } from './dashboard/langicons';
 import { HOSTING_PLATFORMS } from './dashboard/hostingplatforms';
+import { INTELLIGENCE_TESTING_SDK } from './dashboard/intelligencesdk';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
 const ICON_KEY = {
@@ -568,6 +569,36 @@ export default function DevPanel() {
             </div>
           </div>
         )}
+
+        {/* 4. Real, standalone testing SDK -- one self-contained HTML file
+            (HTML + CSS + JS together). Save it, open it in a browser, it
+            calls the universal publishable key against Konduyt's real
+            /checkout/config and renders the actual payment intelligence
+            layer. Uses the shared universal keys, same as everything else
+            on this page -- fine to embed directly, since they're already
+            public and work only against Konduyt's own demo project. */}
+        <div className="step-row">
+          <div className="step-label" style={{ marginBottom: 0 }}>4. Test the payment intelligence layer — standalone (HTML)</div>
+        </div>
+        <p className="step-hint">
+          The publishable key above (safe to expose client-side — it can only open a checkout, never move money)
+          goes directly into frontend code like this, not on a host. Save this as
+          {' '}<code>intelligence.html</code>{' '}and open it directly in a browser — no build step, no server.
+        </p>
+        {(() => {
+          const intelHtml = INTELLIGENCE_TESTING_SDK
+            .replaceAll('{{API}}', API_BASE)
+            .replaceAll('{{PUBLISHABLE_KEY}}', KEYS.publishable);
+          return (
+            <div className="code-box">
+              <div className="code-box-head">
+                <span>intelligence.html</span>
+                <CopyButton text={intelHtml} />
+              </div>
+              <pre className="code-pre">{intelHtml}</pre>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Payment intelligence popup — the real ranked vendors from the engine */}
