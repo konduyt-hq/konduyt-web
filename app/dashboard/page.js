@@ -1884,6 +1884,22 @@ export default function Dashboard() {
                             </div>
                           </div>
 
+                          <div className="env-step">
+                            <span className="env-step-n">4</span>
+                            <div>
+                              <div className="env-step-title">Your publishable key can go there too — for a different reason</div>
+                              <p className="env-p">
+                                It isn&apos;t a secret — it&apos;s safe to expose client-side, so it doesn&apos;t need
+                                the same protection as the key above. But setting it as an environment variable too
+                                (e.g. <code className="inline-code">KONDUYT_PUBLISHABLE_KEY</code>) is still worth doing:
+                                if your backend is the one serving your frontend page, it needs a way to inject the key
+                                into what it sends the browser, and keeping both keys as env vars means one place to
+                                manage per environment (test vs. live) instead of a hardcoded value buried in your
+                                frontend source.
+                              </p>
+                            </div>
+                          </div>
+
                           <p className="env-p env-warn">
                             <strong>Test with real money before you go live with it.</strong> Konduyt connects to your
                             provider — Paystack, PayPal, and others — using your provider&apos;s own sandbox
