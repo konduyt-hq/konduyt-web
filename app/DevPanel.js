@@ -782,30 +782,89 @@ struct ContentView: View {
   },
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
-    deps: 'Needs libcurl. Install: apt install libcurl4-openssl-dev (Debian/Ubuntu) or brew install curl (macOS). Compile: g++ main.cpp -lcurl -o pay && ./pay',
-    code: `// main.cpp  —  g++ main.cpp -lcurl -o pay && ./pay
+    deps: 'Needs libcurl and cpp-httplib (a single header). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    code: `// main.cpp  —  g++ main.cpp -lcurl -lcpp-httplib -o server && ./server
 #include <curl/curl.h>
+#include <httplib.h>
+#include <string>
+#include <ctime>
 
-int main() {
+// SECRET KEY -- stays on the server, never sent to a browser. This is
+// Konduyt's own universal demo key (safe here since it's already public),
+// but a real key works exactly the same way -- see "Where does my secret
+// key go?" above for where a real one belongs (never hardcoded like this).
+const std::string KONDUYT_SECRET_KEY = "{{SECRET}}";
+const std::string API = "{{API}}";
+
+static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* out) {
+    out->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
+
+std::string konduyt(const std::string& path, const std::string& jsonBody) {
     CURL* curl = curl_easy_init();
-    if (!curl) return 1;
-
-    const char* body =
-        R"({"amount":5000,"currency":"KES","provider":"test",)"
-        R"("customer":{"email":"customer@example.com"}})";
+    std::string response;
+    if (!curl) return "{}";
 
     struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(headers, "Authorization: Bearer {{SECRET}}");
+    headers = curl_slist_append(headers, ("Authorization: Bearer " + KONDUYT_SECRET_KEY).c_str());
     headers = curl_slist_append(headers, "Content-Type: application/json");
 
-    curl_easy_setopt(curl, CURLOPT_URL, "{{API}}/v1/payments/test");
+    curl_easy_setopt(curl, CURLOPT_URL, (API + path).c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonBody.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_perform(curl);
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-    return 0;
+    return response;
+}
+
+int main() {
+    httplib::Server svr;
+
+    svr.Post("/api/create-payment", [](const httplib::Request& req, httplib::Response& res) {
+        // One-time: amount either comes from the shopper (a donation), or is
+        // a fixed price you already know (a product) -- same field either way.
+        // (Parsing req.body's real "amount" field is left to a JSON library
+        // of your choice -- shown here as a fixed price for brevity.)
+        std::string amount = "5000"; // whatever the shopper typed in, OR a fixed price you already know
+        std::string body = R"({"amount":)" + amount + R"(,"currency":"KES","provider":"test"})";
+        res.set_content(konduyt("/v1/payments/test", body), "application/json");
+    });
+
+    svr.Post("/api/create-subscription", [](const httplib::Request&, httplib::Response& res) {
+        // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+        std::string body = R"({"amount":100000,"currency":"KES","recurring":true,)"
+                            R"("interval":"monthly","reference":"sub_pro_plan"})";
+        res.set_content(konduyt("/v1/payment_sessions", body), "application/json");
+        // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
+    });
+
+    svr.Post("/api/create-split-payment", [](const httplib::Request&, httplib::Response& res) {
+        // Split: one checkout, proceeds split across sellers using the
+        // provider's own real split capability -- Konduyt never holds funds.
+        std::string body = R"({"provider":"paystack","amount":500000,"currency":"KES",)"
+                            R"("splits":[{"seller_id":"seller_123","amount":400000}]})";
+        res.set_content(konduyt("/v1/marketplace_payments", body), "application/json");
+        // the remainder is your own commission
+    });
+
+    svr.Post("/api/create-usage-bill", [](const httplib::Request&, httplib::Response& res) {
+        // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+        long unitsUsed = 340, pricePerUnit = 25;
+        long amount = unitsUsed * pricePerUnit;
+        std::string body = R"({"amount":)" + std::to_string(amount) +
+            R"(,"currency":"KES","recurring":false,"reference":"usage_)" +
+            std::to_string(std::time(nullptr)) + R"("})";
+        res.set_content(konduyt("/v1/payment_sessions", body), "application/json");
+    });
+
+    printf("Backend running on http://localhost:3000\\n");
+    svr.listen("0.0.0.0", 3000);
 }`,
   },
 ];
