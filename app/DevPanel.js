@@ -260,30 +260,87 @@ if ($path === "/api/create-payment") {
   },
   {
     id: 'go', label: 'Go', filename: 'main.go',
-    deps: 'Standard library only. Run: go run main.go',
+    deps: 'Standard library only. Run: go run main.go -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
     code: `// main.go  —  run with:  go run main.go
 package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
-func main() {
-	body := []byte(\`{"amount":5000,"currency":"KES","provider":"test","customer":{"email":"customer@example.com"}}\`)
-	req, _ := http.NewRequest("POST", "{{API}}/v1/payments/test", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer {{SECRET}}")
-	req.Header.Set("Content-Type", "application/json")
+// SECRET KEY -- stays on the server, never sent to a browser. This is
+// Konduyt's own universal demo key (safe here since it's already public),
+// but a real key works exactly the same way -- see "Where does my secret
+// key go?" above for where a real one belongs (never hardcoded like this).
+const konduytSecretKey = "{{SECRET}}"
+const api = "{{API}}"
 
+func konduyt(path string, body map[string]any) ([]byte, error) {
+	buf, _ := json.Marshal(body)
+	req, _ := http.NewRequest("POST", api+path, bytes.NewBuffer(buf))
+	req.Header.Set("Authorization", "Bearer "+konduytSecretKey)
+	req.Header.Set("Content-Type", "application/json")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer res.Body.Close()
-	out, _ := io.ReadAll(res.Body)
-	fmt.Println(string(out))
+	return io.ReadAll(res.Body)
+}
+
+func main() {
+	http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
+		// One-time: amount either comes from the shopper (a donation), or
+		// is a fixed price you already know (a product) -- same field either way.
+		var in struct{ Amount int }
+		json.NewDecoder(r.Body).Decode(&in)
+		amount := in.Amount // whatever the shopper typed in, OR
+		// amount := 5000     // a fixed price you already know
+		out, _ := konduyt("/v1/payments/test", map[string]any{
+			"amount": amount, "currency": "KES", "provider": "test",
+		})
+		w.Write(out)
+	})
+
+	http.HandleFunc("/api/create-subscription", func(w http.ResponseWriter, r *http.Request) {
+		// Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+		out, _ := konduyt("/v1/payment_sessions", map[string]any{
+			"amount": 100000, "currency": "KES",
+			"recurring": true, "interval": "monthly",
+			"reference": "sub_pro_plan",
+		})
+		w.Write(out) // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
+	})
+
+	http.HandleFunc("/api/create-split-payment", func(w http.ResponseWriter, r *http.Request) {
+		// Split: one checkout, proceeds split across sellers using the
+		// provider's own real split capability -- Konduyt never holds funds.
+		out, _ := konduyt("/v1/marketplace_payments", map[string]any{
+			"provider": "paystack", "amount": 500000, "currency": "KES",
+			"splits": []map[string]any{{"seller_id": "seller_123", "amount": 400000}},
+		})
+		w.Write(out) // the remainder is your own commission
+	})
+
+	http.HandleFunc("/api/create-usage-bill", func(w http.ResponseWriter, r *http.Request) {
+		// Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+		unitsUsed, pricePerUnit := 340, 25
+		amount := unitsUsed * pricePerUnit
+		out, _ := konduyt("/v1/payment_sessions", map[string]any{
+			"amount": amount, "currency": "KES", "recurring": false,
+			"reference": fmt.Sprintf("usage_%d", time.Now().Unix()),
+		})
+		w.Write(out)
+	})
+
+	fmt.Println("Backend running on http://localhost:3000")
+	http.ListenAndServe(":3000", nil)
 }`,
   },
   {
