@@ -894,15 +894,15 @@ int main() {
 // real file instead, not an HTML/CSS file pretending to be one).
 const FRONTEND_OPTIONS = [
   {
-    id: 'html', label: 'HTML & CSS', filename: 'intelligence.html',
+    id: 'html', label: 'HTML & CSS', filename: 'intelligence.html', iconKey: 'html',
     hint: 'The web frontend — HTML and CSS together in one file. Works with any of the 12 backend languages below.',
   },
   {
-    id: 'android', label: 'Android (XML)', filename: 'activity_main.xml',
+    id: 'android', label: 'Android (XML)', filename: 'activity_main.xml', iconKey: 'android',
     hint: 'Android\'s own real UI-definition file — what the Java/Kotlin backend tabs\' MainActivity actually loads. Pair with either of those two.',
   },
   {
-    id: 'ios', label: 'iOS (Storyboard)', filename: 'Main.storyboard',
+    id: 'ios', label: 'iOS (Storyboard)', filename: 'Main.storyboard', iconKey: 'swift',
     hint: 'iOS\'s classic UIKit UI-definition file — an XML-based alternative to the SwiftUI approach shown in the Swift backend tab. Either is valid; use whichever your project already uses.',
   },
 ];
@@ -976,6 +976,7 @@ export default function DevPanel() {
   const [showMore, setShowMore] = useState(false);
   const [devPlatform, setDevPlatform] = useState('render');
   const [frontendId, setFrontendId] = useState('html');
+  const [frontendOpen, setFrontendOpen] = useState(false);
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -1054,41 +1055,62 @@ export default function DevPanel() {
         })()}
 
         {/* 2. Frontend — a real pill picker, matching the language pills
-            below. HTML & CSS is the web frontend; Android and iOS don't
-            render a web page at all, so they get their own real
-            UI-definition file instead (XML layout / Storyboard XML) --
-            not an HTML/CSS file pretending to be one. */}
-        <div className="step-label">2. Copy your frontend</div>
-        <div className="lang-pills">
-          {FRONTEND_OPTIONS.map((f) => (
-            <button key={f.id} type="button"
-              className={frontendId === f.id ? 'pill active' : 'pill'}
-              onClick={() => setFrontendId(f.id)}>
-              {f.label}
-            </button>
-          ))}
+            below (including real language icons). HTML & CSS is the web
+            frontend; Android and iOS don't render a web page at all, so
+            they get their own real UI-definition file instead (XML
+            layout / Storyboard XML) -- not an HTML/CSS file pretending
+            to be one. Collapsed by default, same reasoning as before: it
+            shouldn't compete with "Set your key" for attention on load. */}
+        <div className="step-row">
+          <button type="button" className="env-setup-head" style={{ width: '100%' }}
+            onClick={() => setFrontendOpen((o) => !o)}>
+            <span className="step-label" style={{ marginBottom: 0 }}>2. Copy your frontend</span>
+            <span className="env-setup-chevron">{frontendOpen ? '▲' : '▼'}</span>
+          </button>
         </div>
-        {(() => {
-          const frontend = FRONTEND_OPTIONS.find((f) => f.id === frontendId) || FRONTEND_OPTIONS[0];
-          const intelHtml = INTELLIGENCE_TESTING_SDK
-            .replaceAll('{{API}}', API_BASE)
-            .replaceAll('{{PUBLISHABLE_KEY}}', KEYS.publishable);
-          const content = frontend.id === 'html' ? intelHtml
-            : frontend.id === 'android' ? ANDROID_LAYOUT_XML
-            : IOS_STORYBOARD_XML;
-          return (
-            <>
-              <p className="step-hint">{frontend.hint}</p>
-              <div className="code-box">
-                <div className="code-box-head">
-                  <span>{frontend.filename}</span>
-                  <CopyButton text={content} />
-                </div>
-                <pre className="code-pre">{content}</pre>
-              </div>
-            </>
-          );
-        })()}
+        {frontendOpen && (
+          <>
+            <div className="lang-pills">
+              {FRONTEND_OPTIONS.map((f) => {
+                const icon = LANG_ICONS[f.iconKey];
+                const brand = LANG_BRAND[f.iconKey];
+                const isActive = f.id === frontendId;
+                return (
+                  <button key={f.id} type="button"
+                    className={isActive ? 'pill active' : 'pill'}
+                    style={isActive && brand ? { borderColor: brand } : undefined}
+                    onClick={() => setFrontendId(f.id)}>
+                    {icon && (
+                      <span className="pill-icon" dangerouslySetInnerHTML={{ __html: icon }} />
+                    )}
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+            {(() => {
+              const frontend = FRONTEND_OPTIONS.find((f) => f.id === frontendId) || FRONTEND_OPTIONS[0];
+              const intelHtml = INTELLIGENCE_TESTING_SDK
+                .replaceAll('{{API}}', API_BASE)
+                .replaceAll('{{PUBLISHABLE_KEY}}', KEYS.publishable);
+              const content = frontend.id === 'html' ? intelHtml
+                : frontend.id === 'android' ? ANDROID_LAYOUT_XML
+                : IOS_STORYBOARD_XML;
+              return (
+                <>
+                  <p className="step-hint">{frontend.hint}</p>
+                  <div className="code-box">
+                    <div className="code-box-head">
+                      <span>{frontend.filename}</span>
+                      <CopyButton text={content} />
+                    </div>
+                    <pre className="code-pre">{content}</pre>
+                  </div>
+                </>
+              );
+            })()}
+          </>
+        )}
 
         {/* 3. Language selector — matches the dashboard set */}
         <div className="step-label">3. Choose your language</div>
@@ -1134,12 +1156,6 @@ export default function DevPanel() {
           <button className="run-btn" type="button" onClick={handleRun} disabled={runState === 'running'}>
             {runState === 'running' ? '● Running…' : runState === 'done' ? '↻ Run again' : '▶ Run in test mode'}
           </button>
-          {runState === 'done' && payment && (
-            <button className="success-line" type="button" style={{ border: 'none', cursor: 'pointer', background: 'none' }}
-              onClick={() => setShowIntel(true)}>
-              ✓ Test payment created · see intelligence
-            </button>
-          )}
           {runState === 'done' && result && result.error && (
             <span className="run-error">{result.error}</span>
           )}
