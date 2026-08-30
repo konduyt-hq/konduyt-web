@@ -1,23 +1,26 @@
 // A real, standalone testing SDK -- one self-contained HTML file, HTML +
-// CSS + JS together, no build step, no dependency. This is the FRONTEND
-// half of a full project: the backend half is whichever of the 12
-// languages is picked -- pick one, and its code implements the exact
-// endpoints this file calls out to.
+// CSS + JS together, no build step. This is the FRONTEND half of a full
+// project: the backend half is whichever of the 12 languages is picked --
+// pick one, and its code implements the exact endpoints this file calls.
 //
-// Two clearly separate things happen here, on purpose:
-//   1. Payment intelligence (real fees, ranked methods) -- calls Konduyt's
-//      /checkout/config DIRECTLY, using the PUBLISHABLE key, and shows the
-//      result as a real popup -- the same pattern konduyt.dev/demo/ uses
-//      when you click "Pay". Safe to call directly client-side: a
-//      publishable key can only ask "what can this shopper pay with",
-//      never move money.
-//   2. Actually creating a payment -- calls YOUR OWN backend
-//      (/api/create-payment) instead, never Konduyt directly. Creating a
-//      real payment needs the SECRET key, which must never exist in
-//      frontend code -- that's what the 12 backend languages below hold.
+// The payment intelligence popup is NOT hand-rolled here -- it comes from
+// loading the real, production konduyt.js SDK (the same script every real
+// Konduyt integration uses) and calling the real Konduyt.checkout()
+// function, with convertToLocal: true so it shows the real detected
+// country, the real converted price in the shopper's real local
+// currency, and the real locally-eligible methods ranked by their real
+// fees -- exactly what appears on konduyt.dev/demo/ when you click Pay.
 //
-// {{API}} and {{PUBLISHABLE_KEY}} are substituted at render time, the same
-// pattern as every other snippet.
+// All four real payment scenarios are here, each wired to its matching
+// backend endpoint (see the 12 language tabs below for what implements
+// them): one-time, recurring, split, and pay-as-you-go. The amount is a
+// real input the shopper types into -- never hardcoded -- and creating
+// the actual charge always happens through YOUR OWN backend
+// (checkout()'s onSuccess callback triggers that), never by this file
+// holding a secret key.
+//
+// {{API}} and {{PUBLISHABLE_KEY}} are substituted at render time, the
+// same pattern as every other snippet.
 
 export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 <html lang="en">
@@ -25,6 +28,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 <meta charset="UTF-8" />
 <title>Konduyt — Frontend (HTML + CSS)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://konduyt.dev/konduyt.js"></script>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -35,10 +39,11 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     color: #0a0a0a;
   }
   h1 { font-size: 20px; margin-bottom: 4px; }
-  h2 { font-size: 15px; margin: 32px 0 4px; }
-  .sub { color: #6b6b6b; font-size: 13px; margin-bottom: 24px; }
-  .controls { display: flex; gap: 10px; margin-bottom: 24px; }
-  .controls input {
+  h2 { font-size: 14px; margin: 28px 0 10px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sub { color: #6b6b6b; font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
+  .amount-row { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .amount-row label { font-size: 13px; color: #6b6b6b; }
+  .amount-row input {
     flex: 1;
     padding: 10px 12px;
     border: 1px solid #e5e5e5;
@@ -46,82 +51,70 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     font-size: 14px;
     font-family: inherit;
   }
-  .controls button, .buy button {
+  .scenario {
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .scenario p { font-size: 12.5px; color: #6b6b6b; margin: 0 0 10px; line-height: 1.5; }
+  .scenario button {
     background: #0a0a0a;
     color: #fff;
     border: none;
     border-radius: 8px;
-    padding: 10px 18px;
-    font-size: 14px;
+    padding: 9px 16px;
+    font-size: 13.5px;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
   }
-  .controls button:disabled, .buy button:disabled { opacity: 0.5; cursor: default; }
-  .buy { border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px; }
-  .buy input { width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px;
-    font-size: 14px; font-family: inherit; margin-bottom: 10px; }
-  .buy button { width: 100%; }
-  .result { font-size: 13px; margin-top: 10px; color: #6b6b6b; word-break: break-all; }
-  .error { color: #a23b2f; font-size: 13px; }
-
-  /* Payment intelligence popup -- same visual pattern as konduyt.dev/demo/ */
-  .intel-overlay {
-    display: none;
-    position: fixed; inset: 0; background: rgba(10,10,10,0.5);
-    align-items: center; justify-content: center; z-index: 100; padding: 20px;
-  }
-  .intel-overlay.open { display: flex; }
-  .intel-modal {
-    background: #fff; border-radius: 16px; max-width: 420px; width: 100%;
-    padding: 24px; position: relative; max-height: 85vh; overflow-y: auto;
-  }
-  .intel-close {
-    position: absolute; top: 16px; right: 16px; background: none; border: none;
-    font-size: 16px; cursor: pointer; color: #6b6b6b; width: auto; padding: 4px;
-  }
-  .intel-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
-  .intel-sub { font-size: 13px; color: #6b6b6b; margin-bottom: 18px; line-height: 1.5; }
-  .intel-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-size: 13.5px;
-  }
-  .intel-row.head { color: #6b6b6b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .intel-row.best { font-weight: 700; }
-  .intel-badge {
-    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-    background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 8px;
-  }
-  .intel-foot { font-size: 12px; color: #6b6b6b; margin-top: 16px; line-height: 1.5; }
+  .scenario button:disabled { opacity: 0.5; cursor: default; }
+  .result { font-size: 12.5px; margin-top: 10px; color: #6b6b6b; word-break: break-all; }
+  .error { color: #a23b2f; font-size: 12.5px; }
 </style>
 </head>
 <body>
   <h1>Payment intelligence</h1>
-  <p class="sub">Real, live fee/routing data from your own connected providers — not a mockup.</p>
+  <p class="sub">
+    Real, live fee/routing data from your own connected providers, shown by the real Konduyt SDK
+    (loaded above, not reimplemented here) — not a mockup.
+  </p>
 
-  <div class="controls">
-    <input id="amount" type="number" value="5000" placeholder="Amount" />
-    <button id="run">Check methods</button>
-  </div>
-  <div id="topError" class="error"></div>
-
-  <h2>Buy now</h2>
-  <p class="sub">This part calls YOUR OWN backend below, never Konduyt directly — creating a real payment needs the secret key, which must never live in this file.</p>
-  <div class="buy">
-    <input id="buyEmail" type="email" value="customer@example.com" placeholder="Customer email" />
-    <button id="buyBtn">Create payment</button>
-    <div id="buyResult" class="result"></div>
+  <div class="amount-row">
+    <label for="amount">Reference price (KES)</label>
+    <input id="amount" type="number" value="4200" placeholder="Amount" />
   </div>
 
-  <!-- Payment intelligence popup -->
-  <div id="intelOverlay" class="intel-overlay">
-    <div class="intel-modal">
-      <button id="intelClose" class="intel-close">&#10005;</button>
-      <div class="intel-title" id="intelTitle"></div>
-      <div class="intel-sub">Every way your customer can pay — ranked cheapest-first by real charges. This is exactly what you get on a real project once you connect a provider.</div>
-      <div id="intelRows"></div>
-      <div class="intel-foot">Test mode — no real charge. Konduyt routes to the best-value option automatically for your customers.</div>
-    </div>
+  <h2>One-time payment</h2>
+  <div class="scenario">
+    <p>Shows the real payment intelligence popup — your visitor's real detected country, the price
+      converted to their real local currency, and their real locally-eligible methods ranked by fee.</p>
+    <button id="payBtn">Pay now</button>
+    <div id="payResult" class="result"></div>
+  </div>
+
+  <h2>Recurring subscription</h2>
+  <div class="scenario">
+    <p>A fixed subscription price. Your backend creates a real session; the popup then shows the
+      same real intelligence for that fixed amount.</p>
+    <button id="subBtn">Subscribe</button>
+    <div id="subResult" class="result"></div>
+  </div>
+
+  <h2>Split payment</h2>
+  <div class="scenario">
+    <p>One checkout, proceeds split across sellers. Calls your backend directly — this is a
+      marketplace settlement, not a shopper checkout popup.</p>
+    <button id="splitBtn">Create split payment</button>
+    <div id="splitResult" class="result"></div>
+  </div>
+
+  <h2>Pay-as-you-go</h2>
+  <div class="scenario">
+    <p>Amount computed from real usage your backend already tracks, not typed in or fixed.</p>
+    <button id="usageBtn">Pay usage bill</button>
+    <div id="usageResult" class="result"></div>
   </div>
 
   <script>
@@ -129,108 +122,97 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     // It can only open a checkout / ask what a shopper can pay with, never
     // move money or create a charge on its own.
     var PUBLISHABLE_KEY = '{{PUBLISHABLE_KEY}}';
-    var API = '{{API}}';
 
-    function openIntel(amount, methods) {
-      var currency = 'KES';
-      document.getElementById('intelTitle').textContent =
-        'KES ' + (amount / 100).toFixed(2) + ' — every way to pay';
+    function setBusy(id, busy) { document.getElementById(id).disabled = busy; }
 
-      var cheapest = methods[0];
-      for (var i = 1; i < methods.length; i++) {
-        var a = methods[i].fee_percent == null ? Infinity : methods[i].fee_percent;
-        var b = cheapest.fee_percent == null ? Infinity : cheapest.fee_percent;
-        if (a < b) cheapest = methods[i];
-      }
+    // One-time: the real payment intelligence popup, from the real SDK,
+    // with convertToLocal so it's genuinely geo/currency-aware -- not
+    // hand-rolled fetch/DOM logic reimplementing what the SDK already does.
+    document.getElementById('payBtn').addEventListener('click', function () {
+      var amount = Math.round(parseFloat(document.getElementById('amount').value || '0') * 100);
+      var resultEl = document.getElementById('payResult');
+      if (!amount || amount <= 0) { resultEl.textContent = 'Enter a real amount first.'; return; }
+      resultEl.textContent = '';
 
-      var html = '<div class="intel-row head"><span>Pay with</span><span>Charge</span></div>';
-      for (var j = 0; j < methods.length; j++) {
-        var m = methods[j];
-        var isBest = m.id === cheapest.id;
-        var feeText = m.fee_percent != null ? (m.fee_percent + '% fee') : 'fee varies';
-        html += '<div class="intel-row' + (isBest ? ' best' : '') + '">' +
-          '<span>' + m.name + (isBest ? '<span class="intel-badge">Best value</span>' : '') + '</span>' +
-          '<span>' + feeText + '</span>' +
-          '</div>';
-      }
-      document.getElementById('intelRows').innerHTML = html;
-      document.getElementById('intelOverlay').classList.add('open');
-    }
-
-    function closeIntel() {
-      document.getElementById('intelOverlay').classList.remove('open');
-    }
-
-    function checkMethods() {
-      var amountInput = document.getElementById('amount');
-      var button = document.getElementById('run');
-      var errorEl = document.getElementById('topError');
-
-      var amount = Math.round(parseFloat(amountInput.value || '0') * 100);
-      errorEl.textContent = '';
-      if (!amount || amount <= 0) {
-        errorEl.textContent = 'Enter a real amount first.';
-        return;
-      }
-
-      button.disabled = true;
-
-      var url = API + '/checkout/config?pk=' + PUBLISHABLE_KEY + '&amount=' + amount + '&currency=KES';
-
-      fetch(url)
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          if (!data.methods || data.methods.length === 0) {
-            errorEl.textContent = 'No payment methods available yet \u2014 connect a provider in Payment Providers.';
-            return;
-          }
-          openIntel(amount, data.methods);
-        })
-        .catch(function () {
-          errorEl.textContent = 'Could not reach Konduyt. Check your publishable key and try again.';
-        })
-        .finally(function () {
-          button.disabled = false;
-        });
-    }
-
-    // "Buy now" -- deliberately does NOT call Konduyt. It calls YOUR OWN
-    // backend, which is whichever of the 12 languages you picked below.
-    // That backend holds the SECRET key and makes the real Konduyt call.
-    function createPayment() {
-      var amountInput = document.getElementById('amount');
-      var emailInput = document.getElementById('buyEmail');
-      var button = document.getElementById('buyBtn');
-      var result = document.getElementById('buyResult');
-
-      var amount = Math.round(parseFloat(amountInput.value || '0') * 100);
-      button.disabled = true;
-      result.textContent = 'Creating payment\u2026';
-
-      fetch('/api/create-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amount, email: emailInput.value }),
-      })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          result.textContent = JSON.stringify(data);
-        })
-        .catch(function () {
-          result.textContent = 'Could not reach /api/create-payment -- is your backend running?';
-        })
-        .finally(function () {
-          button.disabled = false;
-        });
-    }
-
-    document.getElementById('run').addEventListener('click', checkMethods);
-    document.getElementById('buyBtn').addEventListener('click', createPayment);
-    document.getElementById('intelClose').addEventListener('click', closeIntel);
-    document.getElementById('intelOverlay').addEventListener('click', function (e) {
-      if (e.target.id === 'intelOverlay') closeIntel();
+      Konduyt.checkout({
+        publishableKey: PUBLISHABLE_KEY,
+        amount: amount,
+        currency: 'KES',
+        convertToLocal: true,
+        onSuccess: function (result) {
+          // The popup's job ends at method selection -- creating the real
+          // charge happens on YOUR OWN backend, never with a key in this
+          // file. This is exactly what the 'One-time payment' section in
+          // each of the 12 language tabs below implements.
+          setBusy('payBtn', true);
+          fetch('/api/create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amount, email: 'customer@example.com' }),
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (data) { resultEl.textContent = JSON.stringify(data); })
+            .catch(function () { resultEl.textContent = 'Could not reach /api/create-payment -- is your backend running?'; })
+            .finally(function () { setBusy('payBtn', false); });
+        },
+        onClose: function () {},
+      });
     });
-    checkMethods(); // run once on load
+
+    // Recurring: your backend creates the real session first (fixed
+    // subscription price, your backend's own secret key), then the real
+    // SDK shows the same real intelligence popup for that session.
+    document.getElementById('subBtn').addEventListener('click', function () {
+      var button = document.getElementById('subBtn');
+      var resultEl = document.getElementById('subResult');
+      setBusy('subBtn', true);
+      resultEl.textContent = 'Creating subscription session\u2026';
+
+      fetch('/api/create-subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          resultEl.textContent = '';
+          if (!data.id) { resultEl.textContent = 'Backend did not return a session id: ' + JSON.stringify(data); return; }
+          Konduyt.checkout({ sessionId: data.id });
+        })
+        .catch(function () { resultEl.textContent = 'Could not reach /api/create-subscription -- is your backend running?'; })
+        .finally(function () { setBusy('subBtn', false); });
+    });
+
+    // Split payment: a marketplace settlement, not a shopper checkout --
+    // calls your backend directly and shows the real result.
+    document.getElementById('splitBtn').addEventListener('click', function () {
+      var button = document.getElementById('splitBtn');
+      var resultEl = document.getElementById('splitResult');
+      setBusy('splitBtn', true);
+      resultEl.textContent = 'Creating split payment\u2026';
+
+      fetch('/api/create-split-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+        .then(function (res) { return res.json(); })
+        .then(function (data) { resultEl.textContent = JSON.stringify(data); })
+        .catch(function () { resultEl.textContent = 'Could not reach /api/create-split-payment -- is your backend running?'; })
+        .finally(function () { setBusy('splitBtn', false); });
+    });
+
+    // Pay-as-you-go: your backend computes the real bill from usage it
+    // already tracks, creates a real session, then the same real SDK
+    // popup shows intelligence for that computed amount.
+    document.getElementById('usageBtn').addEventListener('click', function () {
+      var button = document.getElementById('usageBtn');
+      var resultEl = document.getElementById('usageResult');
+      setBusy('usageBtn', true);
+      resultEl.textContent = 'Creating usage-bill session\u2026';
+
+      fetch('/api/create-usage-bill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          resultEl.textContent = '';
+          if (!data.id) { resultEl.textContent = 'Backend did not return a session id: ' + JSON.stringify(data); return; }
+          Konduyt.checkout({ sessionId: data.id });
+        })
+        .catch(function () { resultEl.textContent = 'Could not reach /api/create-usage-bill -- is your backend running?'; })
+        .finally(function () { setBusy('usageBtn', false); });
+    });
   </script>
 </body>
 </html>`;
