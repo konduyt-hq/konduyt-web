@@ -362,6 +362,10 @@
           "Recurring \u2014 charged every " + intervalLabel));
       }
       if (modal._reference) h.appendChild(el("div", "kdu-ref", "Ref: " + modal._reference));
+      if (modal._shopperCountry && modal._fxStatus === "KNOWN") {
+        h.appendChild(el("div", "kdu-ref",
+          "Converted to " + modal._currency + " for " + modal._shopperCountry));
+      }
       return h;
     }
 
@@ -485,8 +489,17 @@
 
     function boot() {
       processing();
+      // convertToLocal is opt-in, never the default -- a real merchant who
+      // deliberately prices in a fixed currency (e.g. always KES regardless
+      // of where the shopper is) must keep getting exactly that, unchanged.
+      // Only checkout() calls that explicitly ask for it get the shopper's
+      // real detected country, real local currency conversion, and real
+      // local eligible methods instead of the merchant's own quoted price.
       var url = opts.sessionId
         ? API_BASE + "/checkout/session/" + encodeURIComponent(opts.sessionId)
+        : opts.convertToLocal
+        ? API_BASE + "/checkout/local-intelligence?pk=" + encodeURIComponent(opts.publishableKey)
+          + "&amount=" + encodeURIComponent(opts.amount) + "&currency=" + encodeURIComponent(opts.currency)
         : API_BASE + "/checkout/config?pk=" + encodeURIComponent(opts.publishableKey);
       fetch(url)
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
@@ -511,6 +524,14 @@
             modal._reference = res.d.reference;
             modal._recurring = !!res.d.recurring;
             modal._interval = res.d.interval;
+          } else if (opts.convertToLocal) {
+            // The server's real converted price/currency for this real
+            // shopper -- not the raw amount/currency this call was made
+            // with, which is only the merchant's reference price now.
+            modal._amount = res.d.display_amount;
+            modal._currency = res.d.display_currency;
+            modal._shopperCountry = res.d.shopper_country;
+            modal._fxStatus = res.d.fx_status;
           }
           render(res.d.methods || [], res.d.reason, res.d.is_demo_key);
         })
