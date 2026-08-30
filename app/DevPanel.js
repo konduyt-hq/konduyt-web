@@ -1106,10 +1106,7 @@ export default function DevPanel() {
             </div>
             {(() => {
               const frontend = FRONTEND_OPTIONS.find((f) => f.id === frontendId) || FRONTEND_OPTIONS[0];
-              const intelHtml = INTELLIGENCE_TESTING_SDK
-                .replaceAll('{{API}}', API_BASE)
-                .replaceAll('{{PUBLISHABLE_KEY}}', KEYS.publishable);
-              const content = frontend.id === 'html' ? intelHtml
+              const content = frontend.id === 'html' ? INTELLIGENCE_TESTING_SDK
                 : frontend.id === 'android' ? ANDROID_LAYOUT_XML
                 : IOS_STORYBOARD_XML;
               return (

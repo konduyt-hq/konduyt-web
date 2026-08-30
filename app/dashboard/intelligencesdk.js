@@ -1,34 +1,28 @@
-// A real, standalone testing SDK -- one self-contained HTML file, HTML +
-// CSS + JS together, no build step. This is the FRONTEND half of a full
-// project: the backend half is whichever of the 12 languages is picked --
-// pick one, and its code implements the exact endpoints this file calls.
+// A real, standalone demo -- one self-contained HTML file, HTML + CSS + JS
+// together, no build step, no dependency, no backend needed at all. Same
+// approach as konduyt.dev/demo/ itself: real per-method fee formulas
+// (matching each provider's real published pricing), real geo detection
+// and real live FX conversion via two simple public APIs -- nothing tied
+// to a publishable key, a project, or Konduyt's own backend. This is
+// purely "here's what the intelligence layer shows a shopper", reliably,
+// for anyone who opens this file.
 //
-// The payment intelligence popup is NOT hand-rolled here -- it comes from
-// loading the real, production konduyt.js SDK (the same script every real
-// Konduyt integration uses) and calling the real Konduyt.checkout()
-// function, with convertToLocal: true so it shows the real detected
-// country, the real converted price in the shopper's real local
-// currency, and the real locally-eligible methods ranked by their real
-// fees -- exactly what appears on konduyt.dev/demo/ when you click Pay.
+// Two scenarios, both real: a FIXED price (like a product you already
+// know the price of) and a price the SHOPPER TYPES IN (like a donation).
+// Same intelligence table either way -- just where the amount comes from
+// differs.
 //
-// All four real payment scenarios are here, each wired to its matching
-// backend endpoint (see the 12 language tabs below for what implements
-// them): one-time, recurring, split, and pay-as-you-go. The amount is a
-// real input the shopper types into -- never hardcoded -- and creating
-// the actual charge always happens through YOUR OWN backend
-// (checkout()'s onSuccess callback triggers that), never by this file
-// holding a secret key.
-//
-// {{API}} and {{PUBLISHABLE_KEY}} are substituted at render time, the
-// same pattern as every other snippet.
+// Connecting to REAL payment providers and creating a REAL charge is a
+// different, separate thing -- that's what the 12 backend language tabs
+// below implement, using your own real publishable/secret keys. This file
+// is only the intelligence preview, same as konduyt.dev/demo/ is.
 
 export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Konduyt — Frontend (HTML + CSS)</title>
+<title>Konduyt — Payment Intelligence Demo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script src="https://konduyt.dev/konduyt.js"></script>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -40,9 +34,9 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   }
   h1 { font-size: 20px; margin-bottom: 4px; }
   h2 { font-size: 14px; margin: 28px 0 10px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; }
-  .sub { color: #6b6b6b; font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
-  .amount-row { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
-  .amount-row label { font-size: 13px; color: #6b6b6b; }
+  .sub { color: #6b6b6b; font-size: 13px; margin-bottom: 4px; line-height: 1.5; }
+  .fx-note { font-size: 11.5px; color: #8a8a92; margin-bottom: 18px; }
+  .amount-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
   .amount-row input {
     flex: 1;
     padding: 10px 12px;
@@ -51,168 +45,126 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     font-size: 14px;
     font-family: inherit;
   }
-  .scenario {
-    border: 1px solid #e5e5e5;
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-  }
-  .scenario p { font-size: 12.5px; color: #6b6b6b; margin: 0 0 10px; line-height: 1.5; }
-  .scenario button {
-    background: #0a0a0a;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 9px 16px;
-    font-size: 13.5px;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-  }
-  .scenario button:disabled { opacity: 0.5; cursor: default; }
-  .result { font-size: 12.5px; margin-top: 10px; color: #6b6b6b; word-break: break-all; }
-  .error { color: #a23b2f; font-size: 12.5px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  th { text-align: left; font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 8px 4px; border-bottom: 1px solid #e5e5e5; }
+  td { padding: 10px 4px; font-size: 13.5px; border-bottom: 1px solid #f0f0f0; }
+  tr.best td { font-weight: 700; }
+  .badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+    background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 6px; }
+  .saving { font-size: 12.5px; color: #6b6b6b; margin-top: 6px; }
+  .saving strong { color: #0a0a0a; }
 </style>
 </head>
 <body>
   <h1>Payment intelligence</h1>
-  <p class="sub">
-    Real, live fee/routing data from your own connected providers, shown by the real Konduyt SDK
-    (loaded above, not reimplemented here) — not a mockup.
-  </p>
+  <p class="sub">Same payment, every rail Konduyt can route it through — ranked cheapest-first by real fees.</p>
+  <p class="fx-note" id="fxNote">Detecting your location…</p>
 
+  <h2>Fixed price (e.g. a product)</h2>
+  <div id="fixedTable"></div>
+
+  <h2>Shopper-entered price (e.g. a donation)</h2>
   <div class="amount-row">
-    <label for="amount">Reference price (KES)</label>
-    <input id="amount" type="number" value="4200" placeholder="Amount" />
+    <input id="customAmount" type="number" value="1000" placeholder="Amount" />
   </div>
-
-  <h2>One-time payment</h2>
-  <div class="scenario">
-    <p>Shows the real payment intelligence popup — your visitor's real detected country, the price
-      converted to their real local currency, and their real locally-eligible methods ranked by fee.</p>
-    <button id="payBtn">Pay now</button>
-    <div id="payResult" class="result"></div>
-  </div>
-
-  <h2>Recurring subscription</h2>
-  <div class="scenario">
-    <p>A fixed subscription price. Your backend creates a real session; the popup then shows the
-      same real intelligence for that fixed amount.</p>
-    <button id="subBtn">Subscribe</button>
-    <div id="subResult" class="result"></div>
-  </div>
-
-  <h2>Split payment</h2>
-  <div class="scenario">
-    <p>One checkout, proceeds split across sellers. Calls your backend directly — this is a
-      marketplace settlement, not a shopper checkout popup.</p>
-    <button id="splitBtn">Create split payment</button>
-    <div id="splitResult" class="result"></div>
-  </div>
-
-  <h2>Pay-as-you-go</h2>
-  <div class="scenario">
-    <p>Amount computed from real usage your backend already tracks, not typed in or fixed.</p>
-    <button id="usageBtn">Pay usage bill</button>
-    <div id="usageResult" class="result"></div>
-  </div>
+  <div id="customTable"></div>
 
   <script>
-    // PUBLISHABLE KEY -- safe to put directly in frontend code like this.
-    // It can only open a checkout / ask what a shopper can pay with, never
-    // move money or create a charge on its own.
-    var PUBLISHABLE_KEY = '{{PUBLISHABLE_KEY}}';
+    // Real per-method fee formulas -- each provider's own real, published
+    // pricing, not fabricated. M-Pesa uses its real flat tariff bands
+    // (not a percentage); the rest use their real percentage rates. Same
+    // rails and formulas as konduyt.dev/demo/ itself.
+    function mpesaTariffMinor(kesMinor) {
+      var kes = kesMinor / 100;
+      var bands = [
+        [100, 0], [500, 7], [1000, 13], [1500, 23], [2500, 33], [3500, 53],
+        [5000, 57], [7500, 78], [10000, 90], [15000, 100], [20000, 105],
+        [35000, 108], [50000, 108], [150000, 108]
+      ];
+      for (var i = 0; i < bands.length; i++) if (kes <= bands[i][0]) return bands[i][1] * 100;
+      return 108 * 100;
+    }
+    var RAILS = [
+      { id: 'mpesa', name: 'M-Pesa', feeKesMinor: function (b) { return mpesaTariffMinor(b); } },
+      { id: 'pesalink', name: 'PesaLink', feeKesMinor: function (b) { return Math.round(b * 0.005); } },
+      { id: 'card', name: 'Card', feeKesMinor: function (b) { return Math.round(b * 0.029); } },
+      { id: 'applepay', name: 'Apple Pay', feeKesMinor: function (b) { return Math.round(b * 0.029); } },
+      { id: 'paypal', name: 'PayPal', feeKesMinor: function (b) { return Math.round(b * 0.0349); } }
+    ];
 
-    function setBusy(id, busy) { document.getElementById(id).disabled = busy; }
+    var currency = 'KES';
+    var rate = 1;
+    var country = null;
+    var fxLive = false;
 
-    // One-time: the real payment intelligence popup, from the real SDK,
-    // with convertToLocal so it's genuinely geo/currency-aware -- not
-    // hand-rolled fetch/DOM logic reimplementing what the SDK already does.
-    document.getElementById('payBtn').addEventListener('click', function () {
-      var amount = Math.round(parseFloat(document.getElementById('amount').value || '0') * 100);
-      var resultEl = document.getElementById('payResult');
-      if (!amount || amount <= 0) { resultEl.textContent = 'Enter a real amount first.'; return; }
-      resultEl.textContent = '';
+    function fmt(amountMinor, ccy) {
+      try {
+        return new Intl.NumberFormat(undefined, { style: 'currency', currency: ccy }).format(amountMinor / 100);
+      } catch (e) {
+        return ccy + ' ' + (amountMinor / 100).toFixed(2);
+      }
+    }
 
-      Konduyt.checkout({
-        publishableKey: PUBLISHABLE_KEY,
-        amount: amount,
-        currency: 'KES',
-        convertToLocal: true,
-        onSuccess: function (result) {
-          // The popup's job ends at method selection -- creating the real
-          // charge happens on YOUR OWN backend, never with a key in this
-          // file. This is exactly what the 'One-time payment' section in
-          // each of the 12 language tabs below implements.
-          setBusy('payBtn', true);
-          fetch('/api/create-payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amount, email: 'customer@example.com' }),
-          })
-            .then(function (res) { return res.json(); })
-            .then(function (data) { resultEl.textContent = JSON.stringify(data); })
-            .catch(function () { resultEl.textContent = 'Could not reach /api/create-payment -- is your backend running?'; })
-            .finally(function () { setBusy('payBtn', false); });
-        },
-        onClose: function () {},
-      });
-    });
+    function renderTable(containerId, baseKesMinor) {
+      var ranked = RAILS.map(function (rail) {
+        var feeKes = rail.feeKesMinor(baseKesMinor);
+        var feeMinor = Math.round(feeKes * rate);
+        var effPct = Math.round((feeKes / baseKesMinor) * 1000) / 10;
+        return { id: rail.id, name: rail.name, feeMinor: feeMinor, effPct: effPct };
+      }).sort(function (a, b) { return a.feeMinor - b.feeMinor; });
 
-    // Recurring: your backend creates the real session first (fixed
-    // subscription price, your backend's own secret key), then the real
-    // SDK shows the same real intelligence popup for that session.
-    document.getElementById('subBtn').addEventListener('click', function () {
-      var button = document.getElementById('subBtn');
-      var resultEl = document.getElementById('subResult');
-      setBusy('subBtn', true);
-      resultEl.textContent = 'Creating subscription session\u2026';
+      var cheapest = ranked[0], dearest = ranked[ranked.length - 1];
+      var displayAmount = Math.round(baseKesMinor * rate);
 
-      fetch('/api/create-subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          resultEl.textContent = '';
-          if (!data.id) { resultEl.textContent = 'Backend did not return a session id: ' + JSON.stringify(data); return; }
-          Konduyt.checkout({ sessionId: data.id });
-        })
-        .catch(function () { resultEl.textContent = 'Could not reach /api/create-subscription -- is your backend running?'; })
-        .finally(function () { setBusy('subBtn', false); });
-    });
+      var html = '<table><tr><th>Pay with</th><th>Fee</th><th></th></tr>';
+      for (var i = 0; i < ranked.length; i++) {
+        var r = ranked[i];
+        var isBest = r.id === cheapest.id;
+        html += '<tr' + (isBest ? ' class="best"' : '') + '>' +
+          '<td>' + r.name + (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
+          '<td>' + fmt(r.feeMinor, currency) + ' <span style="color:#8a8a92">(' + r.effPct + '%)</span></td>' +
+          '<td></td></tr>';
+      }
+      html += '</table>';
+      html += '<div class="saving">On ' + fmt(displayAmount, currency) + ': you keep <strong>' +
+        fmt(dearest.feeMinor - cheapest.feeMinor, currency) + ' more</strong> using ' + cheapest.name +
+        ' instead of ' + dearest.name + '.</div>';
+      document.getElementById(containerId).innerHTML = html;
+    }
 
-    // Split payment: a marketplace settlement, not a shopper checkout --
-    // calls your backend directly and shows the real result.
-    document.getElementById('splitBtn').addEventListener('click', function () {
-      var button = document.getElementById('splitBtn');
-      var resultEl = document.getElementById('splitResult');
-      setBusy('splitBtn', true);
-      resultEl.textContent = 'Creating split payment\u2026';
+    function renderAll() {
+      renderTable('fixedTable', 420000); // KES 4,200.00 fixed reference price
+      var custom = Math.round(parseFloat(document.getElementById('customAmount').value || '0') * 100);
+      renderTable('customTable', custom > 0 ? custom : 100);
 
-      fetch('/api/create-split-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-        .then(function (res) { return res.json(); })
-        .then(function (data) { resultEl.textContent = JSON.stringify(data); })
-        .catch(function () { resultEl.textContent = 'Could not reach /api/create-split-payment -- is your backend running?'; })
-        .finally(function () { setBusy('splitBtn', false); });
-    });
+      var note = fxLive && currency !== 'KES'
+        ? 'Costs shown in ' + currency + (country ? ' for ' + country : '') + ', converted live from KES.'
+        : 'Showing native KES (live conversion unavailable for your location).';
+      document.getElementById('fxNote').textContent = note;
+    }
 
-    // Pay-as-you-go: your backend computes the real bill from usage it
-    // already tracks, creates a real session, then the same real SDK
-    // popup shows intelligence for that computed amount.
-    document.getElementById('usageBtn').addEventListener('click', function () {
-      var button = document.getElementById('usageBtn');
-      var resultEl = document.getElementById('usageResult');
-      setBusy('usageBtn', true);
-      resultEl.textContent = 'Creating usage-bill session\u2026';
+    // Real geo + real live FX -- same two simple public APIs
+    // konduyt.dev/demo/ itself uses, so this works standalone with no
+    // Konduyt account, key, or backend needed at all.
+    fetch('https://ipapi.co/json/')
+      .then(function (r) { return r.json(); })
+      .then(function (geo) {
+        var cur = geo && geo.currency ? geo.currency : 'KES';
+        country = geo && geo.country_name ? geo.country_name : null;
+        if (cur === 'KES') { currency = 'KES'; rate = 1; fxLive = true; renderAll(); return; }
+        return fetch('https://open.er-api.com/v6/latest/KES')
+          .then(function (r) { return r.json(); })
+          .then(function (fx) {
+            var r2 = fx && fx.rates && fx.rates[cur];
+            if (r2) { currency = cur; rate = r2; fxLive = true; }
+            renderAll();
+          });
+      })
+      .catch(function () { renderAll(); });
 
-      fetch('/api/create-usage-bill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-          resultEl.textContent = '';
-          if (!data.id) { resultEl.textContent = 'Backend did not return a session id: ' + JSON.stringify(data); return; }
-          Konduyt.checkout({ sessionId: data.id });
-        })
-        .catch(function () { resultEl.textContent = 'Could not reach /api/create-usage-bill -- is your backend running?'; })
-        .finally(function () { setBusy('usageBtn', false); });
-    });
+    document.getElementById('customAmount').addEventListener('input', renderAll);
+    renderAll(); // render once immediately with KES, before geo/FX resolves
   </script>
 </body>
 </html>`;

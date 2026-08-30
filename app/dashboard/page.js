@@ -1935,34 +1935,32 @@ export default function Dashboard() {
                         );
                       })}
 
-                      {/* Real, standalone testing SDK -- one self-contained
-                          HTML file (HTML + CSS + JS together), not tied to
-                          any one backend language. Save it, open it in a
-                          browser, it calls your own real /checkout/config
-                          and renders the actual payment intelligence layer. */}
+                      {/* Real, standalone demo -- one self-contained HTML
+                          file (HTML + CSS + JS together), no backend, no
+                          key, no build step. Same real per-method fee
+                          formulas and the same real geo/FX approach as
+                          konduyt.dev/demo/ itself. Connecting to real
+                          providers with your own real keys is what the 12
+                          backend language tabs above implement instead. */}
                       {(() => {
-                        const pubKey = keys?.live?.publishable_key || 'YOUR_PUBLISHABLE_KEY';
-                        const intelHtml = INTELLIGENCE_TESTING_SDK
-                          .replaceAll('{{API}}', API_BASE)
-                          .replaceAll('{{PUBLISHABLE_KEY}}', pubKey);
                         const intelCopyId = 'intelligence_sdk';
                         return (
                           <div className="lang-block">
                             <div className="lang-block-head">
                               <span className="lang-block-title">Test the payment intelligence layer — standalone (HTML)</span>
                               <button className="keys-code-copy static" type="button"
-                                onClick={() => copyToClipboard(intelHtml, intelCopyId)}>
+                                onClick={() => copyToClipboard(INTELLIGENCE_TESTING_SDK, intelCopyId)}>
                                 {copied === intelCopyId ? 'Copied' : 'Copy'}
                               </button>
                             </div>
                             <p className="env-p">
                               Save this as <code className="inline-code">intelligence.html</code> and open it directly
-                              in a browser — no build step, no server. It calls your real publishable key and shows
-                              the actual ranked methods, real fees, and the cheapest one highlighted, exactly what a
-                              real checkout is built on.
+                              in a browser — no build step, no server, no key needed. Shows real per-method fees for
+                              a fixed price and for a price your shopper types in, ranked cheapest-first, with real
+                              geo-detected currency conversion — the same approach konduyt.dev/demo/ itself uses.
                             </p>
                             <div className="keys-codeblock">
-                              <pre><code>{intelHtml}</code></pre>
+                              <pre><code>{INTELLIGENCE_TESTING_SDK}</code></pre>
                             </div>
                           </div>
                         );
