@@ -121,45 +121,142 @@ const server = http.createServer(async (req, res) => {
 server.listen(3000, () => console.log("Backend running on http://localhost:3000"));`,
   },
   {
-    id: 'python', label: 'Python', filename: 'main.py',
-    deps: 'Install: pip install requests   ·   Run: python main.py',
-    code: `# main.py  —  pip install requests, then: python main.py
+    id: 'python', label: 'Python', filename: 'server.py',
+    deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    code: `# server.py  —  pip install flask requests, then: python server.py
+import time
+from flask import Flask, request, jsonify
 import requests
 
-res = requests.post(
-    "{{API}}/v1/payments/test",
-    headers={"Authorization": "Bearer {{SECRET}}"},
-    json={
-        "amount": 5000,
-        "currency": "KES",
-        "provider": "test",
-        "customer": {"email": "customer@example.com"},
-    },
-)
+app = Flask(__name__)
 
-print(res.json())`,
+# SECRET KEY -- stays on the server, never sent to a browser. This is
+# Konduyt's own universal demo key (safe here since it's already public),
+# but a real key works exactly the same way -- see "Where does my secret
+# key go?" above for where a real one belongs (never hardcoded like this).
+KONDUYT_SECRET_KEY = "{{SECRET}}"
+API = "{{API}}"
+
+def konduyt(path, body):
+    res = requests.post(
+        API + path,
+        headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
+        json=body,
+    )
+    return res.json()
+
+@app.route("/api/create-payment", methods=["POST"])
+def create_payment():
+    # One-time: amount either comes from the shopper (a donation), or is a
+    # fixed price you already know (a product) -- same field either way.
+    amount = request.json.get("amount")   # whatever the shopper typed in, OR
+    # amount = 5000                         # a fixed price you already know
+    return jsonify(konduyt("/v1/payments/test", {
+        "amount": amount, "currency": "KES", "provider": "test",
+    }))
+
+@app.route("/api/create-subscription", methods=["POST"])
+def create_subscription():
+    # Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+    return jsonify(konduyt("/v1/payment_sessions", {
+        "amount": 100000, "currency": "KES",
+        "recurring": True, "interval": "monthly",
+        "reference": "sub_pro_plan",
+    }))  # {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
+
+@app.route("/api/create-split-payment", methods=["POST"])
+def create_split_payment():
+    # Split: one checkout, proceeds split across sellers using the
+    # provider's own real split capability -- Konduyt never holds funds.
+    return jsonify(konduyt("/v1/marketplace_payments", {
+        "provider": "paystack", "amount": 500000, "currency": "KES",
+        "splits": [{"seller_id": "seller_123", "amount": 400000}],
+    }))  # the remainder is your own commission
+
+@app.route("/api/create-usage-bill", methods=["POST"])
+def create_usage_bill():
+    # Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+    units_used, price_per_unit = 340, 25
+    amount = units_used * price_per_unit
+    return jsonify(konduyt("/v1/payment_sessions", {
+        "amount": amount, "currency": "KES", "recurring": False,
+        "reference": f"usage_{int(time.time())}",
+    }))
+
+if __name__ == "__main__":
+    app.run(port=3000)
+    print("Backend running on http://localhost:3000")`,
   },
   {
     id: 'php', label: 'PHP', filename: 'index.php',
-    deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php index.php',
+    deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open intelligence.html next to it.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), four real scenarios.',
     code: `<?php
-// index.php  —  run with:  php index.php
-$ch = curl_init("{{API}}/v1/payments/test");
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "Authorization: Bearer {{SECRET}}",
-    "Content-Type: application/json",
-]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    "amount" => 5000,
-    "currency" => "KES",
-    "provider" => "test",
-    "customer" => ["email" => "customer@example.com"],
-]));
+// index.php  —  run with:  php -S localhost:3000
 
-echo curl_exec($ch);
-curl_close($ch);`,
+// SECRET KEY -- stays on the server, never sent to a browser. This is
+// Konduyt's own universal demo key (safe here since it's already public),
+// but a real key works exactly the same way -- see "Where does my secret
+// key go?" above for where a real one belongs (never hardcoded like this).
+$KONDUYT_SECRET_KEY = "{{SECRET}}";
+$API = "{{API}}";
+
+function konduyt($path, $body, $secret, $api) {
+    $ch = curl_init($api . $path);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer " . $secret,
+        "Content-Type: application/json",
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return $result;
+}
+
+$path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+header("Content-Type: application/json");
+
+if ($path === "/api/create-payment") {
+    // One-time: amount either comes from the shopper (a donation), or is a
+    // fixed price you already know (a product) -- same field either way.
+    $body = json_decode(file_get_contents("php://input"), true);
+    $amount = $body["amount"];        // whatever the shopper typed in, OR
+    // $amount = 5000;                 // a fixed price you already know
+    echo konduyt("/v1/payments/test", [
+        "amount" => $amount, "currency" => "KES", "provider" => "test",
+    ], $KONDUYT_SECRET_KEY, $API);
+
+} elseif ($path === "/api/create-subscription") {
+    // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+    echo konduyt("/v1/payment_sessions", [
+        "amount" => 100000, "currency" => "KES",
+        "recurring" => true, "interval" => "monthly",
+        "reference" => "sub_pro_plan",
+    ], $KONDUYT_SECRET_KEY, $API); // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
+
+} elseif ($path === "/api/create-split-payment") {
+    // Split: one checkout, proceeds split across sellers using the
+    // provider's own real split capability -- Konduyt never holds funds.
+    echo konduyt("/v1/marketplace_payments", [
+        "provider" => "paystack", "amount" => 500000, "currency" => "KES",
+        "splits" => [["seller_id" => "seller_123", "amount" => 400000]],
+    ], $KONDUYT_SECRET_KEY, $API); // the remainder is your own commission
+
+} elseif ($path === "/api/create-usage-bill") {
+    // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
+    $unitsUsed = 340; $pricePerUnit = 25;
+    $amount = $unitsUsed * $pricePerUnit;
+    echo konduyt("/v1/payment_sessions", [
+        "amount" => $amount, "currency" => "KES", "recurring" => false,
+        "reference" => "usage_" . time(),
+    ], $KONDUYT_SECRET_KEY, $API);
+
+} else {
+    http_response_code(404);
+}`,
   },
   {
     id: 'go', label: 'Go', filename: 'main.go',
