@@ -592,7 +592,7 @@ Console.WriteLine("Backend running on http://localhost:3000");
 app.Run();`,
   },
   {
-    id: 'java', label: 'Java', filename: 'MainActivity.java',
+    id: 'java', label: 'Java (Android Studio)', filename: 'MainActivity.java',
     deps: `// build.gradle (Module: app) — a real dependency
 dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
@@ -620,6 +620,8 @@ package com.example.konduytdemo;
 
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import okhttp3.*;
 import java.util.concurrent.Executors;
@@ -630,18 +632,29 @@ public class MainActivity extends AppCompatActivity {
     // 11 language tabs you run as your backend, this points at it.
     private static final String BACKEND = "http://10.0.2.2:3000"; // your backend, from the Android emulator
 
+    private EditText amountInput;
+    private EditText emailInput;
+    private TextView resultText;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main); // a real layout file: one Button, id "buyButton"
+        setContentView(R.layout.activity_main); // a real layout file -- ids: amountInput, emailInput, buyButton, resultText
+
+        amountInput = findViewById(R.id.amountInput);
+        emailInput = findViewById(R.id.emailInput);
+        resultText = findViewById(R.id.resultText);
 
         Button buyButton = findViewById(R.id.buyButton);
-        buyButton.setOnClickListener(v -> createPayment(5000, "customer@example.com"));
+        buyButton.setOnClickListener(v -> createPayment(
+            Integer.parseInt(amountInput.getText().toString()),
+            emailInput.getText().toString()));
     }
 
     void createPayment(int amount, String email) {
-        // amount either comes from the shopper (a donation), or is a fixed
-        // price you already know (a product) -- same field either way.
+        // amount either comes from the shopper (typed into amountInput, a
+        // donation), or is a fixed price you already know (a product) --
+        // same field either way.
         OkHttpClient client = new OkHttpClient();
         Executors.newSingleThreadExecutor().execute(() -> {
             String json = "{\\"amount\\": " + amount + ", \\"email\\": \\"" + email + "\\"}";
@@ -651,18 +664,19 @@ public class MainActivity extends AppCompatActivity {
                 .build();
             try (Response res = client.newCall(request).execute()) {
                 String payment = res.body().string();
-                // your backend returns whatever Konduyt gave it -- open
-                // authorization_url in a Chrome Custom Tab on the main thread
-                runOnUiThread(() -> { /* show payment / open the checkout URL */ });
+                // your backend returns whatever Konduyt gave it -- show it
+                // in resultText on the main thread, or open
+                // authorization_url in a Chrome Custom Tab
+                runOnUiThread(() -> resultText.setText(payment));
             } catch (Exception e) {
-                // handle the real error -- backend unreachable, etc.
+                runOnUiThread(() -> resultText.setText("Could not reach your backend -- is it running?"));
             }
         });
     }
 }`,
   },
   {
-    id: 'kotlin', label: 'Kotlin', filename: 'MainActivity.kt',
+    id: 'kotlin', label: 'Kotlin (Android Studio)', filename: 'MainActivity.kt',
     deps: `// build.gradle.kts (Module: app) — a real dependency
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -690,6 +704,8 @@ package com.example.konduytdemo
 
 import android.os.Bundle
 import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.*
 import okhttp3.*
@@ -702,18 +718,27 @@ class MainActivity : AppCompatActivity() {
     // 11 language tabs you run as your backend, this points at it.
     private val backend = "http://10.0.2.2:3000" // your backend, from the Android emulator
 
+    private lateinit var amountInput: EditText
+    private lateinit var emailInput: EditText
+    private lateinit var resultText: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main) // a real layout file: one Button, id "buyButton"
+        setContentView(R.layout.activity_main) // a real layout file -- ids: amountInput, emailInput, buyButton, resultText
+
+        amountInput = findViewById(R.id.amountInput)
+        emailInput = findViewById(R.id.emailInput)
+        resultText = findViewById(R.id.resultText)
 
         findViewById<Button>(R.id.buyButton).setOnClickListener {
-            createPayment(5000, "customer@example.com")
+            createPayment(amountInput.text.toString().toInt(), emailInput.text.toString())
         }
     }
 
     fun createPayment(amount: Int, email: String) {
-        // amount either comes from the shopper (a donation), or is a fixed
-        // price you already know (a product) -- same field either way.
+        // amount either comes from the shopper (typed into amountInput, a
+        // donation), or is a fixed price you already know (a product) --
+        // same field either way.
         CoroutineScope(Dispatchers.IO).launch {
             val client = OkHttpClient()
             val json = "application/json".toMediaType()
@@ -724,11 +749,15 @@ class MainActivity : AppCompatActivity() {
                 .post(payload.toRequestBody(json))
                 .build()
 
-            client.newCall(request).execute().use { res ->
-                val payment = res.body?.string()
-                // your backend returns whatever Konduyt gave it -- open
-                // authorization_url in a Chrome Custom Tab on the main thread
-                withContext(Dispatchers.Main) { /* show payment / open the checkout URL */ }
+            try {
+                client.newCall(request).execute().use { res ->
+                    val payment = res.body?.string()
+                    // your backend returns whatever Konduyt gave it -- show
+                    // it in resultText on the main thread
+                    withContext(Dispatchers.Main) { resultText.text = payment }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { resultText.text = "Could not reach your backend -- is it running?" }
             }
         }
     }

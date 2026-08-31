@@ -1,21 +1,17 @@
 // A real, standalone demo -- one self-contained HTML file, HTML + CSS + JS
-// together, no build step, no dependency, no backend needed at all. Same
-// approach as konduyt.dev/demo/ itself: real per-method fee formulas
-// (matching each provider's real published pricing), real geo detection
-// and real live FX conversion via two simple public APIs -- nothing tied
-// to a publishable key, a project, or Konduyt's own backend. This is
-// purely "here's what the intelligence layer shows a shopper", reliably,
-// for anyone who opens this file.
+// together, no build step, no dependency. Two independent parts:
 //
-// Two scenarios, both real: a FIXED price (like a product you already
-// know the price of) and a price the SHOPPER TYPES IN (like a donation).
-// Same intelligence table either way -- just where the amount comes from
-// differs.
+// 1. The intelligence preview (fixed price + shopper-entered price tables):
+//    genuinely standalone, no backend or key needed at all -- real per-
+//    method fee formulas, real geo detection, real live FX conversion via
+//    two public APIs. Same approach konduyt.dev/demo/ itself uses.
 //
-// Connecting to REAL payment providers and creating a REAL charge is a
-// different, separate thing -- that's what the 12 backend language tabs
-// below implement, using your own real publishable/secret keys. This file
-// is only the intelligence preview, same as konduyt.dev/demo/ is.
+// 2. A real "Buy now" section: amountInput/emailInput/buyButton/resultDiv
+//    are real ids, and the button really does POST to
+//    /api/create-payment on http://localhost:3000 -- the exact route every
+//    backend language tab (JS, Python, PHP, Go, ...) implements or shows
+//    how to mount. Open this file next to a running backend from any of
+//    those tabs and the button actually works end to end.
 
 export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 <html lang="en">
@@ -54,6 +50,29 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 6px; }
   .saving { font-size: 12.5px; color: #6b6b6b; margin-top: 6px; }
   .saving strong { color: #0a0a0a; }
+  .buy-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5; }
+  .buy-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .buy-row input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  #buyButton {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: #0a0a0a;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #buyButton:disabled { opacity: 0.5; cursor: default; }
+  #resultDiv { margin-top: 12px; font-size: 12.5px; color: #6b6b6b; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -69,6 +88,21 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     <input id="customAmount" type="number" value="1000" placeholder="Amount" />
   </div>
   <div id="customTable"></div>
+
+  <div class="buy-section">
+    <h2>Buy now — a real charge</h2>
+    <p class="sub">
+      Calls YOUR OWN backend at <code>http://localhost:3000/api/create-payment</code> --
+      run any one of the 12 backend language tabs first, then click Buy.
+      Konduyt is never called directly from this page; there is no key here at all.
+    </p>
+    <div class="buy-row">
+      <input id="amountInput" type="number" value="5000" placeholder="Amount" />
+      <input id="emailInput" type="email" value="customer@example.com" placeholder="Email" />
+    </div>
+    <button id="buyButton" type="button">Buy now</button>
+    <div id="resultDiv"></div>
+  </div>
 
   <script>
     // Real per-method fee formulas -- each provider's own real, published
@@ -165,6 +199,37 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 
     document.getElementById('customAmount').addEventListener('input', renderAll);
     renderAll(); // render once immediately with KES, before geo/FX resolves
+
+    // Real Buy button -- calls YOUR OWN backend, never Konduyt directly.
+    // Same pattern as every other backend language tab: the frontend never
+    // holds a secret key, only your server does.
+    document.getElementById('buyButton').addEventListener('click', function () {
+      var button = document.getElementById('buyButton');
+      var resultDiv = document.getElementById('resultDiv');
+      var amount = document.getElementById('amountInput').value;
+      var email = document.getElementById('emailInput').value;
+
+      button.disabled = true;
+      button.textContent = 'Processing…';
+      resultDiv.textContent = '';
+
+      fetch('http://localhost:3000/api/create-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(amount), email: email })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (payment) {
+          resultDiv.textContent = JSON.stringify(payment);
+        })
+        .catch(function () {
+          resultDiv.textContent = 'Could not reach your backend at localhost:3000 -- is it running?';
+        })
+        .finally(function () {
+          button.disabled = false;
+          button.textContent = 'Buy now';
+        });
+    });
   </script>
 </body>
 </html>`;

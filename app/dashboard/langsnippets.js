@@ -121,6 +121,20 @@ const amount = Number(req.body.amount);   // whatever the shopper typed in (a do
 // const amount = selectedItem.price;      // a fixed price you already know (a product)
 const payment = await createPayment({ amount, email: req.body.email });
 // res.redirect(payment.authorization_url);` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+// route -- amountInput/emailInput are its real field ids. Express shown
+// here; any Node framework (Fastify, Koa, raw http) mounts the same way.
+import express from "express";
+const app = express();
+app.use(express.json());
+
+app.post("/api/create-payment", async (req, res) => {
+  const payment = await createPayment({ amount: req.body.amount, email: req.body.email });
+  res.json(payment);
+});
+
+app.listen(3000, () => console.log("Backend running on http://localhost:3000"));` },
       { title: 'Recurring subscription', code:
 `// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 // Creates a session; the customer authorizes once in the checkout popup,
@@ -212,6 +226,22 @@ def create_payment(amount, email, method="mpesa"):
 amount = int(request.form["amount"])   # whatever the shopper typed in (a donation)
 # amount = selected_item.price          # a fixed price you already know (a product)
 payment = create_payment(amount, request.form["email"])` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+# route -- amountInput/emailInput are its real field ids. Flask shown
+# here; FastAPI/Django mount the same route the same way.
+from flask import Flask, request, jsonify
+app = Flask(__name__)
+
+@app.route("/api/create-payment", methods=["POST"])
+def handle_create_payment():
+    body = request.get_json()
+    payment = create_payment(body["amount"], body["email"])
+    return jsonify(payment)
+
+if __name__ == "__main__":
+    app.run(port=3000)
+    print("Backend running on http://localhost:3000")` },
       { title: 'Recurring subscription', code:
 `# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 # Creates a session; the customer authorizes once in the checkout popup,
@@ -297,6 +327,15 @@ function create_payment($secret, $amount, $email, $method = "mpesa") {
 $amount = (int) $_POST["amount"];       // whatever the shopper typed in (a donation)
 // $amount = $selectedItem["price"];    // a fixed price you already know (a product)
 $payment = create_payment($secret, $amount, $_POST["email"]);` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`<?php
+// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+// path -- amountInput/emailInput are its real field ids. No framework
+// needed: PHP's built-in server routes by file/path natively.
+// Save as api/create-payment.php, run: php -S localhost:3000
+$body = json_decode(file_get_contents("php://input"), true);
+header("Content-Type: application/json");
+echo json_encode(create_payment($secret, (int) $body["amount"], $body["email"]));` },
       { title: 'Recurring subscription', code:
 `<?php
 // A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
@@ -413,6 +452,24 @@ func createPayment(amount int, email string) (map[string]any, error) {
 	json.NewDecoder(res.Body).Decode(&payment)
 	return payment, nil
 }` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+// route -- amountInput/emailInput are its real field ids. net/http shown
+// here (no framework needed); Gin/Echo mount the same route the same way.
+func main() {
+	http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			Amount int    ` + "`json:\"amount\"`" + `
+			Email  string ` + "`json:\"email\"`" + `
+		}
+		json.NewDecoder(r.Body).Decode(&in)
+		payment, _ := createPayment(in.Amount, in.Email)
+		json.NewEncoder(w).Encode(payment)
+	})
+
+	fmt.Println("Backend running on http://localhost:3000")
+	http.ListenAndServe(":3000", nil)
+}` },
       { title: 'Recurring subscription', code:
 `// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 // Creates a session; the customer authorizes once in the checkout popup,
@@ -526,6 +583,20 @@ end
 amount = params[:amount].to_i     # whatever the shopper typed in (a donation)
 # amount = selected_item.price    # a fixed price you already know (a product)
 payment = create_payment(amount, params[:email])` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+# route -- amountInput/emailInput are its real field ids. Sinatra shown
+# here (gem install sinatra); Rails mounts the same route the same way.
+require "sinatra"
+require "json"
+
+post "/api/create-payment" do
+  body = JSON.parse(request.body.read)
+  payment = create_payment(body["amount"], body["email"])
+  content_type :json
+  payment.to_json
+end
+# Run: ruby server.rb -- backend on http://localhost:3000` },
       { title: 'Recurring subscription', code:
 `# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 # Creates a session; the customer authorizes once in the checkout popup,
@@ -619,6 +690,32 @@ fn create_payment(amount: u64, email: &str) -> Result<serde_json::Value, reqwest
 }
 // amount either comes from the shopper, or is a price you already know --
 // pass whichever one applies as the amount parameter above.` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+// route -- amountInput/emailInput are its real field ids. tiny_http shown
+// here (cargo add tiny_http); Actix/Axum mount the same route the same way.
+use tiny_http::{Server, Response, Method};
+use std::io::Read;
+
+fn main() {
+    let server = Server::http("0.0.0.0:3000").unwrap();
+    println!("Backend running on http://localhost:3000");
+
+    for mut request in server.incoming_requests() {
+        if request.method() != &Method::Post || request.url() != "/api/create-payment" {
+            request.respond(Response::from_string("").with_status_code(404)).ok();
+            continue;
+        }
+        let mut body_str = String::new();
+        request.as_reader().read_to_string(&mut body_str).ok();
+        let body: serde_json::Value = serde_json::from_str(&body_str).unwrap_or(json!({}));
+
+        let amount = body["amount"].as_u64().unwrap_or(0);
+        let email = body["email"].as_str().unwrap_or("");
+        let payment = create_payment(amount, email).unwrap();
+        request.respond(Response::from_string(payment.to_string())).ok();
+    }
+}` },
       { title: 'Recurring subscription', code:
 `// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 // Creates a session; the customer authorizes once in the checkout popup,
@@ -707,6 +804,24 @@ async Task<string> CreatePayment(int amount, string email, string method = "mpes
 }
 // amount either comes from the shopper, or is a price you already know --
 // pass whichever one applies as the amount parameter above.` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+// route -- amountInput/emailInput are its real field ids. ASP.NET Core
+// minimal API shown here (dotnet new web); MVC controllers mount the
+// same route the same way.
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapPost("/api/create-payment", async (HttpRequest req) => {
+    var body = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body);
+    var amount = body.GetProperty("amount").GetInt32();
+    var email = body.GetProperty("email").GetString();
+    var payment = await CreatePayment(amount, email);
+    return Results.Content(payment, "application/json");
+});
+
+app.Urls.Add("http://localhost:3000");
+app.Run();` },
       { title: 'Recurring subscription', code:
 `// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 // Creates a session; the customer authorizes once in the checkout popup,
@@ -766,7 +881,7 @@ async Task<string> CreateUsageBillSession(int unitsUsed, int pricePerUnit) {
     ],
   },
   {
-    id: 'java', label: 'Java', icon: 'java', platform: 'Android',
+    id: 'java', label: 'Java (Android Studio)', icon: 'java', platform: 'Android',
     sections: [
       { title: 'Dependency (app/build.gradle)', code:
 `dependencies {
@@ -775,49 +890,95 @@ async Task<string> CreateUsageBillSession(int unitsUsed, int pricePerUnit) {
 
 // AndroidManifest.xml — allow internet
 // <uses-permission android:name="android.permission.INTERNET" />` },
-      { title: 'One-time payment — call YOUR backend, not Konduyt directly', code:
-`// The secret key must live on YOUR server, never inside the Android app --
+      { title: 'MainActivity.java — wired to activity_main.xml (Step 2 above)', code:
+`// app/src/main/java/.../MainActivity.java
+//
+// The secret key must live on YOUR server, never inside the Android app --
 // anything shipped in the APK can be extracted, including a value injected
 // via BuildConfig at build time. There is no safe way to hold
-// KONDUYT_SECRET_KEY on-device. Your app calls YOUR OWN backend endpoint
-// below; that backend (in Node, Python, or whatever you run -- see the
-// other language tabs here for what it does with this) holds
+// KONDUYT_SECRET_KEY on-device. This Activity calls YOUR OWN backend
+// endpoint below; that backend (in Node, Python, or whatever you run --
+// see the other language tabs here for what it does with this) holds
 // KONDUYT_SECRET_KEY and is the only thing that ever calls Konduyt directly.
+package com.example.konduytdemo;
 
-// amount either comes from the shopper, or is a price you already know --
-// pass whichever one applies as the amount parameter below.
-void createPayment(int amount, String email) throws IOException {
-    OkHttpClient client = new OkHttpClient();
+import android.os.Bundle;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+import okhttp3.*;
+import java.io.IOException;
+import java.util.concurrent.Executors;
 
-    String json = "{"
-        + "\\"amount\\": " + amount + ","
-        + "\\"email\\": \\"" + email + "\\""
-        + "}";
+public class MainActivity extends AppCompatActivity {
+    // Your own backend, from the Android emulator -- not Konduyt directly.
+    private static final String BACKEND = "http://10.0.2.2:3000";
 
-    // Your own backend, not Konduyt -- e.g. https://yourapp.com/api/create-payment
-    Request request = new Request.Builder()
-        .url("https://yourapp.com/api/create-payment")
-        .post(RequestBody.create(json, MediaType.parse("application/json")))
-        .build();
+    private EditText amountInput;
+    private EditText emailInput;
+    private TextView resultText;
 
-    try (Response response = client.newCall(request).execute()) {
-        String payment = response.body().string();
-        // your backend returns whatever Konduyt gave it -- open
-        // authorization_url in a Chrome Custom Tab
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main); // Step 2's real activity_main.xml
+
+        // These ids come straight from activity_main.xml above --
+        // change one there and this line breaks, on purpose.
+        amountInput = findViewById(R.id.amountInput);
+        emailInput = findViewById(R.id.emailInput);
+        resultText = findViewById(R.id.resultText);
+
+        Button buyButton = findViewById(R.id.buyButton);
+        buyButton.setOnClickListener(v -> {
+            // amount either comes from the shopper (typed into amountInput,
+            // a donation), or is a fixed price you already know (a product)
+            // -- same field either way.
+            int amount = Integer.parseInt(amountInput.getText().toString());
+            String email = emailInput.getText().toString();
+            createPayment(amount, email);
+        });
     }
-}
-// e.g. createPayment(Integer.parseInt(amountInput.getText().toString()), email);
-//      createPayment(selectedProduct.getPrice(), email);` },
+
+    void createPayment(int amount, String email) {
+        OkHttpClient client = new OkHttpClient();
+        Executors.newSingleThreadExecutor().execute(() -> {
+            String json = "{"
+                + "\\"amount\\": " + amount + ","
+                + "\\"email\\": \\"" + email + "\\""
+                + "}";
+
+            // Your own backend, not Konduyt -- POST /api/create-payment,
+            // the exact route every backend language tab implements.
+            Request request = new Request.Builder()
+                .url(BACKEND + "/api/create-payment")
+                .post(RequestBody.create(json, MediaType.parse("application/json")))
+                .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                String payment = response.body().string();
+                // your backend returns whatever Konduyt gave it -- update
+                // resultText on the main thread, or open authorization_url
+                // in a Chrome Custom Tab
+                runOnUiThread(() -> resultText.setText(payment));
+            } catch (IOException e) {
+                runOnUiThread(() -> resultText.setText("Could not reach your backend -- is it running?"));
+            }
+        });
+    }
+}` },
       { title: 'Recurring subscription — call YOUR backend', code:
 `// A fixed subscription price -- your backend creates the real Konduyt
 // session (recurring: true) using its own secret key; your app only ever
 // talks to your own endpoint below, then opens the checkout it gets back.
+// Wire this into the same MainActivity above (e.g. a second button).
 void createSubscription(String email) throws IOException {
     OkHttpClient client = new OkHttpClient();
     String json = "{\\"email\\": \\"" + email + "\\", \\"plan\\": \\"pro_monthly\\"}";
 
     Request request = new Request.Builder()
-        .url("https://yourapp.com/api/create-subscription")
+        .url(BACKEND + "/api/create-subscription")
         .post(RequestBody.create(json, MediaType.parse("application/json")))
         .build();
 
@@ -837,7 +998,7 @@ void createSplitPurchase(int amount, String sellerId, String email) throws IOExc
         + "\\", \\"email\\": \\"" + email + "\\"}";
 
     Request request = new Request.Builder()
-        .url("https://yourapp.com/api/create-split-payment")
+        .url(BACKEND + "/api/create-split-payment")
         .post(RequestBody.create(json, MediaType.parse("application/json")))
         .build();
 
@@ -854,7 +1015,7 @@ void requestUsageBill(String userId) throws IOException {
     String json = "{\\"userId\\": \\"" + userId + "\\"}";
 
     Request request = new Request.Builder()
-        .url("https://yourapp.com/api/create-usage-bill")
+        .url(BACKEND + "/api/create-usage-bill")
         .post(RequestBody.create(json, MediaType.parse("application/json")))
         .build();
 
@@ -866,7 +1027,7 @@ void requestUsageBill(String userId) throws IOException {
     ],
   },
   {
-    id: 'kotlin', label: 'Kotlin', icon: 'kotlin', platform: 'Android',
+    id: 'kotlin', label: 'Kotlin (Android Studio)', icon: 'kotlin', platform: 'Android',
     sections: [
       { title: 'Dependency (app/build.gradle.kts)', code:
 `dependencies {
@@ -875,46 +1036,91 @@ void requestUsageBill(String userId) throws IOException {
 
 // AndroidManifest.xml
 // <uses-permission android:name="android.permission.INTERNET" />` },
-      { title: 'One-time payment — call YOUR backend, not Konduyt directly', code:
-`// The secret key must live on YOUR server, never inside the Android app --
+      { title: 'MainActivity.kt — wired to activity_main.xml (Step 2 above)', code:
+`// app/src/main/java/.../MainActivity.kt
+//
+// The secret key must live on YOUR server, never inside the Android app --
 // anything shipped in the APK can be extracted, including a value injected
 // via BuildConfig at build time. There is no safe way to hold
-// KONDUYT_SECRET_KEY on-device. Your app calls YOUR OWN backend endpoint
-// below; that backend holds KONDUYT_SECRET_KEY (see the other language
-// tabs here for what it does with this) and is the only thing that ever
-// calls Konduyt directly.
+// KONDUYT_SECRET_KEY on-device. This Activity calls YOUR OWN backend
+// endpoint below; that backend holds KONDUYT_SECRET_KEY (see the other
+// language tabs here for what it does with this) and is the only thing
+// that ever calls Konduyt directly.
+package com.example.konduytdemo
 
-// amount either comes from the shopper, or is a price you already know --
-// pass whichever one applies as the amount parameter below.
-// Call from a coroutine (Dispatchers.IO).
-fun createPayment(amount: Int, email: String) {
-    val client = OkHttpClient()
-    val json = """{ "amount": $amount, "email": "$email" }""".trimIndent()
+import android.os.Bundle
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.*
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
-    // Your own backend, not Konduyt -- e.g. https://yourapp.com/api/create-payment
-    val request = Request.Builder()
-        .url("https://yourapp.com/api/create-payment")
-        .post(json.toRequestBody("application/json".toMediaType()))
-        .build()
+class MainActivity : AppCompatActivity() {
+    // Your own backend, from the Android emulator -- not Konduyt directly.
+    private val backend = "http://10.0.2.2:3000"
 
-    client.newCall(request).execute().use { response ->
-        val payment = response.body?.string()
-        // your backend returns whatever Konduyt gave it -- open
-        // authorization_url in a Chrome Custom Tab
+    private lateinit var amountInput: EditText
+    private lateinit var emailInput: EditText
+    private lateinit var resultText: TextView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main) // Step 2's real activity_main.xml
+
+        // These ids come straight from activity_main.xml above --
+        // change one there and this line breaks, on purpose.
+        amountInput = findViewById(R.id.amountInput)
+        emailInput = findViewById(R.id.emailInput)
+        resultText = findViewById(R.id.resultText)
+
+        findViewById<Button>(R.id.buyButton).setOnClickListener {
+            // amount either comes from the shopper (typed into amountInput,
+            // a donation), or is a fixed price you already know (a product)
+            // -- same field either way.
+            val amount = amountInput.text.toString().toInt()
+            val email = emailInput.text.toString()
+            createPayment(amount, email)
+        }
     }
-}
-// e.g. createPayment(amountField.text.toString().toInt(), email)
-//      createPayment(selectedProduct.price, email)` },
+
+    fun createPayment(amount: Int, email: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val client = OkHttpClient()
+            val json = "application/json".toMediaType()
+            val payload = """{ "amount": $amount, "email": "$email" }"""
+
+            // Your own backend, not Konduyt -- POST /api/create-payment,
+            // the exact route every backend language tab implements.
+            val request = Request.Builder()
+                .url("$backend/api/create-payment")
+                .post(payload.toRequestBody(json))
+                .build()
+
+            try {
+                client.newCall(request).execute().use { res ->
+                    val payment = res.body?.string()
+                    withContext(Dispatchers.Main) { resultText.text = payment }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { resultText.text = "Could not reach your backend -- is it running?" }
+            }
+        }
+    }
+}` },
       { title: 'Recurring subscription — call YOUR backend', code:
 `// A fixed subscription price -- your backend creates the real Konduyt
 // session (recurring: true) using its own secret key; your app only ever
 // talks to your own endpoint below, then opens the checkout it gets back.
+// Wire this into the same MainActivity above (e.g. a second button).
 fun createSubscription(email: String) {
     val client = OkHttpClient()
     val json = """{ "email": "$email", "plan": "pro_monthly" }""".trimIndent()
 
     val request = Request.Builder()
-        .url("https://yourapp.com/api/create-subscription")
+        .url("$backend/api/create-subscription")
         .post(json.toRequestBody("application/json".toMediaType()))
         .build()
 
@@ -933,7 +1139,7 @@ fun createSplitPurchase(amount: Int, sellerId: String, email: String) {
     val json = """{ "amount": $amount, "sellerId": "$sellerId", "email": "$email" }""".trimIndent()
 
     val request = Request.Builder()
-        .url("https://yourapp.com/api/create-split-payment")
+        .url("$backend/api/create-split-payment")
         .post(json.toRequestBody("application/json".toMediaType()))
         .build()
 
@@ -950,7 +1156,7 @@ fun requestUsageBill(userId: String) {
     val json = """{ "userId": "$userId" }""".trimIndent()
 
     val request = Request.Builder()
-        .url("https://yourapp.com/api/create-usage-bill")
+        .url("$backend/api/create-usage-bill")
         .post(json.toRequestBody("application/json".toMediaType()))
         .build()
 
@@ -964,38 +1170,70 @@ fun requestUsageBill(userId: String) {
   {
     id: 'swift', label: 'Swift', icon: 'swift', platform: 'iOS',
     sections: [
-      { title: 'One-time payment — call YOUR backend, not Konduyt directly', code:
-`// The secret key must live on YOUR server, never inside the iOS app --
+      { title: 'ViewController.swift — wired to Main.storyboard (Step 2 above)', code:
+`// ViewController.swift
+//
+// The secret key must live on YOUR server, never inside the iOS app --
 // anything shipped in the binary can be extracted, including a value
 // injected via Info.plist at build time. There is no safe way to hold
-// KONDUYT_SECRET_KEY on-device. Your app calls YOUR OWN backend endpoint
-// below; that backend holds KONDUYT_SECRET_KEY (see the other language
-// tabs here for what it does with this) and is the only thing that ever
-// calls Konduyt directly.
+// KONDUYT_SECRET_KEY on-device. This ViewController calls YOUR OWN backend
+// endpoint below; that backend holds KONDUYT_SECRET_KEY (see the other
+// language tabs here for what it does with this) and is the only thing
+// that ever calls Konduyt directly.
+//
+// customClass="ViewController" in Main.storyboard is what makes iOS
+// instantiate THIS class for that scene -- the @IBOutlet/@IBAction names
+// below must match the storyboard's ids/selector exactly, or the app
+// crashes at launch with an unrecognized-selector error.
+import UIKit
 
-// amount either comes from the shopper, or is a price you already know --
-// pass whichever one applies as the amount parameter below.
-func createPayment(amount: Int, email: String) async throws -> [String: Any] {
-    // Your own backend, not Konduyt -- e.g. https://yourapp.com/api/create-payment
-    var request = URLRequest(url: URL(string: "https://yourapp.com/api/create-payment")!)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+class ViewController: UIViewController {
+    // These match Main.storyboard's ids exactly -- amountField, emailField,
+    // resultLabel. Connect each in Interface Builder by ctrl-dragging from
+    // the storyboard element to these properties.
+    @IBOutlet weak var amountField: UITextField!
+    @IBOutlet weak var emailField: UITextField!
+    @IBOutlet weak var resultLabel: UILabel!
 
-    let body: [String: Any] = ["amount": amount, "email": email]
-    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+    // Your own backend, from the iOS Simulator -- not Konduyt directly.
+    let backend = "http://localhost:3000"
 
-    let (data, _) = try await URLSession.shared.data(for: request)
-    // your backend returns whatever Konduyt gave it
-    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+    // Matches the storyboard's action selector "createPaymentTapped:"
+    // exactly, connected to buyButton's Touch Up Inside event.
+    @IBAction func createPaymentTapped(_ sender: Any) {
+        // amount either comes from the shopper (typed into amountField, a
+        // donation), or is a fixed price you already know (a product) --
+        // same field either way.
+        let amount = Int(amountField.text ?? "") ?? 0
+        let email = emailField.text ?? ""
+        Task { await createPayment(amount: amount, email: email) }
+    }
+
+    func createPayment(amount: Int, email: String) async {
+        // Your own backend, not Konduyt -- POST /api/create-payment,
+        // the exact route every backend language tab implements.
+        var request = URLRequest(url: URL(string: "\\(backend)/api/create-payment")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["amount": amount, "email": email])
+
+        do {
+            let (data, _) = try await URLSession.shared.data(for: request)
+            // your backend returns whatever Konduyt gave it
+            resultLabel.text = String(data: data, encoding: .utf8) ?? ""
+        } catch {
+            resultLabel.text = "Could not reach your backend -- is it running?"
+        }
+    }
 }
-// e.g. try await createPayment(amount: Int(amountField.text!)!, email: email)
-//      try await createPayment(amount: selectedItem.price, email: email)` },
+// e.g. try await createPayment(amount: selectedItem.price, email: email)` },
       { title: 'Recurring subscription — call YOUR backend', code:
 `// A fixed subscription price -- your backend creates the real Konduyt
 // session (recurring: true) using its own secret key; your app only ever
 // talks to your own endpoint below, then opens the checkout it gets back.
+// Wire this into the same ViewController above (e.g. a second button).
 func createSubscription(email: String) async throws -> [String: Any] {
-    var request = URLRequest(url: URL(string: "https://yourapp.com/api/create-subscription")!)
+    var request = URLRequest(url: URL(string: "\\(backend)/api/create-subscription")!)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -1012,7 +1250,7 @@ func createSubscription(email: String) async throws -> [String: Any] {
 // /v1/marketplace_payments (see the other language tabs); your app only
 // ever sends what it split for, never a Konduyt key.
 func createSplitPurchase(amount: Int, sellerId: String, email: String) async throws -> [String: Any] {
-    var request = URLRequest(url: URL(string: "https://yourapp.com/api/create-split-payment")!)
+    var request = URLRequest(url: URL(string: "\\(backend)/api/create-split-payment")!)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -1027,7 +1265,7 @@ func createSplitPurchase(amount: Int, sellerId: String, email: String) async thr
 // server-side, and creates the real Konduyt session -- your app just asks
 // "what do I owe right now", never sends an amount it computed itself.
 func requestUsageBill(userId: String) async throws -> [String: Any] {
-    var request = URLRequest(url: URL(string: "https://yourapp.com/api/create-usage-bill")!)
+    var request = URLRequest(url: URL(string: "\\(backend)/api/create-usage-bill")!)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -1078,6 +1316,28 @@ void create_payment(long amount, const std::string& email) {
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
+}` },
+      { title: 'Wire it to the Buy button (intelligence.html)', code:
+`// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
+// route -- amountInput/emailInput are its real field ids. cpp-httplib
+// shown here (a single header, no framework needed).
+#include <httplib.h>
+#include <string>
+
+int main() {
+    httplib::Server svr;
+
+    svr.Post("/api/create-payment", [](const httplib::Request& req, httplib::Response& res) {
+        // Parsing req.body's real "amount"/"email" fields is left to a
+        // JSON library of your choice -- create_payment above takes them.
+        long amount = 5000; // parse from req.body in a real integration
+        std::string email = "customer@example.com";
+        create_payment(amount, email);
+        res.set_content("{\\"status\\": \\"submitted\\"}", "application/json");
+    });
+
+    printf("Backend running on http://localhost:3000\\n");
+    svr.listen("0.0.0.0", 3000);
 }` },
       { title: 'Recurring subscription', code:
 `#include <curl/curl.h>
