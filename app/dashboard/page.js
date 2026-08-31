@@ -1491,7 +1491,7 @@ export default function Dashboard() {
                   <input
                     className="method-search-input"
                     type="text"
-                    placeholder="Search a payment method — PayPal, Apple Pay, M-Pesa, SEPA, UPI…"
+                    placeholder="Search a payment method or bank — PayPal, Equity Bank, M-Pesa, SEPA…"
                     value={methodSearch}
                     onChange={(e) => setMethodSearch(e.target.value)}
                   />
@@ -1749,7 +1749,14 @@ export default function Dashboard() {
                     return <p className="con-sub" style={{ marginTop: 16 }}>Loading providers…</p>;
                   }
 
-                  const list = q ? topProviders.filter(matchesQuery) : topProviders;
+                  // With a search query, search the FULL catalog (providers,
+                  // from /connectors) -- not just the top-24 ranked subset
+                  // (topProviders). Banks rank low on the default "genuine
+                  // global coverage" sort (most serve one country), so
+                  // confining search to the top-24 meant a bank could never
+                  // be found by name even though it's a real, connectable
+                  // entry. No query -> the curated top-24 view, unchanged.
+                  const list = q ? providers.filter(matchesQuery) : topProviders;
                   // Connected providers first, for easier visibility --
                   // a stable sort, so within "connected" and "not connected"
                   // each keeps its original relative order.
@@ -1763,7 +1770,7 @@ export default function Dashboard() {
                     return (
                       <div className="con-empty" style={{ marginTop: 16 }}>
                         <p className="con-empty-sub">
-                          No provider matches “{methodSearch}”. Try Paystack, Stripe, PayPal, Flutterwave…
+                          No provider matches “{methodSearch}”. Try Paystack, Stripe, PayPal, Equity Bank…
                         </p>
                       </div>
                     );
@@ -1777,12 +1784,46 @@ export default function Dashboard() {
                     );
                   }
 
+                  // Banks are a real, distinct part of the catalog (19 real
+                  // connectors -- Equity, KCB, Co-op, NCBA, Absa, Stanbic
+                  // and more) that deliberately don't appear in the
+                  // continent-ranked "top providers" view above (a bank is a
+                  // narrower, single-country integration, not a global-
+                  // coverage payment provider -- see continent_providers.py).
+                  // That's correct for the ranked view, but it meant banks
+                  // had no home to be BROWSED from at all -- only findable
+                  // by typing their exact name into search. This section is
+                  // that home: the full catalog (already fetched, already
+                  // includes every bank) filtered to type === 'bank', shown
+                  // whenever the person isn't actively searching (a search
+                  // already surfaces a matching bank in the grid above).
+                  const bankConnectors = providers.filter((p) => p.type === 'bank');
+
                   return (
-                    <div className="provider-directory">
-                      <div className="provider-grid">
-                        {sortedList.map(renderProviderCard)}
+                    <>
+                      <div className="provider-directory">
+                        <div className="provider-grid">
+                          {sortedList.map(renderProviderCard)}
+                        </div>
                       </div>
-                    </div>
+
+                      {!q && bankConnectors.length > 0 && (
+                        <div className="provider-directory" style={{ marginTop: 32 }}>
+                          <div className="con-home-head" style={{ marginBottom: 12 }}>
+                            <h2 className="con-h2">Banks</h2>
+                            <p className="con-sub">
+                              Direct bank rails — connect a bank account for local collections and
+                              settlement, separate from the payment providers above.
+                            </p>
+                          </div>
+                          <div className="provider-grid">
+                            {bankConnectors
+                              .sort((a, b) => (isConnected(a.id) ? 0 : 1) - (isConnected(b.id) ? 0 : 1))
+                              .map(renderProviderCard)}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>
