@@ -129,12 +129,12 @@ export default function Home() {
             <h1>One integration.<br />Every payment<br />provider.</h1>
             <div className="copy">
               <p>Every payment company speaks its own language.</p>
-              <p>Stripe has one API. PayPal has another. M-Pesa has its own way of doing things. Flutterwave has theirs.<br />You shouldn&apos;t have to learn all of them.</p>
+              <p>Stripe has one API. PayPal has another. M-Pesa has its own way of doing things. You shouldn&apos;t have to learn all of them.</p>
               <p>Konduyt sits in the middle.</p>
-              <p>You write the integration once. Konduyt handles the providers, the payment methods, and the routing underneath. Your customers see the payment methods they already know.<br />M-Pesa in Kenya. Cards in Europe. PayPal when that&apos;s what they use.</p>
-              <p>And when things get complicated, Konduyt makes the decisions for you. Which provider can take the payment? Which payment method makes sense? Where should it go? What happens when one route fails?</p>
-              <p>The same goes for tax.<br />A customer buys from you in another country. The rules change. Konduyt looks at where the sale happened and tells you what applies and what you need to do about it.</p>
-              <p>Your customers keep paying normally.<br />Your money stays in your accounts.<br />We never touch it.</p>
+              <p>One integration connects you to your providers and payment methods. It handles the routing underneath, choosing where the payment should go when there is more than one option.</p>
+              <p>M-Pesa in Kenya. Cards in Europe. PayPal when that&apos;s what they use.</p>
+              <p>Tax works the same way. Different country, different rules. Konduyt figures out what applies to the sale and tells you what to do about it.</p>
+              <p>Your customers pay normally.<br />Your money stays in your accounts.<br />We never touch it.</p>
             </div>
             <div className="cta-row">
               <a href="/demo/" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>View demo</a>
