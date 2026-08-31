@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 // Same universal keys as the homepage
 const SECRET = 'kdu_test_secret_4f8Kd92MnQ7pXvR3sT6wY1bC5eH0jL8n';
@@ -77,6 +78,12 @@ const DOCS = [
     group: 'Getting started',
     title: 'Projects & keys',
     body: 'Each project has its own publishable and secret key and its own set of connected providers and merchant country. Both keys are generated at project creation. Your provider secret is encrypted before it is stored and is only decrypted in-memory to execute an operation you initiate.',
+  },
+  {
+    id: 'env-vars',
+    group: 'Getting started',
+    title: 'Setting your key',
+    body: 'A real key goes on your host as an environment variable, never hardcoded in source. Name the secret key KONDUYT_SECRET_KEY exactly, and read it from your server\'s environment at startup. Vercel, Render, Heroku, Fly.io, and any other host with real environment-variable settings all work the same way -- add a new variable in your project\'s dashboard, paste the key as its value, redeploy. Your publishable key isn\'t a secret -- it\'s safe to expose client-side -- but it\'s still worth setting as an environment variable too (e.g. KONDUYT_PUBLISHABLE_KEY): if your backend serves your frontend page, it needs a way to inject the key into what it sends the browser, and keeping both as env vars means one place to manage per environment instead of a value buried in source. Test with your provider\'s own sandbox credentials, connected from the dashboard, before you ever touch a live key -- this is real payments and real customer money once you switch.',
   },
   {
     id: 'create-payment',
@@ -186,9 +193,21 @@ const DOCS = [
 const GROUPS = ['Getting started', 'Payments', 'Intelligence', 'Dashboard', 'Reference'];
 
 export default function Docs() {
+  return (
+    <Suspense fallback={null}>
+      <DocsInner />
+    </Suspense>
+  );
+}
+
+function DocsInner() {
+  const searchParams = useSearchParams();
+  const requestedDoc = searchParams.get('doc');
   useEffect(() => { document.title = 'Konduyt Docs'; }, []);
   const [query, setQuery] = useState('');
-  const [activeId, setActiveId] = useState('introduction');
+  const [activeId, setActiveId] = useState(
+    requestedDoc && DOCS.some((d) => d.id === requestedDoc) ? requestedDoc : 'introduction'
+  );
   const [lang, setLang] = useState('javascript');
   const [homeHref, setHomeHref] = useState('/');
   useEffect(() => { try { if (localStorage.getItem('kdu_token')) setHomeHref('/dashboard/'); } catch (e) {} }, []);

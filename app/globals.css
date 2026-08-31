@@ -22,6 +22,8 @@
     --amber-soft:#fffbeb;
     --amber-border:#fde68a;
     --amber-ink:#92600a;
+    --link-blue:#2563eb;
+    --link-blue-soft:#eff6ff;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{
@@ -231,7 +233,8 @@
 
   .step-label{font-size:14px; font-weight:600; color:var(--ink); margin-bottom:14px;}
   .step-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
-  .view-docs{font-size:13.5px; font-weight:600; color:var(--ink); text-decoration:none;}
+  .view-docs{display:inline-block; font-size:13.5px; font-weight:700; color:var(--link-blue); text-decoration:none; padding:5px 10px; margin-left:-10px; border-radius:7px; transition:background 0.12s;}
+  .view-docs:hover{background:var(--link-blue-soft);}
 
   .lang-pills{display:flex; flex-wrap:wrap; gap:9px; margin-bottom:28px;}
   .pill{
@@ -1245,7 +1248,8 @@
     font-size:14px; font-family:'JetBrains Mono', monospace; margin-bottom:10px; background:var(--elev);
   }
   .con-connect-help{font-size:13px; line-height:1.55; color:var(--text-secondary); margin-bottom:8px;}
-  .con-connect-docs{display:inline-block; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:14px;}
+  .con-connect-docs{display:inline-block; font-size:13px; font-weight:700; color:var(--link-blue); margin-bottom:14px; padding:3px 8px; margin-left:-8px; border-radius:6px; transition:background 0.12s;}
+  .con-connect-docs:hover{background:var(--link-blue-soft);}
   .con-connect-error{
     background:#fdecea; color:#a5302b; border:1px solid #f3c9c4; border-radius:8px;
     padding:9px 12px; font-size:13px; margin-bottom:12px;
@@ -1413,8 +1417,8 @@
   .mpesa-card-tagline{font-size:13px; color:var(--text-secondary);}
   .mpesa-status{font-size:12px; font-weight:600; color:var(--text-secondary);}
   .mpesa-status.available{color:#1c7a3e;}
-  .mpesa-learn-toggle{width:100%; text-align:left; background:var(--panel); border:none; border-top:1px solid var(--border); padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-secondary); cursor:pointer; font-family:inherit;}
-  .mpesa-learn-toggle:hover{color:var(--ink);}
+  .mpesa-learn-toggle{width:100%; text-align:left; background:var(--panel); border:none; border-top:1px solid var(--border); padding:10px 20px; font-size:13px; font-weight:700; color:var(--link-blue); cursor:pointer; font-family:inherit; transition:background 0.12s;}
+  .mpesa-learn-toggle:hover{background:var(--link-blue-soft);}
   .mpesa-learn{padding:18px 20px; border-top:1px solid var(--border);}
   .mpesa-learn-blurb{font-size:14px; line-height:1.6; color:var(--ink); margin-bottom:14px;}
   .mpesa-req-label{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-secondary); margin-bottom:8px;}

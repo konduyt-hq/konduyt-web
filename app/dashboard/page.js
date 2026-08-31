@@ -1867,20 +1867,14 @@ export default function Dashboard() {
                   );
                 })()}
                 <p className="step-hint">
-                  Name it exactly <code className="inline-code">KONDUYT_SECRET_KEY</code> — no spaces, no quotes
-                  around the value. Your publishable key isn&apos;t a secret — it&apos;s safe to expose
-                  client-side — but it&apos;s still worth setting as an environment variable too (e.g. <code
-                  className="inline-code">KONDUYT_PUBLISHABLE_KEY</code>): if your backend serves your frontend
-                  page, it needs a way to inject the key into what it sends the browser, and keeping both as env
-                  vars means one place to manage per environment instead of a hardcoded value buried in source.
+                  Name it exactly <code className="inline-code">KONDUYT_SECRET_KEY</code>.{' '}
+                  <a href="/docs/?doc=env-vars" className="view-docs">
+                    Why an env var, and what about the publishable key? →
+                  </a>
                 </p>
                 <p className="step-hint env-warn">
-                  <strong>Test with real money before you go live with it.</strong> Konduyt connects to your
-                  provider — Paystack, PayPal, and others — using your provider&apos;s own sandbox
-                  credentials just as easily as live ones. Connect a sandbox account first in
-                  Payment Providers, use its key here instead of a live one, and run through a
-                  real checkout before you ever touch a live key. This isn&apos;t optional advice —
-                  it&apos;s real payments and real customer money once you switch to live.
+                  <strong>Test with a sandbox key before you go live.</strong> Connect a sandbox account first
+                  in Payment Providers, and use its key here — this is real customer money once you switch.
                 </p>
 
                 {/* 2. Frontend — same picker as Quickstart: HTML/CSS for web,

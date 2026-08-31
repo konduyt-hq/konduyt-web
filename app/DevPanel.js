@@ -1053,18 +1053,6 @@ export default function DevPanel() {
         <p className="step-hint">
           A real key goes on your host, never in code. Pick yours:
         </p>
-        <p className="step-hint">
-          We&apos;re assuming you already have an account with whichever host you pick below — Vercel, Heroku,
-          Render, Fly.io, or another. This is just where the key goes once you do, not how to sign up for one.
-        </p>
-        <p className="step-hint">
-          Your publishable key isn&apos;t a secret — it&apos;s safe to expose client-side, so it doesn&apos;t
-          need the same protection. But it&apos;s still worth setting it as an environment variable on the same
-          host (e.g. <code>KONDUYT_PUBLISHABLE_KEY</code>), for two real reasons: if your backend is the one
-          serving your frontend page, it needs a way to inject the key into what it sends the browser; and
-          keeping both keys as env vars means one place to manage per environment (test vs. live), rather than
-          a hardcoded value you have to hunt down and edit in your frontend source every time it changes.
-        </p>
         <div className="env-platform-tabs">
           {HOSTING_PLATFORMS.map((p) => (
             <button key={p.id} type="button"
@@ -1084,6 +1072,7 @@ export default function DevPanel() {
             </ol>
           );
         })()}
+        <a href="/docs/?doc=env-vars" className="view-docs">Why an env var, and what about the publishable key? →</a>
 
         {/* 2. Frontend — a real pill picker, matching the language pills
             below (including real language icons). HTML & CSS is the web
