@@ -19,6 +19,8 @@ import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP } from './envsetup';
 import { HOSTING_PLATFORMS } from './hostingplatforms';
 import { INTELLIGENCE_TESTING_SDK } from './intelligencesdk';
+import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './frontendfiles';
+import { FRONTEND_OPTIONS } from './frontendoptions';
 import { MERCHANT_COUNTRIES } from './countries';
 
 const API_BASE =
@@ -152,8 +154,9 @@ export default function Dashboard() {
   const [msgCategory, setMsgCategory] = useState('');
   const [msgLoading, setMsgLoading] = useState(false);
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
-  const [envOpen, setEnvOpen] = useState(false); // ".env setup" explainer expand
   const [envPlatform, setEnvPlatform] = useState('render'); // which hosting platform's steps are shown
+  const [csFrontendOpen, setCsFrontendOpen] = useState(false); // Code Samples "Copy your frontend" expand
+  const [csFrontendId, setCsFrontendId] = useState('html'); // Code Samples selected frontend option
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
   const [payMethods, setPayMethods] = useState([]);
@@ -1790,191 +1793,17 @@ export default function Dashboard() {
                 <div className="con-home-head">
                   <h1 className="con-h1">Code Samples</h1>
                   <p className="con-sub">
-                    Pick your language to see how to create a payment with Konduyt. Then grab your keys below.
+                    Everything to launch with Konduyt on a real, live project — your keys, your frontend, your backend.
                   </p>
                 </div>
 
-                <div className="lang-chips">
-                  {LANG_SNIPPETS.map((l) => {
-                    const brand = LANG_BRAND[l.icon] || '#0a0a0a';
-                    const selected = langTab === l.id;
-                    return (
-                      <button key={l.id} type="button"
-                        className={`lang-chip ${selected ? 'sel' : ''}`}
-                        style={{ '--brand': brand }}
-                        onClick={() => setLangTab(l.id)}>
-                        {LANG_ICONS[l.icon] && (
-                          <span className="lang-chip-icon"
-                            dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
-                        )}
-                        {l.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {(() => {
-                  const lang = LANG_SNIPPETS.find((l) => l.id === langTab) || LANG_SNIPPETS[0];
-                  const isPlatform = Boolean(lang.platform);
-                  return (
-                    <>
-                    {/* Where the secret key actually goes — a real hosting
-                        platform's environment variables, never a local file */}
-                    <div className="env-setup">
-                      <button className="env-setup-head" type="button" onClick={() => setEnvOpen((o) => !o)}>
-                        <span>Where does my secret key go?</span>
-                        <span className="env-setup-chevron">{envOpen ? '▲' : '▼'}</span>
-                      </button>
-                      {envOpen && (
-                        <div className="env-setup-body">
-                          {isPlatform && (
-                            <p className="env-p env-warn">
-                              {lang.platform} apps are installed on your customers&apos; devices, and anything
-                              shipped inside the app — including a value injected at build time — can be
-                              extracted. There is <strong>no safe way</strong> to hold the secret key on-device,
-                              ever. Your app calls <strong>your own backend</strong>; that backend, wherever it
-                              runs, holds the key the way described below.
-                            </p>
-                          )}
-
-                          <div className="env-step">
-                            <span className="env-step-n">1</span>
-                            <div>
-                              <div className="env-step-title">Set it as a real environment variable on whatever host runs your {isPlatform ? 'backend' : 'code'}</div>
-                              <p className="env-p">
-                                Not a file on your computer — a setting on the actual server or platform your
-                                {isPlatform ? ' backend' : ' code'} runs on. Pick your host to see the real steps:
-                              </p>
-                              <div className="env-platform-tabs">
-                                {HOSTING_PLATFORMS.map((p) => (
-                                  <button key={p.id} type="button"
-                                    className={envPlatform === p.id ? 'env-platform-tab active' : 'env-platform-tab'}
-                                    onClick={() => setEnvPlatform(p.id)}>
-                                    {p.name}
-                                  </button>
-                                ))}
-                              </div>
-                              {(() => {
-                                const platform = HOSTING_PLATFORMS.find((p) => p.id === envPlatform) || HOSTING_PLATFORMS[0];
-                                return (
-                                  <ol className="env-platform-steps-list">
-                                    {platform.steps.map((s, i) => (
-                                      <li key={i}>{s.replace('{{KEY_VALUE}}', 'your real key').replace('{{KEY_VALUE_INLINE}}', 'your_real_key')}</li>
-                                    ))}
-                                  </ol>
-                                );
-                              })()}
-                              <p className="env-p">Any host with real environment-variable settings works the same way — these are just the common ones.</p>
-                            </div>
-                          </div>
-
-                          <div className="env-step">
-                            <span className="env-step-n">2</span>
-                            <div>
-                              <div className="env-step-title">Name it exactly <code className="inline-code">KONDUYT_SECRET_KEY</code></div>
-                              <p className="env-p">No spaces, no quotes around the value — just the key itself, exactly as your platform's key/value fields expect.</p>
-                            </div>
-                          </div>
-
-                          <div className="env-step">
-                            <span className="env-step-n">3</span>
-                            <div>
-                              <div className="env-step-title">Your {isPlatform ? "backend's" : ''} code reads it — never hardcode it</div>
-                              <p className="env-p">{ENV_SETUP[lang.icon]?.runtimeNote}</p>
-                            </div>
-                          </div>
-
-                          <div className="env-step">
-                            <span className="env-step-n">4</span>
-                            <div>
-                              <div className="env-step-title">Your publishable key can go there too — for a different reason</div>
-                              <p className="env-p">
-                                It isn&apos;t a secret — it&apos;s safe to expose client-side, so it doesn&apos;t need
-                                the same protection as the key above. But setting it as an environment variable too
-                                (e.g. <code className="inline-code">KONDUYT_PUBLISHABLE_KEY</code>) is still worth doing:
-                                if your backend is the one serving your frontend page, it needs a way to inject the key
-                                into what it sends the browser, and keeping both keys as env vars means one place to
-                                manage per environment (test vs. live) instead of a hardcoded value buried in your
-                                frontend source.
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="env-p env-warn">
-                            <strong>Test with real money before you go live with it.</strong> Konduyt connects to your
-                            provider — Paystack, PayPal, and others — using your provider&apos;s own sandbox
-                            credentials just as easily as live ones. Connect a sandbox account first in
-                            Payment Providers, use its key here instead of a live one, and run through a
-                            real checkout before you ever touch a live key. This isn&apos;t optional advice —
-                            it&apos;s real payments and real customer money once you switch to live.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="lang-blocks">
-                      {lang.platform && (
-                        <div className="lang-platform-note">Platform: {lang.platform}</div>
-                      )}
-                      {lang.sections.map((sec, i) => {
-                        const code = sec.code.replaceAll('{{API}}', API_BASE);
-                        const copyId = `lang_${lang.id}_${i}`;
-                        return (
-                          <div className="lang-block" key={i}>
-                            <div className="lang-block-head">
-                              <span className="lang-block-title">{sec.title}</span>
-                              <button className="keys-code-copy static" type="button"
-                                onClick={() => copyToClipboard(code, copyId)}>
-                                {copied === copyId ? 'Copied' : 'Copy'}
-                              </button>
-                            </div>
-                            <div className="keys-codeblock">
-                              <pre><code>{code}</code></pre>
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {/* Real, standalone demo -- one self-contained HTML
-                          file (HTML + CSS + JS together), no backend, no
-                          key, no build step. Same real per-method fee
-                          formulas and the same real geo/FX approach as
-                          konduyt.dev/demo/ itself. Connecting to real
-                          providers with your own real keys is what the 12
-                          backend language tabs above implement instead. */}
-                      {(() => {
-                        const intelCopyId = 'intelligence_sdk';
-                        return (
-                          <div className="lang-block">
-                            <div className="lang-block-head">
-                              <span className="lang-block-title">Test the payment intelligence layer — standalone (HTML)</span>
-                              <button className="keys-code-copy static" type="button"
-                                onClick={() => copyToClipboard(INTELLIGENCE_TESTING_SDK, intelCopyId)}>
-                                {copied === intelCopyId ? 'Copied' : 'Copy'}
-                              </button>
-                            </div>
-                            <p className="env-p">
-                              Save this as <code className="inline-code">intelligence.html</code> and open it directly
-                              in a browser — no build step, no server, no key needed. Shows real per-method fees for
-                              a fixed price and for a price your shopper types in, ranked cheapest-first, with real
-                              geo-detected currency conversion — the same approach konduyt.dev/demo/ itself uses.
-                            </p>
-                            <div className="keys-codeblock">
-                              <pre><code>{INTELLIGENCE_TESTING_SDK}</code></pre>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    </>
-                  );
-                })()}
-
-                {/* Keys — mode toggle (test / live). Both work from signup. */}
+                {/* 0. Your real keys — up top, same position as Quickstart's
+                    universal keys, except these are the project's own live
+                    keys, not display placeholders. */}
                 {keys && keys.live && (() => {
                   const k = keys.live;
                   return (
-                  <div className="keys-panel" style={{ marginTop: 24 }}>
+                  <div className="keys-panel">
                     <div className="keys-head">
                       <h3>Your API keys</h3>
                       <span className="keys-mode live-badge">Live</span>
@@ -2028,6 +1857,183 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
+                  );
+                })()}
+
+                {/* 1. Set your key — same generic hosting-platform steps as
+                    Quickstart step 1, not language-conditioned; language-
+                    specific notes (env var reading, on-device warnings)
+                    live with the backend code in step 3 instead, same as
+                    Quickstart attaches a note to each language's code box. */}
+                <div className="step-label">1. Set your key</div>
+                <p className="step-hint">
+                  A real key goes on your host, never in code. Pick yours:
+                </p>
+                <div className="env-platform-tabs">
+                  {HOSTING_PLATFORMS.map((p) => (
+                    <button key={p.id} type="button"
+                      className={envPlatform === p.id ? 'env-platform-tab active' : 'env-platform-tab'}
+                      onClick={() => setEnvPlatform(p.id)}>
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+                {(() => {
+                  const platform = HOSTING_PLATFORMS.find((p) => p.id === envPlatform) || HOSTING_PLATFORMS[0];
+                  return (
+                    <ol className="env-platform-steps-list">
+                      {platform.steps.map((s, i) => (
+                        <li key={i}>{s.replace('{{KEY_VALUE}}', 'your real key').replace('{{KEY_VALUE_INLINE}}', 'your_real_key')}</li>
+                      ))}
+                    </ol>
+                  );
+                })()}
+                <p className="step-hint">
+                  Name it exactly <code className="inline-code">KONDUYT_SECRET_KEY</code> — no spaces, no quotes
+                  around the value. Your publishable key isn&apos;t a secret — it&apos;s safe to expose
+                  client-side — but it&apos;s still worth setting as an environment variable too (e.g. <code
+                  className="inline-code">KONDUYT_PUBLISHABLE_KEY</code>): if your backend serves your frontend
+                  page, it needs a way to inject the key into what it sends the browser, and keeping both as env
+                  vars means one place to manage per environment instead of a hardcoded value buried in source.
+                </p>
+                <p className="step-hint env-warn">
+                  <strong>Test with real money before you go live with it.</strong> Konduyt connects to your
+                  provider — Paystack, PayPal, and others — using your provider&apos;s own sandbox
+                  credentials just as easily as live ones. Connect a sandbox account first in
+                  Payment Providers, use its key here instead of a live one, and run through a
+                  real checkout before you ever touch a live key. This isn&apos;t optional advice —
+                  it&apos;s real payments and real customer money once you switch to live.
+                </p>
+
+                {/* 2. Frontend — same picker as Quickstart: HTML/CSS for web,
+                    Android XML, iOS Storyboard. Identical files — neither
+                    the intelligence preview nor the platform UI-definition
+                    files are test/live-specific, so nothing changes here
+                    except reusing the exact same shared FRONTEND_OPTIONS. */}
+                <div className="step-row">
+                  <button type="button" className="env-setup-head" style={{ width: '100%' }}
+                    onClick={() => setCsFrontendOpen((o) => !o)}>
+                    <span className="step-label" style={{ marginBottom: 0 }}>2. Copy your frontend</span>
+                    <span className="env-setup-chevron">{csFrontendOpen ? '▲' : '▼'}</span>
+                  </button>
+                </div>
+                {csFrontendOpen && (
+                  <>
+                    <div className="lang-pills">
+                      {FRONTEND_OPTIONS.map((f) => {
+                        const icon = LANG_ICONS[f.iconKey];
+                        const brand = LANG_BRAND[f.iconKey];
+                        const isActive = f.id === csFrontendId;
+                        return (
+                          <button key={f.id} type="button"
+                            className={isActive ? 'pill active' : 'pill'}
+                            style={isActive && brand ? { borderColor: brand } : undefined}
+                            onClick={() => setCsFrontendId(f.id)}>
+                            {icon && (
+                              <span className="pill-icon" dangerouslySetInnerHTML={{ __html: icon }} />
+                            )}
+                            {f.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(() => {
+                      const frontend = FRONTEND_OPTIONS.find((f) => f.id === csFrontendId) || FRONTEND_OPTIONS[0];
+                      const content = frontend.id === 'html' ? INTELLIGENCE_TESTING_SDK
+                        : frontend.id === 'android' ? ANDROID_LAYOUT_XML
+                        : IOS_STORYBOARD_XML;
+                      const copyId = `cs_frontend_${frontend.id}`;
+                      return (
+                        <>
+                          <p className="step-hint">{frontend.hint}</p>
+                          <div className="lang-block">
+                            <div className="lang-block-head">
+                              <span className="lang-block-title">{frontend.filename}</span>
+                              <button className="keys-code-copy static" type="button"
+                                onClick={() => copyToClipboard(content, copyId)}>
+                                {copied === copyId ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                            <div className="keys-codeblock">
+                              <pre><code>{content}</code></pre>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+
+                {/* 3. Backend — the 12 languages. Real endpoints, real live
+                    project key from an env var -- this is the only thing
+                    that differs from Quickstart, which hits /v1/payments/test
+                    with the shared universal test key. Everything else
+                    (the four scenarios, the structure, the code itself) is
+                    the same real code either way. */}
+                <div className="step-label">3. Choose your backend language</div>
+                <div className="lang-chips">
+                  {LANG_SNIPPETS.map((l) => {
+                    const brand = LANG_BRAND[l.icon] || '#0a0a0a';
+                    const selected = langTab === l.id;
+                    return (
+                      <button key={l.id} type="button"
+                        className={`lang-chip ${selected ? 'sel' : ''}`}
+                        style={{ '--brand': brand }}
+                        onClick={() => setLangTab(l.id)}>
+                        {LANG_ICONS[l.icon] && (
+                          <span className="lang-chip-icon"
+                            dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
+                        )}
+                        {l.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {(() => {
+                  const lang = LANG_SNIPPETS.find((l) => l.id === langTab) || LANG_SNIPPETS[0];
+                  const isPlatform = Boolean(lang.platform);
+                  return (
+                    <div className="lang-blocks">
+                      {lang.platform && (
+                        <div className="lang-platform-note">Platform: {lang.platform}</div>
+                      )}
+                      {isPlatform && (
+                        <p className="env-p env-warn">
+                          {lang.platform} apps are installed on your customers&apos; devices, and anything
+                          shipped inside the app — including a value injected at build time — can be
+                          extracted. There is <strong>no safe way</strong> to hold the secret key on-device,
+                          ever. Your app calls <strong>your own backend</strong>; that backend, wherever it
+                          runs, holds the key the way described in Step 1 above.
+                        </p>
+                      )}
+                      {lang.sections.map((sec, i) => {
+                        const code = sec.code.replaceAll('{{API}}', API_BASE);
+                        const copyId = `lang_${lang.id}_${i}`;
+                        return (
+                          <div className="lang-block" key={i}>
+                            <div className="lang-block-head">
+                              <span className="lang-block-title">{sec.title}</span>
+                              <button className="keys-code-copy static" type="button"
+                                onClick={() => copyToClipboard(code, copyId)}>
+                                {copied === copyId ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                            <div className="keys-codeblock">
+                              <pre><code>{code}</code></pre>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {ENV_SETUP[lang.icon]?.runtimeNote && (
+                        <div className="lang-block">
+                          <div className="lang-block-head">
+                            <span className="lang-block-title">Reading your key in {lang.label}</span>
+                          </div>
+                          <p className="env-p">{ENV_SETUP[lang.icon].runtimeNote}</p>
+                        </div>
+                      )}
+                    </div>
                   );
                 })()}
               </div>

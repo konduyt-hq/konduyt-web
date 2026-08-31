@@ -5,6 +5,7 @@ import { LANG_ICONS, LANG_BRAND } from './dashboard/langicons';
 import { HOSTING_PLATFORMS } from './dashboard/hostingplatforms';
 import { INTELLIGENCE_TESTING_SDK } from './dashboard/intelligencesdk';
 import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './dashboard/frontendfiles';
+import { FRONTEND_OPTIONS } from './dashboard/frontendoptions';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
 const ICON_KEY = {
@@ -892,21 +893,6 @@ int main() {
 // and Android/iOS's own real UI-definition file formats (neither renders
 // a web page, so neither has an HTML/CSS equivalent -- each gets its own
 // real file instead, not an HTML/CSS file pretending to be one).
-const FRONTEND_OPTIONS = [
-  {
-    id: 'html', label: 'HTML & CSS', filename: 'intelligence.html', iconKey: 'html',
-    hint: 'The web frontend — HTML and CSS together in one file. Works with any of the 12 backend languages below.',
-  },
-  {
-    id: 'android', label: 'Android (XML)', filename: 'activity_main.xml', iconKey: 'android',
-    hint: 'Android\'s own real UI-definition file — what the Java/Kotlin backend tabs\' MainActivity actually loads. Pair with either of those two.',
-  },
-  {
-    id: 'ios', label: 'iOS (Storyboard)', filename: 'Main.storyboard', iconKey: 'swift',
-    hint: 'iOS\'s classic UIKit UI-definition file — an XML-based alternative to the SwiftUI approach shown in the Swift backend tab. Either is valid; use whichever your project already uses.',
-  },
-];
-
 function render(code) {
   return code.replace(/\{\{API\}\}/g, API_BASE).replace(/\{\{SECRET\}\}/g, KEYS.secret);
 }
