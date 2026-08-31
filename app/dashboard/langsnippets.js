@@ -94,6 +94,34 @@ curl -X POST {{API}}/v1/payment_sessions \\
     \\"recurring\\": false,
     \\"reference\\": \\"usage_$(date +%s)\\"
   }"` },
+      { title: 'Failover + rerouting', code:
+`# "method", not "provider" -- this is what triggers real failover: Konduyt
+# tries every provider configured for mpesa, in order, stopping on success
+# or on a genuinely unsafe/ambiguous outcome. Never guessed, never a blind
+# retry.
+curl -X POST {{API}}/v1/payments \\
+  -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "amount": 500000,
+    "currency": "KES",
+    "method": "mpesa"
+  }'
+# Returns {"id": "pay_...", ...}
+
+# Fetch it back to see the real attempt history -- which provider(s) were
+# tried, in what order, and why:
+curl {{API}}/v1/payments/pay_xxx \\
+  -H "Authorization: Bearer $KONDUYT_SECRET_KEY"
+# routing_attempts: [{ attempt_number, provider, outcome, fallback_class }, ...]` },
+      { title: 'Cross-border payment', code:
+`# The only thing that varies per shopper: customer_country. Same real
+# eligibility engine Konduyt.checkout() uses internally -- never a fixed
+# list. Public endpoint, publishable key only -- safe to call directly,
+# even from a browser.
+curl "{{API}}/checkout/config?pk=$KONDUYT_PUBLISHABLE_KEY&amount=500000&currency=KES&customer_country=GB"
+# Swap customer_country (GB, NG, US, ...) and the real eligible methods
+# list changes -- never hardcoded to your own market.` },
     ],
   },
   {
@@ -196,6 +224,44 @@ async function createUsageBillSession(unitsUsed, pricePerUnit) {
   return res.json();
 }
 // e.g. createUsageBillSession(340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`// "method", not "provider" -- this is what triggers real failover: Konduyt
+// tries every provider configured for this method, in order, stopping on
+// success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+// a blind retry.
+async function createPaymentWithFailover({ amount, email }) {
+  const res = await fetch("{{API}}/v1/payments", {
+    method: "POST",
+    headers: {
+      "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ amount, currency: "KES", method: "mpesa", customer: { email } }),
+  });
+  const payment = await res.json();
+
+  // Fetch it back to see the real attempt history -- which provider(s)
+  // were tried, in what order, and why.
+  const check = await fetch(\`{{API}}/v1/payments/\${payment.id}\`, {
+    headers: { "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\` },
+  });
+  return check.json();
+  // .routing_attempts: [{ attempt_number, provider, outcome, fallback_class }, ...]
+}` },
+      { title: 'Cross-border payment', code:
+`// The only thing that varies per shopper: customer_country. Same real
+// eligibility engine Konduyt.checkout() uses internally -- never a fixed
+// list. Public endpoint, publishable key only -- safe to call directly,
+// even from a browser.
+const KONDUYT_PUBLISHABLE_KEY = process.env.KONDUYT_PUBLISHABLE_KEY;
+
+async function eligibleMethodsFor(customerCountry) {
+  const res = await fetch(
+    \`{{API}}/checkout/config?pk=\${KONDUYT_PUBLISHABLE_KEY}&amount=500000&currency=KES&customer_country=\${customerCountry}\`
+  );
+  const config = await res.json();
+  return config.methods; // the real eligible list for THIS shopper, never hardcoded
+}` },
     ],
   },
   {
@@ -292,6 +358,42 @@ def create_usage_bill_session(units_used, price_per_unit):
     )
     return res.json()
 # e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`# "method", not "provider" -- this is what triggers real failover: Konduyt
+# tries every provider configured for this method, in order, stopping on
+# success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+# a blind retry.
+def create_payment_with_failover(amount, email):
+    res = requests.post(
+        "{{API}}/v1/payments",
+        headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
+        json={"amount": amount, "currency": "KES", "method": "mpesa",
+              "customer": {"email": email}},
+    )
+    payment = res.json()
+
+    # Fetch it back to see the real attempt history -- which provider(s)
+    # were tried, in what order, and why.
+    check = requests.get(
+        f"{{API}}/v1/payments/{payment['id']}",
+        headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
+    )
+    return check.json()
+    # ["routing_attempts"]: [{"attempt_number", "provider", "outcome", "fallback_class"}, ...]` },
+      { title: 'Cross-border payment', code:
+`# The only thing that varies per shopper: customer_country. Same real
+# eligibility engine Konduyt.checkout() uses internally -- never a fixed
+# list. Public endpoint, publishable key only -- safe to call directly,
+# even from a browser.
+KONDUYT_PUBLISHABLE_KEY = os.environ["KONDUYT_PUBLISHABLE_KEY"]
+
+def eligible_methods_for(customer_country):
+    res = requests.get(
+        "{{API}}/checkout/config",
+        params={"pk": KONDUYT_PUBLISHABLE_KEY, "amount": 500000, "currency": "KES",
+               "customer_country": customer_country},
+    )
+    return res.json()["methods"]  # the real eligible list for THIS shopper, never hardcoded` },
     ],
   },
   {
@@ -410,6 +512,60 @@ function create_usage_bill_session($secret, $unitsUsed, $pricePerUnit) {
     return $session;
 }
 // e.g. create_usage_bill_session($secret, 340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`<?php
+// "method", not "provider" -- this is what triggers real failover: Konduyt
+// tries every provider configured for this method, in order, stopping on
+// success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+// a blind retry.
+function create_payment_with_failover($secret, $amount, $email) {
+    $ch = curl_init("{{API}}/v1/payments");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Bearer " . $secret,
+            "Content-Type: application/json",
+        ],
+        CURLOPT_POSTFIELDS => json_encode([
+            "amount" => $amount, "currency" => "KES", "method" => "mpesa",
+            "customer" => ["email" => $email],
+        ]),
+    ]);
+    $payment = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+
+    // Fetch it back to see the real attempt history -- which provider(s)
+    // were tried, in what order, and why.
+    $ch2 = curl_init("{{API}}/v1/payments/" . $payment["id"]);
+    curl_setopt_array($ch2, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ["Authorization: Bearer " . $secret],
+    ]);
+    $result = json_decode(curl_exec($ch2), true);
+    curl_close($ch2);
+    return $result;
+    // ["routing_attempts"]: [["attempt_number", "provider", "outcome", "fallback_class"], ...]
+}` },
+      { title: 'Cross-border payment', code:
+`<?php
+// The only thing that varies per shopper: customer_country. Same real
+// eligibility engine Konduyt.checkout() uses internally -- never a fixed
+// list. Public endpoint, publishable key only -- safe to call directly,
+// even from a browser.
+$publishable = getenv("KONDUYT_PUBLISHABLE_KEY");
+
+function eligible_methods_for($publishable, $customerCountry) {
+    $url = "{{API}}/checkout/config?" . http_build_query([
+        "pk" => $publishable, "amount" => 500000, "currency" => "KES",
+        "customer_country" => $customerCountry,
+    ]);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $config = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+    return $config["methods"]; // the real eligible list for THIS shopper, never hardcoded
+}` },
     ],
   },
   {
@@ -550,6 +706,71 @@ func createUsageBillSession(unitsUsed int, pricePerUnit int) (map[string]any, er
 	return session, nil
 }
 // e.g. createUsageBillSession(340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`// "method", not "provider" -- this is what triggers real failover: Konduyt
+// tries every provider configured for this method, in order, stopping on
+// success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+// a blind retry.
+func createPaymentWithFailover(amount int, email string) (map[string]any, error) {
+	body, _ := json.Marshal(map[string]any{
+		"amount": amount, "currency": "KES", "method": "mpesa",
+		"customer": map[string]string{"email": email},
+	})
+
+	req, _ := http.NewRequest("POST", "{{API}}/v1/payments", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", "Bearer "+konduytSecret)
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var payment map[string]any
+	json.NewDecoder(res.Body).Decode(&payment)
+
+	// Fetch it back to see the real attempt history -- which provider(s)
+	// were tried, in what order, and why.
+	req2, _ := http.NewRequest("GET", "{{API}}/v1/payments/"+payment["id"].(string), nil)
+	req2.Header.Set("Authorization", "Bearer "+konduytSecret)
+	res2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		return nil, err
+	}
+	defer res2.Body.Close()
+
+	var checked map[string]any
+	json.NewDecoder(res2.Body).Decode(&checked)
+	return checked, nil
+	// ["routing_attempts"]: [{"attempt_number", "provider", "outcome", "fallback_class"}, ...]
+}` },
+      { title: 'Cross-border payment', code:
+`import "net/url"
+
+// The only thing that varies per shopper: customer_country. Same real
+// eligibility engine Konduyt.checkout() uses internally -- never a fixed
+// list. Public endpoint, publishable key only -- safe to call directly,
+// even from a browser.
+var konduytPublishable = os.Getenv("KONDUYT_PUBLISHABLE_KEY")
+
+func eligibleMethodsFor(customerCountry string) ([]any, error) {
+	q := url.Values{}
+	q.Set("pk", konduytPublishable)
+	q.Set("amount", "500000")
+	q.Set("currency", "KES")
+	q.Set("customer_country", customerCountry)
+
+	res, err := http.Get("{{API}}/checkout/config?" + q.Encode())
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	var config map[string]any
+	json.NewDecoder(res.Body).Decode(&config)
+	return config["methods"].([]any), nil // the real eligible list for THIS shopper, never hardcoded
+}` },
     ],
   },
   {
@@ -659,6 +880,49 @@ def create_usage_bill_session(units_used, price_per_unit)
   JSON.parse(http.request(req).body)
 end
 # e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`# "method", not "provider" -- this is what triggers real failover: Konduyt
+# tries every provider configured for this method, in order, stopping on
+# success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+# a blind retry.
+def create_payment_with_failover(amount, email)
+  uri = URI("{{API}}/v1/payments")
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = true
+
+  req = Net::HTTP::Post.new(uri)
+  req["Authorization"] = "Bearer #{KONDUYT_SECRET_KEY}"
+  req["Content-Type"] = "application/json"
+  req.body = { amount: amount, currency: "KES", method: "mpesa",
+              customer: { email: email } }.to_json
+  payment = JSON.parse(http.request(req).body)
+
+  # Fetch it back to see the real attempt history -- which provider(s)
+  # were tried, in what order, and why.
+  check_uri = URI("{{API}}/v1/payments/#{payment['id']}")
+  check_http = Net::HTTP.new(check_uri.host, check_uri.port)
+  check_http.use_ssl = true
+  check_req = Net::HTTP::Get.new(check_uri)
+  check_req["Authorization"] = "Bearer #{KONDUYT_SECRET_KEY}"
+  JSON.parse(check_http.request(check_req).body)
+  # ["routing_attempts"]: [{"attempt_number", "provider", "outcome", "fallback_class"}, ...]
+end` },
+      { title: 'Cross-border payment', code:
+`# The only thing that varies per shopper: customer_country. Same real
+# eligibility engine Konduyt.checkout() uses internally -- never a fixed
+# list. Public endpoint, publishable key only -- safe to call directly,
+# even from a browser.
+KONDUYT_PUBLISHABLE_KEY = ENV.fetch("KONDUYT_PUBLISHABLE_KEY")
+
+def eligible_methods_for(customer_country)
+  uri = URI("{{API}}/checkout/config")
+  uri.query = URI.encode_www_form(
+    pk: KONDUYT_PUBLISHABLE_KEY, amount: 500000, currency: "KES",
+    customer_country: customer_country
+  )
+  config = JSON.parse(Net::HTTP.get(uri))
+  config["methods"] # the real eligible list for THIS shopper, never hardcoded
+end` },
     ],
   },
   {
@@ -775,6 +1039,49 @@ fn create_usage_bill_session(units_used: u64, price_per_unit: u64) -> Result<ser
         .json()
 }
 // e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`// "method", not "provider" -- this is what triggers real failover: Konduyt
+// tries every provider configured for this method, in order, stopping on
+// success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+// a blind retry.
+fn create_payment_with_failover(amount: u64, email: &str) -> Result<serde_json::Value, reqwest::Error> {
+    let secret = env::var("KONDUYT_SECRET_KEY").expect("KONDUYT_SECRET_KEY not set");
+    let client = reqwest::blocking::Client::new();
+    let payment: serde_json::Value = client
+        .post("{{API}}/v1/payments")
+        .bearer_auth(&secret)
+        .json(&json!({
+            "amount": amount, "currency": "KES", "method": "mpesa",
+            "customer": { "email": email }
+        }))
+        .send()?
+        .json()?;
+
+    // Fetch it back to see the real attempt history -- which provider(s)
+    // were tried, in what order, and why.
+    client
+        .get(format!("{{API}}/v1/payments/{}", payment["id"].as_str().unwrap()))
+        .bearer_auth(&secret)
+        .send()?
+        .json()
+    // ["routing_attempts"]: [{"attempt_number", "provider", "outcome", "fallback_class"}, ...]
+}` },
+      { title: 'Cross-border payment', code:
+`// The only thing that varies per shopper: customer_country. Same real
+// eligibility engine Konduyt.checkout() uses internally -- never a fixed
+// list. Public endpoint, publishable key only -- safe to call directly,
+// even from a browser.
+fn eligible_methods_for(customer_country: &str) -> Result<serde_json::Value, reqwest::Error> {
+    let publishable = env::var("KONDUYT_PUBLISHABLE_KEY").expect("KONDUYT_PUBLISHABLE_KEY not set");
+    let client = reqwest::blocking::Client::new();
+    let config: serde_json::Value = client
+        .get("{{API}}/checkout/config")
+        .query(&[("pk", publishable.as_str()), ("amount", "500000"),
+                ("currency", "KES"), ("customer_country", customer_country)])
+        .send()?
+        .json()?;
+    Ok(config["methods"].clone()) // the real eligible list for THIS shopper, never hardcoded
+}` },
     ],
   },
   {
@@ -878,6 +1185,44 @@ async Task<string> CreateUsageBillSession(int unitsUsed, int pricePerUnit) {
     return await res.Content.ReadAsStringAsync();
 }
 // e.g. CreateUsageBillSession(340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`// "method", not "provider" -- this is what triggers real failover: Konduyt
+// tries every provider configured for this method, in order, stopping on
+// success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+// a blind retry.
+async Task<string> CreatePaymentWithFailover(int amount, string email) {
+    var client = new HttpClient();
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", secret);
+
+    var body = new StringContent(JsonSerializer.Serialize(new {
+        amount, currency = "KES", method = "mpesa", customer = new { email }
+    }), Encoding.UTF8, "application/json");
+
+    var res = await client.PostAsync("{{API}}/v1/payments", body);
+    var payment = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+    var id = payment.RootElement.GetProperty("id").GetString();
+
+    // Fetch it back to see the real attempt history -- which provider(s)
+    // were tried, in what order, and why.
+    var check = await client.GetAsync($"{{API}}/v1/payments/{id}");
+    return await check.Content.ReadAsStringAsync();
+    // "routing_attempts": [{ "attempt_number", "provider", "outcome", "fallback_class" }, ...]
+}` },
+      { title: 'Cross-border payment', code:
+`// The only thing that varies per shopper: customer_country. Same real
+// eligibility engine Konduyt.checkout() uses internally -- never a fixed
+// list. Public endpoint, publishable key only -- safe to call directly,
+// even from a browser.
+string publishable = Environment.GetEnvironmentVariable("KONDUYT_PUBLISHABLE_KEY");
+
+async Task<string> EligibleMethodsFor(string customerCountry) {
+    var client = new HttpClient();
+    var url = $"{{API}}/checkout/config?pk={publishable}&amount=500000&currency=KES" +
+              $"&customer_country={customerCountry}";
+    var res = await client.GetAsync(url);
+    return await res.Content.ReadAsStringAsync(); // "methods": the real eligible list, never hardcoded
+}` },
     ],
   },
   {
@@ -1024,6 +1369,43 @@ void requestUsageBill(String userId) throws IOException {
         // open Konduyt's checkout with the returned session id
     }
 }` },
+      { title: 'Failover + rerouting — call YOUR backend', code:
+`// Your backend passes "method", not "provider" -- that's what triggers
+// real failover: Konduyt tries every provider configured for that method,
+// in order, stopping on success or a genuinely unsafe/ambiguous outcome.
+// Your app never talks to Konduyt directly, same as every other call here.
+void createPaymentWithFailover(int amount, String email) throws IOException {
+    OkHttpClient client = new OkHttpClient();
+    String json = "{\\"amount\\": " + amount + ", \\"email\\": \\"" + email + "\\"}";
+
+    Request request = new Request.Builder()
+        .url(BACKEND + "/api/create-payment-failover")
+        .post(RequestBody.create(json, MediaType.parse("application/json")))
+        .build();
+
+    try (Response response = client.newCall(request).execute()) {
+        String result = response.body().string();
+        // your backend returns the real routing_attempts it fetched back
+        // from Konduyt -- which provider(s) were tried, in what order, why
+    }
+}` },
+      { title: 'Cross-border payment — call YOUR backend', code:
+`// The only thing that varies per shopper: their country. Your backend
+// proxies to Konduyt's real eligibility engine (the same one
+// Konduyt.checkout() uses internally) with your publishable key -- never
+// a fixed method list baked into the app.
+void eligibleMethodsFor(String customerCountry) throws IOException {
+    OkHttpClient client = new OkHttpClient();
+
+    Request request = new Request.Builder()
+        .url(BACKEND + "/api/eligible-methods?country=" + customerCountry)
+        .build();
+
+    try (Response response = client.newCall(request).execute()) {
+        String methods = response.body().string();
+        // the real eligible list for THIS shopper, never hardcoded
+    }
+}` },
     ],
   },
   {
@@ -1165,6 +1547,42 @@ fun requestUsageBill(userId: String) {
         // open Konduyt's checkout with the returned session id
     }
 }` },
+      { title: 'Failover + rerouting — call YOUR backend', code:
+`// Your backend passes "method", not "provider" -- that's what triggers
+// real failover: Konduyt tries every provider configured for that method,
+// in order, stopping on success or a genuinely unsafe/ambiguous outcome.
+// Your app never talks to Konduyt directly, same as every other call here.
+fun createPaymentWithFailover(amount: Int, email: String) {
+    val client = OkHttpClient()
+    val json = """{ "amount": $amount, "email": "$email" }""".trimIndent()
+
+    val request = Request.Builder()
+        .url("$backend/api/create-payment-failover")
+        .post(json.toRequestBody("application/json".toMediaType()))
+        .build()
+
+    client.newCall(request).execute().use { response ->
+        val result = response.body?.string()
+        // your backend returns the real routing_attempts it fetched back
+        // from Konduyt -- which provider(s) were tried, in what order, why
+    }
+}` },
+      { title: 'Cross-border payment — call YOUR backend', code:
+`// The only thing that varies per shopper: their country. Your backend
+// proxies to Konduyt's real eligibility engine (the same one
+// Konduyt.checkout() uses internally) with your publishable key -- never
+// a fixed method list baked into the app.
+fun eligibleMethodsFor(customerCountry: String) {
+    val client = OkHttpClient()
+    val request = Request.Builder()
+        .url("$backend/api/eligible-methods?country=$customerCountry")
+        .build()
+
+    client.newCall(request).execute().use { response ->
+        val methods = response.body?.string()
+        // the real eligible list for THIS shopper, never hardcoded
+    }
+}` },
     ],
   },
   {
@@ -1274,6 +1692,35 @@ func requestUsageBill(userId: String) async throws -> [String: Any] {
 
     let (data, _) = try await URLSession.shared.data(for: request)
     // open Konduyt's checkout with the returned session id
+    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+}` },
+      { title: 'Failover + rerouting — call YOUR backend', code:
+`// Your backend passes "method", not "provider" -- that's what triggers
+// real failover: Konduyt tries every provider configured for that method,
+// in order, stopping on success or a genuinely unsafe/ambiguous outcome.
+// Your app never talks to Konduyt directly, same as every other call here.
+func createPaymentWithFailover(amount: Int, email: String) async throws -> [String: Any] {
+    var request = URLRequest(url: URL(string: "\\(backend)/api/create-payment-failover")!)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    let body: [String: Any] = ["amount": amount, "email": email]
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+    let (data, _) = try await URLSession.shared.data(for: request)
+    // your backend returns the real routing_attempts it fetched back from
+    // Konduyt -- which provider(s) were tried, in what order, why
+    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+}` },
+      { title: 'Cross-border payment — call YOUR backend', code:
+`// The only thing that varies per shopper: their country. Your backend
+// proxies to Konduyt's real eligibility engine (the same one
+// Konduyt.checkout() uses internally) with your publishable key -- never
+// a fixed method list baked into the app.
+func eligibleMethods(customerCountry: String) async throws -> [String: Any] {
+    let request = URLRequest(url: URL(string: "\\(backend)/api/eligible-methods?country=\\(customerCountry)")!)
+    let (data, _) = try await URLSession.shared.data(for: request)
+    // the real eligible list for THIS shopper, never hardcoded
     return try JSONSerialization.jsonObject(with: data) as! [String: Any]
 }` },
     ],
@@ -1443,6 +1890,70 @@ void create_usage_bill_session(long unitsUsed, long pricePerUnit) {
     curl_easy_cleanup(curl);
 }
 // e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+      { title: 'Failover + rerouting', code:
+`#include <curl/curl.h>
+#include <cstdlib>
+#include <string>
+
+// "method", not "provider" -- this is what triggers real failover: Konduyt
+// tries every provider configured for this method, in order, stopping on
+// success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
+// a blind retry.
+void create_payment_with_failover(long amount, const std::string& email) {
+    const char* secret = std::getenv("KONDUYT_SECRET_KEY");
+    if (!secret) return;
+
+    CURL* curl = curl_easy_init();
+    if (!curl) return;
+
+    std::string body =
+        "{\\"amount\\": " + std::to_string(amount) +
+        ", \\"currency\\": \\"KES\\", \\"method\\": \\"mpesa\\","
+        " \\"customer\\": { \\"email\\": \\"" + email + "\\" } }";
+
+    std::string auth = "Authorization: Bearer " + std::string(secret);
+    struct curl_slist* headers = nullptr;
+    headers = curl_slist_append(headers, auth.c_str());
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+
+    curl_easy_setopt(curl, CURLOPT_URL, "{{API}}/v1/payments");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    // ... set CURLOPT_WRITEFUNCTION to capture the response, parse "id" ...
+    curl_easy_perform(curl);
+
+    // A second GET to {{API}}/v1/payments/{id} (same auth header, no body)
+    // returns the real routing_attempts history: which provider(s) were
+    // tried, in what order, and why -- for display.
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+}` },
+      { title: 'Cross-border payment', code:
+`#include <curl/curl.h>
+#include <cstdlib>
+#include <string>
+
+// The only thing that varies per shopper: customer_country. Same real
+// eligibility engine Konduyt.checkout() uses internally -- never a fixed
+// list. Public endpoint, publishable key only -- safe to call directly,
+// even from a browser.
+void eligible_methods_for(const std::string& customerCountry) {
+    const char* publishable = std::getenv("KONDUYT_PUBLISHABLE_KEY");
+    if (!publishable) return;
+
+    CURL* curl = curl_easy_init();
+    if (!curl) return;
+
+    std::string url = std::string("{{API}}/checkout/config?pk=") + publishable +
+        "&amount=500000&currency=KES&customer_country=" + customerCountry;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    // ... set CURLOPT_WRITEFUNCTION to capture the response into a
+    // variable, then parse the real "methods" array -- never hardcoded ...
+    curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+}` },
     ],
   },
 ];

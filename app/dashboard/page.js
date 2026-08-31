@@ -7,14 +7,6 @@ import Link from 'next/link';
 import { LANGUAGES } from './snippets';
 import { LANG_SNIPPETS } from './langsnippets';
 import { buildGreeting } from './greeting';
-import {
-  RECURRING_SERVER_CODE, RECURRING_CLIENT_CODE,
-  ONETIME_SERVER_CODE, ONETIME_CLIENT_CODE,
-  FAILOVER_SERVER_CODE, FAILOVER_CLIENT_CODE,
-  CROSSBORDER_SERVER_CODE, CROSSBORDER_CLIENT_CODE,
-  PAYG_SERVER_CODE, PAYG_CLIENT_CODE,
-  SCENARIO_SERVER_LANGUAGES,
-} from './scenariocode';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
 import { ENV_SETUP } from './envsetup';
 import { HOSTING_PLATFORMS } from './hostingplatforms';
@@ -88,19 +80,6 @@ export default function Dashboard() {
   const [greetingText, setGreetingText] = useState('');
   const [identities, setIdentities] = useState(null);
   const [identitiesLoading, setIdentitiesLoading] = useState(false);
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const avatarMenuRef = useRef(null);
-
-  useEffect(() => {
-    if (!avatarMenuOpen) return undefined;
-    function onClickOutside(e) {
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
-        setAvatarMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [avatarMenuOpen]);
   const [settingsView, setSettingsView] = useState('main'); // main | delete
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -109,14 +88,13 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [tab, setTab] = useState('checkout'); // money | connections | quickstart | checkout | messages | settings
+  const [tab, setTab] = useState('quickstart'); // money | connections | quickstart | messages | settings
 
   useEffect(() => {
     const TAB_TITLES = {
       money: 'Konduyt Payments',
       connections: 'Konduyt Payment Providers',
       quickstart: 'Konduyt Code Samples',
-      checkout: 'Konduyt Preview Checkouts',
       messages: 'Konduyt Messages',
       settings: 'Konduyt Settings',
       analytics: 'Konduyt Analytics',
@@ -230,9 +208,6 @@ export default function Dashboard() {
   const [lang, setLang] = useState('curl');
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState('');
-  const [codeViewerScenario, setCodeViewerScenario] = useState(null); // null | 'recurring' | 'onetime'
-  const [codeViewerFile, setCodeViewerFile] = useState('server'); // 'server' | 'client'
-  const [codeViewerLang, setCodeViewerLang] = useState('js');
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const projectMenuRef = useRef(null);
 
@@ -1249,14 +1224,13 @@ export default function Dashboard() {
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </button>
-          <div className="con-avatar-wrap" ref={avatarMenuRef}>
+          <div className="con-avatar-wrap">
             <button
               className="con-avatar"
-              onClick={() => setAvatarMenuOpen((v) => !v)}
+              onClick={() => setTab('settings')}
               type="button"
               title={user?.name || user?.email || 'Account'}
-              aria-haspopup="menu"
-              aria-expanded={avatarMenuOpen}
+              aria-label="Go to Settings"
             >
               {user?.avatar_url ? (
                 <img src={user.avatar_url} alt="" className="con-avatar-img" referrerPolicy="no-referrer" />
@@ -1264,30 +1238,6 @@ export default function Dashboard() {
                 (user?.name || user?.email || '?').slice(0, 1).toUpperCase()
               )}
             </button>
-            {avatarMenuOpen && (
-              <div className="con-avatar-menu" role="menu">
-                <div className="con-avatar-menu-who">
-                  <div className="con-avatar-menu-name">{user?.name || 'Account'}</div>
-                  <div className="con-avatar-menu-email">{user?.email}</div>
-                </div>
-                <button
-                  className="con-avatar-menu-item"
-                  type="button"
-                  role="menuitem"
-                  onClick={() => { setTab('settings'); setAvatarMenuOpen(false); }}
-                >
-                  Settings
-                </button>
-                <button
-                  className="con-avatar-menu-item con-avatar-menu-danger"
-                  type="button"
-                  role="menuitem"
-                  onClick={logout}
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
           </div>
         </div>
         </div>
@@ -1350,7 +1300,6 @@ export default function Dashboard() {
           ['quickstart', 'Code Samples'],
           ['connections', 'Payment Providers'],
           ['money', 'Payments'],
-          ['checkout', 'Preview Checkouts'],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -1419,8 +1368,8 @@ export default function Dashboard() {
                     provider, and any configured fallback -- Konduyt tries
                     the primary first, and only automatically tries a
                     fallback on a genuinely SAFE failure (never on an
-                    ambiguous one). See the Preview Checkouts tab's "Failed
-                    payment + rerouting" scenario to see this live. */}
+                    ambiguous one). See the Code Samples tab's "Failover +
+                    rerouting" section, in any language, to see this live. */}
                 {enabledMethods.length > 0 && (() => {
                   const prettyName = (id) => (id || '').replace(/_/g, ' ')
                     .replace(/\b\w/g, (ch) => ch.toUpperCase());
@@ -2653,199 +2602,6 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {tab === 'checkout' && (
-              <div className="mpesa-page">
-                <div className="con-home-head">
-                  <h1 className="con-h1">Preview Checkouts</h1>
-                  <p className="con-sub">
-                    See what your customers see, and drop the same checkout into your own site.
-                  </p>
-                </div>
-
-                {/* Real, deployed example storefronts -- not mockups. Each is
-                    a genuine standalone site testing one real scenario end to
-                    end (a session-based recurring subscription, and a
-                    publishable-key one-time purchase), with its own real
-                    source on GitHub to inspect or copy from directly. */}
-                <div className="scenario-list">
-                  <div className="scenario-card">
-                    <div className="scenario-card-head">
-                      <span className="scenario-card-name">Recurring subscription</span>
-                      <span className="scenario-card-tag">Netflix-style</span>
-                    </div>
-                    <p className="scenario-card-desc">
-                      A real session-based checkout with <code className="inline-code">recurring: true</code> --
-                      the shopper sees the "Recurring — charged every month" disclosure and a Subscribe button.
-                    </p>
-                    <div className="scenario-card-actions">
-                      <a href="https://konduyt-demos.onrender.com/?highlight=recurring" target="_blank"
-                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
-                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
-                        onClick={() => { setCodeViewerScenario('recurring'); setCodeViewerFile('server'); }}>
-                        View code
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="scenario-card">
-                    <div className="scenario-card-head">
-                      <span className="scenario-card-name">One-time purchase</span>
-                      <span className="scenario-card-tag">Shopping</span>
-                    </div>
-                    <p className="scenario-card-desc">
-                      A real publishable-key checkout for a single item -- no session, no recurring intent,
-                      just <code className="inline-code">Konduyt.checkout()</code> called directly.
-                    </p>
-                    <div className="scenario-card-actions">
-                      <a href="https://konduyt-demos.onrender.com/?highlight=onetime" target="_blank"
-                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
-                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
-                        onClick={() => { setCodeViewerScenario('onetime'); setCodeViewerFile('server'); }}>
-                        View code
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="scenario-card">
-                    <div className="scenario-card-head">
-                      <span className="scenario-card-name">Failed payment + rerouting</span>
-                      <span className="scenario-card-tag">Real failover</span>
-                    </div>
-                    <p className="scenario-card-desc">
-                      A real payment routed by <code className="inline-code">method</code>, not an explicit
-                      provider -- Konduyt tries every configured provider in order, stopping on success,
-                      continuing only on a genuinely safe failure. Never on an ambiguous one.
-                    </p>
-                    <div className="scenario-card-actions">
-                      <a href="https://konduyt-demos.onrender.com/?highlight=failover" target="_blank"
-                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
-                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
-                        onClick={() => { setCodeViewerScenario('failover'); setCodeViewerFile('server'); }}>
-                        View code
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="scenario-card">
-                    <div className="scenario-card-head">
-                      <span className="scenario-card-name">Cross-border payment</span>
-                      <span className="scenario-card-tag">Shopper-aware</span>
-                    </div>
-                    <p className="scenario-card-desc">
-                      The same merchant, the same checkout call -- but real eligible methods change based
-                      on the shopper's real country, via <code className="inline-code">customer_country</code>.
-                      Never a fixed list.
-                    </p>
-                    <div className="scenario-card-actions">
-                      <a href="https://konduyt-demos.onrender.com/?highlight=crossborder" target="_blank"
-                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
-                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
-                        onClick={() => { setCodeViewerScenario('crossborder'); setCodeViewerFile('server'); }}>
-                        View code
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="scenario-card">
-                    <div className="scenario-card-head">
-                      <span className="scenario-card-name">Pay-as-you-go</span>
-                      <span className="scenario-card-tag">Usage-based</span>
-                    </div>
-                    <p className="scenario-card-desc">
-                      A real bill computed from usage, then a real checkout for that exact amount --
-                      not a fixed price. Automated recurring metered billing isn't built yet; this shows
-                      the part that is.
-                    </p>
-                    <div className="scenario-card-actions">
-                      <a href="https://konduyt-demos.onrender.com/?highlight=payg" target="_blank"
-                        rel="noreferrer" className="scenario-card-btn">View site ↗</a>
-                      <button type="button" className="scenario-card-btn scenario-card-btn-ghost"
-                        onClick={() => { setCodeViewerScenario('payg'); setCodeViewerFile('server'); }}>
-                        View code
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* In-dashboard code viewer -- never leaves Konduyt. Server
-                    file is language-switchable (reuses the same LANG_SNIPPETS
-                    languages/icons as Quickstart, for one consistent look);
-                    the client file is plain browser JS regardless of server
-                    language, since that's inherently what runs in a browser. */}
-                {codeViewerScenario && (() => {
-                  const SCENARIOS = {
-                    recurring: { label: 'Recurring subscription', server: RECURRING_SERVER_CODE, client: RECURRING_CLIENT_CODE },
-                    onetime: { label: 'One-time purchase', server: ONETIME_SERVER_CODE, client: ONETIME_CLIENT_CODE },
-                    failover: { label: 'Failed payment + rerouting', server: FAILOVER_SERVER_CODE, client: FAILOVER_CLIENT_CODE },
-                    crossborder: { label: 'Cross-border payment', server: CROSSBORDER_SERVER_CODE, client: CROSSBORDER_CLIENT_CODE },
-                    payg: { label: 'Pay-as-you-go', server: PAYG_SERVER_CODE, client: PAYG_CLIENT_CODE },
-                  };
-                  const scenario = SCENARIOS[codeViewerScenario];
-                  const serverCode = scenario.server[codeViewerLang];
-                  const clientCode = scenario.client;
-                  const scenarioLabel = scenario.label;
-                  const displayedCode = codeViewerFile === 'server' ? serverCode : clientCode;
-                  return (
-                    <div className="code-viewer">
-                      <div className="code-viewer-head">
-                        <span className="code-viewer-title">{scenarioLabel} — source</span>
-                        <button type="button" className="code-viewer-close"
-                          onClick={() => setCodeViewerScenario(null)} aria-label="Close">✕</button>
-                      </div>
-
-                      <div className="code-viewer-files">
-                        <button type="button"
-                          className={codeViewerFile === 'server' ? 'code-viewer-file sel' : 'code-viewer-file'}
-                          onClick={() => setCodeViewerFile('server')}>
-                          server.{codeViewerLang === 'cpp' ? 'cpp' : codeViewerLang === 'python' ? 'py' : 'js'}
-                        </button>
-                        <button type="button"
-                          className={codeViewerFile === 'client' ? 'code-viewer-file sel' : 'code-viewer-file'}
-                          onClick={() => setCodeViewerFile('client')}>
-                          public/index.html
-                        </button>
-                      </div>
-
-                      {codeViewerFile === 'server' && (
-                        <div className="lang-chips code-viewer-langs">
-                          {LANG_SNIPPETS.filter((l) => SCENARIO_SERVER_LANGUAGES.includes(l.id)).map((l) => {
-                            const brand = LANG_BRAND[l.icon] || '#0a0a0a';
-                            const selected = codeViewerLang === l.id;
-                            return (
-                              <button key={l.id} type="button"
-                                className={`lang-chip ${selected ? 'sel' : ''}`}
-                                style={{ '--brand': brand }}
-                                onClick={() => setCodeViewerLang(l.id)}>
-                                {LANG_ICONS[l.icon] && (
-                                  <span className="lang-chip-icon"
-                                    dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
-                                )}
-                                {l.label}
-                              </button>
-                            );
-                          })}
-                          <span className="code-viewer-more-langs">
-                            More languages coming soon
-                          </span>
-                        </div>
-                      )}
-                      {codeViewerFile === 'client' && (
-                        <p className="code-viewer-note">
-                          Browser code — always JavaScript, whatever your server language is.
-                        </p>
-                      )}
-
-                      <pre className="code-viewer-block"><code>{displayedCode}</code></pre>
-                      <button className="code-viewer-copy" type="button"
-                        onClick={() => copyToClipboard(displayedCode, 'scenario-code')}>
-                        {copied === 'scenario-code' ? '✓ Copied' : 'Copy code'}
-                      </button>
-                    </div>
-                  );
-                })()}
               </div>
             )}
 
