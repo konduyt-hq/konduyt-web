@@ -114,7 +114,7 @@ const DOCS = [
     id: 'webhooks',
     group: 'Payments',
     title: 'Webhooks',
-    body: 'Konduyt receives provider webhooks, verifies them, and normalizes the payloads across providers so you handle one shape. Payment state transitions are recorded in the ledger as they arrive.',
+    body: 'Konduyt receives provider webhooks, verifies them, and normalizes the payloads across providers so you handle one shape. Payment state transitions are recorded in the ledger as they arrive. Konduyt also sends you a signed webhook when a payment you created changes status: set your endpoint URL from the dashboard (Settings), and you\'ll receive a one-time signing secret (whsec_...) -- store it server-side. Each delivery includes an X-Konduyt-Signature header: the HMAC-SHA256 hex digest of the raw request body, using your signing secret as the key. Recompute it the same way on your end and compare before trusting the payload. There are no retries yet if your endpoint is briefly down -- treat delivery as best-effort for now, and poll GET /v1/payments/{id} for anything you can\'t afford to miss.',
   },
   {
     id: 'idempotency',
@@ -180,7 +180,13 @@ const DOCS = [
     id: 'errors',
     group: 'Reference',
     title: 'Errors',
-    body: 'Konduyt uses standard HTTP status codes: 2xx success, 4xx for request errors such as invalid keys or parameters, 5xx for provider-side failures. Every error includes a machine-readable code and a human-readable message. When no provider is connected for a method, Konduyt returns a clear no_provider_connected error rather than a fake success.',
+    body: 'Konduyt uses standard HTTP status codes: 2xx success, 4xx for request errors such as invalid keys or parameters, 5xx for provider-side failures. Every error response has the same shape: { detail: { error, message, request_id } } -- error is a stable, machine-readable code your code can branch on, message is for humans, request_id is unique to that one call. When no provider is connected for a method, Konduyt returns a clear no_provider_connected error rather than a fake success. POST /v1/payments, /v1/payment_sessions, and /v1/marketplace_payments are rate-limited per project (429 rate_limited once exceeded) -- all three also accept an Idempotency-Key header, so a network retry with the same key returns the original result instead of creating a duplicate.',
+  },
+  {
+    id: 'api-reference',
+    group: 'Reference',
+    title: 'API Reference',
+    body: 'Konduyt\'s full API reference is generated directly from the API itself, so it can\'t drift from what\'s actually deployed: an interactive explorer at konduyt-api.onrender.com/docs, and the raw OpenAPI spec at konduyt-api.onrender.com/openapi.json for generating your own client or importing into Postman/Insomnia.',
   },
   {
     id: 'security',
