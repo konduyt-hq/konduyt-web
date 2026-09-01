@@ -34,6 +34,14 @@
     color:var(--ink);
     font-family:'Inter', system-ui, sans-serif;
     -webkit-font-smoothing:antialiased;
+    /* Safety net: nothing should ever be able to widen the page itself.
+       A wide descendant (a long code line, a long unbroken token) should
+       scroll within its own box, never drag the whole viewport sideways.
+       The real fix is min-width:0 on the flex chain below (that's what
+       actually lets a wide child get clipped/scrolled locally instead of
+       inflating every ancestor) -- this is the backstop in case a future
+       component misses it. */
+    overflow-x:hidden;
   }
   .wrap{max-width:1440px; margin:0 auto; padding:0 48px;}
 
@@ -718,6 +726,7 @@
   /* ---------- DASHBOARD ---------- */
   .dash-root{
     min-height:100vh;
+    min-width:0;
     background-color:var(--bg);
     background-image: radial-gradient(var(--dot) 1px, transparent 1px);
     background-size: 24px 24px;
@@ -796,6 +805,7 @@
   /* ================= CONSOLE / DASHBOARD ================= */
   .con-topbar{
     display:flex; flex-direction:column;
+    min-width:0;
     border-bottom:1px solid var(--border); background:var(--elev);
   }
   .con-topbar-main{
@@ -938,6 +948,7 @@
   .con-tab.active{color:var(--ink); border-bottom-color:var(--ink);}
   .con-body{
     max-width:860px; margin:0 auto; padding:36px 24px 80px;
+    min-width:0;
     background-color:var(--bg);
     background-image: radial-gradient(var(--dot) 1px, transparent 1px);
     background-size:24px 24px;
