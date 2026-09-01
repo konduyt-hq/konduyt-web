@@ -106,18 +106,25 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 
   <script>
     // Real per-method fee formulas -- each provider's own real, published
-    // pricing, not fabricated. M-Pesa uses its real flat tariff bands
-    // (not a percentage); the rest use their real percentage rates. Same
-    // rails and formulas as konduyt.dev/demo/ itself.
+    // pricing, not fabricated. The rest use their real percentage rates.
+    // Same rails and formulas as konduyt.dev/demo/ itself.
+    //
+    // M-Pesa: this is a customer paying a MERCHANT (a Buy Goods/Till
+    // payment) -- what Konduyt actually routes -- so it uses Safaricom's
+    // real "Lipa na M-Pesa Buy Goods" MERCHANT charge (0.55%, capped at a
+    // flat KES 200 above KES 36,363; free under KES 501), not the
+    // person-to-person "M-Pesa Charges" table. Both tables are real and
+    // both are published by Safaricom on the same page -- they're just
+    // for two different real transactions. This file previously used the
+    // P2P table by mistake, which meant it disagreed with Konduyt's own
+    // real, sourced backend data (rp_pricing_rules) for the exact same
+    // scenario -- fixed to match.
     function mpesaTariffMinor(kesMinor) {
       var kes = kesMinor / 100;
-      var bands = [
-        [100, 0], [500, 7], [1000, 13], [1500, 23], [2500, 33], [3500, 53],
-        [5000, 57], [7500, 78], [10000, 90], [15000, 100], [20000, 105],
-        [35000, 108], [50000, 108], [150000, 108]
-      ];
-      for (var i = 0; i < bands.length; i++) if (kes <= bands[i][0]) return bands[i][1] * 100;
-      return 108 * 100;
+      if (kes <= 500) return 0;
+      var fee = Math.round(kesMinor * 0.0055);
+      var capMinor = 200 * 100;
+      return fee > capMinor ? capMinor : fee;
     }
     var RAILS = [
       { id: 'mpesa', name: 'M-Pesa', feeKesMinor: function (b) { return mpesaTariffMinor(b); } },

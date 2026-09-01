@@ -5,23 +5,25 @@ import Link from 'next/link';
 
 const BASE_KES = 420000; // KES 4,200.00 in minor units
 
-// M-Pesa's real cost is a flat tariff band (KES), not a percentage. Others use
-// their real percentage rates. Each method appears ONCE — no "M-Pesa via X"
-// duplication (a customer just picks M-Pesa).
+// This is a customer paying a MERCHANT (Buy Goods/Till) -- what Konduyt
+// actually routes -- so M-Pesa's real cost here is Safaricom's "Lipa na
+// M-Pesa Buy Goods" MERCHANT charge: 0.55% (capped at a flat KES 200
+// above KES 36,363; free under KES 501) -- not the person-to-person
+// "M-Pesa Charges" tariff table, a different real Safaricom table for a
+// different real transaction. Others use their real percentage rates.
+// Each method appears ONCE — no "M-Pesa via X" duplication (a customer
+// just picks M-Pesa).
 function mpesaTariffMinor(kesMinor) {
   const kes = kesMinor / 100;
-  const bands = [
-    [100, 0], [500, 7], [1000, 13], [1500, 23], [2500, 33], [3500, 53],
-    [5000, 57], [7500, 78], [10000, 90], [15000, 100], [20000, 105],
-    [35000, 108], [50000, 108], [150000, 108],
-  ];
-  for (const [upper, tariff] of bands) if (kes <= upper) return tariff * 100;
-  return 108 * 100;
+  if (kes <= 500) return 0;
+  const fee = Math.round(kesMinor * 0.0055);
+  const capMinor = 200 * 100;
+  return fee > capMinor ? capMinor : fee;
 }
 
 // feeKesMinor(baseKesMinor) -> this method's charge in KES minor units.
 const RAILS = [
-  { id: 'mpesa', name: 'M-Pesa', feeKesMinor: (b) => mpesaTariffMinor(b), basis: 'M-Pesa tariff' },
+  { id: 'mpesa', name: 'M-Pesa', feeKesMinor: (b) => mpesaTariffMinor(b), basis: 'Lipa na M-Pesa Buy Goods: 0.55%, capped KES 200' },
   { id: 'pesalink', name: 'PesaLink', feeKesMinor: (b) => Math.round(b * 0.005), basis: '0.5%' },
   { id: 'card', name: 'Card', feeKesMinor: (b) => Math.round(b * 0.029), basis: '2.9%' },
   { id: 'applepay', name: 'Apple Pay', feeKesMinor: (b) => Math.round(b * 0.029), basis: '2.9%' },
