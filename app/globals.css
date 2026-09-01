@@ -1881,10 +1881,6 @@
 
   /* ===== Konduyt Sentinel ===== */
   .sentinel-actions{display:flex;gap:10px;margin-top:4px;}
-  .sentinel-test-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-secondary);margin-bottom:18px;flex-wrap:wrap;}
-  .sentinel-test-btn{background:var(--elev);border:1px solid var(--border);border-radius:8px;padding:7px 13px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;color:var(--ink);}
-  .sentinel-test-btn:hover:not(:disabled){border-color:var(--ink);}
-  .sentinel-test-btn:disabled{opacity:.5;cursor:not-allowed;}
 
   .sentinel-changes{display:flex;flex-direction:column;gap:12px;}
   .sentinel-change{border:1px solid var(--border);border-radius:12px;padding:16px;}

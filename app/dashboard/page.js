@@ -167,6 +167,7 @@ export default function Dashboard() {
   const [sentinelSources, setSentinelSources] = useState([]);
   const [sentinelChanges, setSentinelChanges] = useState([]);
   const [sentinelBusy, setSentinelBusy] = useState(false);
+  const [sentinelRunResult, setSentinelRunResult] = useState(null); // last run's summary, for Analytics
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
   const [moneyData, setMoneyData] = useState(null);
@@ -591,7 +592,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (tab === 'analytics' && isAdmin && !analyticsOverview) loadAnalytics();
-    // eslint-disable-next-line
+    if (tab === 'analytics' && isAdmin) loadSentinel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, isAdmin]);
   useEffect(() => {
     if (tab === 'messages') loadMessages();
@@ -939,7 +941,9 @@ export default function Dashboard() {
   async function runSentinel() {
     setSentinelBusy(true);
     try {
-      await fetch(`${API_BASE}/sentinel/run?force=true`, { method: 'POST', headers: authHeaders() });
+      const r = await fetch(`${API_BASE}/sentinel/run?force=true`, { method: 'POST', headers: authHeaders() });
+      const d = await r.json();
+      setSentinelRunResult(d);
       await loadSentinel();
     } catch (e) { /* ignore */ }
     setSentinelBusy(false);
@@ -954,17 +958,6 @@ export default function Dashboard() {
       });
       setSentinelChanges((cs) => cs.map((c) => c.id === changeId ? { ...c, review_status: statusVal } : c));
     } catch (e) { /* ignore */ }
-  }
-
-  async function testSentinelAlert(monitorType) {
-    setSentinelBusy(true);
-    try {
-      const r = await fetch(`${API_BASE}/sentinel/test-alert?type=${monitorType}`, {
-        method: 'POST', headers: authHeaders() });
-      const d = await r.json();
-      alert(d.sent ? `Test ${monitorType} alert sent — check Telegram.` : `Not sent: ${d.note}`);
-    } catch (e) { alert('Could not reach Sentinel.'); }
-    setSentinelBusy(false);
   }
 
   async function loadRouting() {
@@ -1977,7 +1970,7 @@ export default function Dashboard() {
                     <h1 className="con-h1">Konduyt Sentinel</h1>
                     <p className="con-sub">
                       Watches provider pricing and tax-authority pages. Detects material changes,
-                      alerts Telegram, and waits for your review — it never changes Konduyt&apos;s logic on its own.
+                      and waits for your review here — it never changes Konduyt&apos;s logic on its own.
                     </p>
                   </div>
                   <div className="sentinel-actions">
@@ -1985,14 +1978,6 @@ export default function Dashboard() {
                       {sentinelBusy ? 'Running…' : '↻ Run check now'}
                     </button>
                   </div>
-                </div>
-
-                <div className="sentinel-test-row">
-                  <span>Verify Telegram delivery:</span>
-                  <button className="sentinel-test-btn" type="button" disabled={sentinelBusy}
-                    onClick={() => testSentinelAlert('fee')}>Test Fee bot</button>
-                  <button className="sentinel-test-btn" type="button" disabled={sentinelBusy}
-                    onClick={() => testSentinelAlert('tax')}>Test Tax bot</button>
                 </div>
 
                 <div className="int-subnav">
@@ -2032,7 +2017,6 @@ export default function Dashboard() {
                           </div>
                           <div className="sentinel-change-meta">
                             <span>{c.detected_at ? new Date(c.detected_at).toLocaleString() : ''}</span>
-                            <span>{c.alerted ? '✓ Telegram alerted' : 'not alerted'}</span>
                             <a href={c.url} target="_blank" rel="noreferrer" className="sentinel-review-link">Review source ↗</a>
                           </div>
                           {c.review_status === 'pending' && (
@@ -2894,6 +2878,38 @@ export default function Dashboard() {
                     <h1 className="con-h1">Analytics</h1>
                     <p className="con-sub">Real, aggregate developer activity — internal, admin only.</p>
                   </div>
+                </div>
+
+                {/* Tax & fee source monitoring -- runs automatically every 6h
+                    (Render Cron), but this button lets you check on demand
+                    too. Same real check the scheduler runs: fetch each due
+                    source, compare against its last snapshot, only surface
+                    what actually changed. */}
+                <div className="an-section">
+                  <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+                    <h2 className="an-section-h" style={{ marginBottom: 0 }}>Tax & fee monitoring</h2>
+                    <button className="preview-checkout-btn" type="button" disabled={sentinelBusy} onClick={runSentinel}>
+                      {sentinelBusy ? 'Checking…' : '↻ Check for changes'}
+                    </button>
+                  </div>
+                  {sentinelRunResult && (
+                    <p className="con-sub" style={{ marginTop: 8 }}>
+                      Checked {sentinelRunResult.checked} source{sentinelRunResult.checked === 1 ? '' : 's'}
+                      {sentinelRunResult.changed > 0 ? `, ${sentinelRunResult.changed} changed` : ''}
+                      {sentinelRunResult.material > 0 ? `, ${sentinelRunResult.material} material` : ''}
+                      {sentinelRunResult.errors > 0 ? `, ${sentinelRunResult.errors} could not be reached` : ''}.
+                    </p>
+                  )}
+                  <p className="con-sub" style={{ marginTop: 8 }}>
+                    {sentinelSources.length} monitored source{sentinelSources.length === 1 ? '' : 's'}
+                    {' '}(payment-provider pricing pages + tax-authority pages),{' '}
+                    {sentinelChanges.filter((c) => c.review_status === 'pending').length} change
+                    {sentinelChanges.filter((c) => c.review_status === 'pending').length === 1 ? '' : 's'} awaiting review.
+                    {' '}
+                    <button type="button" className="link-inline" onClick={() => setTab('sentinel')}>
+                      View sources & review changes →
+                    </button>
+                  </p>
                 </div>
 
                 {analyticsLoading && !analyticsOverview && <p className="con-sub">Loading…</p>}
