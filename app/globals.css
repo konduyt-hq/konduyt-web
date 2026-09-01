@@ -2084,6 +2084,16 @@
   .tax-filing.unknown .tax-filing-text{color:#92600a;}
   .tax-filing.unknown a{color:#92600a;font-weight:700;text-decoration:underline;}
   .tax-filing a{color:var(--green-ink);font-weight:600;}
+  .tax-no-source{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:13px;}
+  .tax-no-source-badge{display:inline-block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:#92600a;color:#fff;padding:3px 10px;border-radius:5px;margin-bottom:8px;}
+  .tax-no-source-text{font-size:12.5px;line-height:1.6;color:#92600a;margin:0 0 12px;}
+  .tax-no-source-thanks{font-size:12.5px;color:#0a5c30;font-weight:600;margin:0;}
+  .tax-no-source-form{display:flex;gap:8px;}
+  .tax-no-source-input{flex:1;min-width:0;font-size:12.5px;padding:8px 10px;border-radius:7px;border:1px solid #fde68a;background:#fff;color:var(--ink);font-family:inherit;}
+  .tax-no-source-input:focus{outline:none;border-color:#92600a;}
+  .tax-no-source-btn{flex-shrink:0;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:7px;border:1px solid #92600a;background:#92600a;color:#fff;cursor:pointer;font-family:inherit;}
+  .tax-no-source-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .tax-no-source-btn:hover:not(:disabled){background:#7a5008;}
 
   /* ===== Responsive: new tabs (routing / money / taxes / sentinel) ===== */
   @media (max-width: 720px){

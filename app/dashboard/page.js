@@ -186,6 +186,9 @@ export default function Dashboard() {
   // Taxes tab
   const [taxReceived, setTaxReceived] = useState(null); // countries received-from, for the currently-open provider
   const [taxExpanded, setTaxExpanded] = useState(null); // which country row is open
+  const [taxSourceInput, setTaxSourceInput] = useState(''); // shared input, keyed to whichever country is open
+  const [taxSourceSubmitting, setTaxSourceSubmitting] = useState(false);
+  const [taxSourceSubmittedFor, setTaxSourceSubmittedFor] = useState(null); // country_code once submitted, for that row's thanks state
   const [taxDetailOpen, setTaxDetailOpen] = useState(false); // false = money list; true = viewing the per-country tax detail
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
   const [testResult, setTestResult] = useState({}); // provider_id -> {ok, message, testing}
@@ -923,6 +926,21 @@ export default function Dashboard() {
       const r = await fetch(`${API_BASE}/projects/${activeId}/taxes/received${q}`, { headers: authHeaders() });
       setTaxReceived(await r.json());
     } catch (e) { setTaxReceived(null); }
+  }
+
+  async function submitTaxSourceSuggestion(countryCode) {
+    const url = taxSourceInput.trim();
+    if (!url) return;
+    setTaxSourceSubmitting(true);
+    try {
+      await fetch(`${API_BASE}/source-suggestions`, {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'tax_authority', country_code: countryCode, suggested_url: url }),
+      });
+      setTaxSourceSubmittedFor(countryCode);
+      setTaxSourceInput('');
+    } catch (e) { /* silent -- the input just stays, they can retry */ }
+    setTaxSourceSubmitting(false);
   }
 
   async function loadSentinel() {
@@ -2493,29 +2511,62 @@ export default function Dashboard() {
                                 {row.how_to_pay && (
                                   <div className="tax-howto">
                                     <div className="tax-howto-title">How to account for this tax</div>
-                                    {row.how_to_pay.filing && (
-                                      <div className={`tax-filing ${row.how_to_pay.filing.frequency === 'varies' ? 'unknown' : ''}`}>
-                                        <span className="tax-filing-badge">
-                                          {row.how_to_pay.filing.frequency === 'varies' ? 'check' : row.how_to_pay.filing.frequency}
-                                        </span>
-                                        <span className="tax-filing-text">
-                                          {row.how_to_pay.filing.frequency !== 'varies'
-                                            ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}.` : '.'} Account for all {t ? t.country : ''} sales together each period, not per payment.</>
-                                            : <>Filing frequency for {t ? t.country : 'this country'} isn&apos;t confirmed in Konduyt. Missing a deadline can be costly — confirm the cycle directly with {row.how_to_pay.authority}{row.how_to_pay.portal ? <> at <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></> : ''} before you rely on it.</>}
-                                        </span>
+                                    {row.how_to_pay.no_known_source ? (
+                                      <div className="tax-no-source">
+                                        <span className="tax-no-source-badge">unconfirmed</span>
+                                        <p className="tax-no-source-text">
+                                          Konduyt doesn&apos;t have an official tax authority website on file
+                                          for {t ? t.country : 'this country'} yet — the {t?.rate != null ? `${t.rate}%` : ''} rate
+                                          shown above is a general reference figure, not confirmed against
+                                          an authority. Please verify directly before relying on it.
+                                        </p>
+                                        {taxSourceSubmittedFor === row.country_code ? (
+                                          <p className="tax-no-source-thanks">Thanks — this is reviewed before it&apos;s used anywhere.</p>
+                                        ) : (
+                                          <div className="tax-no-source-form">
+                                            <input
+                                              type="url"
+                                              placeholder="Know the official tax authority site? Paste it here"
+                                              className="tax-no-source-input"
+                                              value={taxExpanded === row.country_code ? taxSourceInput : ''}
+                                              onChange={(e) => setTaxSourceInput(e.target.value)}
+                                              onFocus={() => setTaxExpanded(row.country_code)}
+                                            />
+                                            <button type="button" className="tax-no-source-btn"
+                                              disabled={taxSourceSubmitting || !taxSourceInput.trim()}
+                                              onClick={() => submitTaxSourceSuggestion(row.country_code)}>
+                                              {taxSourceSubmitting ? 'Sending…' : 'Send'}
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
-                                    <div className="tax-howto-auth">
-                                      {row.how_to_pay.authority}
-                                      {row.how_to_pay.portal && (
-                                        <> · <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></>
-                                      )}
-                                    </div>
-                                    <ol className="tax-howto-steps">
-                                      {row.how_to_pay.steps.map((s, i) => <li key={i}>{s}</li>)}
-                                    </ol>
-                                    {!row.how_to_pay.detailed && (
-                                      <div className="tax-howto-note">Konduyt doesn&apos;t have step-by-step guidance for this country yet — the pointer above is your starting point.</div>
+                                    ) : (
+                                      <>
+                                        {row.how_to_pay.filing && (
+                                          <div className={`tax-filing ${row.how_to_pay.filing.frequency === 'varies' ? 'unknown' : ''}`}>
+                                            <span className="tax-filing-badge">
+                                              {row.how_to_pay.filing.frequency === 'varies' ? 'check' : row.how_to_pay.filing.frequency}
+                                            </span>
+                                            <span className="tax-filing-text">
+                                              {row.how_to_pay.filing.frequency !== 'varies'
+                                                ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}.` : '.'} Account for all {t ? t.country : ''} sales together each period, not per payment.</>
+                                                : <>Filing frequency for {t ? t.country : 'this country'} isn&apos;t confirmed in Konduyt. Missing a deadline can be costly — confirm the cycle directly with {row.how_to_pay.authority}{row.how_to_pay.portal ? <> at <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></> : ''} before you rely on it.</>}
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="tax-howto-auth">
+                                          {row.how_to_pay.authority}
+                                          {row.how_to_pay.portal && (
+                                            <> · <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></>
+                                          )}
+                                        </div>
+                                        <ol className="tax-howto-steps">
+                                          {row.how_to_pay.steps.map((s, i) => <li key={i}>{s}</li>)}
+                                        </ol>
+                                        {!row.how_to_pay.detailed && (
+                                          <div className="tax-howto-note">Konduyt doesn&apos;t have step-by-step guidance for this country yet — the pointer above is your starting point.</div>
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 )}
