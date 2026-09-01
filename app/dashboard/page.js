@@ -155,6 +155,9 @@ export default function Dashboard() {
   const [previewEligibility, setPreviewEligibility] = useState(null);
   const [previewEligibilityLoading, setPreviewEligibilityLoading] = useState(false);
   const [previewRanked, setPreviewRanked] = useState(null);
+  const [feeSourceInputs, setFeeSourceInputs] = useState({}); // key `${provider}:${method}` -> typed value
+  const [feeSourceSubmitting, setFeeSourceSubmitting] = useState(null); // key currently sending, or null
+  const [feeSourceSubmitted, setFeeSourceSubmitted] = useState({}); // key -> true once sent
   const [previewAmount, setPreviewAmount] = useState('1500.00'); // major units, editable
   const [previewCurrency, setPreviewCurrency] = useState('KES');
   // Routing intelligence panel
@@ -941,6 +944,24 @@ export default function Dashboard() {
       setTaxSourceInput('');
     } catch (e) { /* silent -- the input just stays, they can retry */ }
     setTaxSourceSubmitting(false);
+  }
+
+  async function submitFeeSourceSuggestion(key, provider, method, countryCode) {
+    const value = (feeSourceInputs[key] || '').trim();
+    if (!value) return;
+    setFeeSourceSubmitting(key);
+    try {
+      await fetch(`${API_BASE}/source-suggestions`, {
+        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'transaction_fee', country_code: countryCode, provider,
+          payment_method: method, suggested_value: value,
+        }),
+      });
+      setFeeSourceSubmitted((prev) => ({ ...prev, [key]: true }));
+      setFeeSourceInputs((prev) => ({ ...prev, [key]: '' }));
+    } catch (e) { /* silent -- the input just stays, they can retry */ }
+    setFeeSourceSubmitting(null);
   }
 
   async function loadSentinel() {
@@ -3090,6 +3111,15 @@ export default function Dashboard() {
               // the "Best value" payment intelligence badge.
               fee_percent: rank ? rank.fee_percent : undefined,
               fee_amount: rank ? rank.fee_amount : undefined,
+              // From a secondary source, no official page exists -- shown
+              // to the DEVELOPER (below, not inside CheckoutModal -- a
+              // paying shopper doesn't need this) as a real range, not a
+              // confirmed number.
+              estimated: rank ? !!rank.estimated : false,
+              fee_amount_low: rank ? rank.fee_amount_low : undefined,
+              fee_amount_high: rank ? rank.fee_amount_high : undefined,
+              provider: m.selected_provider,
+              method_id: m.method,
             };
           });
 
@@ -3147,6 +3177,39 @@ export default function Dashboard() {
                         ? `Konduyt found ${payable.length} real, verified payment method${payable.length !== 1 ? 's' : ''} for a shopper in ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} — each traced to a connected, capability-verified provider below. Change the country to see it adapt.`
                         : `No connected provider has verified capability for ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} yet — connect a provider that covers this market to unlock methods here.`}
                   </p>
+                  {payable.filter((m) => m.estimated).map((m) => {
+                    const key = `${m.provider}:${m.method_id}`;
+                    const low = m.fee_amount_low, high = m.fee_amount_high;
+                    return (
+                      <div className="fee-no-source" key={key}>
+                        <span className="fee-no-source-badge">unconfirmed</span>
+                        <p className="fee-no-source-text">
+                          No official fee page is on file for {m.name} in {MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} —
+                          the {m.fee_percent}% shown is estimated from a secondary source
+                          {(low != null && high != null) ? ` (real range ${(low / 100).toFixed(2)}–${(high / 100).toFixed(2)} ${previewCurrency} on this amount)` : ''}.
+                          Please verify directly before relying on it.
+                        </p>
+                        {feeSourceSubmitted[key] ? (
+                          <p className="fee-no-source-thanks">Thanks — this is reviewed before it&apos;s used anywhere.</p>
+                        ) : (
+                          <div className="fee-no-source-form">
+                            <input
+                              type="text"
+                              placeholder="Know the real fee? e.g. &quot;1.5% flat&quot; or a link"
+                              className="fee-no-source-input"
+                              value={feeSourceInputs[key] || ''}
+                              onChange={(e) => setFeeSourceInputs((prev) => ({ ...prev, [key]: e.target.value }))}
+                            />
+                            <button type="button" className="fee-no-source-btn"
+                              disabled={feeSourceSubmitting === key || !(feeSourceInputs[key] || '').trim()}
+                              onClick={() => submitFeeSourceSuggestion(key, m.provider, m.method_id, previewShopperCountry)}>
+                              {feeSourceSubmitting === key ? 'Sending…' : 'Send'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <CheckoutModal
