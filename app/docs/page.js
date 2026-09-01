@@ -186,7 +186,7 @@ const DOCS = [
     id: 'api-reference',
     group: 'Reference',
     title: 'API Reference',
-    body: 'Konduyt\'s full API reference is generated directly from the API itself, so it can\'t drift from what\'s actually deployed: an interactive explorer at konduyt-api.onrender.com/docs, and the raw OpenAPI spec at konduyt-api.onrender.com/openapi.json for generating your own client or importing into Postman/Insomnia.',
+    body: 'Konduyt\'s full API reference is generated directly from the API itself, so it can\'t drift from what\'s actually deployed: an interactive explorer at konduyt-api.onrender.com/docs, and the raw OpenAPI spec at konduyt-api.onrender.com/openapi.json for generating your own client or importing into Postman/Insomnia. For Node.js/TypeScript, the official konduyt SDK (npm install konduyt) wraps the core payment endpoints with real types, automatic retry, and automatic idempotency-key handling -- see github.com/konduyt-hq/konduyt-node.',
   },
   {
     id: 'security',
