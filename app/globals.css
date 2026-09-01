@@ -946,7 +946,6 @@
   }
   .con-home-head{margin-bottom:28px;}
   .con-h1{font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin-bottom:6px;}
-  .con-h2{font-size:18px; font-weight:700; letter-spacing:-0.01em; color:var(--ink); margin-bottom:6px;}
   .con-sub{font-size:15px; color:var(--text-secondary);}
   .con-section{
     background:var(--elev); border:1px solid var(--border); border-radius:14px;

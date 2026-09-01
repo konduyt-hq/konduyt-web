@@ -18,7 +18,7 @@ export default function About() {
 
       <main className="about-doc">
         <p>
-          Konduyt is a payment infrastructure company built by Collective Brains
+          Konduyt is a payment infrastructure company built by Core Brains
           in Thika, Kenya.
         </p>
 
@@ -63,7 +63,7 @@ export default function About() {
         <p>However they pay, you get paid.</p>
 
         <p>
-          Konduyt is part of Collective Brains, a technology company based in
+          Konduyt is part of Core Brains, a technology company based in
           Thika, Kenya. We build things that make complicated systems easier
           to use.
         </p>
