@@ -12,3 +12,4 @@ for connecting providers, managing keys, and viewing payments.
 - **Docs:** [konduyt.dev/docs](https://konduyt.dev/docs)
 - **Stack:** Next.js, Cloudflare Pages
 - **Backend:** [konduyt-api](https://github.com/konduyt-hq/konduyt-api)
+- **Node.js / TypeScript SDK:** [konduyt-node](https://github.com/konduyt-hq/konduyt-node)
