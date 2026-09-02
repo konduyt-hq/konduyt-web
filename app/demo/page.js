@@ -3,37 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-const BASE_KES = 420000; // KES 4,200.00 in minor units
-
-// This is a customer paying a MERCHANT (Buy Goods/Till) -- what Konduyt
-// actually routes -- so M-Pesa's real cost here is Safaricom's "Lipa na
-// M-Pesa Buy Goods" MERCHANT charge: 0.55% (capped at a flat KES 200
-// above KES 36,363; free under KES 501) -- not the person-to-person
-// "M-Pesa Charges" tariff table, a different real Safaricom table for a
-// different real transaction. Others use their real percentage rates.
-// Each method appears ONCE — no "M-Pesa via X" duplication (a customer
-// just picks M-Pesa).
-function mpesaTariffMinor(kesMinor) {
-  const kes = kesMinor / 100;
-  if (kes <= 500) return 0;
-  const fee = Math.round(kesMinor * 0.0055);
-  const capMinor = 200 * 100;
-  return fee > capMinor ? capMinor : fee;
-}
-
-// feeKesMinor(baseKesMinor) -> this method's charge in KES minor units.
-const RAILS = [
-  { id: 'mpesa', name: 'M-Pesa', feeKesMinor: (b) => mpesaTariffMinor(b), basis: 'Lipa na M-Pesa Buy Goods: 0.55%, capped KES 200' },
-  { id: 'pesalink', name: 'PesaLink', feeKesMinor: (b) => Math.round(b * 0.005), basis: '0.5%' },
-  { id: 'card', name: 'Card', feeKesMinor: (b) => Math.round(b * 0.029), basis: '2.9%' },
-  { id: 'applepay', name: 'Apple Pay', feeKesMinor: (b) => Math.round(b * 0.029), basis: '2.9%' },
-  { id: 'paypal', name: 'PayPal', feeKesMinor: (b) => Math.round(b * 0.0349), basis: '3.49%' },
-];
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
+const REFERENCE_AMOUNT_KES = 420000; // KES 4,200.00 in minor units -- the reference price this demo quotes
 
 // Cost-based verdict only — no settlement/speed claims.
-function verdict(rail, cheapestId, dearestId) {
-  if (rail.id === cheapestId) return { label: 'Best value', kind: 'good' };
-  if (rail.id === dearestId) return { label: 'Highest fee', kind: 'bad' };
+function verdict(rail) {
+  if (rail.recommended) return { label: 'Best value', kind: 'good' };
   return { label: 'An option', kind: 'neutral' };
 }
 
@@ -47,57 +22,50 @@ function fmt(amountMinor, currency) {
 
 export default function DemoCheckout() {
   useEffect(() => { document.title = 'Konduyt Demo'; }, []);
-  const [selected, setSelected] = useState('pesalink');
+  const [selected, setSelected] = useState(null);
   const [stage, setStage] = useState('form');
   const [phone, setPhone] = useState('');
+  const [demo, setDemo] = useState(null); // the real /v1/demo/run response
+  const [loadError, setLoadError] = useState(false);
 
-  const [currency, setCurrency] = useState('KES');
-  const [rate, setRate] = useState(1);
-  const [country, setCountry] = useState(null);
-  const [fxStatus, setFxStatus] = useState('loading'); // loading | live | native
-
+  // Real data, not a client-side estimate: the backend does its own real
+  // geo-detection (from the request itself, server-side) and returns the
+  // visitor's actual country's real, sourced fee data where Konduyt has
+  // it -- or Kenya's real data as an honestly-labelled representative
+  // example otherwise. No client-side FX/geo logic needed here at all.
   useEffect(() => {
     let cancelled = false;
-    async function detect() {
+    async function load() {
       try {
-        const geo = await fetch('https://ipapi.co/json/').then((r) => r.json());
+        const res = await fetch(`${API_BASE}/v1/demo/run`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currency: 'KES', amount: REFERENCE_AMOUNT_KES }),
+        });
+        const data = await res.json();
         if (cancelled) return;
-        const cur = geo && geo.currency ? geo.currency : 'KES';
-        setCountry(geo && geo.country_name ? geo.country_name : null);
-        if (cur === 'KES') { setCurrency('KES'); setRate(1); setFxStatus('live'); return; }
-        const fx = await fetch('https://open.er-api.com/v6/latest/KES').then((r) => r.json());
-        if (cancelled) return;
-        const r = fx && fx.rates && fx.rates[cur];
-        if (r) { setCurrency(cur); setRate(r); setFxStatus('live'); }
-        else { setCurrency('KES'); setRate(1); setFxStatus('native'); }
+        setDemo(data);
+        const opts = data?.intelligence?.options || [];
+        if (opts.length) setSelected(opts[0].method);
       } catch {
-        if (!cancelled) { setCurrency('KES'); setRate(1); setFxStatus('native'); }
+        if (!cancelled) setLoadError(true);
       }
     }
-    detect();
+    load();
     return () => { cancelled = true; };
   }, []);
 
-  const displayAmount = Math.round(BASE_KES * rate);
-
-  // Compute each method's real charge in KES, then convert to the display
-  // currency. M-Pesa uses its tariff band; others use their percentage.
-  const ranked = [...RAILS]
-    .map((rail) => {
-      const feeKes = rail.feeKesMinor(BASE_KES);
-      const feeMinor = Math.round(feeKes * rate);
-      return { ...rail, feeMinor, netMinor: displayAmount - feeMinor,
-               effPct: Math.round((feeKes / BASE_KES) * 1000) / 10 };
-    })
-    .sort((a, b) => a.feeMinor - b.feeMinor);
-  const cheapest = ranked[0];
-  const dearest = ranked[ranked.length - 1];
-  const savingMinor = dearest.feeMinor - cheapest.feeMinor;
+  const options = demo?.intelligence?.options || [];
+  const displayAmount = demo?.payment?.amount ?? REFERENCE_AMOUNT_KES;
+  const currency = demo?.payment?.currency ?? 'KES';
+  const cheapest = options[0];
+  const dearest = options[options.length - 1];
+  const savingMinor = cheapest && dearest ? dearest.fee_minor - cheapest.fee_minor : 0;
+  const sel = options.find((r) => r.method === selected) || cheapest;
 
   function pay() {
     if (stage === 'processing') return;
     setStage('processing');
-    if (selected.startsWith('mpesa')) {
+    if (sel?.method === 'MPESA') {
       setTimeout(() => setStage('prompt'), 1200);
       setTimeout(() => setStage('success'), 4200);
     } else {
@@ -106,7 +74,28 @@ export default function DemoCheckout() {
   }
   function reset() { setStage('form'); setPhone(''); }
 
-  const sel = ranked.find((r) => r.id === selected) || ranked[0];
+  if (loadError) {
+    return (
+      <div className="demo-root">
+        <div className="demo-topbar">
+          <Link href="/" className="demo-back">← Back to Konduyt</Link>
+        </div>
+        <div className="demo-center"><p>Couldn&apos;t load the live demo right now — please try again shortly.</p></div>
+      </div>
+    );
+  }
+
+  if (!demo || !sel) {
+    return (
+      <div className="demo-root">
+        <div className="demo-topbar">
+          <Link href="/" className="demo-back">← Back to Konduyt</Link>
+          <span className="demo-flag">Demo. No real charge.</span>
+        </div>
+        <div className="demo-center"><p>Loading real fee data for your location…</p></div>
+      </div>
+    );
+  }
 
   return (
     <div className="demo-root">
@@ -123,11 +112,11 @@ export default function DemoCheckout() {
               Same {fmt(displayAmount, currency)} payment, every available rail. Ranked cheapest-first.
               by real fees and settlement time. Konduyt puts your customer on the best one by default.
             </p>
-            {country && fxStatus === 'live' && currency !== 'KES' && (
-              <div className="demo-fx-note">Costs shown in {currency} for {country}, converted live from KES.</div>
-            )}
-            {fxStatus === 'native' && (
-              <div className="demo-fx-note">Live rate unavailable. Showing native KES.</div>
+            {demo.is_representative_example && (
+              <div className="demo-fx-note">
+                Showing Kenya&apos;s real connected-provider pricing as a representative example —
+                Konduyt doesn&apos;t have sourced rail data for your detected location yet.
+              </div>
             )}
           </div>
 
@@ -135,16 +124,20 @@ export default function DemoCheckout() {
             <div className="demo-rail-row demo-rail-head demo-rail-row-3col">
               <span>Pay with</span><span>Transaction fee</span><span>Verdict</span>
             </div>
-            {ranked.map((rail) => {
-              const v = verdict(rail, cheapest.id, dearest.id);
+            {options.map((rail) => {
+              const v = verdict(rail);
               return (
-                <div key={rail.id}
-                  className={`demo-rail-row demo-rail-row-3col ${selected === rail.id ? 'sel' : ''} ${rail.id === cheapest.id ? 'best' : ''}`}
-                  onClick={() => stage === 'form' && setSelected(rail.id)} role="button">
-                  <span className="demo-rail-name">{rail.name}</span>
+                <div key={rail.method}
+                  className={`demo-rail-row demo-rail-row-3col ${selected === rail.method ? 'sel' : ''} ${rail.method === cheapest?.method ? 'best' : ''}`}
+                  onClick={() => stage === 'form' && setSelected(rail.method)} role="button">
+                  <span className="demo-rail-name">{rail.label}</span>
                   <span className="demo-rail-fee-cell">
-                    <span className="demo-rail-cost">{fmt(rail.feeMinor, currency)}</span>
-                    <span className="demo-rail-pct">{rail.effPct}%</span>
+                    {rail.estimated && rail.fee_minor_low != null ? (
+                      <span className="demo-rail-cost">{fmt(rail.fee_minor_low, currency)}–{fmt(rail.fee_minor_high, currency)}</span>
+                    ) : (
+                      <span className="demo-rail-cost">{fmt(rail.fee_minor, currency)}</span>
+                    )}
+                    <span className="demo-rail-pct">{rail.fee_percent_effective}%{rail.estimated ? ' · estimated' : ''}</span>
                   </span>
                   <span className={`demo-verdict demo-verdict-${v.kind}`}>{v.label}</span>
                 </div>
@@ -152,10 +145,12 @@ export default function DemoCheckout() {
             })}
           </div>
 
-          <div className="demo-saving">
-            Lowest vs highest fee on this payment:
-            <strong> you keep {fmt(savingMinor, currency)} more</strong> using {cheapest.name} instead of {dearest.name}.
-          </div>
+          {cheapest && dearest && cheapest !== dearest && (
+            <div className="demo-saving">
+              Lowest vs highest fee on this payment:
+              <strong> you keep {fmt(savingMinor, currency)} more</strong> using {cheapest.label} instead of {dearest.label}.
+            </div>
+          )}
         </div>
 
         <div className="demo-checkout-col">
@@ -178,11 +173,11 @@ export default function DemoCheckout() {
               <div className="pay-success">
                 <div className="success-check">✓</div>
                 <div className="success-title">Payment successful</div>
-                <div className="success-sub">{fmt(displayAmount, currency)} paid via {sel.name}</div>
+                <div className="success-sub">{fmt(displayAmount, currency)} paid via {sel.label}</div>
                 <div className="success-receipt">
                   <div className="receipt-row"><span>Reference</span><span className="mono">KDU-PAY-8F2A91</span></div>
-                  <div className="receipt-row"><span>Method</span><span>{sel.name}</span></div>
-                  <div className="receipt-row"><span>Fee</span><span>{fmt(sel.feeMinor, currency)} ({sel.effPct}%)</span></div>
+                  <div className="receipt-row"><span>Method</span><span>{sel.label}</span></div>
+                  <div className="receipt-row"><span>Fee</span><span>{fmt(sel.fee_minor, currency)} ({sel.fee_percent_effective}%)</span></div>
                 </div>
                 <button className="pay-btn" onClick={reset} type="button">Run the demo again</button>
                 <Link href="/" className="demo-done-link">Done</Link>
@@ -190,10 +185,10 @@ export default function DemoCheckout() {
             ) : (
               <>
                 <div className="demo-selected-rail">
-                  Paying with <strong>{sel.name}</strong> · {fmt(sel.feeMinor, currency)} fee ({sel.effPct}%)
+                  Paying with <strong>{sel.label}</strong> · {fmt(sel.fee_minor, currency)} fee ({sel.fee_percent_effective}%)
                 </div>
 
-                {selected.startsWith('mpesa') ? (
+                {sel.method === 'MPESA' ? (
                   <div className="field">
                     <label className="field-label">M-Pesa phone number</label>
                     <input className="field-input" inputMode="numeric" placeholder="07XX XXX XXX"
@@ -201,12 +196,12 @@ export default function DemoCheckout() {
                   </div>
                 ) : (
                   <div className="field">
-                    <label className="field-label">{sel.name}</label>
-                    <div className="demo-rail-inputnote">Selected from the intelligence panel: {sel.id === cheapest.id ? 'the cheapest rail' : 'your chosen rail'}.</div>
+                    <label className="field-label">{sel.label}</label>
+                    <div className="demo-rail-inputnote">Selected from the intelligence panel: {sel.method === cheapest?.method ? 'the cheapest rail' : 'your chosen rail'}.</div>
                   </div>
                 )}
 
-                {stage === 'prompt' && selected.startsWith('mpesa') && (
+                {stage === 'prompt' && sel.method === 'MPESA' && (
                   <div className="stk-prompt">
                     <div className="stk-spinner"></div>
                     <div>
@@ -217,7 +212,7 @@ export default function DemoCheckout() {
                 )}
 
                 <button className="pay-btn" onClick={pay} type="button"
-                  disabled={stage === 'processing' || stage === 'prompt' || (selected.startsWith('mpesa') && phone.replace(/\D/g, '').length < 9)}>
+                  disabled={stage === 'processing' || stage === 'prompt' || (sel.method === 'MPESA' && phone.replace(/\D/g, '').length < 9)}>
                   {stage === 'processing' ? 'Connecting…' : stage === 'prompt' ? 'Waiting for confirmation…' : `Pay ${fmt(displayAmount, currency)}`}
                 </button>
 
