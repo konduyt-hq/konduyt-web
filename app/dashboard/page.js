@@ -1473,7 +1473,7 @@ export default function Dashboard() {
                   <input
                     className="method-search-input"
                     type="text"
-                    placeholder="Search a provider, payment method, or country — PayPal, M-Pesa, Kenya…"
+                    placeholder="Search by country, provider, or payment method — Kenya, PayPal, M-Pesa…"
                     value={methodSearch}
                     onChange={(e) => setMethodSearch(e.target.value)}
                   />
