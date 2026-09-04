@@ -1367,8 +1367,16 @@
   .locality-intel-select{padding:6px 10px; font-size:13.5px; font-weight:600;}
   .locality-intel-note{font-size:12.5px; color:var(--text-secondary); margin:10px 0 0; line-height:1.5;}
 
-  /* ===== Flat, deduplicated provider directory (ranked by real global coverage) ===== */
-  .provider-directory{margin-top:18px;}
+  /* ===== Provider directory, sectioned by continent (Global first, then
+     each single-continent region) -- see continent_providers.py ===== */
+  .provider-directory{margin-top:18px; display:flex; flex-direction:column; gap:28px;}
+  .provider-continent-section{display:flex; flex-direction:column; gap:14px;}
+  .provider-continent-head{
+    display:flex; align-items:baseline; gap:10px; padding-bottom:8px;
+    border-bottom:1px solid var(--border);
+  }
+  .provider-continent-title{font-size:15px; font-weight:700; color:var(--ink); margin:0;}
+  .provider-continent-count{font-size:12.5px; color:var(--text-secondary);}
   .provider-grid{
     display:grid;
     grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));

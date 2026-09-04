@@ -197,6 +197,7 @@ export default function Dashboard() {
   const [testResult, setTestResult] = useState({}); // provider_id -> {ok, message, testing}
   // Continent-grouped provider directory (replaces the old category-drill-down browse)
   const [topProviders, setTopProviders] = useState([]);
+  const [providersByContinent, setProvidersByContinent] = useState([]);
   // Real, per-country eligible methods for CONNECTED providers, keyed by
   // provider_id -> { countryName: [methodName, ...] }. Built from
   // GET /v1/payment-methods/available (the real eligibility engine), never
@@ -428,6 +429,18 @@ export default function Dashboard() {
       })
       .catch(() => { setTopProviders([]); setProvidersLoading(false); });
   }, [status, active?.merchant_country]);
+
+  // Same real connector catalog, grouped by continent (Global first, for
+  // providers with real presence in more than one continent -- Stripe,
+  // PayPal -- then each single-continent region). Catalog data, no
+  // project-specific reordering needed here the way /connectors/top has.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    fetch(`${API_BASE}/connectors/by-continent`)
+      .then((r) => r.json())
+      .then((d) => setProvidersByContinent(d.continents || []))
+      .catch(() => setProvidersByContinent([]));
+  }, [status]);
 
   // For each CONNECTED provider, fetch REAL per-country eligible methods (the
   // "Payment methods available to you, grouped by country" view). One fetch
@@ -1460,7 +1473,7 @@ export default function Dashboard() {
                   <input
                     className="method-search-input"
                     type="text"
-                    placeholder="Search a payment method — PayPal, Apple Pay, M-Pesa, SEPA, UPI…"
+                    placeholder="Search a provider, payment method, or country — PayPal, M-Pesa, Kenya…"
                     value={methodSearch}
                     onChange={(e) => setMethodSearch(e.target.value)}
                   />
@@ -1718,27 +1731,47 @@ export default function Dashboard() {
                     return <p className="con-sub" style={{ marginTop: 16 }}>Loading providers…</p>;
                   }
 
-                  const list = q ? topProviders.filter(matchesQuery) : topProviders;
-                  // Connected providers first, for easier visibility --
-                  // a stable sort, so within "connected" and "not connected"
-                  // each keeps its original relative order.
-                  const sortedList = [...list].sort((a, b) => {
+                  // Connected providers first within a group, for easier
+                  // visibility -- a stable sort, so within "connected" and
+                  // "not connected" each keeps its original relative order.
+                  const sortWithConnectedFirst = (arr) => [...arr].sort((a, b) => {
                     const aConnected = isConnected(a.id) ? 0 : 1;
                     const bConnected = isConnected(b.id) ? 0 : 1;
                     return aConnected - bConnected;
                   });
 
-                  if (q && list.length === 0) {
+                  // Sectioned by continent -- Global first (providers with
+                  // real presence in more than one continent, like Stripe
+                  // and PayPal), then each single-continent region, in the
+                  // order the backend already resolved from the real
+                  // connector catalog. A search filters WITHIN each
+                  // section rather than flattening the list, so searching
+                  // a country (e.g. "Kenya") shows which real providers
+                  // support it, still grouped by where they operate --
+                  // sections with no matches are simply hidden.
+                  const sections = providersByContinent
+                    .map((c) => ({
+                      ...c,
+                      providers: sortWithConnectedFirst(
+                        q ? c.providers.filter(matchesQuery) : c.providers
+                      ),
+                    }))
+                    .filter((c) => c.providers.length > 0);
+
+                  const totalShown = sections.reduce((n, c) => n + c.providers.length, 0);
+
+                  if (q && totalShown === 0) {
                     return (
                       <div className="con-empty" style={{ marginTop: 16 }}>
                         <p className="con-empty-sub">
-                          No provider matches “{methodSearch}”. Try Paystack, Stripe, PayPal, Flutterwave…
+                          No provider matches “{methodSearch}”. Try a provider name (Paystack, Stripe,
+                          PayPal…), a payment method (M-Pesa, SEPA…), or a country (Kenya, Nigeria…).
                         </p>
                       </div>
                     );
                   }
 
-                  if (list.length === 0) {
+                  if (totalShown === 0) {
                     return (
                       <div className="con-empty" style={{ marginTop: 16 }}>
                         <p className="con-empty-sub">No providers available yet.</p>
@@ -1748,9 +1781,19 @@ export default function Dashboard() {
 
                   return (
                     <div className="provider-directory">
-                      <div className="provider-grid">
-                        {sortedList.map(renderProviderCard)}
-                      </div>
+                      {sections.map((c) => (
+                        <div className="provider-continent-section" key={c.continent}>
+                          <div className="provider-continent-head">
+                            <h3 className="provider-continent-title">{c.continent}</h3>
+                            <span className="provider-continent-count">
+                              {c.providers.length} provider{c.providers.length === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                          <div className="provider-grid">
+                            {c.providers.map(renderProviderCard)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   );
                 })()}
