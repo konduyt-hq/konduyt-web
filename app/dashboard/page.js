@@ -2723,6 +2723,28 @@ export default function Dashboard() {
                           )}
                         </div>
 
+                        <div className="settings-row">
+                          <div>
+                            <div className="settings-row-k">Country</div>
+                            <div className="settings-row-d">
+                              Where this project's business is based. Konduyt uses this to tell customers
+                              what they can pay with at checkout — without it set, checkout can&apos;t
+                              resolve any payment methods.
+                            </div>
+                          </div>
+                          <select
+                            className="con-connect-input settings-country-select"
+                            value={active.merchant_country || ''}
+                            disabled={savingCountry}
+                            onChange={(e) => saveMerchantCountry(e.target.value)}
+                          >
+                            <option value="">Not set</option>
+                            {MERCHANT_COUNTRIES.map((c) => (
+                              <option key={c.code} value={c.code}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
                         {!projectDeleting && (
                           <div className="settings-row">
                             <div>

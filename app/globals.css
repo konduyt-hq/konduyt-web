@@ -819,7 +819,7 @@
   .con-topbar-greeting{font-size:14.5px; font-weight:600; color:var(--ink); overflow:hidden;
     text-overflow:ellipsis; white-space:nowrap; min-width:0;}
   .con-topbar-project{
-    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    display:flex; align-items:center; justify-content:flex-start; gap:12px;
     padding:9px 24px; border-top:1px solid var(--border); background:var(--panel);
     flex-wrap:wrap;
   }
