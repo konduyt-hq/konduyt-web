@@ -1758,6 +1758,26 @@ export default function Dashboard() {
                     }))
                     .filter((c) => c.providers.length > 0);
 
+                  // Connected Providers: a pinned section before Global, so
+                  // a merchant with providers connected across several
+                  // continents can see everything they've actually set up
+                  // in one glance, without hunting through each continent
+                  // section individually. Pulled from the same real
+                  // continent-grouped data (not a separate fetch) --
+                  // dedupes naturally since a provider only lives in one
+                  // continent bucket already. Still also appears in its own
+                  // continent section below; this is a quick-glance summary,
+                  // not a replacement for the full directory.
+                  const connectedProviders = sortWithConnectedFirst(
+                    providersByContinent
+                      .flatMap((c) => c.providers)
+                      .filter((p) => isConnected(p.id))
+                  );
+                  const connectedSection = {
+                    continent: 'Connected Providers',
+                    providers: q ? connectedProviders.filter(matchesQuery) : connectedProviders,
+                  };
+
                   const totalShown = sections.reduce((n, c) => n + c.providers.length, 0);
 
                   if (q && totalShown === 0) {
@@ -1781,6 +1801,19 @@ export default function Dashboard() {
 
                   return (
                     <div className="provider-directory">
+                      {connectedSection.providers.length > 0 && (
+                        <div className="provider-continent-section" key="connected">
+                          <div className="provider-continent-head">
+                            <h3 className="provider-continent-title">{connectedSection.continent}</h3>
+                            <span className="provider-continent-count">
+                              {connectedSection.providers.length} provider{connectedSection.providers.length === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                          <div className="provider-grid">
+                            {connectedSection.providers.map(renderProviderCard)}
+                          </div>
+                        </div>
+                      )}
                       {sections.map((c) => (
                         <div className="provider-continent-section" key={c.continent}>
                           <div className="provider-continent-head">

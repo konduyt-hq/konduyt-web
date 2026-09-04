@@ -1375,7 +1375,7 @@
     display:flex; align-items:baseline; gap:10px; padding-bottom:8px;
     border-bottom:1px solid var(--border);
   }
-  .provider-continent-title{font-size:15px; font-weight:700; color:var(--ink); margin:0;}
+  .provider-continent-title{font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin:0;}
   .provider-continent-count{font-size:12.5px; color:var(--text-secondary);}
   .provider-grid{
     display:grid;
