@@ -1987,6 +1987,21 @@
   .an-stats{grid-template-columns:repeat(6,1fr);}
   .an-section{margin:28px 0;}
   .an-section-h{font-size:15px; font-weight:700; color:var(--ink); margin-bottom:14px;}
+
+  .fee-bands-continent-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+  .fee-bands-tab{
+    background:var(--elev); border:1px solid var(--border); border-radius:20px;
+    padding:6px 14px; font-size:13px; font-weight:600; color:var(--text-secondary);
+    cursor:pointer; font-family:inherit;
+  }
+  .fee-bands-tab.active{background:var(--ink); color:var(--panel); border-color:var(--ink);}
+  .fee-bands-table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px;}
+  .fee-bands-table{border-collapse:collapse; width:100%; font-size:12.5px; white-space:nowrap;}
+  .fee-bands-table th, .fee-bands-table td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--border);}
+  .fee-bands-table th{background:var(--elev); font-weight:700; color:var(--text-secondary);
+    position:sticky; top:0;}
+  .fee-bands-table tbody tr:hover{background:var(--elev);}
+  .fee-bands-table tbody tr:last-child td{border-bottom:none;}
   .an-bars{display:flex; align-items:flex-end; gap:3px; height:120px; border:1px solid var(--border);
     border-radius:12px; padding:12px 10px; background:var(--elev);}
   .an-bar-col{flex:1; height:100%; display:flex; align-items:flex-end; cursor:default;}

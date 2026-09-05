@@ -171,6 +171,9 @@ export default function Dashboard() {
   const [sentinelChanges, setSentinelChanges] = useState([]);
   const [sentinelBusy, setSentinelBusy] = useState(false);
   const [sentinelRunResult, setSentinelRunResult] = useState(null); // last run's summary, for Analytics
+  const [feeBandsContinent, setFeeBandsContinent] = useState('africa');
+  const [feeBandsData, setFeeBandsData] = useState(null);
+  const [feeBandsLoading, setFeeBandsLoading] = useState(false);
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
   const [moneyData, setMoneyData] = useState(null);
@@ -612,6 +615,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (tab === 'analytics' && isAdmin && !analyticsOverview) loadAnalytics();
     if (tab === 'analytics' && isAdmin) loadSentinel();
+    if (tab === 'analytics' && isAdmin && !feeBandsData) loadFeeBands(feeBandsContinent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, isAdmin]);
   useEffect(() => {
@@ -988,6 +992,21 @@ export default function Dashboard() {
       setSentinelSources(s.sources || []);
       setSentinelChanges(c.changes || []);
     } catch (e) { /* leave as-is */ }
+  }
+
+  // Sentinel -- transaction fees: computed live server-side on every call
+  // (provider gate, max amount, real fee bands -- see app/sentinel/fee_bands.py).
+  // "Update now" just re-calls this; there's no separate cache to go stale.
+  async function loadFeeBands(continent) {
+    setFeeBandsLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/sentinel/transaction-fees?continent=${continent}`);
+      const d = await r.json();
+      setFeeBandsData(d);
+    } catch (e) {
+      setFeeBandsData(null);
+    }
+    setFeeBandsLoading(false);
   }
 
   async function runSentinel() {
@@ -3080,6 +3099,76 @@ export default function Dashboard() {
                       View sources & review changes →
                     </button>
                   </p>
+                </div>
+
+                {/* Sentinel -- transaction fees: the four-criteria view
+                    requested directly -- provider gate (no verified
+                    Konduyt provider = discarded, not shown), max amount,
+                    real fee bands per currency, and instant recompute via
+                    "Update now" (just re-fetches; nothing is cached). */}
+                <div className="an-section">
+                  <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+                    <h2 className="an-section-h" style={{ marginBottom: 0 }}>Sentinel — transaction fees</h2>
+                    <button className="preview-checkout-btn" type="button" disabled={feeBandsLoading}
+                      onClick={() => loadFeeBands(feeBandsContinent)}>
+                      {feeBandsLoading ? 'Updating…' : '↻ Update now'}
+                    </button>
+                  </div>
+                  <p className="con-sub" style={{ marginTop: 6, marginBottom: 12 }}>
+                    Only shows methods with a real, verified Konduyt provider — everything else is
+                    discarded rather than shown with a fee nobody could actually route through.
+                  </p>
+                  <div className="fee-bands-continent-tabs">
+                    {['africa', 'europe', 'north_america', 'south_america'].map((c) => (
+                      <button key={c} type="button"
+                        className={feeBandsContinent === c ? 'fee-bands-tab active' : 'fee-bands-tab'}
+                        onClick={() => { setFeeBandsContinent(c); loadFeeBands(c); }}>
+                        {c === 'north_america' ? 'North America' : c === 'south_america' ? 'South America'
+                          : c[0].toUpperCase() + c.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                  {feeBandsLoading && <p className="con-sub" style={{ marginTop: 12 }}>Computing live from current data…</p>}
+                  {!feeBandsLoading && feeBandsData && (
+                    <>
+                      <p className="con-sub" style={{ marginTop: 10 }}>
+                        {feeBandsData.count} payment method{feeBandsData.count === 1 ? '' : 's'} with a verified provider.
+                      </p>
+                      <div className="fee-bands-table-wrap">
+                        <table className="fee-bands-table">
+                          <thead>
+                            <tr>
+                              <th>Country</th>
+                              <th>Method</th>
+                              <th>Provider</th>
+                              <th>Max</th>
+                              {feeBandsData.bands.map((b) => <th key={b}>{b}</th>)}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {feeBandsData.entries.map((e, i) => (
+                              <tr key={`${e.country}-${e.payment_method}-${e.provider}-${i}`}>
+                                <td>{e.country}</td>
+                                <td>{e.payment_method}{e.card_scope ? ` (${e.card_scope})` : ''}</td>
+                                <td>{e.provider}</td>
+                                <td>{e.max_amount != null ? `${e.max_amount.toLocaleString()} ${e.currency}` : '—'}</td>
+                                {e.bands.map((b, j) => (
+                                  <td key={j} title={b.note || ''}>
+                                    {b.known ? `${b.fee} ${e.currency}` : '—'}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                  {!feeBandsLoading && feeBandsData && feeBandsData.count === 0 && (
+                    <p className="con-sub" style={{ marginTop: 12 }}>
+                      No payment methods in this continent currently have a verified Konduyt provider.
+                    </p>
+                  )}
                 </div>
 
                 {analyticsLoading && !analyticsOverview && <p className="con-sub">Loading…</p>}
