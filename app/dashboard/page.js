@@ -3149,7 +3149,12 @@ export default function Dashboard() {
                             {feeBandsData.entries.map((e, i) => (
                               <tr key={`${e.country}-${e.payment_method}-${e.provider}-${i}`}>
                                 <td>{e.country}</td>
-                                <td>{e.payment_method}{e.card_scope ? ` (${e.card_scope})` : ''}</td>
+                                <td>
+                                  {e.payment_method}{e.card_scope ? ` (${e.card_scope})` : ''}
+                                  {e.category && e.category !== e.payment_method && (
+                                    <span className="fee-bands-category"> · {e.category}</span>
+                                  )}
+                                </td>
                                 <td>{e.provider}</td>
                                 <td>{e.max_amount != null ? `${e.max_amount.toLocaleString()} ${e.currency}` : '—'}</td>
                                 {e.bands.map((b, j) => (

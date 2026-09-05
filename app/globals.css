@@ -1995,6 +1995,7 @@
     cursor:pointer; font-family:inherit;
   }
   .fee-bands-tab.active{background:var(--ink); color:var(--panel); border-color:var(--ink);}
+  .fee-bands-category{color:var(--text-secondary); font-weight:500;}
   .fee-bands-table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px;}
   .fee-bands-table{border-collapse:collapse; width:100%; font-size:12.5px; white-space:nowrap;}
   .fee-bands-table th, .fee-bands-table td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--border);}
