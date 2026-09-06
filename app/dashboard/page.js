@@ -5,6 +5,7 @@ import CheckoutModal from './CheckoutModal';
 import LogoMark from '../LogoMark';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
+import { highlightComments } from './codehighlight';
 import { LANG_SNIPPETS } from './langsnippets';
 import { buildGreeting } from './greeting';
 import { LANG_ICONS, LANG_BRAND } from './langicons';
@@ -2035,7 +2036,7 @@ export default function Dashboard() {
                               </button>
                             </div>
                             <div className="keys-codeblock">
-                              <pre><code>{content}</code></pre>
+                              <pre><code>{highlightComments(content)}</code></pre>
                             </div>
                           </div>
                         </>
@@ -2100,7 +2101,7 @@ export default function Dashboard() {
                               </button>
                             </div>
                             <div className="keys-codeblock">
-                              <pre><code>{code}</code></pre>
+                              <pre><code>{highlightComments(code)}</code></pre>
                             </div>
                           </div>
                         );

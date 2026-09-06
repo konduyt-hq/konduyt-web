@@ -6,6 +6,7 @@ import { HOSTING_PLATFORMS } from './dashboard/hostingplatforms';
 import { INTELLIGENCE_TESTING_SDK } from './dashboard/intelligencesdk';
 import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './dashboard/frontendfiles';
 import { FRONTEND_OPTIONS } from './dashboard/frontendoptions';
+import { highlightComments } from './dashboard/codehighlight';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
 const ICON_KEY = {
@@ -926,6 +927,7 @@ function render(code) {
   return code.replace(/\{\{API\}\}/g, API_BASE).replace(/\{\{SECRET\}\}/g, KEYS.secret);
 }
 
+
 function CopyButton({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false);
   async function handleCopy() {
@@ -1121,7 +1123,7 @@ export default function DevPanel() {
                       <span>{frontend.filename}</span>
                       <CopyButton text={content} />
                     </div>
-                    <pre className="code-pre">{content}</pre>
+                    <pre className="code-pre">{highlightComments(content)}</pre>
                   </div>
                 </>
               );
@@ -1164,7 +1166,7 @@ export default function DevPanel() {
               <CopyButton text={renderedCode} />
             </div>
             {active.deps && <div className="code-deps"><span className="code-deps-tag">setup</span>{active.deps}</div>}
-            <pre className="code-pre">{renderedCode}</pre>
+            <pre className="code-pre">{highlightComments(renderedCode)}</pre>
             {active.note && <div className="code-note">{active.note}</div>}
           </div>
         </div>
