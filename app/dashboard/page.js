@@ -831,9 +831,20 @@ export default function Dashboard() {
         body: JSON.stringify({ mode: 'live' }),
       });
       if (!r.ok) { alert('Could not revoke the key. Try again.'); return; }
+      // The rotate response is the ONE moment the new live secret is ever
+      // shown in plaintext -- captured here directly. A follow-up GET
+      // /keys will correctly never include it (backend security fix,
+      // 2026-09-06: live secrets are hash-only from here on, never
+      // retrievable again after this). Merge it into local state so the
+      // person can see and copy it now, then it's gone for good.
+      const rotated = await r.json().catch(() => ({}));
       const kr = await fetch(`${API_BASE}/projects/${activeId}/keys`, { headers: authHeaders() });
       const kd = await kr.json();
-      setKeys(kd.keys || null);
+      const merged = kd.keys || null;
+      if (merged && merged.live && rotated.secret) {
+        merged.live = { ...merged.live, secret: rotated.secret };
+      }
+      setKeys(merged);
       setShowSecret(true);
     } catch (e) { alert('Could not revoke the key. Try again.'); }
   }
@@ -1886,20 +1897,31 @@ export default function Dashboard() {
                       <div className="keys-field">
                         <label>Secret key</label>
                         <div className="keys-value">
-                          <code>{showSecret ? (k.secret || k.secret_masked) : k.secret_masked}</code>
+                          <code>{k.secret || k.secret_masked}</code>
                           <button className="keys-copy danger" type="button"
                             onClick={revokeSecret}>
                             Revoke
                           </button>
-                          <button className="keys-copy" type="button"
-                            onClick={() => setShowSecret((s) => !s)}>
-                            {showSecret ? 'Hide' : 'Reveal'}
-                          </button>
-                          <button className="keys-copy" type="button"
-                            onClick={() => k.secret && copyToClipboard(k.secret, 'sec')}>
-                            {copied === 'sec' ? 'Copied' : 'Copy'}
-                          </button>
+                          {k.secret && (
+                            <button className="keys-copy" type="button"
+                              onClick={() => copyToClipboard(k.secret, 'sec')}>
+                              {copied === 'sec' ? 'Copied' : 'Copy'}
+                            </button>
+                          )}
                         </div>
+                        {k.secret ? (
+                          <p className="keys-note" style={{ marginTop: 6 }}>
+                            This is shown once, right now — copy it somewhere safe.
+                            Konduyt won&apos;t be able to show it to you again after you
+                            leave or refresh this page.
+                          </p>
+                        ) : (
+                          <p className="keys-note" style={{ marginTop: 6 }}>
+                            Only shown once, right after you generate or revoke it —
+                            Konduyt never stores it in a form it could show you again
+                            after that. Revoke to get a new one if you&apos;ve lost it.
+                          </p>
+                        )}
                       </div>
                     </div>
                     <p className="keys-note">
@@ -3319,19 +3341,33 @@ export default function Dashboard() {
 
           async function onPay(methodId) {
             try {
-              const secret = keys?.live?.secret;
-              if (!secret) {
-                return { ok: true, message: `This is a preview. With ${merchantName} connected to a live provider, the customer would now complete payment via ${methodId}.` };
-              }
-              const r = await fetch(`${API_BASE}/v1/payments`, {
+              // SECURITY FIX (2026-09-06, full-system audit): this used to
+              // read the project's raw live secret key (keys?.live?.secret)
+              // out of component state and send it as a Bearer token
+              // directly from browser JavaScript -- a real exposure on its
+              // own (any XSS on this page could exfiltrate a live payment
+              // credential that, unlike a session token, never expires on
+              // its own) independent of the backend storage fix that makes
+              // that secret non-retrievable now anyway (konduyt-api's
+              // projects.py). Preview now goes through a session-
+              // authenticated, project-ownership-checked backend endpoint
+              // instead -- the raw live secret never needs to reach the
+              // browser for this feature at all. A project with no live
+              // connection yet gets the exact same friendly preview message
+              // as before, just from the endpoint's own clean 400 rather
+              // than a client-side "no secret" check.
+              const r = await fetch(`${API_BASE}/projects/${activeId}/preview-payment`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' },
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount: amountMinor, currency: previewCurrency, method: methodId,
                                        customer: { email: 'customer@example.com' } }),
               });
               const d = await r.json().catch(() => ({}));
               if (r.ok) {
                 return { ok: true, message: '' };
+              }
+              if (r.status === 400) {
+                return { ok: true, message: `This is a preview. With ${merchantName} connected to a live provider, the customer would now complete payment via ${methodId}.` };
               }
               const detail = d.detail;
               const msg = (detail && detail.message) || (typeof detail === 'string' ? detail : 'Payment could not start.');
