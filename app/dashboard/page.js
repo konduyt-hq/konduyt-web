@@ -3141,7 +3141,7 @@ export default function Dashboard() {
                     discarded rather than shown with a fee nobody could actually route through.
                   </p>
                   <div className="fee-bands-continent-tabs">
-                    {['africa', 'europe', 'north_america', 'south_america', 'oceania'].map((c) => (
+                    {['africa', 'asia', 'europe', 'north_america', 'south_america', 'oceania'].map((c) => (
                       <button key={c} type="button"
                         className={feeBandsContinent === c ? 'fee-bands-tab active' : 'fee-bands-tab'}
                         onClick={() => { setFeeBandsContinent(c); loadFeeBands(c); }}>
