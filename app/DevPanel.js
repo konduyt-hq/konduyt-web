@@ -37,13 +37,13 @@ const LANGUAGES = [
     code: `#!/bin/bash
 # test.sh  —  run against whichever backend you have running (localhost:3000)
 
-echo "1. One-time payment"
+echo "1. One-time purchase"
 curl -X POST http://localhost:3000/api/create-payment \\
   -H "Content-Type: application/json" \\
   -d '{"amount": 5000, "email": "customer@example.com"}'
 echo
 
-echo "2. Recurring subscription"
+echo "2. Recurring"
 curl -X POST http://localhost:3000/api/create-subscription \\
   -H "Content-Type: application/json" \\
   -d '{}'
