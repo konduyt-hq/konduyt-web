@@ -239,7 +239,6 @@ export default function Dashboard() {
   const [projectDeleteConfirm, setProjectDeleteConfirm] = useState('');
   const [projectDeleteBusy, setProjectDeleteBusy] = useState(false);
   const [projectDeleteError, setProjectDeleteError] = useState('');
-  const [rotating, setRotating] = useState(false);
 
   const active = projects.find((p) => p.id === activeId) || null;
 
@@ -1169,18 +1168,11 @@ export default function Dashboard() {
     }
   }
 
-  async function rotateTestKey() {
-    if (!confirm('Roll your test secret key? The old key stops working immediately.')) return;
-    setRotating(true);
-    await fetch(`${API_BASE}/projects/${activeId}/keys/rotate`, {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'test' }),
-    });
-    loadProjectData(activeId);
-    setRotating(false);
-    setShowSecret(true);
-  }
+  // rotateTestKey() removed (2026-09-07): was dead code -- defined but
+  // never wired to any button -- and called the backend with mode: 'test',
+  // which the backend has now correctly stopped accepting. Konduyt genuinely
+  // has no test-mode key of its own; revokeSecret() above (mode: 'live') is
+  // the one real key-rotation action in this dashboard.
 
   function copy(text, label) {
     try {
@@ -1226,10 +1218,18 @@ export default function Dashboard() {
     );
   }
 
-  const testKeys = keys?.test || null;
   const liveKeys = keys?.live || null;
   const kycVerified = active?.kyc_status === 'verified';
-  const secretForSnippet = testKeys?.secret || 'kdu_test_secret_...';
+  // Fixed (2026-09-07): this used to reference keys?.test?.secret, which is
+  // always null -- Konduyt has no test-mode key of its own (see the removed
+  // rotateTestKey() above) -- so this snippet was *always* showing a fake,
+  // non-functional placeholder to real, signed-in developers, even though
+  // /v1/payments/test genuinely requires a real, valid secret to succeed.
+  // Now uses the real live secret when it's genuinely available (the one
+  // moment right after generating or revoking it -- see revokeSecret()
+  // above), and an honest "go get one" placeholder otherwise, instead of a
+  // string shaped to look like a real key.
+  const secretForSnippet = liveKeys?.secret || 'YOUR_LIVE_SECRET_KEY (reveal it above first)';
   const apiForSnippet = API_BASE;
 
   const currentLang = LANGUAGES.find((l) => l.id === lang) || LANGUAGES[0];
