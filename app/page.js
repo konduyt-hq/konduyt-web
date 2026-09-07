@@ -108,6 +108,7 @@ export default function Home() {
               </svg>
             </div>
             <span className="brand-name">Konduyt</span>
+            <span className="beta-badge">Beta</span>
           </div>
           <div className="nav-links">
             <a href="/docs/">Docs</a>

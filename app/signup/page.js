@@ -144,6 +144,9 @@ export default function Signup() {
               </g>
             </svg>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+            <span className="beta-badge">Beta</span>
+          </div>
 
           <h1 className="auth-title">Create your Konduyt account</h1>
           <p className="auth-sub">One integration for every payment provider. Start in seconds.</p>

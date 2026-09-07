@@ -1246,6 +1246,7 @@ export default function Dashboard() {
             <Link href="/dashboard/" className="con-logo-icon" aria-label="Konduyt dashboard">
               <LogoMark className="con-logo-mark" />
             </Link>
+            <span className="beta-badge">Beta</span>
             {greetingText && (
               <>
                 <span className="con-topbar-sep">|</span>
