@@ -10,34 +10,31 @@
 // directly -- there is no safe way to hold a secret key on a device.
 // {{API}} is replaced at render time with the API base URL.
 //
-// Every language is organized around the one real distinction that actually
-// matters for reading the code: who determines the amount.
-//   - User's input -- the shopper types it themselves (a donation, a tip, a
-//                      "pay what you want" field). POST /v1/payments.
-//   - Set price     -- YOU determine it, not the shopper. Covers every case
-//                      where the amount is fixed or computed on your side:
-//                        - a fixed product price      -- POST /v1/payments
-//                        - a recurring subscription    -- POST /v1/payment_sessions
-//                          (recurring: true), then Konduyt.checkout({ sessionId })
-//                        - a split payment              -- POST /v1/marketplace_payments
-//                          (splits[])
-//                        - a pay-as-you-go usage bill    -- amount computed
-//                          server-side from real usage, then
-//                          POST /v1/payment_sessions (recurring: false)
+// Deliberately just two scenarios -- the two things the large majority of
+// merchants actually need on day one:
+//   - One-time purchase -- POST /v1/payments. The one-time example shows
+//     BOTH ways an amount can come from: a shopper typing it in (a
+//     donation), and a fixed price you already know (a product) -- the
+//     same amount variable either way, just where it comes from differs.
+//   - Recurring          -- POST /v1/payment_sessions (recurring: true),
+//     then Konduyt.checkout({ sessionId }). A fixed subscription price.
+// Split payments (/v1/marketplace_payments) and usage-based billing are
+// real, separate Konduyt capabilities -- just not shown here, to keep the
+// first thing a developer reads as small as possible.
+//
 // Everything else (wiring the Buy button, failover/rerouting, cross-border
-// eligibility) is a separate, real concern of its own -- not about who sets
-// the amount -- so it stays as its own section, not folded into either of
-// the two above.
+// eligibility) is a separate, real concern of its own -- not about which
+// of the two scenarios above -- so it stays as its own section.
 
 export const LANG_SNIPPETS = [
   {
     id: 'curl', label: 'cURL', icon: 'curl',
     sections: [
-      { title: "User's input", code:
-`# The shopper types the amount themselves -- a donation, a tip, a
-# "pay what you want" field. Comes straight from your own form/input,
-# not something you set.
-AMOUNT=$SHOPPER_INPUT   # whatever the shopper typed into your form
+      { title: 'One-time purchase', code:
+`# amount either comes from the shopper (a donation input) or is a price
+# you already know (a product) -- same field either way:
+AMOUNT=1000            # a fixed price you already know, OR
+# AMOUNT=$SHOPPER_INPUT  # whatever the shopper typed into a donation field
 
 # $KONDUYT_SECRET_KEY is set as an environment variable on your server/host --
 # see "Where does my secret key go?" above, never pasted into a command directly.
@@ -50,25 +47,10 @@ curl -X POST {{API}}/v1/payments \\
     \\"method\\": \\"mpesa\\",
     \\"customer\\": { \\"email\\": \\"customer@example.com\\" }
   }"` },
-      { title: 'Set price', code:
-`# Everything below is a price YOU determine, not the shopper -- a fixed
-# product price, a subscription, a split total, or a computed usage bill.
-# Same /v1/payments call as "User's input" above, just AMOUNT is a number
-# you already know instead of something typed in:
-AMOUNT=1000             # a fixed price you already know
-curl -X POST {{API}}/v1/payments \\
-  -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d "{
-    \\"amount\\": $AMOUNT,
-    \\"currency\\": \\"KES\\",
-    \\"method\\": \\"mpesa\\",
-    \\"customer\\": { \\"email\\": \\"customer@example.com\\" }
-  }"
-
-# Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-# session; the customer authorizes once in the checkout popup, Konduyt then
-# charges the same amount automatically every interval.
+      { title: 'Recurring', code:
+`# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+# Creates a session; the customer authorizes once in the checkout popup,
+# Konduyt then charges the same amount automatically every interval.
 curl -X POST {{API}}/v1/payment_sessions \\
   -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
   -H "Content-Type: application/json" \\
@@ -79,38 +61,7 @@ curl -X POST {{API}}/v1/payment_sessions \\
     "interval": "monthly",
     "reference": "sub_pro_plan"
   }'
-# Returns {"id": "sess_...", ...} -- pass that id to Konduyt.checkout({ sessionId })
-
-# Split payment -- one checkout, proceeds split across sellers using the
-# provider's own real split capability. Konduyt never holds or redistributes
-# funds. Register each seller once first (dashboard's Payment Providers tab).
-curl -X POST {{API}}/v1/marketplace_payments \\
-  -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "provider": "paystack",
-    "amount": 500000,
-    "currency": "KES",
-    "splits": [
-      { "seller_id": "seller_123", "amount": 400000 }
-    ]
-  }'
-# The remaining 100000 (amount minus the splits) is your own commission.
-
-# Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-# e.g. metered API calls, storage, or minutes used this billing period.
-UNITS=340
-PRICE_PER_UNIT=25
-AMOUNT=$((UNITS * PRICE_PER_UNIT))
-curl -X POST {{API}}/v1/payment_sessions \\
-  -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d "{
-    \\"amount\\": $AMOUNT,
-    \\"currency\\": \\"KES\\",
-    \\"recurring\\": false,
-    \\"reference\\": \\"usage_$(date +%s)\\"
-  }"` },
+# Returns {"id": "sess_...", ...} -- pass that id to Konduyt.checkout({ sessionId })` },
       { title: 'Failover + rerouting', code:
 `# "method", not "provider" -- this is what triggers real failover: Konduyt
 # tries every provider configured for mpesa, in order, stopping on success
@@ -144,7 +95,7 @@ curl "{{API}}/checkout/config?pk=$KONDUYT_PUBLISHABLE_KEY&amount=500000&currency
   {
     id: 'js', label: 'JavaScript', icon: 'js',
     sections: [
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `// Runs server-side (Node). The key is read from the environment — never
 // hardcoded, never sent to the browser.
 const KONDUYT_SECRET_KEY = process.env.KONDUYT_SECRET_KEY;
@@ -161,10 +112,9 @@ async function createPayment({ amount, email, method = "mpesa" }) {
   return res.json();
 }
 
-// The shopper types the amount themselves -- a donation, a tip, a
-// "pay what you want" field. Comes straight from your own form/input,
-// not something you set.
-const amount = Number(req.body.amount);   // whatever the shopper typed in
+// amount either comes from the shopper, or is a price you already know:
+const amount = Number(req.body.amount);   // whatever the shopper typed in (a donation)
+// const amount = selectedItem.price;      // a fixed price you already know (a product)
 const payment = await createPayment({ amount, email: req.body.email });
 // res.redirect(payment.authorization_url);` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
@@ -181,17 +131,10 @@ app.post("/api/create-payment", async (req, res) => {
 });
 
 app.listen(3000, () => console.log("Backend running on http://localhost:3000"));` },
-      { title: 'Set price', code:
-`// Everything below is a price YOU determine, not the shopper -- a fixed
-// product price, a subscription, a split total, or a computed usage bill.
-
-// A fixed product price you already know:
-const amount = selectedItem.price;
-const payment = await createPayment({ amount, email: req.body.email });
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-// session; the customer authorizes once in the checkout popup, Konduyt then
-// charges the same amount automatically every interval.
+      { title: 'Recurring', code:
+`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Creates a session; the customer authorizes once in the checkout popup,
+// Konduyt then charges the same amount automatically every interval.
 async function createSubscriptionSession() {
   const res = await fetch("{{API}}/v1/payment_sessions", {
     method: "POST",
@@ -207,47 +150,9 @@ async function createSubscriptionSession() {
   });
   return res.json(); // { id: "sess_...", ... }
 }
+
 // Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })
-
-// Split payment -- one checkout, proceeds split across sellers using the
-// provider's own real split capability. Konduyt never holds or redistributes
-// funds. Register each seller once first (dashboard's Payment Providers tab).
-async function createSplitPayment({ amount, sellerId, sellerAmount }) {
-  const res = await fetch("{{API}}/v1/marketplace_payments", {
-    method: "POST",
-    headers: {
-      "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      provider: "paystack", amount, currency: "KES",
-      splits: [{ seller_id: sellerId, amount: sellerAmount }],
-    }),
-  });
-  return res.json();
-}
-// The remainder (amount minus the splits) is your own commission.
-
-// Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-// e.g. metered API calls, storage, or minutes used this billing period.
-async function createUsageBillSession(unitsUsed, pricePerUnit) {
-  const amount = unitsUsed * pricePerUnit;
-
-  const res = await fetch("{{API}}/v1/payment_sessions", {
-    method: "POST",
-    headers: {
-      "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      amount, currency: "KES", recurring: false,
-      reference: \`usage_\${Date.now()}\`,
-    }),
-  });
-  return res.json();
-}
-// e.g. createUsageBillSession(340, 25) -- 340 real units at 25 each` },
+// Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
@@ -292,7 +197,7 @@ async function eligibleMethodsFor(customerCountry) {
     id: 'python', label: 'Python', icon: 'python',
     sections: [
       { title: 'Dependency', code: `pip install requests` },
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `import os
 import requests
 
@@ -312,10 +217,9 @@ def create_payment(amount, email, method="mpesa"):
     )
     return res.json()
 
-# The shopper types the amount themselves -- a donation, a tip, a
-# "pay what you want" field. Comes straight from your own form/input,
-# not something you set.
-amount = int(request.form["amount"])   # whatever the shopper typed in
+# amount either comes from the shopper, or is a price you already know:
+amount = int(request.form["amount"])   # whatever the shopper typed in (a donation)
+# amount = selected_item.price          # a fixed price you already know (a product)
 payment = create_payment(amount, request.form["email"])` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
@@ -333,18 +237,10 @@ def handle_create_payment():
 if __name__ == "__main__":
     app.run(port=3000)
     print("Backend running on http://localhost:3000")` },
-      { title: 'Set price', code:
-`# Everything below is a price YOU determine, not the shopper -- a fixed
-# product price, a subscription, a split total, or a computed usage bill.
-import time
-
-# A fixed product price you already know:
-amount = selected_item.price
-payment = create_payment(amount, request.form["email"])
-
-# Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-# session; the customer authorizes once in the checkout popup, Konduyt then
-# charges the same amount automatically every interval.
+      { title: 'Recurring', code:
+`# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+# Creates a session; the customer authorizes once in the checkout popup,
+# Konduyt then charges the same amount automatically every interval.
 def create_subscription_session():
     res = requests.post(
         "{{API}}/v1/payment_sessions",
@@ -358,37 +254,7 @@ def create_subscription_session():
     return res.json()  # {"id": "sess_...", ...}
 
 # Client-side, once you have the session id:
-# Konduyt.checkout({ sessionId: session.id })
-
-# Split payment -- one checkout, proceeds split across sellers using the
-# provider's own real split capability. Konduyt never holds or redistributes
-# funds. Register each seller once first (dashboard's Payment Providers tab).
-def create_split_payment(amount, seller_id, seller_amount):
-    res = requests.post(
-        "{{API}}/v1/marketplace_payments",
-        headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
-        json={
-            "provider": "paystack", "amount": amount, "currency": "KES",
-            "splits": [{"seller_id": seller_id, "amount": seller_amount}],
-        },
-    )
-    return res.json()
-# The remainder (amount minus the splits) is your own commission.
-
-# Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-# e.g. metered API calls, storage, or minutes used this billing period.
-def create_usage_bill_session(units_used, price_per_unit):
-    amount = units_used * price_per_unit
-    res = requests.post(
-        "{{API}}/v1/payment_sessions",
-        headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
-        json={
-            "amount": amount, "currency": "KES", "recurring": False,
-            "reference": f"usage_{int(time.time())}",
-        },
-    )
-    return res.json()
-# e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+# Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `# "method", not "provider" -- this is what triggers real failover: Konduyt
 # tries every provider configured for this method, in order, stopping on
@@ -430,7 +296,7 @@ def eligible_methods_for(customer_country):
   {
     id: 'php', label: 'PHP', icon: 'php',
     sections: [
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `<?php
 // Read the key from the environment — never hardcode it.
 $secret = getenv("KONDUYT_SECRET_KEY");
@@ -456,10 +322,9 @@ function create_payment($secret, $amount, $email, $method = "mpesa") {
     return $payment;
 }
 
-// The shopper types the amount themselves -- a donation, a tip, a
-// "pay what you want" field. Comes straight from your own form/input,
-// not something you set.
-$amount = (int) $_POST["amount"];       // whatever the shopper typed in
+// amount either comes from the shopper, or is a price you already know:
+$amount = (int) $_POST["amount"];       // whatever the shopper typed in (a donation)
+// $amount = $selectedItem["price"];    // a fixed price you already know (a product)
 $payment = create_payment($secret, $amount, $_POST["email"]);` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `<?php
@@ -470,18 +335,11 @@ $payment = create_payment($secret, $amount, $_POST["email"]);` },
 $body = json_decode(file_get_contents("php://input"), true);
 header("Content-Type: application/json");
 echo json_encode(create_payment($secret, (int) $body["amount"], $body["email"]));` },
-      { title: 'Set price', code:
+      { title: 'Recurring', code:
 `<?php
-// Everything below is a price YOU determine, not the shopper -- a fixed
-// product price, a subscription, a split total, or a computed usage bill.
-
-// A fixed product price you already know:
-$amount = $selectedItem["price"];
-$payment = create_payment($secret, $amount, $_POST["email"]);
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-// session; the customer authorizes once in the checkout popup, Konduyt then
-// charges the same amount automatically every interval.
+// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Creates a session; the customer authorizes once in the checkout popup,
+// Konduyt then charges the same amount automatically every interval.
 function create_subscription_session($secret) {
     $ch = curl_init("{{API}}/v1/payment_sessions");
     curl_setopt_array($ch, [
@@ -502,53 +360,7 @@ function create_subscription_session($secret) {
     return $session; // ["id" => "sess_...", ...]
 }
 // Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })
-
-// Split payment -- one checkout, proceeds split across sellers using the
-// provider's own real split capability. Konduyt never holds or redistributes
-// funds. Register each seller once first (dashboard's Payment Providers tab).
-function create_split_payment($secret, $amount, $sellerId, $sellerAmount) {
-    $ch = curl_init("{{API}}/v1/marketplace_payments");
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer " . $secret,
-            "Content-Type: application/json",
-        ],
-        CURLOPT_POSTFIELDS => json_encode([
-            "provider" => "paystack", "amount" => $amount, "currency" => "KES",
-            "splits" => [["seller_id" => $sellerId, "amount" => $sellerAmount]],
-        ]),
-    ]);
-    $payment = json_decode(curl_exec($ch), true);
-    curl_close($ch);
-    return $payment;
-}
-// The remainder (amount minus the splits) is your own commission.
-
-// Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-// e.g. metered API calls, storage, or minutes used this billing period.
-function create_usage_bill_session($secret, $unitsUsed, $pricePerUnit) {
-    $amount = $unitsUsed * $pricePerUnit;
-    $ch = curl_init("{{API}}/v1/payment_sessions");
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer " . $secret,
-            "Content-Type: application/json",
-        ],
-        CURLOPT_POSTFIELDS => json_encode([
-            "amount" => $amount, "currency" => "KES", "recurring" => false,
-            "reference" => "usage_" . time(),
-        ]),
-    ]);
-    $session = json_decode(curl_exec($ch), true);
-    curl_close($ch);
-    return $session;
-}
-// e.g. create_usage_bill_session($secret, 340, 25) -- 340 real units at 25 each` },
+// Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `<?php
 // "method", not "provider" -- this is what triggers real failover: Konduyt
@@ -608,7 +420,7 @@ function eligible_methods_for($publishable, $customerCountry) {
   {
     id: 'go', label: 'Go', icon: 'go',
     sections: [
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `package main
 
 import (
@@ -671,21 +483,12 @@ func main() {
 	fmt.Println("Backend running on http://localhost:3000")
 	http.ListenAndServe(":3000", nil)
 }` },
-      { title: 'Set price', code:
-`// Everything below is a price YOU determine, not the shopper -- a fixed
-// product price, a subscription, a split total, or a computed usage bill.
-import "fmt"
-import "time"
+      { title: 'Recurring', code:
+`import "fmt"
 
-// A fixed product price you already know:
-func handleProductPurchase(w http.ResponseWriter, r *http.Request) {
-	payment, _ := createPayment(selectedItem.Price, r.FormValue("email"))
-	json.NewEncoder(w).Encode(payment)
-}
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-// session; the customer authorizes once in the checkout popup, Konduyt then
-// charges the same amount automatically every interval.
+// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Creates a session; the customer authorizes once in the checkout popup,
+// Konduyt then charges the same amount automatically every interval.
 func createSubscriptionSession() (map[string]any, error) {
 	body, _ := json.Marshal(map[string]any{
 		"amount": 100000, "currency": "KES",
@@ -708,57 +511,7 @@ func createSubscriptionSession() (map[string]any, error) {
 	return session, nil
 }
 // Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })
-
-// Split payment -- one checkout, proceeds split across sellers using the
-// provider's own real split capability. Konduyt never holds or redistributes
-// funds. Register each seller once first (dashboard's Payment Providers tab).
-func createSplitPayment(amount int, sellerID string, sellerAmount int) (map[string]any, error) {
-	body, _ := json.Marshal(map[string]any{
-		"provider": "paystack", "amount": amount, "currency": "KES",
-		"splits": []map[string]any{{"seller_id": sellerID, "amount": sellerAmount}},
-	})
-
-	req, _ := http.NewRequest("POST", "{{API}}/v1/marketplace_payments", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+konduytSecret)
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	var payment map[string]any
-	json.NewDecoder(res.Body).Decode(&payment)
-	return payment, nil
-}
-// The remainder (amount minus the splits) is your own commission.
-
-// Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-// e.g. metered API calls, storage, or minutes used this billing period.
-func createUsageBillSession(unitsUsed int, pricePerUnit int) (map[string]any, error) {
-	amount := unitsUsed * pricePerUnit
-	body, _ := json.Marshal(map[string]any{
-		"amount": amount, "currency": "KES", "recurring": false,
-		"reference": fmt.Sprintf("usage_%d", time.Now().Unix()),
-	})
-
-	req, _ := http.NewRequest("POST", "{{API}}/v1/payment_sessions", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+konduytSecret)
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	var session map[string]any
-	json.NewDecoder(res.Body).Decode(&session)
-	return session, nil
-}
-// e.g. createUsageBillSession(340, 25) -- 340 real units at 25 each` },
+// Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
@@ -829,7 +582,7 @@ func eligibleMethodsFor(customerCountry string) ([]any, error) {
   {
     id: 'ruby', label: 'Ruby', icon: 'ruby',
     sections: [
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `require "net/http"
 require "json"
 require "uri"
@@ -853,10 +606,9 @@ def create_payment(amount, email, method: "mpesa")
   JSON.parse(http.request(req).body)
 end
 
-# The shopper types the amount themselves -- a donation, a tip, a
-# "pay what you want" field. Comes straight from your own form/input,
-# not something you set.
-amount = params[:amount].to_i     # whatever the shopper typed in
+# amount either comes from the shopper, or is a price you already know:
+amount = params[:amount].to_i     # whatever the shopper typed in (a donation)
+# amount = selected_item.price    # a fixed price you already know (a product)
 payment = create_payment(amount, params[:email])` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
@@ -872,17 +624,10 @@ post "/api/create-payment" do
   payment.to_json
 end
 # Run: ruby server.rb -- backend on http://localhost:3000` },
-      { title: 'Set price', code:
-`# Everything below is a price YOU determine, not the shopper -- a fixed
-# product price, a subscription, a split total, or a computed usage bill.
-
-# A fixed product price you already know:
-amount = selected_item.price
-payment = create_payment(amount, params[:email])
-
-# Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-# session; the customer authorizes once in the checkout popup, Konduyt then
-# charges the same amount automatically every interval.
+      { title: 'Recurring', code:
+`# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+# Creates a session; the customer authorizes once in the checkout popup,
+# Konduyt then charges the same amount automatically every interval.
 def create_subscription_session
   uri = URI("{{API}}/v1/payment_sessions")
   http = Net::HTTP.new(uri.host, uri.port)
@@ -900,47 +645,7 @@ def create_subscription_session
   JSON.parse(http.request(req).body) # {"id" => "sess_...", ...}
 end
 # Client-side, once you have the session id:
-# Konduyt.checkout({ sessionId: session.id })
-
-# Split payment -- one checkout, proceeds split across sellers using the
-# provider's own real split capability. Konduyt never holds or redistributes
-# funds. Register each seller once first (dashboard's Payment Providers tab).
-def create_split_payment(amount, seller_id, seller_amount)
-  uri = URI("{{API}}/v1/marketplace_payments")
-  http = Net::HTTP.new(uri.host, uri.port)
-  http.use_ssl = true
-
-  req = Net::HTTP::Post.new(uri)
-  req["Authorization"] = "Bearer #{KONDUYT_SECRET_KEY}"
-  req["Content-Type"] = "application/json"
-  req.body = {
-    provider: "paystack", amount: amount, currency: "KES",
-    splits: [{ seller_id: seller_id, amount: seller_amount }],
-  }.to_json
-
-  JSON.parse(http.request(req).body)
-end
-# The remainder (amount minus the splits) is your own commission.
-
-# Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-# e.g. metered API calls, storage, or minutes used this billing period.
-def create_usage_bill_session(units_used, price_per_unit)
-  amount = units_used * price_per_unit
-  uri = URI("{{API}}/v1/payment_sessions")
-  http = Net::HTTP.new(uri.host, uri.port)
-  http.use_ssl = true
-
-  req = Net::HTTP::Post.new(uri)
-  req["Authorization"] = "Bearer #{KONDUYT_SECRET_KEY}"
-  req["Content-Type"] = "application/json"
-  req.body = {
-    amount: amount, currency: "KES", recurring: false,
-    reference: "usage_#{Time.now.to_i}",
-  }.to_json
-
-  JSON.parse(http.request(req).body)
-end
-# e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+# Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `# "method", not "provider" -- this is what triggers real failover: Konduyt
 # tries every provider configured for this method, in order, stopping on
@@ -993,7 +698,7 @@ end` },
 `[dependencies]
 reqwest = { version = "0.12", features = ["json", "blocking"] }
 serde_json = "1"` },
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `use serde_json::json;
 use std::env;
 
@@ -1048,19 +753,10 @@ fn main() {
         request.respond(Response::from_string(payment.to_string())).ok();
     }
 }` },
-      { title: 'Set price', code:
-`// Everything below is a price YOU determine, not the shopper -- a fixed
-// product price, a subscription, a split total, or a computed usage bill.
-use std::time::{SystemTime, UNIX_EPOCH};
-
-// A fixed product price you already know:
-fn handle_product_purchase(email: &str) -> Result<serde_json::Value, reqwest::Error> {
-    create_payment(selected_item_price(), email)
-}
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-// session; the customer authorizes once in the checkout popup, Konduyt then
-// charges the same amount automatically every interval.
+      { title: 'Recurring', code:
+`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Creates a session; the customer authorizes once in the checkout popup,
+// Konduyt then charges the same amount automatically every interval.
 fn create_subscription_session() -> Result<serde_json::Value, reqwest::Error> {
     let secret = env::var("KONDUYT_SECRET_KEY").expect("KONDUYT_SECRET_KEY not set");
     let client = reqwest::blocking::Client::new();
@@ -1076,44 +772,7 @@ fn create_subscription_session() -> Result<serde_json::Value, reqwest::Error> {
         .json() // {"id": "sess_...", ...}
 }
 // Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })
-
-// Split payment -- one checkout, proceeds split across sellers using the
-// provider's own real split capability. Konduyt never holds or redistributes
-// funds. Register each seller once first (dashboard's Payment Providers tab).
-fn create_split_payment(amount: u64, seller_id: &str, seller_amount: u64) -> Result<serde_json::Value, reqwest::Error> {
-    let secret = env::var("KONDUYT_SECRET_KEY").expect("KONDUYT_SECRET_KEY not set");
-    let client = reqwest::blocking::Client::new();
-    client
-        .post("{{API}}/v1/marketplace_payments")
-        .bearer_auth(secret)
-        .json(&json!({
-            "provider": "paystack", "amount": amount, "currency": "KES",
-            "splits": [{ "seller_id": seller_id, "amount": seller_amount }]
-        }))
-        .send()?
-        .json()
-}
-// The remainder (amount minus the splits) is your own commission.
-
-// Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-// e.g. metered API calls, storage, or minutes used this billing period.
-fn create_usage_bill_session(units_used: u64, price_per_unit: u64) -> Result<serde_json::Value, reqwest::Error> {
-    let amount = units_used * price_per_unit;
-    let secret = env::var("KONDUYT_SECRET_KEY").expect("KONDUYT_SECRET_KEY not set");
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-    let client = reqwest::blocking::Client::new();
-    client
-        .post("{{API}}/v1/payment_sessions")
-        .bearer_auth(secret)
-        .json(&json!({
-            "amount": amount, "currency": "KES", "recurring": false,
-            "reference": format!("usage_{}", now)
-        }))
-        .send()?
-        .json()
-}
-// e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+// Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
@@ -1162,7 +821,7 @@ fn eligible_methods_for(customer_country: &str) -> Result<serde_json::Value, req
   {
     id: 'csharp', label: 'C#', icon: 'csharp',
     sections: [
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -1211,18 +870,10 @@ app.MapPost("/api/create-payment", async (HttpRequest req) => {
 
 app.Urls.Add("http://localhost:3000");
 app.Run();` },
-      { title: 'Set price', code:
-`// Everything below is a price YOU determine, not the shopper -- a fixed
-// product price, a subscription, a split total, or a computed usage bill.
-
-// A fixed product price you already know:
-async Task<string> HandleProductPurchase(string email) {
-    return await CreatePayment(SelectedItem.Price, email);
-}
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-// session; the customer authorizes once in the checkout popup, Konduyt then
-// charges the same amount automatically every interval.
+      { title: 'Recurring', code:
+`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Creates a session; the customer authorizes once in the checkout popup,
+// Konduyt then charges the same amount automatically every interval.
 async Task<string> CreateSubscriptionSession() {
     var client = new HttpClient();
     client.DefaultRequestHeaders.Authorization =
@@ -1238,43 +889,7 @@ async Task<string> CreateSubscriptionSession() {
     return await res.Content.ReadAsStringAsync(); // { "id": "sess_...", ... }
 }
 // Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })
-
-// Split payment -- one checkout, proceeds split across sellers using the
-// provider's own real split capability. Konduyt never holds or redistributes
-// funds. Register each seller once first (dashboard's Payment Providers tab).
-async Task<string> CreateSplitPayment(int amount, string sellerId, int sellerAmount) {
-    var client = new HttpClient();
-    client.DefaultRequestHeaders.Authorization =
-        new AuthenticationHeaderValue("Bearer", secret);
-
-    var body = new StringContent(JsonSerializer.Serialize(new {
-        provider = "paystack", amount, currency = "KES",
-        splits = new[] { new { seller_id = sellerId, amount = sellerAmount } }
-    }), Encoding.UTF8, "application/json");
-
-    var res = await client.PostAsync("{{API}}/v1/marketplace_payments", body);
-    return await res.Content.ReadAsStringAsync();
-}
-// The remainder (amount minus the splits) is your own commission.
-
-// Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-// e.g. metered API calls, storage, or minutes used this billing period.
-async Task<string> CreateUsageBillSession(int unitsUsed, int pricePerUnit) {
-    int amount = unitsUsed * pricePerUnit;
-    var client = new HttpClient();
-    client.DefaultRequestHeaders.Authorization =
-        new AuthenticationHeaderValue("Bearer", secret);
-
-    var body = new StringContent(JsonSerializer.Serialize(new {
-        amount, currency = "KES", recurring = false,
-        reference = $"usage_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}"
-    }), Encoding.UTF8, "application/json");
-
-    var res = await client.PostAsync("{{API}}/v1/payment_sessions", body);
-    return await res.Content.ReadAsStringAsync();
-}
-// e.g. CreateUsageBillSession(340, 25) -- 340 real units at 25 each` },
+// Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
@@ -1403,14 +1018,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 }` },
-      { title: 'Set price — call YOUR backend', code:
-`// Everything below is a price YOU determine, not the shopper -- your
-// backend creates the real Konduyt request using its own secret key;
-// your app only ever talks to your own endpoints below, then opens
-// whatever checkout/session it gets back. Wire these into the same
-// MainActivity above (e.g. more buttons).
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month.
+      { title: 'Recurring — call YOUR backend', code:
+`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Your backend creates the real Konduyt session (recurring: true) using
+// its own secret key; your app only ever talks to your own endpoint
+// below, then opens the checkout it gets back. Wire this into the same
+// MainActivity above (e.g. a second button).
 void createSubscription(String email) throws IOException {
     OkHttpClient client = new OkHttpClient();
     String json = "{\\"email\\": \\"" + email + "\\", \\"plan\\": \\"pro_monthly\\"}";
@@ -1424,43 +1037,6 @@ void createSubscription(String email) throws IOException {
         String session = response.body().string();
         // your backend returns the real Konduyt session id --
         // open Konduyt's checkout with it in a Chrome Custom Tab
-    }
-}
-
-// Split payment -- your backend creates the real split via Konduyt's
-// /v1/marketplace_payments (see the other language tabs); your app only
-// ever sends what it split for, never a Konduyt key.
-void createSplitPurchase(int amount, String sellerId, String email) throws IOException {
-    OkHttpClient client = new OkHttpClient();
-    String json = "{\\"amount\\": " + amount + ", \\"sellerId\\": \\"" + sellerId
-        + "\\", \\"email\\": \\"" + email + "\\"}";
-
-    Request request = new Request.Builder()
-        .url(BACKEND + "/api/create-split-payment")
-        .post(RequestBody.create(json, MediaType.parse("application/json")))
-        .build();
-
-    try (Response response = client.newCall(request).execute()) {
-        String payment = response.body().string();
-    }
-}
-
-// Pay-as-you-go -- your backend computes the real bill from usage it
-// already tracks server-side, and creates the real Konduyt session --
-// your app just asks "what do I owe right now", never sends an amount
-// it computed itself.
-void requestUsageBill(String userId) throws IOException {
-    OkHttpClient client = new OkHttpClient();
-    String json = "{\\"userId\\": \\"" + userId + "\\"}";
-
-    Request request = new Request.Builder()
-        .url(BACKEND + "/api/create-usage-bill")
-        .post(RequestBody.create(json, MediaType.parse("application/json")))
-        .build();
-
-    try (Response response = client.newCall(request).execute()) {
-        String session = response.body().string();
-        // open Konduyt's checkout with the returned session id
     }
 }` },
       { title: 'Failover + rerouting — call YOUR backend', code:
@@ -1586,14 +1162,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }` },
-      { title: 'Set price — call YOUR backend', code:
-`// Everything below is a price YOU determine, not the shopper -- your
-// backend creates the real Konduyt request using its own secret key;
-// your app only ever talks to your own endpoints below, then opens
-// whatever checkout/session it gets back. Wire these into the same
-// MainActivity above (e.g. more buttons).
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month.
+      { title: 'Recurring — call YOUR backend', code:
+`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Your backend creates the real Konduyt session (recurring: true) using
+// its own secret key; your app only ever talks to your own endpoint
+// below, then opens the checkout it gets back. Wire this into the same
+// MainActivity above (e.g. a second button).
 fun createSubscription(email: String) {
     val client = OkHttpClient()
     val json = """{ "email": "$email", "plan": "pro_monthly" }""".trimIndent()
@@ -1607,42 +1181,6 @@ fun createSubscription(email: String) {
         val session = response.body?.string()
         // your backend returns the real Konduyt session id --
         // open Konduyt's checkout with it in a Chrome Custom Tab
-    }
-}
-
-// Split payment -- your backend creates the real split via Konduyt's
-// /v1/marketplace_payments (see the other language tabs); your app only
-// ever sends what it split for, never a Konduyt key.
-fun createSplitPurchase(amount: Int, sellerId: String, email: String) {
-    val client = OkHttpClient()
-    val json = """{ "amount": $amount, "sellerId": "$sellerId", "email": "$email" }""".trimIndent()
-
-    val request = Request.Builder()
-        .url("$backend/api/create-split-payment")
-        .post(json.toRequestBody("application/json".toMediaType()))
-        .build()
-
-    client.newCall(request).execute().use { response ->
-        val payment = response.body?.string()
-    }
-}
-
-// Pay-as-you-go -- your backend computes the real bill from usage it
-// already tracks server-side, and creates the real Konduyt session --
-// your app just asks "what do I owe right now", never sends an amount
-// it computed itself.
-fun requestUsageBill(userId: String) {
-    val client = OkHttpClient()
-    val json = """{ "userId": "$userId" }""".trimIndent()
-
-    val request = Request.Builder()
-        .url("$backend/api/create-usage-bill")
-        .post(json.toRequestBody("application/json".toMediaType()))
-        .build()
-
-    client.newCall(request).execute().use { response ->
-        val session = response.body?.string()
-        // open Konduyt's checkout with the returned session id
     }
 }` },
       { title: 'Failover + rerouting — call YOUR backend', code:
@@ -1743,14 +1281,12 @@ class ViewController: UIViewController {
     }
 }
 // e.g. try await createPayment(amount: selectedItem.price, email: email)` },
-      { title: 'Set price — call YOUR backend', code:
-`// Everything below is a price YOU determine, not the shopper -- your
-// backend creates the real Konduyt request using its own secret key;
-// your app only ever talks to your own endpoints below, then opens
-// whatever checkout/session it gets back. Wire these into the same
-// ViewController above (e.g. more buttons).
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month.
+      { title: 'Recurring — call YOUR backend', code:
+`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Your backend creates the real Konduyt session (recurring: true) using
+// its own secret key; your app only ever talks to your own endpoint
+// below, then opens the checkout it gets back. Wire this into the same
+// ViewController above (e.g. a second button).
 func createSubscription(email: String) async throws -> [String: Any] {
     var request = URLRequest(url: URL(string: "\\(backend)/api/create-subscription")!)
     request.httpMethod = "POST"
@@ -1762,38 +1298,6 @@ func createSubscription(email: String) async throws -> [String: Any] {
     let (data, _) = try await URLSession.shared.data(for: request)
     // your backend returns the real Konduyt session id --
     // open Konduyt's checkout with it
-    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
-}
-
-// Split payment -- your backend creates the real split via Konduyt's
-// /v1/marketplace_payments (see the other language tabs); your app only
-// ever sends what it split for, never a Konduyt key.
-func createSplitPurchase(amount: Int, sellerId: String, email: String) async throws -> [String: Any] {
-    var request = URLRequest(url: URL(string: "\\(backend)/api/create-split-payment")!)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    let body: [String: Any] = ["amount": amount, "sellerId": sellerId, "email": email]
-    request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-    let (data, _) = try await URLSession.shared.data(for: request)
-    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
-}
-
-// Pay-as-you-go -- your backend computes the real bill from usage it
-// already tracks server-side, and creates the real Konduyt session --
-// your app just asks "what do I owe right now", never sends an amount
-// it computed itself.
-func requestUsageBill(userId: String) async throws -> [String: Any] {
-    var request = URLRequest(url: URL(string: "\\(backend)/api/create-usage-bill")!)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    let body: [String: Any] = ["userId": userId]
-    request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-    let (data, _) = try await URLSession.shared.data(for: request)
-    // open Konduyt's checkout with the returned session id
     return try JSONSerialization.jsonObject(with: data) as! [String: Any]
 }` },
       { title: 'Failover + rerouting — call YOUR backend', code:
@@ -1833,7 +1337,7 @@ func eligibleMethods(customerCountry: String) async throws -> [String: Any] {
       { title: 'Dependency', code:
 `# Using libcurl (install via your package manager)
 sudo apt-get install libcurl4-openssl-dev   # Debian/Ubuntu` },
-      { title: "User's input", code:
+      { title: 'One-time purchase', code:
 `#include <curl/curl.h>
 #include <cstdlib>
 #include <string>
@@ -1843,6 +1347,8 @@ void create_payment(long amount, const std::string& email) {
     const char* secret = std::getenv("KONDUYT_SECRET_KEY");
     if (!secret) return;
 
+    // amount either comes from the shopper, or is a price you already
+    // know -- pass whichever one applies as the amount parameter above.
     CURL* curl = curl_easy_init();
     if (!curl) return;
 
@@ -1863,10 +1369,7 @@ void create_payment(long amount, const std::string& email) {
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-}
-// Call this with whatever the shopper typed in -- a donation, a tip, a
-// "pay what you want" field. That's the "user's input" case; see "Set
-// price" below for amounts YOU determine instead.` },
+}` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
 // route -- amountInput/emailInput are its real field ids. cpp-httplib
@@ -1889,21 +1392,14 @@ int main() {
     printf("Backend running on http://localhost:3000\\n");
     svr.listen("0.0.0.0", 3000);
 }` },
-      { title: 'Set price', code:
-`// Everything below is a price YOU determine, not the shopper -- a fixed
-// product price, a subscription, a split total, or a computed usage bill.
-#include <curl/curl.h>
+      { title: 'Recurring', code:
+`#include <curl/curl.h>
 #include <cstdlib>
 #include <string>
-#include <ctime>
 
-// A fixed product price you already know:
-// create_payment(1000, email);  -- same function as "User's input" above,
-// just called with a number you already know instead of a shopper's input.
-
-// Recurring subscription -- e.g. a Pro Plan at KES 1,000/month. Creates a
-// session; the customer authorizes once in the checkout popup, Konduyt then
-// charges the same amount automatically every interval.
+// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
+// Creates a session; the customer authorizes once in the checkout popup,
+// Konduyt then charges the same amount automatically every interval.
 void create_subscription_session() {
     const char* secret = std::getenv("KONDUYT_SECRET_KEY");
     if (!secret) return;
@@ -1930,67 +1426,7 @@ void create_subscription_session() {
     curl_easy_cleanup(curl);
 }
 // Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })
-
-// Split payment -- one checkout, proceeds split across sellers using the
-// provider's own real split capability. Konduyt never holds or redistributes
-// funds. Register each seller once first (dashboard's Payment Providers tab).
-void create_split_payment(long amount, const std::string& sellerId, long sellerAmount) {
-    const char* secret = std::getenv("KONDUYT_SECRET_KEY");
-    if (!secret) return;
-
-    CURL* curl = curl_easy_init();
-    if (!curl) return;
-
-    std::string body =
-        "{\\"provider\\": \\"paystack\\", \\"amount\\": " + std::to_string(amount) +
-        ", \\"currency\\": \\"KES\\", \\"splits\\": [{ \\"seller_id\\": \\"" + sellerId +
-        "\\", \\"amount\\": " + std::to_string(sellerAmount) + " }] }";
-
-    std::string auth = "Authorization: Bearer " + std::string(secret);
-    struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(headers, auth.c_str());
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-
-    curl_easy_setopt(curl, CURLOPT_URL, "{{API}}/v1/marketplace_payments");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-    curl_easy_perform(curl);
-
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
-}
-// The remainder (amount minus the splits) is your own commission.
-
-// Pay-as-you-go -- amount computed from real usage, not typed in or fixed --
-// e.g. metered API calls, storage, or minutes used this billing period.
-void create_usage_bill_session(long unitsUsed, long pricePerUnit) {
-    const char* secret = std::getenv("KONDUYT_SECRET_KEY");
-    if (!secret) return;
-
-    long amount = unitsUsed * pricePerUnit;
-    CURL* curl = curl_easy_init();
-    if (!curl) return;
-
-    std::string body =
-        "{\\"amount\\": " + std::to_string(amount) +
-        ", \\"currency\\": \\"KES\\", \\"recurring\\": false,"
-        " \\"reference\\": \\"usage_" + std::to_string(std::time(nullptr)) + "\\" }";
-
-    std::string auth = "Authorization: Bearer " + std::string(secret);
-    struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(headers, auth.c_str());
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-
-    curl_easy_setopt(curl, CURLOPT_URL, "{{API}}/v1/payment_sessions");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-    curl_easy_perform(curl);
-
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
-}
-// e.g. create_usage_bill_session(340, 25) -- 340 real units at 25 each` },
+// Konduyt.checkout({ sessionId: session.id })` },
       { title: 'Failover + rerouting', code:
 `#include <curl/curl.h>
 #include <cstdlib>

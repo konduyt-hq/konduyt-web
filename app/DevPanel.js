@@ -47,24 +47,12 @@ echo "2. Recurring subscription"
 curl -X POST http://localhost:3000/api/create-subscription \\
   -H "Content-Type: application/json" \\
   -d '{}'
-echo
-
-echo "3. Split payment"
-curl -X POST http://localhost:3000/api/create-split-payment \\
-  -H "Content-Type: application/json" \\
-  -d '{}'
-echo
-
-echo "4. Pay-as-you-go usage bill"
-curl -X POST http://localhost:3000/api/create-usage-bill \\
-  -H "Content-Type: application/json" \\
-  -d '{}'
 echo`,
   },
   {
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
     deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// server.mjs  —  run with:  node server.mjs
 import http from "node:http";
 
@@ -114,25 +102,6 @@ const server = http.createServer(async (req, res) => {
     });
     res.end(JSON.stringify(session)); // { id: "sess_...", ... } -- open with Konduyt.checkout({ sessionId })
 
-  } else if (req.url === "/api/create-split-payment") {
-    // Split: one checkout, proceeds split across sellers using the
-    // provider's own real split capability -- Konduyt never holds funds.
-    const payment = await konduyt("/v1/marketplace_payments", {
-      provider: "paystack", amount: 500000, currency: "KES",
-      splits: [{ seller_id: "seller_123", amount: 400000 }],
-    });
-    res.end(JSON.stringify(payment)); // the remainder is your own commission
-
-  } else if (req.url === "/api/create-usage-bill") {
-    // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-    const unitsUsed = 340, pricePerUnit = 25;
-    const amount = unitsUsed * pricePerUnit;
-    const session = await konduyt("/v1/payment_sessions", {
-      amount, currency: "KES", recurring: false,
-      reference: \`usage_\${Date.now()}\`,
-    });
-    res.end(JSON.stringify(session));
-
   } else {
     res.writeHead(404);
     res.end();
@@ -144,9 +113,8 @@ server.listen(3000, () => console.log("Backend running on http://localhost:3000"
   {
     id: 'python', label: 'Python', filename: 'server.py',
     deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.py  —  pip install flask requests, then: python server.py
-import time
 from flask import Flask, request, jsonify
 import requests
 
@@ -186,25 +154,6 @@ def create_subscription():
         "reference": "sub_pro_plan",
     }))  # {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
 
-@app.route("/api/create-split-payment", methods=["POST"])
-def create_split_payment():
-    # Split: one checkout, proceeds split across sellers using the
-    # provider's own real split capability -- Konduyt never holds funds.
-    return jsonify(konduyt("/v1/marketplace_payments", {
-        "provider": "paystack", "amount": 500000, "currency": "KES",
-        "splits": [{"seller_id": "seller_123", "amount": 400000}],
-    }))  # the remainder is your own commission
-
-@app.route("/api/create-usage-bill", methods=["POST"])
-def create_usage_bill():
-    # Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-    units_used, price_per_unit = 340, 25
-    amount = units_used * price_per_unit
-    return jsonify(konduyt("/v1/payment_sessions", {
-        "amount": amount, "currency": "KES", "recurring": False,
-        "reference": f"usage_{int(time.time())}",
-    }))
-
 if __name__ == "__main__":
     app.run(port=3000)
     print("Backend running on http://localhost:3000")`,
@@ -212,7 +161,7 @@ if __name__ == "__main__":
   {
     id: 'php', label: 'PHP', filename: 'index.php',
     deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), two real scenarios.',
     code: `<?php
 // index.php  —  run with:  php -S localhost:3000
 
@@ -258,23 +207,6 @@ if ($path === "/api/create-payment") {
         "reference" => "sub_pro_plan",
     ], $KONDUYT_SECRET_KEY, $API); // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
 
-} elseif ($path === "/api/create-split-payment") {
-    // Split: one checkout, proceeds split across sellers using the
-    // provider's own real split capability -- Konduyt never holds funds.
-    echo konduyt("/v1/marketplace_payments", [
-        "provider" => "paystack", "amount" => 500000, "currency" => "KES",
-        "splits" => [["seller_id" => "seller_123", "amount" => 400000]],
-    ], $KONDUYT_SECRET_KEY, $API); // the remainder is your own commission
-
-} elseif ($path === "/api/create-usage-bill") {
-    // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-    $unitsUsed = 340; $pricePerUnit = 25;
-    $amount = $unitsUsed * $pricePerUnit;
-    echo konduyt("/v1/payment_sessions", [
-        "amount" => $amount, "currency" => "KES", "recurring" => false,
-        "reference" => "usage_" . time(),
-    ], $KONDUYT_SECRET_KEY, $API);
-
 } else {
     http_response_code(404);
 }`,
@@ -282,7 +214,7 @@ if ($path === "/api/create-payment") {
   {
     id: 'go', label: 'Go', filename: 'main.go',
     deps: 'Standard library only. Run: go run main.go -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.go  —  run with:  go run main.go
 package main
 
@@ -292,7 +224,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // SECRET KEY -- stays on the server, never sent to a browser. This is
@@ -339,27 +270,6 @@ func main() {
 		w.Write(out) // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
 	})
 
-	http.HandleFunc("/api/create-split-payment", func(w http.ResponseWriter, r *http.Request) {
-		// Split: one checkout, proceeds split across sellers using the
-		// provider's own real split capability -- Konduyt never holds funds.
-		out, _ := konduyt("/v1/marketplace_payments", map[string]any{
-			"provider": "paystack", "amount": 500000, "currency": "KES",
-			"splits": []map[string]any{{"seller_id": "seller_123", "amount": 400000}},
-		})
-		w.Write(out) // the remainder is your own commission
-	})
-
-	http.HandleFunc("/api/create-usage-bill", func(w http.ResponseWriter, r *http.Request) {
-		// Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-		unitsUsed, pricePerUnit := 340, 25
-		amount := unitsUsed * pricePerUnit
-		out, _ := konduyt("/v1/payment_sessions", map[string]any{
-			"amount": amount, "currency": "KES", "recurring": false,
-			"reference": fmt.Sprintf("usage_%d", time.Now().Unix()),
-		})
-		w.Write(out)
-	})
-
 	fmt.Println("Backend running on http://localhost:3000")
 	http.ListenAndServe(":3000", nil)
 }`,
@@ -367,7 +277,7 @@ func main() {
   {
     id: 'ruby', label: 'Ruby', filename: 'server.rb',
     deps: 'Install: gem install sinatra net-http   ·   Run: ruby server.rb -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.rb  —  gem install sinatra net-http, then: ruby server.rb
 require "sinatra"
 require "net/http"
@@ -414,33 +324,12 @@ post "/api/create-subscription" do
     recurring: true, interval: "monthly",
     reference: "sub_pro_plan",
   }) # {"id" => "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
-end
-
-post "/api/create-split-payment" do
-  # Split: one checkout, proceeds split across sellers using the
-  # provider's own real split capability -- Konduyt never holds funds.
-  content_type :json
-  konduyt("/v1/marketplace_payments", {
-    provider: "paystack", amount: 500000, currency: "KES",
-    splits: [{ seller_id: "seller_123", amount: 400000 }],
-  }) # the remainder is your own commission
-end
-
-post "/api/create-usage-bill" do
-  # Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-  units_used, price_per_unit = 340, 25
-  amount = units_used * price_per_unit
-  content_type :json
-  konduyt("/v1/payment_sessions", {
-    amount: amount, currency: "KES", recurring: false,
-    reference: "usage_#{Time.now.to_i}",
-  })
 end`,
   },
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
     deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json tiny_http
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
@@ -496,25 +385,6 @@ fn main() {
                     "reference": "sub_pro_plan"
                 })) // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
             }
-            "/api/create-split-payment" => {
-                // Split: one checkout, proceeds split across sellers using the
-                // provider's own real split capability -- Konduyt never holds funds.
-                konduyt("/v1/marketplace_payments", json!({
-                    "provider": "paystack", "amount": 500000, "currency": "KES",
-                    "splits": [{ "seller_id": "seller_123", "amount": 400000 }]
-                })) // the remainder is your own commission
-            }
-            "/api/create-usage-bill" => {
-                // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-                let (units_used, price_per_unit) = (340, 25);
-                let amount = units_used * price_per_unit;
-                let reference = format!("usage_{}", std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs());
-                konduyt("/v1/payment_sessions", json!({
-                    "amount": amount, "currency": "KES", "recurring": false,
-                    "reference": reference
-                }))
-            }
             _ => { request.respond(Response::from_string("").with_status_code(404)).ok(); continue; }
         };
 
@@ -525,7 +395,7 @@ fn main() {
   {
     id: 'csharp', label: 'C#', filename: 'Program.cs',
     deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs. Run: dotnet run -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// Program.cs  —  dotnet new web -o ., paste over Program.cs, then: dotnet run
 using System.Net.Http.Headers;
 using System.Text;
@@ -567,25 +437,6 @@ app.MapPost("/api/create-subscription", async () => {
         recurring = true, interval = "monthly",
         reference = "sub_pro_plan"
     }), "application/json"); // { "id": "sess_...", ... } -- open with Konduyt.checkout({ sessionId })
-});
-
-app.MapPost("/api/create-split-payment", async () => {
-    // Split: one checkout, proceeds split across sellers using the
-    // provider's own real split capability -- Konduyt never holds funds.
-    return Results.Content(await Konduyt("/v1/marketplace_payments", new {
-        provider = "paystack", amount = 500000, currency = "KES",
-        splits = new[] { new { seller_id = "seller_123", amount = 400000 } }
-    }), "application/json"); // the remainder is your own commission
-});
-
-app.MapPost("/api/create-usage-bill", async () => {
-    // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-    int unitsUsed = 340, pricePerUnit = 25;
-    int amount = unitsUsed * pricePerUnit;
-    return Results.Content(await Konduyt("/v1/payment_sessions", new {
-        amount, currency = "KES", recurring = false,
-        reference = $"usage_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}"
-    }), "application/json");
 });
 
 app.Urls.Add("http://localhost:3000");
@@ -833,12 +684,11 @@ struct ContentView: View {
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
     deps: 'Needs libcurl and cpp-httplib (a single header). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, four real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.cpp  —  g++ main.cpp -lcurl -lcpp-httplib -o server && ./server
 #include <curl/curl.h>
 #include <httplib.h>
 #include <string>
-#include <ctime>
 
 // SECRET KEY -- stays on the server, never sent to a browser. This is
 // Konduyt's own universal demo key (safe here since it's already public),
@@ -894,30 +744,13 @@ int main() {
         // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
     });
 
-    svr.Post("/api/create-split-payment", [](const httplib::Request&, httplib::Response& res) {
-        // Split: one checkout, proceeds split across sellers using the
-        // provider's own real split capability -- Konduyt never holds funds.
-        std::string body = R"({"provider":"paystack","amount":500000,"currency":"KES",)"
-                            R"("splits":[{"seller_id":"seller_123","amount":400000}]})";
-        res.set_content(konduyt("/v1/marketplace_payments", body), "application/json");
-        // the remainder is your own commission
-    });
-
-    svr.Post("/api/create-usage-bill", [](const httplib::Request&, httplib::Response& res) {
-        // Pay-as-you-go: amount computed from real usage, not typed in or fixed.
-        long unitsUsed = 340, pricePerUnit = 25;
-        long amount = unitsUsed * pricePerUnit;
-        std::string body = R"({"amount":)" + std::to_string(amount) +
-            R"(,"currency":"KES","recurring":false,"reference":"usage_)" +
-            std::to_string(std::time(nullptr)) + R"("})";
-        res.set_content(konduyt("/v1/payment_sessions", body), "application/json");
-    });
-
     printf("Backend running on http://localhost:3000\\n");
     svr.listen("0.0.0.0", 3000);
 }`,
   },
 ];
+
+// The three real frontend file types];
 
 // The three real frontend file types -- HTML/CSS for the web/CLI backends,
 // and Android/iOS's own real UI-definition file formats (neither renders
