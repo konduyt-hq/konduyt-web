@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const TOKEN_KEY = 'kdu_token';
 
 // The nav links this mirrors -- kept in sync manually with the real
 // desktop .nav-links in app/page.js, since they're deliberately two
@@ -16,6 +18,16 @@ const LINKS = [
 
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    try {
+      const legacy = sessionStorage.getItem(TOKEN_KEY);
+      if (legacy && !localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, legacy);
+      if (legacy) sessionStorage.removeItem(TOKEN_KEY);
+      setSignedIn(!!localStorage.getItem(TOKEN_KEY));
+    } catch (e) {}
+  }, []);
 
   return (
     <div className="mobile-nav">
@@ -45,6 +57,18 @@ export default function MobileNav() {
               {l.label}
             </a>
           ))}
+          {/* Duplicate of app/SignInLink.js's own logic (not shared as a
+              hook to keep this component self-contained) -- shown here
+              too, hidden via CSS ONLY at the tightest phone widths
+              (.mobile-nav-signin has display:none above 480px, see
+              globals.css), so the top-bar "Sign in" stays the one and
+              only visible copy everywhere it already fits. */}
+          {!signedIn && (
+            <a href="/signin/" className="mobile-nav-link mobile-nav-signin"
+              onClick={() => setOpen(false)}>
+              Sign in
+            </a>
+          )}
         </div>
       )}
     </div>

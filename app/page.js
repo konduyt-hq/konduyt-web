@@ -1,5 +1,6 @@
 import DevPanel from './DevPanel';
 import NavCta from './NavCta';
+import SignInLink from './SignInLink';
 import WarmupPing from './WarmupPing';
 import MobileNav from './MobileNav';
 
@@ -118,7 +119,7 @@ export default function Home() {
           </div>
           <MobileNav />
           <div className="nav-right">
-            <a href="/signin/" className="signin">Sign in</a>
+            <SignInLink />
             <NavCta />
           </div>
         </nav>

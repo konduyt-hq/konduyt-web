@@ -361,6 +361,33 @@
     .wrap{padding:0 20px;}
   }
 
+  /* Real phone widths specifically: the nav's natural content (logo +
+     wordmark + Beta badge, hamburger, Sign in, Go to console/Start for
+     free) genuinely doesn't fit a ~375px viewport at desktop sizing --
+     flexbox's default shrink behavior was squeezing everything down to
+     fit instead of overflowing, which is what actually produced the
+     cramped, no-breathing-room look, not a missing gap alone. Tightens
+     sizing so the same elements have real room, rather than just
+     shrinking further under pressure. */
+  /* Above the tightest phones (481-980px), .mobile-nav-signin (the
+     dropdown's own Sign in copy) is redundant with the top bar's --
+     hide it there so it's never shown twice. */
+  .mobile-nav-signin{display:none;}
+
+  @media (max-width: 480px){
+    nav{gap:8px;}
+    .brand{gap:8px;}
+    .beta-badge{font-size:9px; padding:1px 6px;}
+    .nav-right{gap:10px;}
+    .mobile-nav-toggle{width:34px; height:34px; flex-shrink:0;}
+    .btn-start{padding:8px 13px; font-size:13px; white-space:nowrap;}
+    /* At this width the top bar has room for the hamburger + one CTA --
+       "Sign in" moves into the dropdown (.mobile-nav-signin, shown here)
+       instead of competing for top-bar space; see MobileNav.js. */
+    .topbar-signin{display:none;}
+    .mobile-nav-signin{display:block;}
+  }
+
   /* ---------- IN THE WORKS ---------- */
   .works{
     border-top:1px solid var(--border);
