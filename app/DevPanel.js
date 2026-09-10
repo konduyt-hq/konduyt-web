@@ -806,6 +806,58 @@ function fmtMoney(minor, currency) {
   catch { return `${currency} ${(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`; }
 }
 
+// Real Kenyan mobile prefixes, cross-checked directly against the
+// Communications Authority of Kenya's own numbering plan and multiple
+// independent, recently-dated carrier sources (2026) before writing this --
+// not guessed. Deliberately conservative: a prefix genuinely not in this
+// list returns null ("unknown"), not a forced guess -- a wrong guess here
+// would mean incorrectly graying out a payment method the customer could
+// actually use, which is worse than just not highlighting anything.
+// Telkom's range (077X) is the one uncontested, unchanged range across
+// every source checked; Safaricom's and Airtel's newer 01XX ranges have
+// genuinely shifted more than once as the Communications Authority
+// allocates new blocks, so this reflects the most recent allocation found,
+// not an assumption it will never change again.
+const KENYA_CARRIER_PREFIXES = {
+  safaricom: ['700', '701', '702', '703', '704', '705', '706', '707', '708', '709',
+    '710', '711', '712', '713', '714', '715', '716', '717', '718', '719',
+    '720', '721', '722', '723', '724', '725', '726', '727', '728', '729',
+    '740', '741', '742', '743', '745', '746',
+    '790', '791', '792', '793', '794', '795', '796', '797', '798', '799',
+    '110', '111', '112', '113', '114', '115', '118', '119',
+    '140', '141', '142', '143', '180', '181', '182'],
+  airtel: ['730', '731', '732', '733', '734', '735', '736', '737', '738', '739',
+    '750', '751', '752', '753', '754', '755', '756', '780', '781', '782', '783',
+    '784', '785', '786', '787', '788', '789',
+    '100', '101', '102', '103', '104', '105', '106'],
+  telkom: ['770', '771', '772', '773', '774', '775', '776', '777', '778', '779'],
+};
+
+// Which real rail requires which real carrier -- null means carrier-
+// agnostic (cards, bank transfers): never disabled by phone number, since
+// neither needs a specific SIM at all. Keyed to this demo's own real rail
+// labels (Kenya's actual rp_payment_rails entries).
+const RAIL_REQUIRED_CARRIER = {
+  MPESA: 'safaricom',
+  AIRTEL_MONEY: 'airtel',
+  T_KASH: 'telkom',
+  PESALINK: null,   // bank-to-bank, needs a bank account, not a SIM
+  PESAPAL: null,     // card processing in this demo's real Kenya data
+};
+
+function detectKenyaCarrier(phone) {
+  const digits = phone.replace(/\D/g, '');
+  // Accepts 07XXXXXXXX, 01XXXXXXXX, 2547XXXXXXXX, 2541XXXXXXXX, +254...
+  let local = digits;
+  if (local.startsWith('254')) local = local.slice(3);
+  else if (local.startsWith('0')) local = local.slice(1);
+  const prefix = local.slice(0, 3);
+  for (const [carrier, prefixes] of Object.entries(KENYA_CARRIER_PREFIXES)) {
+    if (prefixes.includes(prefix)) return carrier;
+  }
+  return null; // genuinely unrecognized -- never guessed
+}
+
 // Human speed label from settlement days.
 // Human speed label. Only ever renders a real, known value — unknown shows "—",
 // NEVER a fabricated number of days.
@@ -824,6 +876,7 @@ export default function DevPanel() {
   const [result, setResult] = useState(null);
   const [showIntel, setShowIntel] = useState(false);
   const [intelDetail, setIntelDetail] = useState(null); // one rail's confidence detail, or null
+  const [customerPhone, setCustomerPhone] = useState('');
   const [showMore, setShowMore] = useState(false);
   const [devPlatform, setDevPlatform] = useState('render');
   const [frontendId, setFrontendId] = useState('html');
@@ -1060,38 +1113,66 @@ export default function DevPanel() {
             <div className="intel-modal-head">
               <div className="intel-modal-title">Payment intelligence</div>
               <div className="intel-modal-sub">
-                A {fmtMoney(payment.amount, payment.currency)} payment, every way your customer could pay if
-                you connected each one's own provider — ranked cheapest-first by real charges. Each method
-                below has its own separate provider (M-Pesa via Daraja, Airtel Money via its own operator,
-                and so on) — connecting one doesn&apos;t bundle in the others. Tap any row to see its real
-                source and whether it&apos;s a confirmed figure.
+                A {fmtMoney(payment.amount, payment.currency)} payment, ranked cheapest-first by real
+                charges. Enter a real Kenyan number below and we&apos;ll show which one actually works for it —
+                the rest stay visible, just not usable for that number.
                 {result && result.is_representative_example && (
                   <> Shown in {payment.currency} — Kenya&apos;s real connected-provider pricing, as a representative example
                     for your detected location.</>
                 )}
               </div>
+              <input
+                type="tel"
+                className="intel-phone-input"
+                placeholder="Customer's phone number, e.g. 0722 123 456"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+              />
             </div>
             <div className="intel-modal-table">
               <div className="intel-modal-row intel-modal-row-head intel-row-2col">
                 <span>Pay with</span><span>Charge</span><span></span>
               </div>
-              {options.map((o, i) => (
-                <div key={o.label} className={`intel-modal-row intel-row-2col ${i === 0 ? 'best' : ''}`}>
-                  <span className="intel-rail-name">
-                    {o.label}
-                    <button type="button"
-                      className={`fee-intel-dot ${o.verified ? 'verified' : 'unverified'}`}
-                      title={o.verified ? 'Verified — a confirmed fee' : 'Estimated — not yet confirmed against an official source'}
-                      aria-label="Fee confidence"
-                      onClick={() => setIntelDetail(o)} />
-                  </span>
-                  <span className="intel-rail-fee">
-                    {o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}
-                    {o.fee_percent_effective != null && <span className="intel-rail-money"> · {o.fee_percent_effective}%</span>}
-                  </span>
-                  <span>{i === 0 ? <span className="intel-best-badge">Best value</span> : null}</span>
-                </div>
-              ))}
+              {(() => {
+                const detectedCarrier = customerPhone.trim() ? detectKenyaCarrier(customerPhone) : null;
+                return options.map((o, i) => {
+                  const requiredCarrier = RAIL_REQUIRED_CARRIER[o.label] ?? null;
+                  // Never disabled if this method doesn't need a specific
+                  // carrier at all (cards, bank transfers), and never
+                  // disabled just because nothing's been typed yet or the
+                  // number didn't match anything we recognize -- only
+                  // disabled when we're genuinely confident it's the wrong
+                  // network for this specific number.
+                  const isDisabled = requiredCarrier != null && detectedCarrier != null && detectedCarrier !== requiredCarrier;
+                  const isMatch = requiredCarrier == null || (detectedCarrier != null && detectedCarrier === requiredCarrier);
+                  return (
+                    <div key={o.label} className={`intel-modal-row intel-row-2col ${i === 0 ? 'best' : ''} ${isDisabled ? 'rail-disabled' : ''}`}>
+                      <span className="intel-rail-name">
+                        {o.label}
+                        {i === 0 && !isDisabled && <span className="intel-best-badge">Best value</span>}
+                        <button type="button"
+                          className={`fee-intel-dot ${o.verified ? 'verified' : 'unverified'}`}
+                          title={o.verified ? 'Verified — a confirmed fee' : 'Estimated — not yet confirmed against an official source'}
+                          aria-label="Fee confidence"
+                          onClick={() => setIntelDetail(o)} />
+                        {isDisabled && <span className="intel-rail-disabled-note">Needs a {requiredCarrier} number</span>}
+                      </span>
+                      <span className="intel-rail-fee">
+                        {o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}
+                        {o.fee_percent_effective != null && <span className="intel-rail-money"> · {o.fee_percent_effective}%</span>}
+                      </span>
+                      <span>
+                        {isDisabled ? null : (
+                          <button type="button" className={`intel-pay-btn ${isMatch && detectedCarrier ? 'ready' : ''}`}
+                            onClick={() => alert('Test mode — no real charge. This is exactly what your customer would tap on a real project.')}>
+                            Pay
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
             </div>
             <div className="intel-modal-foot">
               Test mode — no real charge. Konduyt routes to the best-value option automatically for your customers.
