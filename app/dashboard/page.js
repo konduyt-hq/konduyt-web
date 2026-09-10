@@ -226,6 +226,8 @@ export default function Dashboard() {
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState('');
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [projectCreateError, setProjectCreateError] = useState('');
+  const [projectCreating, setProjectCreating] = useState(false);
   const projectMenuRef = useRef(null);
 
   useEffect(() => {
@@ -671,17 +673,27 @@ export default function Dashboard() {
     } catch (e) {}
   }
 
-  // Landing tab: a NEW user (no provider connected yet) starts on Integrations —
-  // the first meaningful action. A returning user (has at least one connection)
-  // lands on Money. Runs once per session, after the initial data has loaded, so
-  // it never fights the user's own tab clicks.
+  // Landing tab: a NEW user (no provider connected yet) starts on Code
+  // Samples ('quickstart') -- the first meaningful action. A returning user
+  // (has at least one connection) lands on Payments ('money'). Runs once
+  // per session, after the initial data has loaded, so it never fights the
+  // user's own tab clicks.
+  //
+  // BUG FIX (2026-09-10): this useEffect's LOGIC never actually broke or
+  // disappeared -- it silently stopped working. It still set tab to
+  // 'integrations' for new users, a tab name that hasn't existed since the
+  // 5-tab restructuring (the current tabs are money | connections |
+  // quickstart | messages | settings, confirmed directly against the tab
+  // state's own comment) -- since nothing matches 'integrations', new
+  // users landed on a blank content area instead of Code Samples. Fixed to
+  // use the real, current tab names.
   const [landingChosen, setLandingChosen] = useState(false);
   useEffect(() => {
     if (landingChosen) return;
     if (status !== 'ready' || keys === null || !activeId) return;
     // Wait until connections for the active project have actually loaded.
     if (connectionsLoaded) {
-      setTab(connections.length > 0 ? 'money' : 'integrations');
+      setTab(connections.length > 0 ? 'money' : 'quickstart');
       setLandingChosen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1129,30 +1141,60 @@ export default function Dashboard() {
   }
 
   async function createProject() {
-    setProjectMenuOpen(false);
-    const r = await fetch(`${API_BASE}/projects`, {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Untitled Project' }),
-    });
-    const p = await r.json();
-    const rl = await fetch(`${API_BASE}/projects`, { headers: authHeaders() });
-    const data = await rl.json();
-    const newProjects = data.projects || [];
+    // Real bug fix (2026-09-10): this had zero error handling at all --
+    // if the request failed for ANY reason (an expired session, a network
+    // hiccup, a genuine server error), the user saw literally nothing.
+    // The dropdown closed and that was it, indistinguishable from success
+    // that just hadn't visibly changed anything yet. Confirmed the real
+    // backend endpoint itself works correctly via a direct HTTP test
+    // before assuming the bug was there -- it wasn't; this frontend gap
+    // was the actual, confirmed cause.
+    setProjectCreateError('');
+    setProjectCreating(true);
+    try {
+      const r = await fetch(`${API_BASE}/projects`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Untitled Project' }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setProjectCreateError(
+          r.status === 401
+            ? 'Your session expired. Please sign in again.'
+            : (d.detail?.message || d.detail || 'Could not create the project. Please try again.')
+        );
+        setProjectCreating(false);
+        return;
+      }
+      const p = await r.json();
+      const rl = await fetch(`${API_BASE}/projects`, { headers: authHeaders() });
+      if (!rl.ok) {
+        setProjectCreateError('Project was created, but the list couldn\u2019t be refreshed. Reload the page.');
+        setProjectCreating(false);
+        return;
+      }
+      const data = await rl.json();
+      const newProjects = data.projects || [];
 
-    // Real pricing model: 3 free projects, $10/mo per project beyond that
-    // once a project is actually live. The project is still created either
-    // way (a brand new project isn't live yet, so nothing is actually owed
-    // the instant it's created) -- but the developer is sent straight to
-    // pricing right now, not just shown a dismissible note, since that's
-    // what was actually asked for.
-    if (newProjects.length > 3) {
-      window.location.href = '/pricing/';
-      return;
+      // Real pricing model: 3 free projects, $10/mo per project beyond that
+      // once a project is actually live. The project is still created either
+      // way (a brand new project isn't live yet, so nothing is actually owed
+      // the instant it's created) -- but the developer is sent straight to
+      // pricing right now, not just shown a dismissible note, since that's
+      // what was actually asked for.
+      if (newProjects.length > 3) {
+        window.location.href = '/pricing/';
+        return;
+      }
+
+      setProjects(newProjects);
+      setActiveId(p.id);
+      setProjectMenuOpen(false);
+    } catch (e) {
+      setProjectCreateError('Could not reach the server. Check your connection and try again.');
     }
-
-    setProjects(newProjects);
-    setActiveId(p.id);
+    setProjectCreating(false);
   }
 
   async function saveRename() {
@@ -1350,6 +1392,20 @@ export default function Dashboard() {
             >
               Change <span className="con-caret">▾</span>
             </button>
+            <button
+              className="con-proj-rename-btn"
+              type="button"
+              aria-label="Rename this project"
+              title="Rename this project"
+              onClick={() => {
+                if (!active) return;
+                setRenameVal(active.name);
+                setRenaming(true);
+                setTab('settings');
+              }}
+            >
+              ✎
+            </button>
             {projectMenuOpen && (
               <div className="con-proj-menu">
                 {projects.map((p) => (
@@ -1367,9 +1423,13 @@ export default function Dashboard() {
                   </button>
                 ))}
                 <div className="con-proj-divider" />
-                <button className="con-proj-item con-proj-new" onClick={createProject} type="button">
-                  + New Project
+                <button className="con-proj-item con-proj-new" onClick={createProject}
+                  type="button" disabled={projectCreating}>
+                  {projectCreating ? 'Creating…' : '+ New Project'}
                 </button>
+                {projectCreateError && (
+                  <div className="con-proj-create-error">{projectCreateError}</div>
+                )}
               </div>
             )}
           </div>
