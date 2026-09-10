@@ -1060,8 +1060,11 @@ export default function DevPanel() {
             <div className="intel-modal-head">
               <div className="intel-modal-title">Payment intelligence</div>
               <div className="intel-modal-sub">
-                A {fmtMoney(payment.amount, payment.currency)} payment, every way your customer can pay —
-                ranked cheapest-first by real charges. This is exactly what you get on a real project once you connect a provider.
+                A {fmtMoney(payment.amount, payment.currency)} payment, every way your customer could pay if
+                you connected each one's own provider — ranked cheapest-first by real charges. Each method
+                below has its own separate provider (M-Pesa via Daraja, Airtel Money via its own operator,
+                and so on) — connecting one doesn&apos;t bundle in the others. Tap any row to see its real
+                source and whether it&apos;s a confirmed figure.
                 {result && result.is_representative_example && (
                   <> Shown in {payment.currency} — Kenya&apos;s real connected-provider pricing, as a representative example
                     for your detected location.</>
@@ -1108,6 +1111,14 @@ export default function DevPanel() {
               {intelDetail.verified ? 'Verified' : 'Estimated, not yet confirmed'}
             </div>
             <div className="fee-intel-method">{intelDetail.label}</div>
+            {intelDetail.provider && (
+              <div className="fee-intel-row">
+                <span className="fee-intel-row-label">Requires connecting</span>
+                <span className="fee-intel-row-value">
+                  {intelDetail.provider.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
+                </span>
+              </div>
+            )}
             {intelDetail.fee_percent_effective != null && (
               <div className="fee-intel-row">
                 <span className="fee-intel-row-label">Effective rate</span>
@@ -1134,6 +1145,10 @@ export default function DevPanel() {
                   : '.'}
               </div>
             )}
+            <div className="fee-intel-note">
+              This is a separate provider connection, not bundled with any other method above.
+              Connecting one doesn&apos;t automatically enable this one for your customers.
+            </div>
           </div>
         </div>
       )}
