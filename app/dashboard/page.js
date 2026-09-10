@@ -175,6 +175,10 @@ export default function Dashboard() {
   const [feeBandsContinent, setFeeBandsContinent] = useState('africa');
   const [feeBandsData, setFeeBandsData] = useState(null);
   const [feeIntelOpen, setFeeIntelOpen] = useState(null); // the one entry whose intelligence popup is open, or null
+  const [feeIntelHistory, setFeeIntelHistory] = useState(null); // fetched only on demand, via "View history"
+  const [feeIntelHistoryLoading, setFeeIntelHistoryLoading] = useState(false);
+  const [feeIntelObserved, setFeeIntelObserved] = useState(null); // fetched only on demand, via "Compare to real transactions"
+  const [feeIntelObservedLoading, setFeeIntelObservedLoading] = useState(false);
   const [feeBandsLoading, setFeeBandsLoading] = useState(false);
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
@@ -1019,6 +1023,33 @@ export default function Dashboard() {
       setFeeBandsData(null);
     }
     setFeeBandsLoading(false);
+  }
+
+  // Konduyt Intelligence: both fetched only on demand, when the person
+  // actually asks -- never fetched just because the popup opened, per
+  // direct instruction to keep it minimal by default.
+  async function loadFeeIntelHistory(ruleId, schema) {
+    setFeeIntelHistoryLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/sentinel/intelligence/history?rule_id=${encodeURIComponent(ruleId)}&schema=${schema}`);
+      const d = await r.json();
+      setFeeIntelHistory(d.versions || []);
+    } catch (e) {
+      setFeeIntelHistory([]);
+    }
+    setFeeIntelHistoryLoading(false);
+  }
+
+  async function loadFeeIntelObserved(ruleId, schema) {
+    setFeeIntelObservedLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/sentinel/intelligence/observed?rule_id=${encodeURIComponent(ruleId)}&schema=${schema}`);
+      const d = await r.json();
+      setFeeIntelObserved(d);
+    } catch (e) {
+      setFeeIntelObserved({ status: 'no_observations' });
+    }
+    setFeeIntelObservedLoading(false);
   }
 
   async function runSentinel() {
@@ -3188,7 +3219,11 @@ export default function Dashboard() {
                                       className={`fee-intel-dot ${e.intelligence.state.toLowerCase()}`}
                                       title={`${e.intelligence.state} · ${e.intelligence.confidence} confidence`}
                                       aria-label="Fee freshness and source"
-                                      onClick={() => setFeeIntelOpen(e)}
+                                      onClick={() => {
+                                        setFeeIntelOpen(e);
+                                        setFeeIntelHistory(null);
+                                        setFeeIntelObserved(null);
+                                      }}
                                     />
                                   )}
                                 </td>
@@ -3276,6 +3311,64 @@ export default function Dashboard() {
                           </div>
                         )}
                         {NOTE && <div className="fee-intel-note">{NOTE}</div>}
+
+                        {/* Both below: real data, fetched only on demand
+                            -- never on popup open -- and rendered plainly
+                            inline, not as a second modal on top of this
+                            one. Deliberately the least additional
+                            information that still answers "show me the
+                            real history" / "does this match real
+                            transactions", not everything the API could
+                            return. */}
+                        {intel.rule_id && (
+                          <div className="fee-intel-expand">
+                            {!feeIntelHistory && !feeIntelHistoryLoading && (
+                              <button type="button" className="fee-intel-expand-btn"
+                                onClick={() => loadFeeIntelHistory(intel.rule_id, intel.schema)}>
+                                View history
+                              </button>
+                            )}
+                            {feeIntelHistoryLoading && <p className="fee-intel-expand-loading">Loading history…</p>}
+                            {feeIntelHistory && (
+                              <div className="fee-intel-history">
+                                {feeIntelHistory.length === 0 ? (
+                                  <p className="fee-intel-expand-empty">No version history recorded yet.</p>
+                                ) : feeIntelHistory.map((v, i) => (
+                                  <div key={i} className={`fee-intel-history-row ${v.is_current ? 'current' : ''}`}>
+                                    <span>
+                                      {v.percentage_fee != null ? `${v.percentage_fee}%` : (v.fixed_fee != null ? v.fixed_fee : '—')}
+                                    </span>
+                                    <span className="fee-intel-history-date">
+                                      {v.is_current ? 'Current' : (v.superseded_at || '').slice(0, 10)}
+                                      {v.change_reason === 'sentinel_invalidated' && ' · source change detected'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {intel.rule_id && (
+                          <div className="fee-intel-expand">
+                            {!feeIntelObserved && !feeIntelObservedLoading && (
+                              <button type="button" className="fee-intel-expand-btn"
+                                onClick={() => loadFeeIntelObserved(intel.rule_id, intel.schema)}>
+                                Compare to real transactions
+                              </button>
+                            )}
+                            {feeIntelObservedLoading && <p className="fee-intel-expand-loading">Checking…</p>}
+                            {feeIntelObserved && (
+                              <p className="fee-intel-expand-empty">
+                                {feeIntelObserved.status === 'no_observations'
+                                  ? 'No real Konduyt transactions for this provider yet to compare against.'
+                                  : feeIntelObserved.status === 'match'
+                                    ? `Matches what Konduyt's own transactions actually show (${feeIntelObserved.sample_size} recent).`
+                                    : `Real transactions show ${feeIntelObserved.difference_pp}pp different from the official rate (${feeIntelObserved.sample_size} recent) — worth a re-check.`}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

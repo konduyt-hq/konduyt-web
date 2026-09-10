@@ -2058,7 +2058,10 @@
      every database column just because more exists to show. */
   .fee-intel-overlay{position:fixed; inset:0; background:rgba(10,10,10,.5);
     display:flex; align-items:center; justify-content:center; z-index:120; padding:20px;}
-  .fee-intel-popup{position:relative; background:var(--elev); border-radius:14px;
+  .fee-intel-popup{position:relative; background-color:var(--elev);
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+    background-size: 16px 16px; background-position: 0 0;
+    border-radius:14px;
     max-width:340px; width:100%; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,.3);}
   .fee-intel-close{position:absolute; top:14px; right:14px; background:none; border:none;
     font-size:15px; color:var(--text-secondary); cursor:pointer; line-height:1;}
@@ -2075,6 +2078,29 @@
   .fee-intel-row-value a{color:inherit; text-decoration:underline; text-decoration-color:var(--border);}
   .fee-intel-note{font-size:11.5px; color:var(--text-secondary); margin-top:12px;
     padding-top:12px; border-top:1px solid var(--border); line-height:1.5;}
+
+  /* Konduyt Intelligence: history + Observed-vs-Official, both real but
+     both fetched and shown only on demand -- deliberately the smallest
+     possible addition to this popup, matching the same "don't overload
+     it" constraint the popup itself was built under. */
+  .fee-intel-expand{margin-top:10px; padding-top:10px; border-top:1px solid var(--border);}
+  .fee-intel-expand-btn{
+    background:none; border:1px solid var(--border); border-radius:7px;
+    font-size:11.5px; font-weight:600; color:var(--ink); padding:6px 11px;
+    cursor:pointer; width:100%; text-align:center;
+  }
+  .fee-intel-expand-btn:hover{background:var(--elev);}
+  .fee-intel-expand-loading, .fee-intel-expand-empty{
+    font-size:11.5px; color:var(--text-secondary); line-height:1.5; margin:0;
+  }
+  .fee-intel-history{display:flex; flex-direction:column; gap:0;}
+  .fee-intel-history-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:11.5px; padding:6px 0; border-bottom:1px solid var(--border);
+  }
+  .fee-intel-history-row:last-child{border-bottom:none;}
+  .fee-intel-history-row.current{font-weight:700;}
+  .fee-intel-history-date{color:var(--text-secondary); font-size:10.5px;}
 
   .an-bars{display:flex; align-items:flex-end; gap:3px; height:120px; border:1px solid var(--border);
     border-radius:12px; padding:12px 10px; background:var(--elev);}
@@ -2361,7 +2387,10 @@
 
   /* Payment intelligence popup */
   .intel-modal-overlay{position:fixed;inset:0;background:rgba(10,10,10,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
-  .intel-modal{position:relative;background:var(--elev);border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .intel-modal{position:relative;background-color:var(--elev);
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+    background-size: 16px 16px; background-position: 0 0;
+    border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
   .intel-modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:16px;color:#6b6b6b;cursor:pointer;}
   .intel-modal-title{font-size:18px;font-weight:800;margin-bottom:6px;}
   .intel-modal-sub{font-size:12.5px;line-height:1.5;color:#6b6b6b;margin-bottom:16px;}

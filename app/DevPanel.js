@@ -823,6 +823,7 @@ export default function DevPanel() {
   const [runState, setRunState] = useState('idle'); // idle | running | done
   const [result, setResult] = useState(null);
   const [showIntel, setShowIntel] = useState(false);
+  const [intelDetail, setIntelDetail] = useState(null); // one rail's confidence detail, or null
   const [showMore, setShowMore] = useState(false);
   const [devPlatform, setDevPlatform] = useState('render');
   const [frontendId, setFrontendId] = useState('html');
@@ -1073,7 +1074,16 @@ export default function DevPanel() {
               </div>
               {options.map((o, i) => (
                 <div key={o.label} className={`intel-modal-row intel-row-2col ${i === 0 ? 'best' : ''}`}>
-                  <span className="intel-rail-name">{o.label}</span>
+                  <span className="intel-rail-name">
+                    {o.label}
+                    <button type="button"
+                      className={`fee-intel-dot ${o.confidence_state === 'VERIFIED' ? 'verified' : o.confidence_state === 'UNVERIFIED' ? 'unverified' : 'unknown'}`}
+                      title={o.confidence_state === 'VERIFIED' ? 'Verified — a confirmed fee'
+                        : o.confidence_state === 'UNVERIFIED' ? 'Estimated — not yet confirmed against an official source'
+                        : 'Unknown — no fee data for this provider yet'}
+                      aria-label="Fee confidence"
+                      onClick={() => setIntelDetail(o)} />
+                  </span>
                   <span className="intel-rail-fee">
                     {o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}
                     {o.fee_percent_effective != null && <span className="intel-rail-money"> · {o.fee_percent_effective}%</span>}
@@ -1086,6 +1096,53 @@ export default function DevPanel() {
               Test mode — no real charge. Konduyt routes to the best-value option automatically for your customers.
             </div>
             <a href="/demo/" className="intel-modal-cta">View the full demo →</a>
+          </div>
+        </div>
+      )}
+
+      {intelDetail && (
+        <div className="fee-intel-overlay" onClick={() => setIntelDetail(null)}>
+          <div className="fee-intel-popup" onClick={(ev) => ev.stopPropagation()}>
+            <button type="button" className="fee-intel-close"
+              onClick={() => setIntelDetail(null)} aria-label="Close">✕</button>
+            <div className="fee-intel-state">
+              <span className={`fee-intel-state-dot ${intelDetail.confidence_state === 'VERIFIED' ? 'verified' : intelDetail.confidence_state === 'UNVERIFIED' ? 'unverified' : 'unknown'}`} />
+              {intelDetail.confidence_state === 'VERIFIED' ? 'Verified'
+                : intelDetail.confidence_state === 'UNVERIFIED' ? 'Estimated, not yet confirmed'
+                : 'Unknown'}
+            </div>
+            <div className="fee-intel-method">{intelDetail.label}</div>
+            {intelDetail.effective_percent != null && (
+              <div className="fee-intel-row">
+                <span className="fee-intel-row-label">Effective rate</span>
+                <span className="fee-intel-row-value">{intelDetail.effective_percent}%</span>
+              </div>
+            )}
+            {intelDetail.source && (
+              <div className="fee-intel-row">
+                <span className="fee-intel-row-label">Source</span>
+                <span className="fee-intel-row-value">
+                  {(() => {
+                    let host = intelDetail.source;
+                    try { host = new URL(intelDetail.source).hostname.replace('www.', ''); } catch (e) {}
+                    return <a href={intelDetail.source} target="_blank" rel="noreferrer">{host}</a>;
+                  })()}
+                </span>
+              </div>
+            )}
+            {intelDetail.settlement && (
+              <div className="fee-intel-row">
+                <span className="fee-intel-row-label">Settlement</span>
+                <span className="fee-intel-row-value">{intelDetail.settlement}</span>
+              </div>
+            )}
+            {!intelDetail.verified && (
+              <div className="fee-intel-note">
+                {intelDetail.confidence_state === 'UNKNOWN'
+                  ? 'Fee not yet profiled for this provider -- no real number to show, so none is shown.'
+                  : 'A fee estimate exists but hasn\u2019t been confirmed against an official source yet.'}
+              </div>
+            )}
           </div>
         </div>
       )}
