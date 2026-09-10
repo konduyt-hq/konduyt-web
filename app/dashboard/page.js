@@ -174,6 +174,7 @@ export default function Dashboard() {
   const [sentinelRunResult, setSentinelRunResult] = useState(null); // last run's summary, for Analytics
   const [feeBandsContinent, setFeeBandsContinent] = useState('africa');
   const [feeBandsData, setFeeBandsData] = useState(null);
+  const [feeIntelOpen, setFeeIntelOpen] = useState(null); // the one entry whose intelligence popup is open, or null
   const [feeBandsLoading, setFeeBandsLoading] = useState(false);
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
@@ -3178,6 +3179,15 @@ export default function Dashboard() {
                                   {e.category && e.category !== e.payment_method && (
                                     <span className="fee-bands-category"> · {e.category}</span>
                                   )}
+                                  {e.intelligence && (
+                                    <button
+                                      type="button"
+                                      className={`fee-intel-dot ${e.intelligence.state.toLowerCase()}`}
+                                      title={`${e.intelligence.state} · ${e.intelligence.confidence} confidence`}
+                                      aria-label="Fee freshness and source"
+                                      onClick={() => setFeeIntelOpen(e)}
+                                    />
+                                  )}
                                 </td>
                                 <td>{e.provider}</td>
                                 <td>{e.max_amount != null ? `${e.max_amount.toLocaleString()} ${e.currency}` : '—'}</td>
@@ -3199,6 +3209,74 @@ export default function Dashboard() {
                     </p>
                   )}
                 </div>
+
+                {feeIntelOpen && (() => {
+                  const intel = feeIntelOpen.intelligence;
+                  const d = intel.detail;
+                  const STATE_COPY = {
+                    VERIFIED: 'Verified',
+                    RECENT: 'Verified',
+                    AGING: 'Verified, but ageing',
+                    UNVERIFIED: 'Not yet confirmed against an official source',
+                    STALE: 'Pricing may have changed',
+                    CHANGED: 'Source changed — pending re-check',
+                    UNKNOWN: 'We could not verify a current public fee',
+                  };
+                  const NOTE = {
+                    STALE: 'This is old enough that Konduyt no longer uses it to rank routes by cost.',
+                    CHANGED: 'Konduyt detected the source page changed and is no longer treating this number as reliable until it\u2019s re-checked.',
+                    UNKNOWN: 'No usable number exists yet — never estimated, never assumed.',
+                    UNVERIFIED: 'Found, but not yet confirmed against the provider\u2019s own source.',
+                  }[intel.state];
+                  let sourceHost = d.source;
+                  try { sourceHost = new URL(d.source).hostname.replace('www.', ''); } catch (e) {}
+                  return (
+                    <div className="fee-intel-overlay" onClick={() => setFeeIntelOpen(null)}>
+                      <div className="fee-intel-popup" onClick={(ev) => ev.stopPropagation()}>
+                        <button type="button" className="fee-intel-close"
+                          onClick={() => setFeeIntelOpen(null)} aria-label="Close">✕</button>
+                        <div className="fee-intel-state">
+                          <span className={`fee-intel-state-dot ${intel.state.toLowerCase()}`} />
+                          {STATE_COPY[intel.state] || intel.state}
+                        </div>
+                        <div className="fee-intel-method">
+                          {feeIntelOpen.payment_method} · {feeIntelOpen.country}
+                        </div>
+                        <div className="fee-intel-row">
+                          <span className="fee-intel-row-label">Confidence</span>
+                          <span className="fee-intel-row-value">{intel.confidence}</span>
+                        </div>
+                        {d.source && (
+                          <div className="fee-intel-row">
+                            <span className="fee-intel-row-label">Source</span>
+                            <span className="fee-intel-row-value">
+                              <a href={d.source} target="_blank" rel="noreferrer">{sourceHost}</a>
+                            </span>
+                          </div>
+                        )}
+                        {d.last_checked && (
+                          <div className="fee-intel-row">
+                            <span className="fee-intel-row-label">Last checked</span>
+                            <span className="fee-intel-row-value">{d.last_checked}</span>
+                          </div>
+                        )}
+                        {d.last_source_change && (
+                          <div className="fee-intel-row">
+                            <span className="fee-intel-row-label">Last source change</span>
+                            <span className="fee-intel-row-value">{d.last_source_change}</span>
+                          </div>
+                        )}
+                        {d.next_review && (
+                          <div className="fee-intel-row">
+                            <span className="fee-intel-row-label">Next review</span>
+                            <span className="fee-intel-row-value">{d.next_review}</span>
+                          </div>
+                        )}
+                        {NOTE && <div className="fee-intel-note">{NOTE}</div>}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {analyticsLoading && !analyticsOverview && <p className="con-sub">Loading…</p>}
 

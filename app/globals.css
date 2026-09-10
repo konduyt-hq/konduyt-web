@@ -2036,6 +2036,46 @@
     position:sticky; top:0;}
   .fee-bands-table tbody tr:hover{background:var(--elev);}
   .fee-bands-table tbody tr:last-child td{border-bottom:none;}
+
+  /* Konduyt Intelligence: a compact freshness dot, not a text label --
+     the whole point is staying out of the way of the dense fee table.
+     Click opens the one small popup below with the real detail;
+     nothing more is shown inline. */
+  .fee-intel-dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    margin-left:6px; cursor:pointer; border:none; padding:0; vertical-align:middle;
+    transition:transform .1s ease;
+  }
+  .fee-intel-dot:hover{transform:scale(1.3);}
+  .fee-intel-dot.verified, .fee-intel-dot.recent{background:#22c55e;}
+  .fee-intel-dot.aging{background:#e0a63a;}
+  .fee-intel-dot.stale, .fee-intel-dot.unverified{background:#e0a63a;}
+  .fee-intel-dot.changed, .fee-intel-dot.unknown{background:#dc4444;}
+
+  /* The popup itself -- deliberately just these six lines (state,
+     confidence, source, last checked, last source change, next review),
+     matching the spec's own worked example exactly. Never grows to show
+     every database column just because more exists to show. */
+  .fee-intel-overlay{position:fixed; inset:0; background:rgba(10,10,10,.5);
+    display:flex; align-items:center; justify-content:center; z-index:120; padding:20px;}
+  .fee-intel-popup{position:relative; background:var(--elev); border-radius:14px;
+    max-width:340px; width:100%; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .fee-intel-close{position:absolute; top:14px; right:14px; background:none; border:none;
+    font-size:15px; color:var(--text-secondary); cursor:pointer; line-height:1;}
+  .fee-intel-state{display:flex; align-items:center; gap:7px; font-size:14.5px; font-weight:700;
+    margin-bottom:2px;}
+  .fee-intel-state-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .fee-intel-method{font-size:12px; color:var(--text-secondary); margin-bottom:14px;}
+  .fee-intel-row{display:flex; justify-content:space-between; gap:12px; font-size:12.5px;
+    padding:8px 0; border-top:1px solid var(--border);}
+  .fee-intel-row:first-of-type{border-top:none; padding-top:0;}
+  .fee-intel-row-label{color:var(--text-secondary);}
+  .fee-intel-row-value{text-align:right; font-weight:600; max-width:190px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .fee-intel-row-value a{color:inherit; text-decoration:underline; text-decoration-color:var(--border);}
+  .fee-intel-note{font-size:11.5px; color:var(--text-secondary); margin-top:12px;
+    padding-top:12px; border-top:1px solid var(--border); line-height:1.5;}
+
   .an-bars{display:flex; align-items:flex-end; gap:3px; height:120px; border:1px solid var(--border);
     border-radius:12px; padding:12px 10px; background:var(--elev);}
   .an-bar-col{flex:1; height:100%; display:flex; align-items:flex-end; cursor:default;}
