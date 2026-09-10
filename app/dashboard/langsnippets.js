@@ -38,6 +38,12 @@ AMOUNT=1000            # a fixed price you already know, OR
 
 # $KONDUYT_SECRET_KEY is set as an environment variable on your server/host --
 # see "Where does my secret key go?" above, never pasted into a command directly.
+#
+# customer.phone is optional but recommended for mobile money -- it's what
+# receives the STK push. Pass it if you already have it (from your own
+# signup/account system); if you don't yet and the customer types it in,
+# Konduyt remembers it after this first payment (keyed to customer.email),
+# so you don't need to collect or pass it again on their next purchase.
 curl -X POST {{API}}/v1/payments \\
   -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
   -H "Content-Type: application/json" \\
@@ -45,7 +51,7 @@ curl -X POST {{API}}/v1/payments \\
     \\"amount\\": $AMOUNT,
     \\"currency\\": \\"KES\\",
     \\"method\\": \\"mpesa\\",
-    \\"customer\\": { \\"email\\": \\"customer@example.com\\" }
+    \\"customer\\": { \\"email\\": \\"customer@example.com\\", \\"phone\\": \\"0722123456\\" }
   }"` },
       { title: 'Recurring', code:
 `# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
@@ -100,14 +106,19 @@ curl "{{API}}/checkout/config?pk=$KONDUYT_PUBLISHABLE_KEY&amount=500000&currency
 // hardcoded, never sent to the browser.
 const KONDUYT_SECRET_KEY = process.env.KONDUYT_SECRET_KEY;
 
-async function createPayment({ amount, email, method = "mpesa" }) {
+// phone is optional but recommended for mobile money -- it's what
+// receives the STK push. Pass it if you already have it; if you don't
+// and the customer types it in, Konduyt remembers it after this first
+// payment (keyed to email), so you don't need to collect or pass it
+// again on their next purchase.
+async function createPayment({ amount, email, phone, method = "mpesa" }) {
   const res = await fetch("{{API}}/v1/payments", {
     method: "POST",
     headers: {
       "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ amount, currency: "KES", method, customer: { email } }),
+    body: JSON.stringify({ amount, currency: "KES", method, customer: { email, phone } }),
   });
   return res.json();
 }
@@ -115,7 +126,7 @@ async function createPayment({ amount, email, method = "mpesa" }) {
 // amount either comes from the shopper, or is a price you already know:
 const amount = Number(req.body.amount);   // whatever the shopper typed in (a donation)
 // const amount = selectedItem.price;      // a fixed price you already know (a product)
-const payment = await createPayment({ amount, email: req.body.email });
+const payment = await createPayment({ amount, email: req.body.email, phone: req.body.phone });
 // res.redirect(payment.authorization_url);` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
@@ -204,7 +215,12 @@ import requests
 # Read the key from the environment — never hardcode it.
 KONDUYT_SECRET_KEY = os.environ["KONDUYT_SECRET_KEY"]
 
-def create_payment(amount, email, method="mpesa"):
+# phone is optional but recommended for mobile money -- it's what
+# receives the STK push. Pass it if you already have it; if you don't
+# and the customer types it in, Konduyt remembers it after this first
+# payment (keyed to email), so you don't need to collect or pass it
+# again on their next purchase.
+def create_payment(amount, email, phone=None, method="mpesa"):
     res = requests.post(
         "{{API}}/v1/payments",
         headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
@@ -212,7 +228,7 @@ def create_payment(amount, email, method="mpesa"):
             "amount": amount,
             "currency": "KES",
             "method": method,
-            "customer": {"email": email},
+            "customer": {"email": email, "phone": phone},
         },
     )
     return res.json()
@@ -220,7 +236,7 @@ def create_payment(amount, email, method="mpesa"):
 # amount either comes from the shopper, or is a price you already know:
 amount = int(request.form["amount"])   # whatever the shopper typed in (a donation)
 # amount = selected_item.price          # a fixed price you already know (a product)
-payment = create_payment(amount, request.form["email"])` },
+payment = create_payment(amount, request.form["email"], request.form.get("phone"))` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
 # route -- amountInput/emailInput are its real field ids. Flask shown
@@ -301,7 +317,12 @@ def eligible_methods_for(customer_country):
 // Read the key from the environment — never hardcode it.
 $secret = getenv("KONDUYT_SECRET_KEY");
 
-function create_payment($secret, $amount, $email, $method = "mpesa") {
+// $phone is optional but recommended for mobile money -- it's what
+// receives the STK push. Pass it if you already have it; if you don't
+// and the customer types it in, Konduyt remembers it after this first
+// payment (keyed to $email), so you don't need to collect or pass it
+// again on their next purchase.
+function create_payment($secret, $amount, $email, $phone = null, $method = "mpesa") {
     $ch = curl_init("{{API}}/v1/payments");
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
@@ -314,7 +335,7 @@ function create_payment($secret, $amount, $email, $method = "mpesa") {
             "amount" => $amount,
             "currency" => "KES",
             "method" => $method,
-            "customer" => ["email" => $email],
+            "customer" => ["email" => $email, "phone" => $phone],
         ]),
     ]);
     $payment = json_decode(curl_exec($ch), true);
@@ -325,7 +346,7 @@ function create_payment($secret, $amount, $email, $method = "mpesa") {
 // amount either comes from the shopper, or is a price you already know:
 $amount = (int) $_POST["amount"];       // whatever the shopper typed in (a donation)
 // $amount = $selectedItem["price"];    // a fixed price you already know (a product)
-$payment = create_payment($secret, $amount, $_POST["email"]);` },
+$payment = create_payment($secret, $amount, $_POST["email"], $_POST["phone"] ?? null);` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `<?php
 // intelligence.html's Buy button (Step 2 above) POSTs to exactly this
@@ -433,12 +454,17 @@ import (
 // Read the key from the environment — never hardcode it.
 var konduytSecret = os.Getenv("KONDUYT_SECRET_KEY")
 
-func createPayment(amount int, email string) (map[string]any, error) {
+// phone is optional but recommended for mobile money -- it's what
+// receives the STK push. Pass it if you already have it; if you don't
+// and the customer types it in, Konduyt remembers it after this first
+// payment (keyed to email), so you don't need to collect or pass it
+// again on their next purchase.
+func createPayment(amount int, email, phone string) (map[string]any, error) {
 	body, _ := json.Marshal(map[string]any{
 		"amount":   amount,
 		"currency": "KES",
 		"method":   "mpesa",
-		"customer": map[string]string{"email": email},
+		"customer": map[string]string{"email": email, "phone": phone},
 	})
 
 	req, _ := http.NewRequest("POST", "{{API}}/v1/payments", bytes.NewBuffer(body))
@@ -460,9 +486,9 @@ func createPayment(amount int, email string) (map[string]any, error) {
 // "pay what you want" field. Comes straight from the request body,
 // not something you set.
 func handleDonation(w http.ResponseWriter, r *http.Request) {
-	var in struct{ Amount int; Email string }
+	var in struct{ Amount int; Email, Phone string }
 	json.NewDecoder(r.Body).Decode(&in)
-	payment, _ := createPayment(in.Amount, in.Email) // whatever the shopper typed in
+	payment, _ := createPayment(in.Amount, in.Email, in.Phone) // whatever the shopper typed in
 	json.NewEncoder(w).Encode(payment)
 }` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
@@ -474,9 +500,10 @@ func main() {
 		var in struct {
 			Amount int    ` + "`json:\"amount\"`" + `
 			Email  string ` + "`json:\"email\"`" + `
+			Phone  string ` + "`json:\"phone\"`" + `
 		}
 		json.NewDecoder(r.Body).Decode(&in)
-		payment, _ := createPayment(in.Amount, in.Email)
+		payment, _ := createPayment(in.Amount, in.Email, in.Phone)
 		json.NewEncoder(w).Encode(payment)
 	})
 
@@ -590,7 +617,12 @@ require "uri"
 # Read the key from the environment — never hardcode it.
 KONDUYT_SECRET_KEY = ENV.fetch("KONDUYT_SECRET_KEY")
 
-def create_payment(amount, email, method: "mpesa")
+# phone: is optional but recommended for mobile money -- it's what
+# receives the STK push. Pass it if you already have it; if you don't
+# and the customer types it in, Konduyt remembers it after this first
+# payment (keyed to email:), so you don't need to collect or pass it
+# again on their next purchase.
+def create_payment(amount, email, phone: nil, method: "mpesa")
   uri = URI("{{API}}/v1/payments")
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = true
@@ -600,7 +632,7 @@ def create_payment(amount, email, method: "mpesa")
   req["Content-Type"] = "application/json"
   req.body = {
     amount: amount, currency: "KES", method: method,
-    customer: { email: email },
+    customer: { email: email, phone: phone },
   }.to_json
 
   JSON.parse(http.request(req).body)
@@ -609,7 +641,7 @@ end
 # amount either comes from the shopper, or is a price you already know:
 amount = params[:amount].to_i     # whatever the shopper typed in (a donation)
 # amount = selected_item.price    # a fixed price you already know (a product)
-payment = create_payment(amount, params[:email])` },
+payment = create_payment(amount, params[:email], phone: params[:phone])` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
 # route -- amountInput/emailInput are its real field ids. Sinatra shown
@@ -702,7 +734,12 @@ serde_json = "1"` },
 `use serde_json::json;
 use std::env;
 
-fn create_payment(amount: u64, email: &str) -> Result<serde_json::Value, reqwest::Error> {
+// phone is optional but recommended for mobile money -- it's what
+// receives the STK push. Pass it if you already have it; if you don't
+// and the customer types it in, Konduyt remembers it after this first
+// payment (keyed to email), so you don't need to collect or pass it
+// again on their next purchase.
+fn create_payment(amount: u64, email: &str, phone: &str) -> Result<serde_json::Value, reqwest::Error> {
     // Read the key from the environment — never hardcode it.
     let secret = env::var("KONDUYT_SECRET_KEY").expect("KONDUYT_SECRET_KEY not set");
     let client = reqwest::blocking::Client::new();
@@ -713,7 +750,7 @@ fn create_payment(amount: u64, email: &str) -> Result<serde_json::Value, reqwest
             "amount": amount,
             "currency": "KES",
             "method": "mpesa",
-            "customer": { "email": email }
+            "customer": { "email": email, "phone": phone }
         }))
         .send()?
         .json()
@@ -725,7 +762,8 @@ fn create_payment(amount: u64, email: &str) -> Result<serde_json::Value, reqwest
 fn handle_donation(body: &serde_json::Value) -> Result<serde_json::Value, reqwest::Error> {
     let amount = body["amount"].as_u64().unwrap_or(0); // whatever the shopper typed in
     let email = body["email"].as_str().unwrap_or("");
-    create_payment(amount, email)
+    let phone = body["phone"].as_str().unwrap_or("");
+    create_payment(amount, email, phone)
 }` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
@@ -749,7 +787,8 @@ fn main() {
 
         let amount = body["amount"].as_u64().unwrap_or(0);
         let email = body["email"].as_str().unwrap_or("");
-        let payment = create_payment(amount, email).unwrap();
+        let phone = body["phone"].as_str().unwrap_or("");
+        let payment = create_payment(amount, email, phone).unwrap();
         request.respond(Response::from_string(payment.to_string())).ok();
     }
 }` },
@@ -831,13 +870,18 @@ using System.Text.Json;
 // Read the key from the environment — never hardcode it.
 string secret = Environment.GetEnvironmentVariable("KONDUYT_SECRET_KEY");
 
-async Task<string> CreatePayment(int amount, string email, string method = "mpesa") {
+// phone is optional but recommended for mobile money -- it's what
+// receives the STK push. Pass it if you already have it; if you don't
+// and the customer types it in, Konduyt remembers it after this first
+// payment (keyed to email), so you don't need to collect or pass it
+// again on their next purchase.
+async Task<string> CreatePayment(int amount, string email, string phone = null, string method = "mpesa") {
     var client = new HttpClient();
     client.DefaultRequestHeaders.Authorization =
         new AuthenticationHeaderValue("Bearer", secret);
 
     var body = new StringContent(JsonSerializer.Serialize(new {
-        amount, currency = "KES", method, customer = new { email }
+        amount, currency = "KES", method, customer = new { email, phone }
     }), Encoding.UTF8, "application/json");
 
     var res = await client.PostAsync("{{API}}/v1/payments", body);
@@ -850,7 +894,8 @@ async Task<string> CreatePayment(int amount, string email, string method = "mpes
 async Task<string> HandleDonation(JsonElement body) {
     int amount = body.GetProperty("amount").GetInt32(); // whatever the shopper typed in
     string email = body.GetProperty("email").GetString();
-    return await CreatePayment(amount, email);
+    string phone = body.TryGetProperty("phone", out var p) ? p.GetString() : null;
+    return await CreatePayment(amount, email, phone);
 }` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
@@ -967,6 +1012,7 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText amountInput;
     private EditText emailInput;
+    private EditText phoneInput;
     private TextView resultText;
 
     @Override
@@ -978,6 +1024,7 @@ public class MainActivity extends AppCompatActivity {
         // change one there and this line breaks, on purpose.
         amountInput = findViewById(R.id.amountInput);
         emailInput = findViewById(R.id.emailInput);
+        phoneInput = findViewById(R.id.phoneInput);
         resultText = findViewById(R.id.resultText);
 
         Button buyButton = findViewById(R.id.buyButton);
@@ -987,16 +1034,22 @@ public class MainActivity extends AppCompatActivity {
             // -- same field either way.
             int amount = Integer.parseInt(amountInput.getText().toString());
             String email = emailInput.getText().toString();
-            createPayment(amount, email);
+            // phoneInput is optional but recommended for mobile money -- it's
+            // what receives the STK push. If left blank and the customer has
+            // paid before with this email, your backend/Konduyt fills in the
+            // number saved from their last payment automatically.
+            String phone = phoneInput.getText().toString();
+            createPayment(amount, email, phone);
         });
     }
 
-    void createPayment(int amount, String email) {
+    void createPayment(int amount, String email, String phone) {
         OkHttpClient client = new OkHttpClient();
         Executors.newSingleThreadExecutor().execute(() -> {
             String json = "{"
                 + "\\"amount\\": " + amount + ","
-                + "\\"email\\": \\"" + email + "\\""
+                + "\\"email\\": \\"" + email + "\\","
+                + "\\"phone\\": \\"" + phone + "\\""
                 + "}";
 
             // Your own backend, not Konduyt -- POST /api/create-payment,
@@ -1116,6 +1169,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var amountInput: EditText
     private lateinit var emailInput: EditText
+    private lateinit var phoneInput: EditText
     private lateinit var resultText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -1126,6 +1180,7 @@ class MainActivity : AppCompatActivity() {
         // change one there and this line breaks, on purpose.
         amountInput = findViewById(R.id.amountInput)
         emailInput = findViewById(R.id.emailInput)
+        phoneInput = findViewById(R.id.phoneInput)
         resultText = findViewById(R.id.resultText)
 
         findViewById<Button>(R.id.buyButton).setOnClickListener {
@@ -1134,15 +1189,20 @@ class MainActivity : AppCompatActivity() {
             // -- same field either way.
             val amount = amountInput.text.toString().toInt()
             val email = emailInput.text.toString()
-            createPayment(amount, email)
+            // phoneInput is optional but recommended for mobile money -- it's
+            // what receives the STK push. If left blank and the customer has
+            // paid before with this email, your backend/Konduyt fills in the
+            // number saved from their last payment automatically.
+            val phone = phoneInput.text.toString()
+            createPayment(amount, email, phone)
         }
     }
 
-    fun createPayment(amount: Int, email: String) {
+    fun createPayment(amount: Int, email: String, phone: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val client = OkHttpClient()
             val json = "application/json".toMediaType()
-            val payload = """{ "amount": $amount, "email": "$email" }"""
+            val payload = """{ "amount": $amount, "email": "$email", "phone": "$phone" }"""
 
             // Your own backend, not Konduyt -- POST /api/create-payment,
             // the exact route every backend language tab implements.
@@ -1247,6 +1307,7 @@ class ViewController: UIViewController {
     // the storyboard element to these properties.
     @IBOutlet weak var amountField: UITextField!
     @IBOutlet weak var emailField: UITextField!
+    @IBOutlet weak var phoneField: UITextField!
     @IBOutlet weak var resultLabel: UILabel!
 
     // Your own backend, from the iOS Simulator -- not Konduyt directly.
@@ -1260,16 +1321,21 @@ class ViewController: UIViewController {
         // same field either way.
         let amount = Int(amountField.text ?? "") ?? 0
         let email = emailField.text ?? ""
-        Task { await createPayment(amount: amount, email: email) }
+        // phoneField is optional but recommended for mobile money -- it's
+        // what receives the STK push. If left blank and the customer has
+        // paid before with this email, your backend/Konduyt fills in the
+        // number saved from their last payment automatically.
+        let phone = phoneField.text ?? ""
+        Task { await createPayment(amount: amount, email: email, phone: phone) }
     }
 
-    func createPayment(amount: Int, email: String) async {
+    func createPayment(amount: Int, email: String, phone: String) async {
         // Your own backend, not Konduyt -- POST /api/create-payment,
         // the exact route every backend language tab implements.
         var request = URLRequest(url: URL(string: "\\(backend)/api/create-payment")!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["amount": amount, "email": email])
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["amount": amount, "email": email, "phone": phone])
 
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -1280,7 +1346,7 @@ class ViewController: UIViewController {
         }
     }
 }
-// e.g. try await createPayment(amount: selectedItem.price, email: email)` },
+// e.g. try await createPayment(amount: selectedItem.price, email: email, phone: phone)` },
       { title: 'Recurring — call YOUR backend', code:
 `// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 // Your backend creates the real Konduyt session (recurring: true) using
@@ -1342,7 +1408,12 @@ sudo apt-get install libcurl4-openssl-dev   # Debian/Ubuntu` },
 #include <cstdlib>
 #include <string>
 
-void create_payment(long amount, const std::string& email) {
+// phone is optional but recommended for mobile money -- it's what
+// receives the STK push. Pass it if you already have it; if you don't
+// and the customer types it in, Konduyt remembers it after this first
+// payment (keyed to email), so you don't need to collect or pass it
+// again on their next purchase.
+void create_payment(long amount, const std::string& email, const std::string& phone = "") {
     // Read the key from the environment — never hardcode it.
     const char* secret = std::getenv("KONDUYT_SECRET_KEY");
     if (!secret) return;
@@ -1355,7 +1426,7 @@ void create_payment(long amount, const std::string& email) {
     std::string body =
         "{\\"amount\\": " + std::to_string(amount) +
         ", \\"currency\\": \\"KES\\", \\"method\\": \\"mpesa\\","
-        " \\"customer\\": { \\"email\\": \\"" + email + "\\" } }";
+        " \\"customer\\": { \\"email\\": \\"" + email + "\\", \\"phone\\": \\"" + phone + "\\" } }";
 
     std::string auth = "Authorization: Bearer " + std::string(secret);
     struct curl_slist* headers = nullptr;

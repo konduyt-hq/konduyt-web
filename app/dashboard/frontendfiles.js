@@ -6,8 +6,8 @@
 // equivalent, they have their own real UI-definition file format.
 //
 // Every id defined here is a real id the corresponding backend language
-// tab reads by name -- amountInput/emailInput/buyButton/resultText on
-// Android, amountField/emailField/buyButton/resultLabel (+ the
+// tab reads by name -- amountInput/emailInput/phoneInput/buyButton/resultText
+// on Android, amountField/emailField/phoneField/buyButton/resultLabel (+ the
 // createPaymentTapped: action) on iOS. Change an id here and the matching
 // findViewById/@IBOutlet in the Java/Kotlin/Swift tabs breaks, on purpose --
 // that coupling is what makes these real, not illustrative.
@@ -23,8 +23,9 @@ export const ANDROID_LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
      setContentView(R.layout.activity_main) actually loads. This is
      Android's equivalent of HTML/CSS: a real, separate file describing
      the screen, not something written inline in the Activity code.
-     Every id below (amountInput, emailInput, buyButton, resultText) is
-     read by name in the Java/Kotlin backend tabs via findViewById. -->
+     Every id below (amountInput, emailInput, phoneInput, buyButton,
+     resultText) is read by name in the Java/Kotlin backend tabs via
+     findViewById. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -46,6 +47,14 @@ export const ANDROID_LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
         android:layout_height="wrap_content"
         android:inputType="textEmailAddress"
         android:hint="customer@example.com"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/phoneInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="phone"
+        android:hint="Phone (optional -- for mobile money; Konduyt remembers it after the first payment)"
         android:layout_marginBottom="16dp" />
 
     <Button
@@ -67,8 +76,8 @@ export const IOS_STORYBOARD_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <!-- Main.storyboard
      iOS's classic UIKit equivalent of HTML/CSS -- a real, separate XML
      file describing the screen, used instead of (or alongside) SwiftUI.
-     Every id/selector below (amountField, emailField, buyButton, the
-     createPaymentTapped: action, resultLabel) is read by name in the
+     Every id/selector below (amountField, emailField, phoneField, buyButton,
+     the createPaymentTapped: action, resultLabel) is read by name in the
      Swift backend tab via @IBOutlet / @IBAction. -->
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0">
     <scenes>
@@ -81,6 +90,8 @@ export const IOS_STORYBOARD_XML = `<?xml version="1.0" encoding="UTF-8"?>
                                 keyboardType="numberPad" id="amountField"/>
                             <textField placeholder="customer@example.com"
                                 keyboardType="emailAddress" id="emailField"/>
+                            <textField placeholder="Phone (optional -- for mobile money; Konduyt remembers it after the first payment)"
+                                keyboardType="phonePad" id="phoneField"/>
                             <button opaque="NO" contentMode="scaleToFill" id="buyButton">
                                 <state key="normal" title="Buy now"/>
                                 <connections>
