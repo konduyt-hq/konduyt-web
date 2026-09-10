@@ -3142,6 +3142,9 @@ export default function Dashboard() {
                   <p className="con-sub" style={{ marginTop: 6, marginBottom: 12 }}>
                     Only shows methods with a real, verified Konduyt provider — everything else is
                     discarded rather than shown with a fee nobody could actually route through.
+                    Konduyt continuously checks provider pricing; the dot next to a method shows how
+                    current the number actually is — when we can't verify something, we say so rather
+                    than showing it as if it were confirmed.
                   </p>
                   <div className="fee-bands-continent-tabs">
                     {['africa', 'asia', 'europe', 'north_america', 'south_america', 'oceania'].map((c) => (
