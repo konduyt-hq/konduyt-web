@@ -12,6 +12,12 @@ export const metadata = {
     title: 'Konduyt',
     statusBarStyle: 'default',
   },
+  other: {
+    // Next.js's appleWebApp config only emits the Apple-specific tag;
+    // this adds the modern, standards-track equivalent Chrome/Android
+    // now expect, matching the browser console's own deprecation notice.
+    'mobile-web-app-capable': 'yes',
+  },
   icons: {
     apple: '/apple-touch-icon.png',
   },
