@@ -197,7 +197,16 @@ async function konduyt(path, body) {
     },
     body: JSON.stringify(body),
   });
-  return res.json();
+  try {
+    return await res.json();
+  } catch (e) {
+    // A real bug, caught by actually running this: if Konduyt's response
+    // is ever something other than valid JSON -- the API down, a network
+    // error, anything unexpected -- calling .json() on it throws, and
+    // with nothing catching that, the whole request hangs forever with
+    // no response at all instead of a clear error.
+    return { error: "backend_error", message: e.message };
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -266,7 +275,15 @@ def konduyt(path, body):
         headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
         json=body,
     )
-    return res.json()
+    try:
+        return res.json()
+    except ValueError as e:
+        # A real bug, caught by actually running this: if Konduyt's
+        # response is ever something other than valid JSON -- the API
+        # down, a network error, anything unexpected -- .json() raises,
+        # and with nothing catching that, Flask's default error page (not
+        # a clear message) is what the frontend actually sees.
+        return {"error": "backend_error", "message": str(e)}
 
 @app.route("/api/create-payment", methods=["POST"])
 def create_payment():

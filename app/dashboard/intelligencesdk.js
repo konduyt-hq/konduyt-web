@@ -7,9 +7,16 @@
 //   1. Click Pay -> calls the real, public /v1/demo/run (same endpoint
 //      DevPanel.js's own "Test before you sign up" button uses -- no key,
 //      no backend needed for this step) -- shows the real, ranked payment
-//      options for this amount, cheapest first.
+//      options for this amount, cheapest first, as a real popup -- the
+//      same dotted-background modal style used across the rest of this
+//      product, not a plain inline table.
 //   2. Pick one -> THAT calls YOUR OWN backend at
 //      http://localhost:3000/api/create-payment.
+//
+// A real phone number (with its real country code) is collected first,
+// before Pay is even clickable -- Konduyt needs this to know which
+// country's real rail catalogue to rank against, the same real "country"
+// field /v1/demo/run's own backend already accepts and honors.
 //
 // RECURRING (the section below it): a fixed subscription price with its
 // own "Subscribe" button, calling YOUR OWN backend's
@@ -43,6 +50,26 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   .product h1 { font-size: 18px; margin: 0 0 4px; }
   .product .sub { color: #6b6b6b; font-size: 13px; margin: 0 0 20px; }
   .price { font-size: 26px; font-weight: 700; margin-bottom: 18px; }
+
+  .phone-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  #countryCode {
+    width: 92px;
+    padding: 10px 8px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  #phoneInput {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .phone-hint { font-size: 11.5px; color: #6b6b6b; margin: -10px 0 16px; }
+
   #payButton {
     width: 100%;
     padding: 13px;
@@ -56,21 +83,47 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   }
   #payButton:disabled { opacity: 0.5; cursor: default; }
 
-  #intel { display: none; margin-top: 18px; }
-  #intel.open { display: block; }
-  #intel .sub { font-size: 12.5px; color: #6b6b6b; margin: 0 0 12px; }
+  /* Real Konduyt popup styling -- the same dotted-background modal used
+     across the rest of this product, not a plain inline table. */
+  .intel-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(10,10,10,.55);
+    align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .intel-modal-overlay.open { display: flex; }
+  .intel-modal {
+    position: relative;
+    background-color: #fff;
+    background-image: radial-gradient(rgba(0,0,0,0.13) 1px, transparent 1px);
+    background-size: 16px 16px; background-position: 0 0;
+    border-radius: 16px; max-width: 420px; width: 100%; padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  }
+  .intel-modal-close {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; font-size: 16px; color: #6b6b6b; cursor: pointer;
+  }
+  .intel-modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .intel-modal-sub { font-size: 12.5px; line-height: 1.5; color: #6b6b6b; margin-bottom: 6px; }
+  .intel-modal-shopper-note {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    color: #16794a; margin-bottom: 14px;
+  }
+  .intel-modal-table { border: 1px solid #e7e7e7; border-radius: 11px; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em;
-    padding: 8px 4px; border-bottom: 1px solid #e5e5e5; }
-  td { padding: 10px 4px; font-size: 13.5px; border-bottom: 1px solid #f0f0f0; }
   tr.rail { cursor: pointer; }
   tr.rail:hover td { background: #fafafa; }
   tr.best td { font-weight: 700; }
+  td { padding: 11px 13px; font-size: 13.5px; border-bottom: 1px solid #e7e7e7; }
+  tr:last-child td { border-bottom: none; }
   .badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
     background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 6px; }
 
   #checkout { display: none; margin-top: 18px; }
   #checkout.open { display: block; }
+  #checkout .sub { font-size: 12.5px; color: #6b6b6b; margin: 0 0 12px; }
   #checkout input {
     width: 100%;
     padding: 10px 12px;
@@ -113,21 +166,48 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 
   <div class="product">
     <h1>Sample product</h1>
-    <p class="sub">What your customer actually sees first -- just the price and Pay.</p>
+    <p class="sub">What your customer actually sees first -- price, phone number, and Pay.</p>
     <div class="price">KES 5,000.00</div>
-    <button id="payButton" type="button">Pay</button>
+
+    <div class="phone-row">
+      <select id="countryCode">
+        <option value="254" data-iso="KE" selected>🇰🇪 +254</option>
+        <option value="234" data-iso="NG">🇳🇬 +234</option>
+        <option value="233" data-iso="GH">🇬🇭 +233</option>
+        <option value="27" data-iso="ZA">🇿🇦 +27</option>
+        <option value="255" data-iso="TZ">🇹🇿 +255</option>
+        <option value="256" data-iso="UG">🇺🇬 +256</option>
+        <option value="250" data-iso="RW">🇷🇼 +250</option>
+        <option value="20" data-iso="EG">🇪🇬 +20</option>
+        <option value="212" data-iso="MA">🇲🇦 +212</option>
+        <option value="1" data-iso="US">🇺🇸 +1</option>
+        <option value="44" data-iso="GB">🇬🇧 +44</option>
+        <option value="91" data-iso="IN">🇮🇳 +91</option>
+      </select>
+      <input id="phoneInput" type="tel" placeholder="722 123 456" />
+    </div>
+    <p class="phone-hint">Konduyt uses the country code to know which country's real rail catalogue to rank -- this is how a real checkout works too, not a demo-only step.</p>
+
+    <button id="payButton" type="button" disabled>Pay</button>
   </div>
 
-  <div id="intel">
-    <p class="sub">Every way this customer could pay, ranked cheapest-first. Pick one to continue.</p>
-    <table><tbody id="railRows"></tbody></table>
-  </div>
+  <div class="intel-modal-overlay" id="intelOverlay">
+    <div class="intel-modal">
+      <button class="intel-modal-close" type="button" id="intelClose">✕</button>
+      <div class="intel-modal-title">Payment intelligence</div>
+      <p class="intel-modal-sub">Every way this customer could pay, ranked cheapest-first. Pick one to continue.</p>
+      <p class="intel-modal-shopper-note">This is what the customer sees</p>
+      <div class="intel-modal-table">
+        <table><tbody id="railRows"></tbody></table>
+      </div>
 
-  <div id="checkout">
-    <p class="sub">Paying with <strong id="chosenRail"></strong> -- calls YOUR OWN backend, never Konduyt directly.</p>
-    <input id="emailInput" type="email" value="customer@example.com" placeholder="Email" />
-    <button id="confirmButton" type="button">Confirm — Pay</button>
-    <div id="resultDiv"></div>
+      <div id="checkout">
+        <p class="sub">Paying with <strong id="chosenRail"></strong> -- calls YOUR OWN backend, never Konduyt directly.</p>
+        <input id="emailInput" type="email" value="customer@example.com" placeholder="Email" />
+        <button id="confirmButton" type="button">Confirm — Pay</button>
+        <div id="resultDiv"></div>
+      </div>
+    </div>
   </div>
 
   <hr class="divider" />
@@ -145,27 +225,44 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     var CURRENCY = 'KES';
     var chosenProvider = null;
 
-    document.getElementById('payButton').addEventListener('click', function () {
-      var btn = document.getElementById('payButton');
+    // The phone number (with its real country code) has to be filled in
+    // before Pay is even clickable -- Konduyt needs it to know which
+    // country's real rail catalogue to rank against.
+    var countryCodeEl = document.getElementById('countryCode');
+    var phoneInputEl = document.getElementById('phoneInput');
+    var payButtonEl = document.getElementById('payButton');
+
+    function updatePayButtonState() {
+      payButtonEl.disabled = phoneInputEl.value.trim().length < 6;
+    }
+    phoneInputEl.addEventListener('input', updatePayButtonState);
+
+    payButtonEl.addEventListener('click', function () {
+      var btn = payButtonEl;
       btn.disabled = true;
       btn.textContent = 'Loading…';
 
+      var iso = countryCodeEl.selectedOptions[0].getAttribute('data-iso');
+
       // The real, public intelligence endpoint -- no key, no backend of
       // your own needed for this step. Same one DevPanel.js's own
-      // "Test before you sign up" button calls.
+      // "Test before you sign up" button calls. country: an explicit
+      // value is honored by the real backend (mainly useful for testing,
+      // per that endpoint's own docstring) -- derived here from the
+      // phone number's own real country code, not guessed.
       fetch('https://konduyt-api.onrender.com/v1/demo/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY })
+        body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY, country: iso })
       })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var options = (data.intelligence && data.intelligence.options) || [];
           renderRails(options);
-          document.getElementById('intel').classList.add('open');
+          document.getElementById('intelOverlay').classList.add('open');
         })
         .catch(function () {
-          document.getElementById('intel').classList.add('open');
+          document.getElementById('intelOverlay').classList.add('open');
           document.getElementById('railRows').innerHTML =
             '<tr><td colspan="2">Could not reach the intelligence endpoint. Try again.</td></tr>';
         })
@@ -173,6 +270,17 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
           btn.disabled = false;
           btn.textContent = 'Pay';
         });
+    });
+
+    document.getElementById('intelClose').addEventListener('click', function () {
+      document.getElementById('intelOverlay').classList.remove('open');
+      document.getElementById('checkout').classList.remove('open');
+    });
+    document.getElementById('intelOverlay').addEventListener('click', function (e) {
+      if (e.target === this) {
+        this.classList.remove('open');
+        document.getElementById('checkout').classList.remove('open');
+      }
     });
 
     function renderRails(options) {
@@ -209,6 +317,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
       var btn = document.getElementById('confirmButton');
       var resultDiv = document.getElementById('resultDiv');
       var email = document.getElementById('emailInput').value;
+      var phone = countryCodeEl.value + phoneInputEl.value.replace(/\\D/g, '');
 
       btn.disabled = true;
       btn.textContent = 'Processing…';
@@ -217,7 +326,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
       fetch('http://localhost:3000/api/create-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: AMOUNT_MINOR, email: email, provider: chosenProvider })
+        body: JSON.stringify({ amount: AMOUNT_MINOR, email: email, phone: phone, provider: chosenProvider })
       })
         .then(function (r) { return r.json(); })
         .then(function (payment) {
