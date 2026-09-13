@@ -270,9 +270,29 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
+// intelligence.html is served from a different origin than this server
+// (a real file, or konduyt.dev itself) -- without this, the browser
+// blocks every request before it ever reaches these routes,
+// indistinguishable from "the server isn't running" even when it is.
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.post("/api/create-payment", async (req, res) => {
   const payment = await createPayment({ amount: req.body.amount, email: req.body.email });
   res.json(payment);
+});
+
+// The "Recurring" tab's own createSubscriptionSession() -- mounted here so
+// intelligence.html's "Subscribe" button (Step 2 above) actually has a
+// real route to call, not just a function defined but never wired to one.
+app.post("/api/create-subscription", async (req, res) => {
+  const session = await createSubscriptionSession();
+  res.json(session);
 });
 
 app.listen(3000, () => console.log("Backend running on http://localhost:3000"));` },
@@ -381,11 +401,33 @@ payment = create_payment(amount, request.form["email"], request.form.get("phone"
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 
-@app.route("/api/create-payment", methods=["POST"])
+# intelligence.html is served from a different origin than this server
+# (a real file, or konduyt.dev itself) -- without this, the browser
+# blocks every request before it ever reaches these routes,
+# indistinguishable from "the server isn't running" even when it is.
+@app.after_request
+def add_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    return response
+
+@app.route("/api/create-payment", methods=["POST", "OPTIONS"])
 def handle_create_payment():
+    if request.method == "OPTIONS":
+        return "", 204
     body = request.get_json()
     payment = create_payment(body["amount"], body["email"])
     return jsonify(payment)
+
+# The "Recurring" tab's own create_subscription_session() -- mounted here
+# so intelligence.html's "Subscribe" button (Step 2 above) actually has a
+# real route to call, not just a function defined but never wired to one.
+@app.route("/api/create-subscription", methods=["POST", "OPTIONS"])
+def handle_create_subscription():
+    if request.method == "OPTIONS":
+        return "", 204
+    return jsonify(create_subscription_session())
 
 if __name__ == "__main__":
     app.run(port=3000)
@@ -485,7 +527,8 @@ $amount = (int) $_POST["amount"];       // whatever the shopper typed in (a dona
 // $amount = $selectedItem["price"];    // a fixed price you already know (a product)
 $payment = create_payment($secret, $amount, $_POST["email"], $_POST["phone"] ?? null);` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
-`<?php
+`// ---- api/create-payment.php ----
+<?php
 // intelligence.html's own real markup (Step 2 above), verbatim:
 //   <input id="emailInput" type="email" ... />
 //   <button id="confirmButton" ...>Confirm — Pay</button>
@@ -493,9 +536,34 @@ $payment = create_payment($secret, $amount, $_POST["email"], $_POST["phone"] ?? 
 // No framework
 // needed: PHP's built-in server routes by file/path natively.
 // Save as api/create-payment.php, run: php -S localhost:3000
-$body = json_decode(file_get_contents("php://input"), true);
 header("Content-Type: application/json");
-echo json_encode(create_payment($secret, (int) $body["amount"], $body["email"]));` },
+// intelligence.html is served from a different origin than this server
+// (a real file, or konduyt.dev itself) -- without these, the browser
+// blocks every request before it ever reaches this code, indistinguishable
+// from "the server isn't running" even when it is. Same three headers
+// belong at the top of every file under api/, including the one below.
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(204); exit; }
+
+$body = json_decode(file_get_contents("php://input"), true);
+echo json_encode(create_payment($secret, (int) $body["amount"], $body["email"]));
+
+// ---- api/create-subscription.php ----
+// The "Recurring" tab's own create_subscription_session() -- as its own
+// file here (PHP's built-in server routes by file, one route per file, so
+// this needs to be genuinely separate, not appended to the file above),
+// so intelligence.html's "Subscribe" button (Step 2 above) actually has a
+// real route to call, not just a function defined but never wired to one.
+<?php
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(204); exit; }
+
+echo json_encode(create_subscription_session($secret));` },
       { title: 'Recurring', code:
 `<?php
 // A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
@@ -639,7 +707,25 @@ func handleDonation(w http.ResponseWriter, r *http.Request) {
 // net/http shown
 // here (no framework needed); Gin/Echo mount the same route the same way.
 func main() {
+	// intelligence.html is served from a different origin than this server
+	// (a real file, or konduyt.dev itself) -- without these, the browser
+	// blocks every request before it ever reaches these routes,
+	// indistinguishable from "the server isn't running" even when it is.
+	cors := func(w http.ResponseWriter, r *http.Request) bool {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return true
+		}
+		return false
+	}
+
 	http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
+		if cors(w, r) {
+			return
+		}
 		var in struct {
 			Amount int    ` + "`json:\"amount\"`" + `
 			Email  string ` + "`json:\"email\"`" + `
@@ -648,6 +734,17 @@ func main() {
 		json.NewDecoder(r.Body).Decode(&in)
 		payment, _ := createPayment(in.Amount, in.Email, in.Phone)
 		json.NewEncoder(w).Encode(payment)
+	})
+
+	// The "Recurring" tab's own createSubscriptionSession() -- mounted here
+	// so intelligence.html's "Subscribe" button (Step 2 above) actually has
+	// a real route to call, not just a function defined but never wired to one.
+	http.HandleFunc("/api/create-subscription", func(w http.ResponseWriter, r *http.Request) {
+		if cors(w, r) {
+			return
+		}
+		session, _ := createSubscriptionSession()
+		json.NewEncoder(w).Encode(session)
 	})
 
 	fmt.Println("Backend running on http://localhost:3000")
@@ -795,11 +892,35 @@ payment = create_payment(amount, params[:email], phone: params[:phone])` },
 require "sinatra"
 require "json"
 
+# intelligence.html is served from a different origin than this server
+# (a real file, or konduyt.dev itself) -- without this, the browser
+# blocks every request before it ever reaches these routes,
+# indistinguishable from "the server isn't running" even when it is.
+before do
+  headers["Access-Control-Allow-Origin"] = "*"
+  headers["Access-Control-Allow-Headers"] = "Content-Type"
+  headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+end
+options "/api/create-payment" do
+  204
+end
+options "/api/create-subscription" do
+  204
+end
+
 post "/api/create-payment" do
   body = JSON.parse(request.body.read)
   payment = create_payment(body["amount"], body["email"])
   content_type :json
   payment.to_json
+end
+
+# The "Recurring" tab's own create_subscription_session() -- mounted here
+# so intelligence.html's "Subscribe" button (Step 2 above) actually has a
+# real route to call, not just a function defined but never wired to one.
+post "/api/create-subscription" do
+  content_type :json
+  create_subscription_session.to_json
 end
 # Run: ruby server.rb -- backend on http://localhost:3000` },
       { title: 'Recurring', code:
@@ -918,27 +1039,56 @@ fn handle_donation(body: &serde_json::Value) -> Result<serde_json::Value, reqwes
 // its click handler POSTs { amount, email } to exactly this route.
 // tiny_http shown
 // here (cargo add tiny_http); Actix/Axum mount the same route the same way.
-use tiny_http::{Server, Response, Method};
+use tiny_http::{Server, Response, Method, Header};
 use std::io::Read;
 
 fn main() {
     let server = Server::http("0.0.0.0:3000").unwrap();
     println!("Backend running on http://localhost:3000");
 
+    // intelligence.html is served from a different origin than this
+    // server (a real file, or konduyt.dev itself) -- without these, the
+    // browser blocks every request before it ever reaches this code,
+    // indistinguishable from "the server isn't running" even when it is.
+    let cors_headers = || vec![
+        Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap(),
+        Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..]).unwrap(),
+        Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"POST, OPTIONS"[..]).unwrap(),
+    ];
+
     for mut request in server.incoming_requests() {
-        if request.method() != &Method::Post || request.url() != "/api/create-payment" {
-            request.respond(Response::from_string("").with_status_code(404)).ok();
+        if request.method() == &Method::Options {
+            let mut response = Response::from_string("").with_status_code(204);
+            for h in cors_headers() { response.add_header(h); }
+            request.respond(response).ok();
             continue;
         }
+        if request.method() != &Method::Post {
+            let mut response = Response::from_string("").with_status_code(404);
+            for h in cors_headers() { response.add_header(h); }
+            request.respond(response).ok();
+            continue;
+        }
+
         let mut body_str = String::new();
         request.as_reader().read_to_string(&mut body_str).ok();
         let body: serde_json::Value = serde_json::from_str(&body_str).unwrap_or(json!({}));
 
-        let amount = body["amount"].as_u64().unwrap_or(0);
-        let email = body["email"].as_str().unwrap_or("");
-        let phone = body["phone"].as_str().unwrap_or("");
-        let payment = create_payment(amount, email, phone).unwrap();
-        request.respond(Response::from_string(payment.to_string())).ok();
+        // The "Recurring" tab's own create_subscription_session() --
+        // mounted here so intelligence.html's "Subscribe" button (Step 2
+        // above) actually has a real route to call, not just a function
+        // defined but never wired to one.
+        let result_json = if request.url() == "/api/create-subscription" {
+            create_subscription_session().unwrap().to_string()
+        } else {
+            let amount = body["amount"].as_u64().unwrap_or(0);
+            let email = body["email"].as_str().unwrap_or("");
+            let phone = body["phone"].as_str().unwrap_or("");
+            create_payment(amount, email, phone).unwrap().to_string()
+        };
+        let mut response = Response::from_string(result_json);
+        for h in cors_headers() { response.add_header(h); }
+        request.respond(response).ok();
     }
 }` },
       { title: 'Recurring', code:
@@ -1057,12 +1207,32 @@ async Task<string> HandleDonation(JsonElement body) {
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
+// intelligence.html is served from a different origin than this server
+// (a real file, or konduyt.dev itself) -- without this, the browser
+// blocks every request before it ever reaches these routes,
+// indistinguishable from "the server isn't running" even when it is.
+app.Use(async (context, next) => {
+    context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+    context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type");
+    context.Response.Headers.Append("Access-Control-Allow-Methods", "POST, OPTIONS");
+    if (context.Request.Method == "OPTIONS") { context.Response.StatusCode = 204; return; }
+    await next();
+});
+
 app.MapPost("/api/create-payment", async (HttpRequest req) => {
     var body = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body);
     var amount = body.GetProperty("amount").GetInt32();
     var email = body.GetProperty("email").GetString();
     var payment = await CreatePayment(amount, email);
     return Results.Content(payment, "application/json");
+});
+
+// The "Recurring" tab's own CreateSubscriptionSession() -- mounted here
+// so intelligence.html's "Subscribe" button (Step 2 above) actually has a
+// real route to call, not just a function defined but never wired to one.
+app.MapPost("/api/create-subscription", async () => {
+    var session = await CreateSubscriptionSession();
+    return Results.Content(session, "application/json");
 });
 
 app.Urls.Add("http://localhost:3000");
@@ -1606,12 +1776,33 @@ void create_payment(long amount, const std::string& email, const std::string& ph
 int main() {
     httplib::Server svr;
 
+    // intelligence.html is served from a different origin than this
+    // server (a real file, or konduyt.dev itself) -- without this, the
+    // browser blocks every request before it ever reaches these routes,
+    // indistinguishable from "the server isn't running" even when it is.
+    svr.set_pre_routing_handler([](const httplib::Request& req, httplib::Response& res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        if (req.method == "OPTIONS") { res.status = 204; return httplib::Server::HandlerResponse::Handled; }
+        return httplib::Server::HandlerResponse::Unhandled;
+    });
+
     svr.Post("/api/create-payment", [](const httplib::Request& req, httplib::Response& res) {
         // Parsing req.body's real "amount"/"email" fields is left to a
         // JSON library of your choice -- create_payment above takes them.
         long amount = 5000; // parse from req.body in a real integration
         std::string email = "customer@example.com";
         create_payment(amount, email);
+        res.set_content("{\\"status\\": \\"submitted\\"}", "application/json");
+    });
+
+    // The "Recurring" tab's own create_subscription_session() -- mounted
+    // here so intelligence.html's "Subscribe" button (Step 2 above)
+    // actually has a real route to call, not just a function defined but
+    // never wired to one.
+    svr.Post("/api/create-subscription", [](const httplib::Request& req, httplib::Response& res) {
+        create_subscription_session();
         res.set_content("{\\"status\\": \\"submitted\\"}", "application/json");
     });
 

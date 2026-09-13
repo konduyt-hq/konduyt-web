@@ -109,7 +109,11 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   .intel-modal-sub { font-size: 12.5px; line-height: 1.5; color: #6b6b6b; margin-bottom: 6px; }
   .intel-modal-shopper-note {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-    color: #16794a; margin-bottom: 14px;
+    color: #16794a; margin-bottom: 10px;
+  }
+  .intel-modal-rep-note {
+    font-size: 11.5px; line-height: 1.5; color: #8a6d1a; background: #fdf6e3;
+    border: 1px solid #f0e2b0; border-radius: 9px; padding: 10px 12px; margin-bottom: 14px;
   }
   .intel-modal-table { border: 1px solid #e7e7e7; border-radius: 11px; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; }
@@ -171,18 +175,26 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 
     <div class="phone-row">
       <select id="countryCode">
-        <option value="254" data-iso="KE" selected>🇰🇪 +254</option>
-        <option value="234" data-iso="NG">🇳🇬 +234</option>
-        <option value="233" data-iso="GH">🇬🇭 +233</option>
-        <option value="27" data-iso="ZA">🇿🇦 +27</option>
-        <option value="255" data-iso="TZ">🇹🇿 +255</option>
-        <option value="256" data-iso="UG">🇺🇬 +256</option>
-        <option value="250" data-iso="RW">🇷🇼 +250</option>
-        <option value="20" data-iso="EG">🇪🇬 +20</option>
-        <option value="212" data-iso="MA">🇲🇦 +212</option>
-        <option value="1" data-iso="US">🇺🇸 +1</option>
-        <option value="44" data-iso="GB">🇬🇧 +44</option>
-        <option value="91" data-iso="IN">🇮🇳 +91</option>
+        <option value="254" data-iso="KE" selected>🇰🇪 Kenya +254</option>
+        <option value="234" data-iso="NG">🇳🇬 Nigeria +234</option>
+        <option value="233" data-iso="GH">🇬🇭 Ghana +233</option>
+        <option value="27" data-iso="ZA">🇿🇦 South Africa +27</option>
+        <option value="255" data-iso="TZ">🇹🇿 Tanzania +255</option>
+        <option value="256" data-iso="UG">🇺🇬 Uganda +256</option>
+        <option value="250" data-iso="RW">🇷🇼 Rwanda +250</option>
+        <option value="251" data-iso="ET">🇪🇹 Ethiopia +251</option>
+        <option value="20" data-iso="EG">🇪🇬 Egypt +20</option>
+        <option value="212" data-iso="MA">🇲🇦 Morocco +212</option>
+        <option value="225" data-iso="CI">🇨🇮 Côte d'Ivoire +225</option>
+        <option value="221" data-iso="SN">🇸🇳 Senegal +221</option>
+        <option value="237" data-iso="CM">🇨🇲 Cameroon +237</option>
+        <option value="260" data-iso="ZM">🇿🇲 Zambia +260</option>
+        <option value="263" data-iso="ZW">🇿🇼 Zimbabwe +263</option>
+        <option value="1" data-iso="US">🇺🇸 United States +1</option>
+        <option value="44" data-iso="GB">🇬🇧 United Kingdom +44</option>
+        <option value="91" data-iso="IN">🇮🇳 India +91</option>
+        <option value="971" data-iso="AE">🇦🇪 United Arab Emirates +971</option>
+        <option value="61" data-iso="AU">🇦🇺 Australia +61</option>
       </select>
       <input id="phoneInput" type="tel" placeholder="722 123 456" />
     </div>
@@ -197,6 +209,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
       <div class="intel-modal-title">Payment intelligence</div>
       <p class="intel-modal-sub">Every way this customer could pay, ranked cheapest-first. Pick one to continue.</p>
       <p class="intel-modal-shopper-note">This is what the customer sees</p>
+      <div class="intel-modal-rep-note" id="repNote" style="display:none;"></div>
       <div class="intel-modal-table">
         <table><tbody id="railRows"></tbody></table>
       </div>
@@ -221,8 +234,10 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   </div>
 
   <script>
-    var AMOUNT_MINOR = 500000; // KES 5,000.00
-    var CURRENCY = 'KES';
+    var AMOUNT_MINOR = 500000; // KES 5,000.00 -- the REFERENCE price; the
+    // real, displayed currency/amount always come from the backend's own
+    // response (payment.currency / payment.amount), never assumed here.
+    var CURRENCY = 'KES'; // default only -- overwritten below with whatever the backend actually used
     var chosenProvider = null;
 
     // The phone number (with its real country code) has to be filled in
@@ -253,10 +268,36 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
       fetch('https://konduyt-api.onrender.com/v1/demo/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY, country: iso })
+        body: JSON.stringify({ amount: AMOUNT_MINOR, currency: 'KES', country: iso })
       })
         .then(function (r) { return r.json(); })
         .then(function (data) {
+          // The real currency this response actually used -- e.g. USD for
+          // a US number -- not assumed, read directly from what the
+          // backend computed. Every fee shown below is already IN this
+          // currency: the real backend converts each rail's own fee into
+          // it before this response is even sent, not left to the
+          // frontend to guess an exchange rate.
+          CURRENCY = (data.payment && data.payment.currency) || 'KES';
+
+          var repNote = document.getElementById('repNote');
+          if (data.is_representative_example) {
+            // Real and honest, not hidden: Konduyt doesn't have sourced
+            // rail data for every country yet (Kenya's catalogue is the
+            // most complete today). When that's true for the selected
+            // country, the backend says so directly
+            // (is_representative_example) rather than silently showing
+            // Kenya-only methods as if they were genuinely available
+            // wherever the customer is.
+            var countryName = iso;
+            var opt = countryCodeEl.selectedOptions[0];
+            if (opt) countryName = opt.textContent.replace(/^\\S+\\s+/, '').replace(/\\s+\\+\\d+$/, '').trim() || iso;
+            repNote.textContent = 'Konduyt doesn\'t have sourced payment-provider data for ' + countryName + ' yet, so this shows Kenya\'s real, connected-provider pricing as a representative example, converted into ' + CURRENCY + ' for display.';
+            repNote.style.display = 'block';
+          } else {
+            repNote.style.display = 'none';
+          }
+
           var options = (data.intelligence && data.intelligence.options) || [];
           renderRails(options);
           document.getElementById('intelOverlay').classList.add('open');

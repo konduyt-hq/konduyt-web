@@ -210,6 +210,14 @@ async function konduyt(path, body) {
 }
 
 const server = http.createServer(async (req, res) => {
+  // intelligence.html is served from a different origin than this server
+  // (a real file, or konduyt.dev itself) -- without these headers, the
+  // browser blocks every request before it ever reaches this code,
+  // indistinguishable from "the server isn't running" even when it is.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
   if (req.method !== "POST") { res.writeHead(404); res.end(); return; }
 
   let raw = "";
@@ -262,6 +270,17 @@ import requests
 
 app = Flask(__name__)
 
+# intelligence.html is served from a different origin than this server
+# (a real file, or konduyt.dev itself) -- without this, the browser
+# blocks every request before it ever reaches this code, indistinguishable
+# from "the server isn't running" even when it is.
+@app.after_request
+def add_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    return response
+
 # SECRET KEY -- stays on the server, never sent to a browser. This is
 # Konduyt's own universal demo key (safe here since it's already public),
 # but a real key works exactly the same way -- see "Where does my secret
@@ -285,8 +304,10 @@ def konduyt(path, body):
         # a clear message) is what the frontend actually sees.
         return {"error": "backend_error", "message": str(e)}
 
-@app.route("/api/create-payment", methods=["POST"])
+@app.route("/api/create-payment", methods=["POST", "OPTIONS"])
 def create_payment():
+    if request.method == "OPTIONS":
+        return "", 204
     # One-time: amount either comes from the shopper (a donation), or is a
     # fixed price you already know (a product) -- same field either way.
     amount = request.json.get("amount")   # whatever the shopper typed in, OR
@@ -301,8 +322,10 @@ def create_payment():
         "amount": amount, "currency": "KES", "provider": "test",
     }))
 
-@app.route("/api/create-subscription", methods=["POST"])
+@app.route("/api/create-subscription", methods=["POST", "OPTIONS"])
 def create_subscription():
+    if request.method == "OPTIONS":
+        return "", 204
     # Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
     return jsonify(konduyt("/v1/payment_sessions", {
         "amount": 100000, "currency": "KES",
@@ -344,6 +367,14 @@ function konduyt($path, $body, $secret, $api) {
 
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 header("Content-Type: application/json");
+// intelligence.html is served from a different origin than this server
+// (a real file, or konduyt.dev itself) -- without these, the browser
+// blocks every request before it ever reaches this code, indistinguishable
+// from "the server isn't running" even when it is.
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(204); exit; }
 
 if ($path === "/api/create-payment") {
     // One-time: amount either comes from the shopper (a donation), or is a
@@ -409,7 +440,25 @@ func konduyt(path string, body map[string]any) ([]byte, error) {
 }
 
 func main() {
+	// intelligence.html is served from a different origin than this server
+	// (a real file, or konduyt.dev itself) -- without these, the browser
+	// blocks every request before it ever reaches this code, indistinguishable
+	// from "the server isn't running" even when it is.
+	cors := func(w http.ResponseWriter, r *http.Request) bool {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return true
+		}
+		return false
+	}
+
 	http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
+		if cors(w, r) {
+			return
+		}
 		// One-time: amount either comes from the shopper (a donation), or
 		// is a fixed price you already know (a product) -- same field either way.
 		var in struct{ Amount int; Email string }
@@ -429,6 +478,9 @@ func main() {
 	})
 
 	http.HandleFunc("/api/create-subscription", func(w http.ResponseWriter, r *http.Request) {
+		if cors(w, r) {
+			return
+		}
 		// Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
 		out, _ := konduyt("/v1/payment_sessions", map[string]any{
 			"amount": 100000, "currency": "KES",
@@ -474,6 +526,22 @@ def konduyt(path, body)
   http.request(req).body
 end
 
+# intelligence.html is served from a different origin than this server
+# (a real file, or konduyt.dev itself) -- without this, the browser
+# blocks every request before it ever reaches this code, indistinguishable
+# from "the server isn't running" even when it is.
+before do
+  headers["Access-Control-Allow-Origin"] = "*"
+  headers["Access-Control-Allow-Headers"] = "Content-Type"
+  headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+end
+options "/api/create-payment" do
+  204
+end
+options "/api/create-subscription" do
+  204
+end
+
 post "/api/create-payment" do
   # One-time: amount either comes from the shopper (a donation), or is a
   # fixed price you already know (a product) -- same field either way.
@@ -507,7 +575,7 @@ end`,
     code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json tiny_http
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
-use tiny_http::{Server, Response, Method};
+use tiny_http::{Server, Response, Method, Header};
 use std::io::Read;
 
 // SECRET KEY -- stays on the server, never sent to a browser. This is
@@ -532,8 +600,26 @@ fn main() {
     println!("Backend running on http://localhost:3000");
 
     for mut request in server.incoming_requests() {
+        // intelligence.html is served from a different origin than this
+        // server (a real file, or konduyt.dev itself) -- without these,
+        // the browser blocks every request before it ever reaches this
+        // code, indistinguishable from "the server isn't running" even
+        // when it is.
+        let cors_headers = || vec![
+            Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap(),
+            Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..]).unwrap(),
+            Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"POST, OPTIONS"[..]).unwrap(),
+        ];
+        if request.method() == &Method::Options {
+            let mut response = Response::from_string("").with_status_code(204);
+            for h in cors_headers() { response.add_header(h); }
+            request.respond(response).ok();
+            continue;
+        }
         if request.method() != &Method::Post {
-            request.respond(Response::from_string("").with_status_code(404)).ok();
+            let mut response = Response::from_string("").with_status_code(404);
+            for h in cors_headers() { response.add_header(h); }
+            request.respond(response).ok();
             continue;
         }
 
@@ -569,7 +655,9 @@ fn main() {
             _ => { request.respond(Response::from_string("").with_status_code(404)).ok(); continue; }
         };
 
-        request.respond(Response::from_string(result)).ok();
+        let mut response = Response::from_string(result);
+        for h in cors_headers() { response.add_header(h); }
+        request.respond(response).ok();
     }
 }`,
   },
@@ -584,6 +672,18 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
+
+// intelligence.html is served from a different origin than this server
+// (a real file, or konduyt.dev itself) -- without this, the browser
+// blocks every request before it ever reaches this code, indistinguishable
+// from "the server isn't running" even when it is.
+app.Use(async (context, next) => {
+    context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+    context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type");
+    context.Response.Headers.Append("Access-Control-Allow-Methods", "POST, OPTIONS");
+    if (context.Request.Method == "OPTIONS") { context.Response.StatusCode = 204; return; }
+    await next();
+});
 
 // SECRET KEY -- stays on the server, never sent to a browser. This is
 // Konduyt's own universal demo key (safe here since it's already public),
@@ -912,6 +1012,18 @@ std::string konduyt(const std::string& path, const std::string& jsonBody) {
 
 int main() {
     httplib::Server svr;
+
+    // intelligence.html is served from a different origin than this server
+    // (a real file, or konduyt.dev itself) -- without this, the browser
+    // blocks every request before it ever reaches this code,
+    // indistinguishable from "the server isn't running" even when it is.
+    svr.set_pre_routing_handler([](const httplib::Request& req, httplib::Response& res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        if (req.method == "OPTIONS") { res.status = 204; return httplib::Server::HandlerResponse::Handled; }
+        return httplib::Server::HandlerResponse::Unhandled;
+    });
 
     svr.Post("/api/create-payment", [](const httplib::Request& req, httplib::Response& res) {
         // One-time: amount either comes from the shopper (a donation), or is
