@@ -2144,7 +2144,7 @@ export default function Dashboard() {
                               View code — {frontend.filename}
                             </button>
                           ) : (
-                            <div className="lang-block">
+                            <div className="lang-block" style={{ borderTop: `3px solid ${LANG_BRAND[frontend.iconKey] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
                               <div className="lang-block-head">
                                 <span className="lang-block-title">{frontend.filename}</span>
                                 <button className="keys-code-copy static" type="button"
@@ -2210,7 +2210,7 @@ export default function Dashboard() {
                         const code = sec.code.replaceAll('{{API}}', API_BASE);
                         const copyId = `lang_${lang.id}_${i}`;
                         return (
-                          <div className="lang-block" key={i}>
+                          <div className="lang-block" key={i} style={{ borderTop: `3px solid ${LANG_BRAND[lang.icon] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
                             <div className="lang-block-head">
                               <span className="lang-block-title">{sec.title}</span>
                               <button className="keys-code-copy static" type="button"

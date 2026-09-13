@@ -692,7 +692,7 @@
     color:var(--text-secondary); margin-bottom:12px;
   }
   .docs-title{font-size:34px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin-bottom:18px;}
-  .docs-para{font-size:16px; line-height:1.75; color:#3d3d3d; margin-bottom:26px;}
+  .docs-para{font-size:16px; line-height:1.75; color:#3d3d3d; margin-bottom:26px; white-space:pre-line;}
   .docs-code-block{
     background:var(--code-bg); border-radius:12px; overflow:hidden; margin-bottom:30px;
   }

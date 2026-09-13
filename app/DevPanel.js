@@ -1026,7 +1026,7 @@ export default function DevPanel() {
                       View code — {frontend.filename}
                     </button>
                   ) : (
-                    <div className="code-box">
+                    <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND[frontend.iconKey] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
                       <div className="code-box-head">
                         <span>{frontend.filename}</span>
                         <CopyButton text={content} />
@@ -1069,7 +1069,7 @@ export default function DevPanel() {
         </div>
 
         <div className="code-grid code-grid-single">
-          <div className="code-box">
+          <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND[ICON_KEY[active.id] || active.id] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
             <div className="code-box-head">
               <span>{active.filename}</span>
               <CopyButton text={renderedCode} />
