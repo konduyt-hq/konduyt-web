@@ -84,10 +84,18 @@ const server = http.createServer(async (req, res) => {
   res.setHeader("Content-Type", "application/json");
 
   if (req.url === "/api/create-payment") {
-    // One-time: amount either comes from the shopper (a donation), or is a
-    // fixed price you already know (a product) -- same field either way.
-    const amount = body.amount;                 // whatever the shopper typed in, OR
+    // Both fields genuinely arrive here from intelligence.html's own real
+    // markup -- amount from the fixed price, email from emailInput.
+    const amount = body.amount;
+    const email = body.email;                    // real, read here -- see below for why it stops here
     // const amount = 5000;                      // a fixed price you already know
+
+    // email deliberately isn't forwarded to this test endpoint: test
+    // payments never accept or store a customer email on purpose (a
+    // developer poking around here might paste a real one, and there's
+    // no legitimate reason to keep it). A real account calling the real
+    // /v1/payments instead WOULD pass it, as customer: { email } -- see
+    // the "One-time purchase" tab above for that real version.
     const payment = await konduyt("/v1/payments/test", {
       amount, currency: "KES", provider: "test",
     });
@@ -141,6 +149,12 @@ def create_payment():
     # fixed price you already know (a product) -- same field either way.
     amount = request.json.get("amount")   # whatever the shopper typed in, OR
     # amount = 5000                         # a fixed price you already know
+    email = request.json.get("email")     # real, read here -- see below for why it stops here
+
+    # email deliberately isn't forwarded to this test endpoint: test
+    # payments never accept or store a customer email on purpose. A real
+    # account calling the real /v1/payments instead WOULD pass it, as
+    # "customer": {"email": email}.
     return jsonify(konduyt("/v1/payments/test", {
         "amount": amount, "currency": "KES", "provider": "test",
     }))
@@ -195,6 +209,12 @@ if ($path === "/api/create-payment") {
     $body = json_decode(file_get_contents("php://input"), true);
     $amount = $body["amount"];        // whatever the shopper typed in, OR
     // $amount = 5000;                 // a fixed price you already know
+    $email = $body["email"];          // real, read here -- see below for why it stops here
+
+    // $email deliberately isn't forwarded to this test endpoint: test
+    // payments never accept or store a customer email on purpose. A real
+    // account calling the real /v1/payments instead WOULD pass it, as
+    // customer => ["email" => $email].
     echo konduyt("/v1/payments/test", [
         "amount" => $amount, "currency" => "KES", "provider" => "test",
     ], $KONDUYT_SECRET_KEY, $API);
@@ -250,10 +270,16 @@ func main() {
 	http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
 		// One-time: amount either comes from the shopper (a donation), or
 		// is a fixed price you already know (a product) -- same field either way.
-		var in struct{ Amount int }
+		var in struct{ Amount int; Email string }
 		json.NewDecoder(r.Body).Decode(&in)
 		amount := in.Amount // whatever the shopper typed in, OR
 		// amount := 5000     // a fixed price you already know
+		email := in.Email    // real, read here -- see below for why it stops here
+
+		// email deliberately isn't forwarded to this test endpoint: test
+		// payments never accept or store a customer email on purpose. A
+		// real account calling the real /v1/payments instead WOULD pass
+		// it, as map[string]any{"email": email} under "customer".
 		out, _ := konduyt("/v1/payments/test", map[string]any{
 			"amount": amount, "currency": "KES", "provider": "test",
 		})
@@ -312,6 +338,12 @@ post "/api/create-payment" do
   body = JSON.parse(request.body.read)
   amount = body["amount"]     # whatever the shopper typed in, OR
   # amount = 5000               # a fixed price you already know
+  email = body["email"]       # real, read here -- see below for why it stops here
+
+  # email deliberately isn't forwarded to this test endpoint: test
+  # payments never accept or store a customer email on purpose. A real
+  # account calling the real /v1/payments instead WOULD pass it, as
+  # customer: { email: email }.
   content_type :json
   konduyt("/v1/payments/test", { amount: amount, currency: "KES", provider: "test" })
 end
@@ -373,6 +405,13 @@ fn main() {
                 // is a fixed price you already know (a product) -- same field either way.
                 let amount = body["amount"].clone(); // whatever the shopper typed in, OR
                 // let amount = json!(5000);           // a fixed price you already know
+                let email = body["email"].clone();   // real, read here -- see below for why it stops here
+
+                // email deliberately isn't forwarded to this test endpoint:
+                // test payments never accept or store a customer email on
+                // purpose. A real account calling the real /v1/payments
+                // instead WOULD pass it, as json!({"email": email}) under
+                // "customer".
                 konduyt("/v1/payments/test", json!({
                     "amount": amount, "currency": "KES", "provider": "test"
                 }))
@@ -425,6 +464,12 @@ app.MapPost("/api/create-payment", async (HttpRequest req) => {
     var body = await JsonSerializer.DeserializeAsync<Dictionary<string, JsonElement>>(req.Body);
     var amount = body!["amount"].GetInt32();   // whatever the shopper typed in, OR
     // var amount = 5000;                         // a fixed price you already know
+    var email = body["email"].GetString();     // real, read here -- see below for why it stops here
+
+    // email deliberately isn't forwarded to this test endpoint: test
+    // payments never accept or store a customer email on purpose. A real
+    // account calling the real /v1/payments instead WOULD pass it, as
+    // customer = new { email } in the request body.
     return Results.Content(await Konduyt("/v1/payments/test", new {
         amount, currency = "KES", provider = "test"
     }), "application/json");
@@ -729,8 +774,12 @@ int main() {
     svr.Post("/api/create-payment", [](const httplib::Request& req, httplib::Response& res) {
         // One-time: amount either comes from the shopper (a donation), or is
         // a fixed price you already know (a product) -- same field either way.
-        // (Parsing req.body's real "amount" field is left to a JSON library
-        // of your choice -- shown here as a fixed price for brevity.)
+        // (Parsing req.body's real "amount" and "email" fields is left to a
+        // JSON library of your choice -- shown here as fixed values for
+        // brevity. email, once parsed, deliberately isn't forwarded to this
+        // test endpoint: test payments never accept or store a customer
+        // email on purpose. A real account calling the real /v1/payments
+        // instead WOULD pass it, under "customer": {"email": email}.)
         std::string amount = "5000"; // whatever the shopper typed in, OR a fixed price you already know
         std::string body = R"({"amount":)" + amount + R"(,"currency":"KES","provider":"test"})";
         res.set_content(konduyt("/v1/payments/test", body), "application/json");
