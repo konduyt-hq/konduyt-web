@@ -348,6 +348,23 @@
   .status-dot.pending{background:#e0a63a; animation:pulse 1s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
   .code-muted{color:#6a6a72 !important;}
+
+  /* Real syntax highlighting, themed to resemble a real native dark
+     editor -- these are VS Code's own actual Dark+ theme colors (the
+     single most common dark editor theme developers see daily), not an
+     invented palette. */
+  .token.comment, .token.prolog, .token.doctype, .token.cdata{color:#6a9955;}
+  .token.keyword, .token.builtin{color:#569cd6;}
+  .token.control, .token.directive, .token.unit, .token.statement,
+  .token.regex, .token.atrule{color:#c586c0;}
+  .token.string, .token.char, .token.attr-value{color:#ce9178;}
+  .token.function, .token.function-variable{color:#dcdcaa;}
+  .token.number, .token.boolean{color:#b5cea8;}
+  .token.class-name, .token.type-class-name{color:#4ec9b0;}
+  .token.variable, .token.attr-name, .token.property{color:#9cdcfe;}
+  .token.tag{color:#569cd6;}
+  .token.operator, .token.punctuation{color:#d4d4d4;}
+  .token.symbol, .token.deleted{color:#d16969;}
   .pill-more{color:var(--ink);}
   .kw{color:#c586c0;}
   .fn{color:#dcdcaa;}

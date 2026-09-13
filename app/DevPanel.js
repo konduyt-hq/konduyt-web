@@ -6,7 +6,7 @@ import { HOSTING_PLATFORMS } from './dashboard/hostingplatforms';
 import { INTELLIGENCE_TESTING_SDK } from './dashboard/intelligencesdk';
 import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './dashboard/frontendfiles';
 import { FRONTEND_OPTIONS } from './dashboard/frontendoptions';
-import { highlightComments } from './dashboard/codehighlight';
+import { highlightCode } from './dashboard/codehighlight';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
 const ICON_KEY = {
@@ -52,7 +52,7 @@ echo`,
   {
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
     deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// server.mjs  —  run with:  node server.mjs
 import http from "node:http";
 
@@ -113,7 +113,7 @@ server.listen(3000, () => console.log("Backend running on http://localhost:3000"
   {
     id: 'python', label: 'Python', filename: 'server.py',
     deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.py  —  pip install flask requests, then: python server.py
 from flask import Flask, request, jsonify
 import requests
@@ -161,7 +161,7 @@ if __name__ == "__main__":
   {
     id: 'php', label: 'PHP', filename: 'index.php',
     deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), two real scenarios.',
     code: `<?php
 // index.php  —  run with:  php -S localhost:3000
 
@@ -214,7 +214,7 @@ if ($path === "/api/create-payment") {
   {
     id: 'go', label: 'Go', filename: 'main.go',
     deps: 'Standard library only. Run: go run main.go -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.go  —  run with:  go run main.go
 package main
 
@@ -277,7 +277,7 @@ func main() {
   {
     id: 'ruby', label: 'Ruby', filename: 'server.rb',
     deps: 'Install: gem install sinatra net-http   ·   Run: ruby server.rb -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.rb  —  gem install sinatra net-http, then: ruby server.rb
 require "sinatra"
 require "net/http"
@@ -329,7 +329,7 @@ end`,
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
     deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json tiny_http
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
@@ -395,7 +395,7 @@ fn main() {
   {
     id: 'csharp', label: 'C#', filename: 'Program.cs',
     deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs. Run: dotnet run -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// Program.cs  —  dotnet new web -o ., paste over Program.cs, then: dotnet run
 using System.Net.Http.Headers;
 using System.Text;
@@ -684,7 +684,7 @@ struct ContentView: View {
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
     deps: 'Needs libcurl and cpp-httplib (a single header). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2 -- its "Buy now" button calls /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.cpp  —  g++ main.cpp -lcurl -lcpp-httplib -o server && ./server
 #include <curl/curl.h>
 #include <httplib.h>
@@ -1031,7 +1031,7 @@ export default function DevPanel() {
                         <span>{frontend.filename}</span>
                         <CopyButton text={content} />
                       </div>
-                      <pre className="code-pre">{highlightComments(content)}</pre>
+                      <pre className="code-pre">{highlightCode(content, frontend.iconKey)}</pre>
                     </div>
                   )}
                 </>
@@ -1075,7 +1075,7 @@ export default function DevPanel() {
               <CopyButton text={renderedCode} />
             </div>
             {active.deps && <div className="code-deps"><span className="code-deps-tag">setup</span>{active.deps}</div>}
-            <pre className="code-pre">{highlightComments(renderedCode)}</pre>
+            <pre className="code-pre">{highlightCode(renderedCode, ICON_KEY[active.id] || active.id)}</pre>
             {active.note && <div className="code-note">{active.note}</div>}
           </div>
         </div>
