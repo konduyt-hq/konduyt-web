@@ -292,7 +292,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
             var countryName = iso;
             var opt = countryCodeEl.selectedOptions[0];
             if (opt) countryName = opt.textContent.replace(/^\\S+\\s+/, '').replace(/\\s+\\+\\d+$/, '').trim() || iso;
-            repNote.textContent = 'Konduyt doesn\'t have sourced payment-provider data for ' + countryName + ' yet, so this shows Kenya\'s real, connected-provider pricing as a representative example, converted into ' + CURRENCY + ' for display.';
+            repNote.textContent = 'Konduyt doesn\\'t have sourced payment-provider data for ' + countryName + ' yet, so this shows Kenya\\'s real, connected-provider pricing as a representative example, converted into ' + CURRENCY + ' for display.';
             repNote.style.display = 'block';
           } else {
             repNote.style.display = 'none';
