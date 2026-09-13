@@ -1,66 +1,77 @@
 // A real, standalone demo -- one self-contained HTML file, HTML + CSS + JS
-// together, no build step, no dependency. Two independent parts:
+// together, no build step, no dependency.
 //
-// 1. The intelligence preview (fixed price + shopper-entered price tables):
-//    genuinely standalone, no backend or key needed at all -- real per-
-//    method fee formulas, real geo detection, real live FX conversion via
-//    two public APIs. Same approach konduyt.dev/demo/ itself uses.
-//
-// 2. A real "Buy now" section: amountInput/emailInput/buyButton/resultDiv
-//    are real ids, and the button really does POST to
-//    /api/create-payment on http://localhost:3000 -- the exact route every
-//    backend language tab (JS, Python, PHP, Go, ...) implements or shows
-//    how to mount. Open this file next to a running backend from any of
-//    those tabs and the button actually works end to end.
+// The real flow, in order -- matching a real checkout, not showing
+// everything at once:
+//   1. A simple product with ONE "Pay" button. Nothing else yet.
+//   2. Click Pay -> calls the real, public /v1/demo/run (same endpoint
+//      DevPanel.js's own "Test before you sign up" button uses -- no key,
+//      no backend needed for this step) -- shows the real, ranked payment
+//      options for this amount, cheapest first.
+//   3. Pick one -> THAT calls YOUR OWN backend at
+//      http://localhost:3000/api/create-payment -- the exact route every
+//      backend language tab (JS, Python, PHP, Go, ...) implements or shows
+//      how to mount. Open this file next to a running backend from any of
+//      those tabs and it works end to end, the same way a real customer
+//      would actually use it.
 
 export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Konduyt — Payment Intelligence Demo</title>
+<title>Konduyt — Sample Checkout</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    max-width: 480px;
+    max-width: 420px;
     margin: 60px auto;
     padding: 0 20px;
     color: #0a0a0a;
   }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  h2 { font-size: 14px; margin: 28px 0 10px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em; }
-  .sub { color: #6b6b6b; font-size: 13px; margin-bottom: 4px; line-height: 1.5; }
-  .fx-note { font-size: 11.5px; color: #8a8a92; margin-bottom: 18px; }
-  .amount-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-  .amount-row input {
-    flex: 1;
-    padding: 10px 12px;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
+  .product { border: 1px solid #e5e5e5; border-radius: 14px; padding: 24px; }
+  .product h1 { font-size: 18px; margin: 0 0 4px; }
+  .product .sub { color: #6b6b6b; font-size: 13px; margin: 0 0 20px; }
+  .price { font-size: 26px; font-weight: 700; margin-bottom: 18px; }
+  #payButton {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 9px;
+    background: #0a0a0a;
+    color: #fff;
+    font-size: 14.5px;
+    font-weight: 600;
+    cursor: pointer;
   }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  #payButton:disabled { opacity: 0.5; cursor: default; }
+
+  #intel { display: none; margin-top: 18px; }
+  #intel.open { display: block; }
+  #intel .sub { font-size: 12.5px; color: #6b6b6b; margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; }
   th { text-align: left; font-size: 11px; color: #6b6b6b; text-transform: uppercase; letter-spacing: 0.04em;
     padding: 8px 4px; border-bottom: 1px solid #e5e5e5; }
   td { padding: 10px 4px; font-size: 13.5px; border-bottom: 1px solid #f0f0f0; }
+  tr.rail { cursor: pointer; }
+  tr.rail:hover td { background: #fafafa; }
   tr.best td { font-weight: 700; }
   .badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
     background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 6px; }
-  .saving { font-size: 12.5px; color: #6b6b6b; margin-top: 6px; }
-  .saving strong { color: #0a0a0a; }
-  .buy-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e5e5; }
-  .buy-row { display: flex; gap: 8px; margin-bottom: 10px; }
-  .buy-row input {
-    flex: 1;
+
+  #checkout { display: none; margin-top: 18px; }
+  #checkout.open { display: block; }
+  #checkout input {
+    width: 100%;
     padding: 10px 12px;
     border: 1px solid #e5e5e5;
     border-radius: 8px;
     font-size: 14px;
     font-family: inherit;
+    margin-bottom: 10px;
   }
-  #buyButton {
+  #confirmButton {
     width: 100%;
     padding: 12px;
     border: none;
@@ -71,159 +82,108 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     font-weight: 600;
     cursor: pointer;
   }
-  #buyButton:disabled { opacity: 0.5; cursor: default; }
   #resultDiv { margin-top: 12px; font-size: 12.5px; color: #6b6b6b; word-break: break-all; }
 </style>
 </head>
 <body>
-  <h1>Payment intelligence</h1>
-  <p class="sub">Same payment, every rail Konduyt can route it through — ranked cheapest-first by real fees.</p>
-  <p class="fx-note" id="fxNote">Detecting your location…</p>
 
-  <h2>Fixed price (e.g. a product)</h2>
-  <div id="fixedTable"></div>
-
-  <h2>Shopper-entered price (e.g. a donation)</h2>
-  <div class="amount-row">
-    <input id="customAmount" type="number" value="1000" placeholder="Amount" />
+  <div class="product">
+    <h1>Sample product</h1>
+    <p class="sub">What your customer actually sees first -- just the price and Pay.</p>
+    <div class="price">KES 5,000.00</div>
+    <button id="payButton" type="button">Pay</button>
   </div>
-  <div id="customTable"></div>
 
-  <div class="buy-section">
-    <h2>Buy now — a real charge</h2>
-    <p class="sub">
-      Calls YOUR OWN backend at <code>http://localhost:3000/api/create-payment</code> --
-      run any one of the 12 backend language tabs first, then click Buy.
-      Konduyt is never called directly from this page; there is no key here at all.
-    </p>
-    <div class="buy-row">
-      <input id="amountInput" type="number" value="5000" placeholder="Amount" />
-      <input id="emailInput" type="email" value="customer@example.com" placeholder="Email" />
-    </div>
-    <button id="buyButton" type="button">Buy now</button>
+  <div id="intel">
+    <p class="sub">Every way this customer could pay, ranked cheapest-first. Pick one to continue.</p>
+    <table><tbody id="railRows"></tbody></table>
+  </div>
+
+  <div id="checkout">
+    <p class="sub">Paying with <strong id="chosenRail"></strong> -- calls YOUR OWN backend, never Konduyt directly.</p>
+    <input id="emailInput" type="email" value="customer@example.com" placeholder="Email" />
+    <button id="confirmButton" type="button">Confirm — Pay</button>
     <div id="resultDiv"></div>
   </div>
 
   <script>
-    // Real per-method fee formulas -- each provider's own real, published
-    // pricing, not fabricated. The rest use their real percentage rates.
-    // Same rails and formulas as konduyt.dev/demo/ itself.
-    //
-    // M-Pesa: this is a customer paying a MERCHANT (a Buy Goods/Till
-    // payment) -- what Konduyt actually routes -- so it uses Safaricom's
-    // real "Lipa na M-Pesa Buy Goods" MERCHANT charge (0.55%, capped at a
-    // flat KES 200 above KES 36,363; free under KES 501), not the
-    // person-to-person "M-Pesa Charges" table. Both tables are real and
-    // both are published by Safaricom on the same page -- they're just
-    // for two different real transactions. This file previously used the
-    // P2P table by mistake, which meant it disagreed with Konduyt's own
-    // real, sourced backend data (rp_pricing_rules) for the exact same
-    // scenario -- fixed to match.
-    function mpesaTariffMinor(kesMinor) {
-      var kes = kesMinor / 100;
-      if (kes <= 500) return 0;
-      var fee = Math.round(kesMinor * 0.0055);
-      var capMinor = 200 * 100;
-      return fee > capMinor ? capMinor : fee;
-    }
-    var RAILS = [
-      { id: 'mpesa', name: 'M-Pesa', feeKesMinor: function (b) { return mpesaTariffMinor(b); } },
-      { id: 'pesalink', name: 'PesaLink', feeKesMinor: function (b) { return Math.round(b * 0.005); } },
-      { id: 'card', name: 'Card', feeKesMinor: function (b) { return Math.round(b * 0.029); } },
-      { id: 'applepay', name: 'Apple Pay', feeKesMinor: function (b) { return Math.round(b * 0.029); } },
-      { id: 'paypal', name: 'PayPal', feeKesMinor: function (b) { return Math.round(b * 0.0349); } }
-    ];
+    var AMOUNT_MINOR = 500000; // KES 5,000.00
+    var CURRENCY = 'KES';
+    var chosenProvider = null;
 
-    var currency = 'KES';
-    var rate = 1;
-    var country = null;
-    var fxLive = false;
+    document.getElementById('payButton').addEventListener('click', function () {
+      var btn = document.getElementById('payButton');
+      btn.disabled = true;
+      btn.textContent = 'Loading…';
 
-    function fmt(amountMinor, ccy) {
-      try {
-        return new Intl.NumberFormat(undefined, { style: 'currency', currency: ccy }).format(amountMinor / 100);
-      } catch (e) {
-        return ccy + ' ' + (amountMinor / 100).toFixed(2);
-      }
-    }
-
-    function renderTable(containerId, baseKesMinor) {
-      var ranked = RAILS.map(function (rail) {
-        var feeKes = rail.feeKesMinor(baseKesMinor);
-        var feeMinor = Math.round(feeKes * rate);
-        var effPct = Math.round((feeKes / baseKesMinor) * 1000) / 10;
-        return { id: rail.id, name: rail.name, feeMinor: feeMinor, effPct: effPct };
-      }).sort(function (a, b) { return a.feeMinor - b.feeMinor; });
-
-      var cheapest = ranked[0], dearest = ranked[ranked.length - 1];
-      var displayAmount = Math.round(baseKesMinor * rate);
-
-      var html = '<table><tr><th>Pay with</th><th>Fee</th><th></th></tr>';
-      for (var i = 0; i < ranked.length; i++) {
-        var r = ranked[i];
-        var isBest = r.id === cheapest.id;
-        html += '<tr' + (isBest ? ' class="best"' : '') + '>' +
-          '<td>' + r.name + (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
-          '<td>' + fmt(r.feeMinor, currency) + ' <span style="color:#8a8a92">(' + r.effPct + '%)</span></td>' +
-          '<td></td></tr>';
-      }
-      html += '</table>';
-      html += '<div class="saving">On ' + fmt(displayAmount, currency) + ': you keep <strong>' +
-        fmt(dearest.feeMinor - cheapest.feeMinor, currency) + ' more</strong> using ' + cheapest.name +
-        ' instead of ' + dearest.name + '.</div>';
-      document.getElementById(containerId).innerHTML = html;
-    }
-
-    function renderAll() {
-      renderTable('fixedTable', 420000); // KES 4,200.00 fixed reference price
-      var custom = Math.round(parseFloat(document.getElementById('customAmount').value || '0') * 100);
-      renderTable('customTable', custom > 0 ? custom : 100);
-
-      var note = fxLive && currency !== 'KES'
-        ? 'Costs shown in ' + currency + (country ? ' for ' + country : '') + ', converted live from KES.'
-        : 'Showing native KES (live conversion unavailable for your location).';
-      document.getElementById('fxNote').textContent = note;
-    }
-
-    // Real geo + real live FX -- same two simple public APIs
-    // konduyt.dev/demo/ itself uses, so this works standalone with no
-    // Konduyt account, key, or backend needed at all.
-    fetch('https://ipapi.co/json/')
-      .then(function (r) { return r.json(); })
-      .then(function (geo) {
-        var cur = geo && geo.currency ? geo.currency : 'KES';
-        country = geo && geo.country_name ? geo.country_name : null;
-        if (cur === 'KES') { currency = 'KES'; rate = 1; fxLive = true; renderAll(); return; }
-        return fetch('https://open.er-api.com/v6/latest/KES')
-          .then(function (r) { return r.json(); })
-          .then(function (fx) {
-            var r2 = fx && fx.rates && fx.rates[cur];
-            if (r2) { currency = cur; rate = r2; fxLive = true; }
-            renderAll();
-          });
+      // The real, public intelligence endpoint -- no key, no backend of
+      // your own needed for this step. Same one DevPanel.js's own
+      // "Test before you sign up" button calls.
+      fetch('https://konduyt-api.onrender.com/v1/demo/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY })
       })
-      .catch(function () { renderAll(); });
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var options = (data.intelligence && data.intelligence.options) || [];
+          renderRails(options);
+          document.getElementById('intel').classList.add('open');
+        })
+        .catch(function () {
+          document.getElementById('intel').classList.add('open');
+          document.getElementById('railRows').innerHTML =
+            '<tr><td colspan="2">Could not reach the intelligence endpoint. Try again.</td></tr>';
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = 'Pay';
+        });
+    });
 
-    document.getElementById('customAmount').addEventListener('input', renderAll);
-    renderAll(); // render once immediately with KES, before geo/FX resolves
+    function renderRails(options) {
+      var rows = '';
+      for (var i = 0; i < options.length; i++) {
+        var o = options[i];
+        var isBest = i === 0;
+        rows += '<tr class="rail' + (isBest ? ' best' : '') + '" data-provider="' + o.provider + '" data-label="' + o.label + '">' +
+          '<td>' + o.label + (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
+          '<td>' + (o.fee_minor != null ? fmt(o.fee_minor) : '—') + '</td></tr>';
+      }
+      document.getElementById('railRows').innerHTML = rows ||
+        '<tr><td colspan="2">No ranked options for this amount right now.</td></tr>';
 
-    // Real Buy button -- calls YOUR OWN backend, never Konduyt directly.
-    // Same pattern as every other backend language tab: the frontend never
-    // holds a secret key, only your server does.
-    document.getElementById('buyButton').addEventListener('click', function () {
-      var button = document.getElementById('buyButton');
+      var trs = document.querySelectorAll('#railRows tr.rail');
+      for (var j = 0; j < trs.length; j++) {
+        trs[j].addEventListener('click', function () {
+          chosenProvider = this.getAttribute('data-provider');
+          document.getElementById('chosenRail').textContent = this.getAttribute('data-label');
+          document.getElementById('checkout').classList.add('open');
+        });
+      }
+    }
+
+    function fmt(minor) {
+      try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY }).format(minor / 100); }
+      catch (e) { return CURRENCY + ' ' + (minor / 100).toFixed(2); }
+    }
+
+    // The actual charge -- YOUR OWN backend, never Konduyt directly. Same
+    // pattern as every backend language tab: the frontend never holds a
+    // secret key, only your server does.
+    document.getElementById('confirmButton').addEventListener('click', function () {
+      var btn = document.getElementById('confirmButton');
       var resultDiv = document.getElementById('resultDiv');
-      var amount = document.getElementById('amountInput').value;
       var email = document.getElementById('emailInput').value;
 
-      button.disabled = true;
-      button.textContent = 'Processing…';
+      btn.disabled = true;
+      btn.textContent = 'Processing…';
       resultDiv.textContent = '';
 
       fetch('http://localhost:3000/api/create-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: Number(amount), email: email })
+        body: JSON.stringify({ amount: AMOUNT_MINOR, email: email, provider: chosenProvider })
       })
         .then(function (r) { return r.json(); })
         .then(function (payment) {
@@ -233,8 +193,8 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
           resultDiv.textContent = 'Could not reach your backend at localhost:3000 -- is it running?';
         })
         .finally(function () {
-          button.disabled = false;
-          button.textContent = 'Buy now';
+          btn.disabled = false;
+          btn.textContent = 'Confirm — Pay';
         });
     });
   </script>

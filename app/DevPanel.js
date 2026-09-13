@@ -881,6 +881,7 @@ export default function DevPanel() {
   const [devPlatform, setDevPlatform] = useState('render');
   const [frontendId, setFrontendId] = useState('html');
   const [frontendOpen, setFrontendOpen] = useState(true); // "Copy your frontend" -- visible by default, same as steps 1 and 3, not hidden behind a click
+  const [frontendCodeOpen, setFrontendCodeOpen] = useState(false); // the actual code block within it -- collapsed by default, shown only on click
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -1002,7 +1003,7 @@ export default function DevPanel() {
                   <button key={f.id} type="button"
                     className={isActive ? 'pill active' : 'pill'}
                     style={isActive && brand ? { borderColor: brand } : undefined}
-                    onClick={() => setFrontendId(f.id)}>
+                    onClick={() => { setFrontendId(f.id); setFrontendCodeOpen(false); }}>
                     {icon && (
                       <span className="pill-icon" dangerouslySetInnerHTML={{ __html: icon }} />
                     )}
@@ -1019,13 +1020,20 @@ export default function DevPanel() {
               return (
                 <>
                   <p className="step-hint">{frontend.hint}</p>
-                  <div className="code-box">
-                    <div className="code-box-head">
-                      <span>{frontend.filename}</span>
-                      <CopyButton text={content} />
+                  {!frontendCodeOpen ? (
+                    <button type="button" className="view-code-btn"
+                      onClick={() => setFrontendCodeOpen(true)}>
+                      View code — {frontend.filename}
+                    </button>
+                  ) : (
+                    <div className="code-box">
+                      <div className="code-box-head">
+                        <span>{frontend.filename}</span>
+                        <CopyButton text={content} />
+                      </div>
+                      <pre className="code-pre">{highlightComments(content)}</pre>
                     </div>
-                    <pre className="code-pre">{highlightComments(content)}</pre>
-                  </div>
+                  )}
                 </>
               );
             })()}

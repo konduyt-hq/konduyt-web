@@ -15,7 +15,7 @@ export const LANG_BRAND = {
   kotlin: '#7f52ff',
   swift:  '#f05138',
   cpp:    '#00599c',
-  html:   '#e34f26',
+  html:   '#1572b6',
   android: '#3ddc84',
 };
 
@@ -33,6 +33,6 @@ export const LANG_ICONS = {
   kotlin: `<svg viewBox="0 0 24 24" width="16" height="16"><defs><linearGradient id="ktg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7f52ff"/><stop offset="1" stop-color="#e44857"/></linearGradient></defs><rect width="24" height="24" rx="3" fill="url(#ktg)"/><text x="12" y="16" font-family="Arial,sans-serif" font-size="9" font-weight="700" text-anchor="middle" fill="#fff">K</text></svg>`,
   swift: `<svg viewBox="0 0 24 24" width="16" height="16"><rect width="24" height="24" rx="3" fill="#f05138"/><text x="12" y="16" font-family="Arial,sans-serif" font-size="8" font-weight="700" text-anchor="middle" fill="#fff">Sw</text></svg>`,
   cpp: `<svg viewBox="0 0 24 24" width="16" height="16"><rect width="24" height="24" rx="3" fill="#00599c"/><text x="12" y="16" font-family="Arial,sans-serif" font-size="7" font-weight="700" text-anchor="middle" fill="#fff">C++</text></svg>`,
-  html: `<svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 2l1.7 18.8L12 22l7.3-1.2L21 2z" fill="#e34f26"/><path d="M12 3.5v17l5.9-1L19.3 4z" fill="#ef652a"/><path d="M12 8.5H7.7l.3 3h4v-2H9.2l-.1-1zm0 5H8.8l.2 2.2 3 .8v-2z" fill="#fff"/></svg>`,
+  html: `<svg viewBox="0 0 24 24" width="16" height="16"><rect width="24" height="24" rx="4" fill="#181818"/><path d="M4 4h6.5v4H4z" fill="#e34f26"/><path d="M11.5 4H18v4h-6.5z" fill="#1572b6"/><path d="M4 10.5h14v4H4z" fill="#f7df1e"/><rect x="4" y="16.5" width="16" height="3.5" rx="1" fill="#fff"/></svg>`,
   android: `<svg viewBox="0 0 24 24" width="16" height="16"><rect width="24" height="24" rx="3" fill="#3ddc84"/><text x="12" y="16" font-family="Arial,sans-serif" font-size="8" font-weight="700" text-anchor="middle" fill="#0a0a0a">A</text></svg>`,
 };

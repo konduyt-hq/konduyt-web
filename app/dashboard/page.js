@@ -135,6 +135,7 @@ export default function Dashboard() {
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
   const [envPlatform, setEnvPlatform] = useState('render'); // which hosting platform's steps are shown
   const [csFrontendOpen, setCsFrontendOpen] = useState(true); // Code Samples "Copy your frontend" -- visible by default, same as steps 1 and 3, not hidden behind a click
+  const [csFrontendCodeOpen, setCsFrontendCodeOpen] = useState(false); // the actual code block within it -- collapsed by default, shown only on click
   const [csFrontendId, setCsFrontendId] = useState('html'); // Code Samples selected frontend option
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
@@ -2119,7 +2120,7 @@ export default function Dashboard() {
                           <button key={f.id} type="button"
                             className={isActive ? 'pill active' : 'pill'}
                             style={isActive && brand ? { borderColor: brand } : undefined}
-                            onClick={() => setCsFrontendId(f.id)}>
+                            onClick={() => { setCsFrontendId(f.id); setCsFrontendCodeOpen(false); }}>
                             {icon && (
                               <span className="pill-icon" dangerouslySetInnerHTML={{ __html: icon }} />
                             )}
@@ -2137,18 +2138,25 @@ export default function Dashboard() {
                       return (
                         <>
                           <p className="step-hint">{frontend.hint}</p>
-                          <div className="lang-block">
-                            <div className="lang-block-head">
-                              <span className="lang-block-title">{frontend.filename}</span>
-                              <button className="keys-code-copy static" type="button"
-                                onClick={() => copyToClipboard(content, copyId)}>
-                                {copied === copyId ? 'Copied' : 'Copy'}
-                              </button>
+                          {!csFrontendCodeOpen ? (
+                            <button type="button" className="view-code-btn"
+                              onClick={() => setCsFrontendCodeOpen(true)}>
+                              View code — {frontend.filename}
+                            </button>
+                          ) : (
+                            <div className="lang-block">
+                              <div className="lang-block-head">
+                                <span className="lang-block-title">{frontend.filename}</span>
+                                <button className="keys-code-copy static" type="button"
+                                  onClick={() => copyToClipboard(content, copyId)}>
+                                  {copied === copyId ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                              <div className="keys-codeblock">
+                                <pre><code>{highlightComments(content)}</code></pre>
+                              </div>
                             </div>
-                            <div className="keys-codeblock">
-                              <pre><code>{highlightComments(content)}</code></pre>
-                            </div>
-                          </div>
+                          )}
                         </>
                       );
                     })()}

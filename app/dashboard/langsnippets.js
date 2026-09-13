@@ -130,7 +130,7 @@ const payment = await createPayment({ amount, email: req.body.email, phone: req.
 // res.redirect(payment.authorization_url);` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-// route -- amountInput/emailInput are its real field ids. Express shown
+// route -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. Express shown
 // here; any Node framework (Fastify, Koa, raw http) mounts the same way.
 import express from "express";
 const app = express();
@@ -239,7 +239,7 @@ amount = int(request.form["amount"])   # whatever the shopper typed in (a donati
 payment = create_payment(amount, request.form["email"], request.form.get("phone"))` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-# route -- amountInput/emailInput are its real field ids. Flask shown
+# route -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. Flask shown
 # here; FastAPI/Django mount the same route the same way.
 from flask import Flask, request, jsonify
 app = Flask(__name__)
@@ -350,7 +350,7 @@ $payment = create_payment($secret, $amount, $_POST["email"], $_POST["phone"] ?? 
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `<?php
 // intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-// path -- amountInput/emailInput are its real field ids. No framework
+// path -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. No framework
 // needed: PHP's built-in server routes by file/path natively.
 // Save as api/create-payment.php, run: php -S localhost:3000
 $body = json_decode(file_get_contents("php://input"), true);
@@ -493,7 +493,7 @@ func handleDonation(w http.ResponseWriter, r *http.Request) {
 }` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-// route -- amountInput/emailInput are its real field ids. net/http shown
+// route -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. net/http shown
 // here (no framework needed); Gin/Echo mount the same route the same way.
 func main() {
 	http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
@@ -644,7 +644,7 @@ amount = params[:amount].to_i     # whatever the shopper typed in (a donation)
 payment = create_payment(amount, params[:email], phone: params[:phone])` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `# intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-# route -- amountInput/emailInput are its real field ids. Sinatra shown
+# route -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. Sinatra shown
 # here (gem install sinatra); Rails mounts the same route the same way.
 require "sinatra"
 require "json"
@@ -767,7 +767,7 @@ fn handle_donation(body: &serde_json::Value) -> Result<serde_json::Value, reqwes
 }` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-// route -- amountInput/emailInput are its real field ids. tiny_http shown
+// route -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. tiny_http shown
 // here (cargo add tiny_http); Actix/Axum mount the same route the same way.
 use tiny_http::{Server, Response, Method};
 use std::io::Read;
@@ -899,7 +899,7 @@ async Task<string> HandleDonation(JsonElement body) {
 }` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-// route -- amountInput/emailInput are its real field ids. ASP.NET Core
+// route -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. ASP.NET Core
 // minimal API shown here (dotnet new web); MVC controllers mount the
 // same route the same way.
 var builder = WebApplication.CreateBuilder(args);
@@ -1443,7 +1443,7 @@ void create_payment(long amount, const std::string& email, const std::string& ph
 }` },
       { title: 'Wire it to the Buy button (intelligence.html)', code:
 `// intelligence.html's Buy button (Step 2 above) POSTs to exactly this
-// route -- amountInput/emailInput are its real field ids. cpp-httplib
+// route -- emailInput is its real field id -- amount is fixed on the frontend, not typed in. cpp-httplib
 // shown here (a single header, no framework needed).
 #include <httplib.h>
 #include <string>
