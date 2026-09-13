@@ -54,7 +54,7 @@ echo`,
     backendLabel: 'server.mjs — your own backend (a terminal locally, or an online editor with a built-in terminal like vscode.dev, if Node/VS Code aren\'t installed)',
     deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- or paste this into vscode.dev (opens in any browser, no install) and use its built-in terminal the same way. Then open checkout.html next to it.',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
-    frontendLabel: "checkout.html's own click handler (real, already there -- not something to write)",
+    frontendLabel: "checkout.html's own click handler — runs in the browser, no install",
     frontendCode: `var AMOUNT_MINOR = 500000; // KES 5,000.00
 var CURRENCY = 'KES';
 var chosenProvider = null;
@@ -1185,6 +1185,7 @@ export default function DevPanel() {
   const [frontendId, setFrontendId] = useState('html');
   const [frontendOpen, setFrontendOpen] = useState(true); // "Copy your frontend" -- visible by default, same as steps 1 and 3, not hidden behind a click
   const [frontendCodeOpen, setFrontendCodeOpen] = useState(false); // the actual code block within it -- collapsed by default, shown only on click
+  const [runsWhere, setRunsWhere] = useState('machine'); // 'machine' | 'browser' -- toggle for the JS tab's own-machine vs in-browser code, machine shown first
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -1215,7 +1216,7 @@ export default function DevPanel() {
     }
   }
 
-  function selectLang(id) { setActiveId(id); setRunState('idle'); setResult(null); }
+  function selectLang(id) { setActiveId(id); setRunState('idle'); setResult(null); setRunsWhere('machine'); }
 
   const options = (result && result.intelligence && result.intelligence.options) || [];
   const payment = result && result.payment;
@@ -1373,23 +1374,38 @@ export default function DevPanel() {
 
         <div className="code-grid code-grid-single">
           {active.frontendCode && (
-            <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND.js}`, borderRadius: '10px 10px 0 0', marginBottom: 16 }}>
+            <div className="runs-where-toggle">
+              <button type="button"
+                className={runsWhere === 'machine' ? 'runs-where-btn active' : 'runs-where-btn'}
+                onClick={() => setRunsWhere('machine')}>
+                On your machine
+              </button>
+              <button type="button"
+                className={runsWhere === 'browser' ? 'runs-where-btn active' : 'runs-where-btn'}
+                onClick={() => setRunsWhere('browser')}>
+                In an online editor
+              </button>
+            </div>
+          )}
+          {active.frontendCode && runsWhere === 'browser' ? (
+            <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND.js}`, borderRadius: '10px 10px 0 0' }}>
               <div className="code-box-head">
                 <span>{active.frontendLabel}</span>
                 <CopyButton text={active.frontendCode} />
               </div>
               <pre className="code-pre">{highlightCode(active.frontendCode, 'js')}</pre>
             </div>
-          )}
-          <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND[ICON_KEY[active.id] || active.id] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
-            <div className="code-box-head">
-              <span>{active.backendLabel || active.filename}</span>
-              <CopyButton text={renderedCode} />
+          ) : (
+            <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND[ICON_KEY[active.id] || active.id] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
+              <div className="code-box-head">
+                <span>{active.backendLabel || active.filename}</span>
+                <CopyButton text={renderedCode} />
+              </div>
+              {active.deps && <div className="code-deps"><span className="code-deps-tag">setup</span>{active.deps}</div>}
+              <pre className="code-pre">{highlightCode(renderedCode, ICON_KEY[active.id] || active.id)}</pre>
+              {active.note && <div className="code-note">{active.note}</div>}
             </div>
-            {active.deps && <div className="code-deps"><span className="code-deps-tag">setup</span>{active.deps}</div>}
-            <pre className="code-pre">{highlightCode(renderedCode, ICON_KEY[active.id] || active.id)}</pre>
-            {active.note && <div className="code-note">{active.note}</div>}
-          </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
