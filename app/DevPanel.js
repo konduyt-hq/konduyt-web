@@ -53,6 +53,130 @@ echo`,
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
     deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- then open intelligence.html next to it.',
     note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    frontendLabel: "intelligence.html's own click handler (real, already there -- not something to write)",
+    frontendCode: `var AMOUNT_MINOR = 500000; // KES 5,000.00
+var CURRENCY = 'KES';
+var chosenProvider = null;
+
+document.getElementById('payButton').addEventListener('click', function () {
+  var btn = document.getElementById('payButton');
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+
+  // The real, public intelligence endpoint -- no key, no backend of
+  // your own needed for this step. Same one DevPanel.js's own
+  // "Test before you sign up" button calls.
+  fetch('https://konduyt-api.onrender.com/v1/demo/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY })
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var options = (data.intelligence && data.intelligence.options) || [];
+      renderRails(options);
+      document.getElementById('intel').classList.add('open');
+    })
+    .catch(function () {
+      document.getElementById('intel').classList.add('open');
+      document.getElementById('railRows').innerHTML =
+        '<tr><td colspan="2">Could not reach the intelligence endpoint. Try again.</td></tr>';
+    })
+    .finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Pay';
+    });
+});
+
+function renderRails(options) {
+  var rows = '';
+  for (var i = 0; i < options.length; i++) {
+    var o = options[i];
+    var isBest = i === 0;
+    rows += '<tr class="rail' + (isBest ? ' best' : '') + '" data-provider="' + o.provider + '" data-label="' + o.label + '">' +
+      '<td>' + o.label + (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
+      '<td>' + (o.fee_minor != null ? fmt(o.fee_minor) : '—') + '</td></tr>';
+  }
+  document.getElementById('railRows').innerHTML = rows ||
+    '<tr><td colspan="2">No ranked options for this amount right now.</td></tr>';
+
+  var trs = document.querySelectorAll('#railRows tr.rail');
+  for (var j = 0; j < trs.length; j++) {
+    trs[j].addEventListener('click', function () {
+      chosenProvider = this.getAttribute('data-provider');
+      document.getElementById('chosenRail').textContent = this.getAttribute('data-label');
+      document.getElementById('checkout').classList.add('open');
+    });
+  }
+}
+
+function fmt(minor) {
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY }).format(minor / 100); }
+  catch (e) { return CURRENCY + ' ' + (minor / 100).toFixed(2); }
+}
+
+// The actual charge -- YOUR OWN backend, never Konduyt directly. Same
+// pattern as every backend language tab: the frontend never holds a
+// secret key, only your server does.
+document.getElementById('confirmButton').addEventListener('click', function () {
+  var btn = document.getElementById('confirmButton');
+  var resultDiv = document.getElementById('resultDiv');
+  var email = document.getElementById('emailInput').value;
+
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+  resultDiv.textContent = '';
+
+  fetch('http://localhost:3000/api/create-payment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: AMOUNT_MINOR, email: email, provider: chosenProvider })
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (payment) {
+      resultDiv.textContent = JSON.stringify(payment);
+    })
+    .catch(function () {
+      resultDiv.textContent = 'Could not reach your backend at localhost:3000 -- is it running?';
+    })
+    .finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Confirm — Pay';
+    });
+});
+
+// A fixed recurring price -- calls YOUR OWN backend's
+// /api/create-subscription route, the same one every backend language
+// tab implements alongside /api/create-payment. No intelligence
+// comparison step here on purpose: a subscription authorizes once, in
+// Konduyt's own checkout widget, not per-charge -- there's no per-
+// transaction rail to rank yet. A real integration would take the
+// session id this returns and open it with Konduyt.checkout({ sessionId }).
+document.getElementById('subscribeButton').addEventListener('click', function () {
+  var btn = document.getElementById('subscribeButton');
+  var resultDiv = document.getElementById('subResultDiv');
+
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+  resultDiv.textContent = '';
+
+  fetch('http://localhost:3000/api/create-subscription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (session) {
+      resultDiv.textContent = JSON.stringify(session) + ' -- open with Konduyt.checkout({ sessionId }).';
+    })
+    .catch(function () {
+      resultDiv.textContent = 'Could not reach your backend at localhost:3000 -- is it running?';
+    })
+    .finally(function () {
+      btn.disabled = false;
+      btn.textContent = 'Subscribe';
+    });
+});
+  `,
     code: `// server.mjs  —  run with:  node server.mjs
 import http from "node:http";
 
@@ -1118,6 +1242,15 @@ export default function DevPanel() {
         </div>
 
         <div className="code-grid code-grid-single">
+          {active.frontendCode && (
+            <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND.js}`, borderRadius: '10px 10px 0 0', marginBottom: 16 }}>
+              <div className="code-box-head">
+                <span>{active.frontendLabel}</span>
+                <CopyButton text={active.frontendCode} />
+              </div>
+              <pre className="code-pre">{highlightCode(active.frontendCode, 'js')}</pre>
+            </div>
+          )}
           <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND[ICON_KEY[active.id] || active.id] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
             <div className="code-box-head">
               <span>{active.filename}</span>
