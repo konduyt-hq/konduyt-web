@@ -134,7 +134,7 @@ export default function Dashboard() {
   const [msgLoading, setMsgLoading] = useState(false);
   const [langTab, setLangTab] = useState('js'); // selected language in the Languages section
   const [envPlatform, setEnvPlatform] = useState('render'); // which hosting platform's steps are shown
-  const [csFrontendOpen, setCsFrontendOpen] = useState(false); // Code Samples "Copy your frontend" expand
+  const [csFrontendOpen, setCsFrontendOpen] = useState(true); // Code Samples "Copy your frontend" -- visible by default, same as steps 1 and 3, not hidden behind a click
   const [csFrontendId, setCsFrontendId] = useState('html'); // Code Samples selected frontend option
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
@@ -2039,6 +2039,23 @@ export default function Dashboard() {
                   </div>
                   );
                 })()}
+
+                {/* Super simple, visual -- not a paragraph. The single most
+                    common point of confusion this whole flow produces:
+                    mixing up which file goes where. Shown once, plainly,
+                    before the steps that need it -- not explained again
+                    inside them. */}
+                <div className="fe-be-explainer">
+                  <div className="fe-be-item">
+                    <span className="fe-be-label">Frontend</span>
+                    <span className="fe-be-desc">The page your customer sees. Open it in a browser.</span>
+                  </div>
+                  <div className="fe-be-arrow">→</div>
+                  <div className="fe-be-item">
+                    <span className="fe-be-label">Backend</span>
+                    <span className="fe-be-desc">Your own server code. Run it, don&apos;t open it.</span>
+                  </div>
+                </div>
 
                 {/* 1. Set your key — same generic hosting-platform steps as
                     Quickstart step 1, not language-conditioned; language-

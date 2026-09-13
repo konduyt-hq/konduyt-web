@@ -246,6 +246,26 @@
   .copy-icon-btn:hover{color:var(--ink);}
 
   .step-label{font-size:14px; font-weight:600; color:var(--ink); margin-bottom:14px;}
+
+  /* Frontend vs backend, explained visually once, not in a paragraph --
+     two plain boxes and an arrow, not a wall of text. */
+  .fe-be-explainer{
+    display:flex; align-items:stretch; gap:12px; margin-bottom:24px;
+  }
+  .fe-be-item{
+    flex:1; background:var(--elev); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; display:flex; flex-direction:column; gap:3px;
+  }
+  .fe-be-label{font-size:13px; font-weight:700; color:var(--ink);}
+  .fe-be-desc{font-size:12px; color:var(--text-secondary); line-height:1.4;}
+  .fe-be-arrow{
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:var(--text-secondary); flex-shrink:0;
+  }
+  @media (max-width:520px){
+    .fe-be-explainer{flex-direction:column;}
+    .fe-be-arrow{transform:rotate(90deg); padding:2px 0;}
+  }
   .step-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
   .view-docs{display:inline-block; font-size:13.5px; font-weight:700; color:var(--link-blue); text-decoration:none; padding:5px 10px; margin-left:-10px; border-radius:7px; transition:background 0.12s;}
   .view-docs:hover{background:var(--link-blue-soft);}

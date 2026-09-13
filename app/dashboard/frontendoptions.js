@@ -1,14 +1,15 @@
 // Shared frontend picker options -- used by both the landing page Quickstart
 // (DevPanel.js) and the dashboard's Code Samples tab (page.js). Single
-// source of truth so the two never drift: HTML/CSS is the web frontend;
-// Android and iOS don't render a web page at all, so they get their own
-// real UI-definition file instead (XML layout / Storyboard XML), not an
-// HTML/CSS file pretending to be one.
+// source of truth so the two never drift: the web option is a complete
+// frontend (HTML, CSS, and the real click-handling JS together, not just
+// markup); Android and iOS don't render a web page at all, so they get
+// their own real UI-definition file instead (XML layout / Storyboard XML),
+// not an HTML/CSS file pretending to be one.
 
 export const FRONTEND_OPTIONS = [
   {
-    id: 'html', label: 'HTML & CSS', filename: 'intelligence.html', iconKey: 'html',
-    hint: 'The web frontend — HTML and CSS together in one file. Works with any of the 12 backend languages below.',
+    id: 'html', label: 'Web (HTML, CSS & JS)', filename: 'intelligence.html', iconKey: 'html',
+    hint: 'The whole web frontend in one file -- markup, styling, and the real click handler that calls your backend. Works with any of the 12 backend languages below.',
   },
   {
     id: 'android', label: 'Android (XML)', filename: 'activity_main.xml', iconKey: 'android',

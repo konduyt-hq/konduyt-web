@@ -880,7 +880,7 @@ export default function DevPanel() {
   const [showMore, setShowMore] = useState(false);
   const [devPlatform, setDevPlatform] = useState('render');
   const [frontendId, setFrontendId] = useState('html');
-  const [frontendOpen, setFrontendOpen] = useState(false);
+  const [frontendOpen, setFrontendOpen] = useState(true); // "Copy your frontend" -- visible by default, same as steps 1 and 3, not hidden behind a click
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
 
@@ -934,6 +934,20 @@ export default function DevPanel() {
           <div className="key-block">
             <div className="key-label">Universal publishable key <span className="info">ⓘ</span></div>
             <KeyField value={KEYS.publishable} />
+          </div>
+        </div>
+
+        {/* Super simple, visual -- not a paragraph. Same explainer as the
+            dashboard's own Code Samples tab, kept in sync deliberately. */}
+        <div className="fe-be-explainer">
+          <div className="fe-be-item">
+            <span className="fe-be-label">Frontend</span>
+            <span className="fe-be-desc">The page your customer sees. Open it in a browser.</span>
+          </div>
+          <div className="fe-be-arrow">→</div>
+          <div className="fe-be-item">
+            <span className="fe-be-label">Backend</span>
+            <span className="fe-be-desc">Your own server code. Run it, don&apos;t open it.</span>
           </div>
         </div>
 
