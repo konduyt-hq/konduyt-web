@@ -51,7 +51,8 @@ echo`,
   },
   {
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
-    deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- then open intelligence.html next to it.',
+    backendLabel: 'server.mjs — your own backend (a terminal locally, or an online editor with a built-in terminal like vscode.dev, if Node/VS Code aren\'t installed)',
+    deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- or paste this into vscode.dev (opens in any browser, no install) and use its built-in terminal the same way. Then open intelligence.html next to it.',
     note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     frontendLabel: "intelligence.html's own click handler (real, already there -- not something to write)",
     frontendCode: `var AMOUNT_MINOR = 500000; // KES 5,000.00
@@ -1253,7 +1254,7 @@ export default function DevPanel() {
           )}
           <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND[ICON_KEY[active.id] || active.id] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
             <div className="code-box-head">
-              <span>{active.filename}</span>
+              <span>{active.backendLabel || active.filename}</span>
               <CopyButton text={renderedCode} />
             </div>
             {active.deps && <div className="code-deps"><span className="code-deps-tag">setup</span>{active.deps}</div>}
