@@ -226,6 +226,7 @@ export default function Dashboard() {
   const [lang, setLang] = useState('curl');
   const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState('');
+  const [runsWhere, setRunsWhere] = useState('machine'); // 'machine' | 'browser' -- toggle for the JS tab's own-machine vs in-browser code, machine shown first
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [projectCreateError, setProjectCreateError] = useState('');
   const [projectCreating, setProjectCreating] = useState(false);
@@ -2178,7 +2179,7 @@ export default function Dashboard() {
                       <button key={l.id} type="button"
                         className={`lang-chip ${selected ? 'sel' : ''}`}
                         style={{ '--brand': brand }}
-                        onClick={() => setLangTab(l.id)}>
+                        onClick={() => { setLangTab(l.id); setRunsWhere('machine'); }}>
                         {LANG_ICONS[l.icon] && (
                           <span className="lang-chip-icon"
                             dangerouslySetInnerHTML={{ __html: LANG_ICONS[l.icon] }} />
@@ -2206,7 +2207,40 @@ export default function Dashboard() {
                           runs, holds the key the way described in Step 1 above.
                         </p>
                       )}
-                      {lang.sections.map((sec, i) => {
+                      {(() => {
+                        // The JS tab's one special case: one of its sections
+                        // ("checkout.html's own click handler") is real
+                        // browser code, not something that runs on a
+                        // machine at all -- doesn't need Node, doesn't need
+                        // a terminal, works straight from an online editor's
+                        // own preview. Every other section in every
+                        // language's list genuinely needs somewhere to run.
+                        // Toggled instead of stacked, since showing both at
+                        // once buried the one-off browser section under a
+                        // pile of machine-run code with no way to tell them
+                        // apart at a glance.
+                        const browserTitle = "checkout.html's own click handler";
+                        const hasBrowserSection = lang.sections.some((s) => s.title === browserTitle);
+                        const visibleSections = !hasBrowserSection ? lang.sections
+                          : runsWhere === 'browser' ? lang.sections.filter((s) => s.title === browserTitle)
+                          : lang.sections.filter((s) => s.title !== browserTitle);
+                        return (
+                          <>
+                            {hasBrowserSection && (
+                              <div className="runs-where-toggle">
+                                <button type="button"
+                                  className={runsWhere === 'machine' ? 'runs-where-btn active' : 'runs-where-btn'}
+                                  onClick={() => setRunsWhere('machine')}>
+                                  On your machine
+                                </button>
+                                <button type="button"
+                                  className={runsWhere === 'browser' ? 'runs-where-btn active' : 'runs-where-btn'}
+                                  onClick={() => setRunsWhere('browser')}>
+                                  In an online editor
+                                </button>
+                              </div>
+                            )}
+                            {visibleSections.map((sec, i) => {
                         const code = sec.code.replaceAll('{{API}}', API_BASE);
                         const copyId = `lang_${lang.id}_${i}`;
                         return (
@@ -2224,6 +2258,9 @@ export default function Dashboard() {
                           </div>
                         );
                       })}
+                          </>
+                        );
+                      })()}
                       {ENV_SETUP[lang.icon]?.runtimeNote && (
                         <div className="lang-block">
                           <div className="lang-block-head">

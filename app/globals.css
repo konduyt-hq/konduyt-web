@@ -279,6 +279,16 @@
   .view-docs:hover{background:var(--link-blue-soft);}
 
   .lang-pills{display:flex; flex-wrap:wrap; gap:9px; margin-bottom:28px;}
+  .runs-where-toggle{
+    display:inline-flex; border:1px solid var(--border); border-radius:9px;
+    padding:3px; margin-bottom:16px; background:var(--elev);
+  }
+  .runs-where-btn{
+    border:none; background:none; font-family:inherit; font-size:13px; font-weight:600;
+    color:#6b6b6b; padding:7px 14px; border-radius:7px; cursor:pointer;
+    transition:background .12s ease, color .12s ease;
+  }
+  .runs-where-btn.active{background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,0.08);}
   .pill{
     display:flex; align-items:center; gap:7px;
     border:1px solid var(--border);

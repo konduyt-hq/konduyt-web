@@ -52,9 +52,9 @@ echo`,
   {
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
     backendLabel: 'server.mjs — your own backend (a terminal locally, or an online editor with a built-in terminal like vscode.dev, if Node/VS Code aren\'t installed)',
-    deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- or paste this into vscode.dev (opens in any browser, no install) and use its built-in terminal the same way. Then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
-    frontendLabel: "intelligence.html's own click handler (real, already there -- not something to write)",
+    deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- or paste this into vscode.dev (opens in any browser, no install) and use its built-in terminal the same way. Then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    frontendLabel: "checkout.html's own click handler (real, already there -- not something to write)",
     frontendCode: `var AMOUNT_MINOR = 500000; // KES 5,000.00
 var CURRENCY = 'KES';
 var chosenProvider = null;
@@ -210,7 +210,7 @@ async function konduyt(path, body) {
 }
 
 const server = http.createServer(async (req, res) => {
-  // intelligence.html is served from a different origin than this server
+  // checkout.html is served from a different origin than this server
   // (a real file, or konduyt.dev itself) -- without these headers, the
   // browser blocks every request before it ever reaches this code,
   // indistinguishable from "the server isn't running" even when it is.
@@ -226,7 +226,7 @@ const server = http.createServer(async (req, res) => {
   res.setHeader("Content-Type", "application/json");
 
   if (req.url === "/api/create-payment") {
-    // Both fields genuinely arrive here from intelligence.html's own real
+    // Both fields genuinely arrive here from checkout.html's own real
     // markup -- amount from the fixed price, email from emailInput.
     const amount = body.amount;
     const email = body.email;                    // real, read here -- see below for why it stops here
@@ -262,15 +262,15 @@ server.listen(3000, () => console.log("Backend running on http://localhost:3000"
   },
   {
     id: 'python', label: 'Python', filename: 'server.py',
-    deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.py  —  pip install flask requests, then: python server.py
 from flask import Flask, request, jsonify
 import requests
 
 app = Flask(__name__)
 
-# intelligence.html is served from a different origin than this server
+# checkout.html is served from a different origin than this server
 # (a real file, or konduyt.dev itself) -- without this, the browser
 # blocks every request before it ever reaches this code, indistinguishable
 # from "the server isn't running" even when it is.
@@ -339,8 +339,8 @@ if __name__ == "__main__":
   },
   {
     id: 'php', label: 'PHP', filename: 'index.php',
-    deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), two real scenarios.',
+    deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), two real scenarios.',
     code: `<?php
 // index.php  —  run with:  php -S localhost:3000
 
@@ -367,7 +367,7 @@ function konduyt($path, $body, $secret, $api) {
 
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 header("Content-Type: application/json");
-// intelligence.html is served from a different origin than this server
+// checkout.html is served from a different origin than this server
 // (a real file, or konduyt.dev itself) -- without these, the browser
 // blocks every request before it ever reaches this code, indistinguishable
 // from "the server isn't running" even when it is.
@@ -406,8 +406,8 @@ if ($path === "/api/create-payment") {
   },
   {
     id: 'go', label: 'Go', filename: 'main.go',
-    deps: 'Standard library only. Run: go run main.go -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    deps: 'Standard library only. Run: go run main.go -- then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.go  —  run with:  go run main.go
 package main
 
@@ -440,7 +440,7 @@ func konduyt(path string, body map[string]any) ([]byte, error) {
 }
 
 func main() {
-	// intelligence.html is served from a different origin than this server
+	// checkout.html is served from a different origin than this server
 	// (a real file, or konduyt.dev itself) -- without these, the browser
 	// blocks every request before it ever reaches this code, indistinguishable
 	// from "the server isn't running" even when it is.
@@ -496,8 +496,8 @@ func main() {
   },
   {
     id: 'ruby', label: 'Ruby', filename: 'server.rb',
-    deps: 'Install: gem install sinatra net-http   ·   Run: ruby server.rb -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    deps: 'Install: gem install sinatra net-http   ·   Run: ruby server.rb -- then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.rb  —  gem install sinatra net-http, then: ruby server.rb
 require "sinatra"
 require "net/http"
@@ -526,7 +526,7 @@ def konduyt(path, body)
   http.request(req).body
 end
 
-# intelligence.html is served from a different origin than this server
+# checkout.html is served from a different origin than this server
 # (a real file, or konduyt.dev itself) -- without this, the browser
 # blocks every request before it ever reaches this code, indistinguishable
 # from "the server isn't running" even when it is.
@@ -570,8 +570,8 @@ end`,
   },
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
-    deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json tiny_http
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
@@ -600,7 +600,7 @@ fn main() {
     println!("Backend running on http://localhost:3000");
 
     for mut request in server.incoming_requests() {
-        // intelligence.html is served from a different origin than this
+        // checkout.html is served from a different origin than this
         // server (a real file, or konduyt.dev itself) -- without these,
         // the browser blocks every request before it ever reaches this
         // code, indistinguishable from "the server isn't running" even
@@ -663,8 +663,8 @@ fn main() {
   },
   {
     id: 'csharp', label: 'C#', filename: 'Program.cs',
-    deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs. Run: dotnet run -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs. Run: dotnet run -- then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// Program.cs  —  dotnet new web -o ., paste over Program.cs, then: dotnet run
 using System.Net.Http.Headers;
 using System.Text;
@@ -673,7 +673,7 @@ using System.Text.Json;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// intelligence.html is served from a different origin than this server
+// checkout.html is served from a different origin than this server
 // (a real file, or konduyt.dev itself) -- without this, the browser
 // blocks every request before it ever reaches this code, indistinguishable
 // from "the server isn't running" even when it is.
@@ -970,8 +970,8 @@ struct ContentView: View {
   },
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
-    deps: 'Needs libcurl and cpp-httplib (a single header). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open intelligence.html next to it.',
-    note: 'This is the BACKEND for the intelligence.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    deps: 'Needs libcurl and cpp-httplib (a single header). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open checkout.html next to it.',
+    note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.cpp  —  g++ main.cpp -lcurl -lcpp-httplib -o server && ./server
 #include <curl/curl.h>
 #include <httplib.h>
@@ -1013,7 +1013,7 @@ std::string konduyt(const std::string& path, const std::string& jsonBody) {
 int main() {
     httplib::Server svr;
 
-    // intelligence.html is served from a different origin than this server
+    // checkout.html is served from a different origin than this server
     // (a real file, or konduyt.dev itself) -- without this, the browser
     // blocks every request before it ever reaches this code,
     // indistinguishable from "the server isn't running" even when it is.
