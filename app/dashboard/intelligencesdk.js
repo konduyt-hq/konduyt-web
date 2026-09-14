@@ -105,15 +105,22 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     position: absolute; top: 16px; right: 16px;
     background: none; border: none; font-size: 16px; color: #6b6b6b; cursor: pointer;
   }
-  .intel-modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .intel-modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; display: inline-block; }
+  .intel-beta-badge {
+    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.03em; color: #6b6b6b; background: #f0f0f0; border-radius: 5px;
+    padding: 2px 7px; margin-left: 8px; vertical-align: middle; position: relative; top: -2px;
+  }
   .intel-modal-sub { font-size: 12.5px; line-height: 1.5; color: #6b6b6b; margin-bottom: 6px; }
   .intel-modal-shopper-note {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
     color: #16794a; margin-bottom: 10px;
   }
   .intel-modal-rep-note {
-    font-size: 11.5px; line-height: 1.5; color: #8a6d1a; background: #fdf6e3;
-    border: 1px solid #f0e2b0; border-radius: 9px; padding: 10px 12px; margin-bottom: 14px;
+    font-size: 10.5px; line-height: 1.4; color: #9a9a9a; margin-bottom: 10px;
+  }
+  .intel-modal-footer {
+    font-size: 10.5px; color: #b0b0b0; text-align: center; margin-top: 14px;
   }
   .intel-modal-table { border: 1px solid #e7e7e7; border-radius: 11px; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; }
@@ -382,7 +389,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   <div class="intel-modal-overlay" id="intelOverlay">
     <div class="intel-modal">
       <button class="intel-modal-close" type="button" id="intelClose">✕</button>
-      <div class="intel-modal-title">Preview checkout</div>
+      <div class="intel-modal-title">Preview checkout<span class="intel-beta-badge">Beta</span></div>
       <p class="intel-modal-sub" id="intelModalSub">Every way this customer could pay, converted into their own currency.</p>
       <p class="intel-modal-shopper-note">This is what the customer sees</p>
       <div class="intel-modal-rep-note" id="repNote" style="display:none;"></div>
@@ -396,6 +403,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
         <button id="confirmButton" type="button">Confirm — Pay</button>
         <div id="resultDiv"></div>
       </div>
+      <div class="intel-modal-footer">Powered by Konduyt.dev</div>
     </div>
   </div>
 
@@ -473,10 +481,8 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
             // (is_representative_example) rather than silently showing
             // Kenya-only methods as if they were genuinely available
             // wherever the customer is.
-            var countryName = iso;
-            var opt = countryCodeEl.selectedOptions[0];
-            if (opt) countryName = opt.textContent.replace(/^\\S+\\s+/, '').replace(/\\s+\\+\\d+$/, '').trim() || iso;
-            repNote.textContent = 'Konduyt doesn\\'t have sourced payment-provider data for ' + countryName + ' yet, so this shows Kenya\\'s real, connected-provider pricing as a representative example, converted into ' + CURRENCY + ' for display.';
+            repNote.textContent = 'Estimate based on Kenya connected-provider rates, converted to ' + CURRENCY + '.';
+
             repNote.style.display = 'block';
           } else {
             repNote.style.display = 'none';
