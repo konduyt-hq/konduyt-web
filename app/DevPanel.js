@@ -1185,6 +1185,7 @@ export default function DevPanel() {
   const [frontendId, setFrontendId] = useState('html');
   const [frontendOpen, setFrontendOpen] = useState(true); // "Copy your frontend" -- visible by default, same as steps 1 and 3, not hidden behind a click
   const [frontendCodeOpen, setFrontendCodeOpen] = useState(false); // the actual code block within it -- collapsed by default, shown only on click
+  const [frontendDotted, setFrontendDotted] = useState(false); // real user choice: Konduyt's own dotted background for this code block, off by default
   const [runsWhere, setRunsWhere] = useState('machine'); // 'machine' | 'browser' -- toggle for the JS tab's own-machine vs in-browser code, machine shown first
   const active = LANGUAGES.find((l) => l.id === activeId) || LANGUAGES[0];
   const renderedCode = render(active.code);
@@ -1330,11 +1331,16 @@ export default function DevPanel() {
                       View code — {frontend.filename}
                     </button>
                   ) : (
-                    <div className="code-box" style={{ borderTop: `3px solid ${LANG_BRAND[frontend.iconKey] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
+                    <div className={`code-box${frontendDotted ? ' dotted-bg' : ''}`} style={{ borderTop: `3px solid ${LANG_BRAND[frontend.iconKey] || '#0a0a0a'}`, borderRadius: '10px 10px 0 0' }}>
                       <div className="code-box-head">
                         <span>{frontend.filename}</span>
                         <CopyButton text={content} />
                       </div>
+                      <label className="dotted-bg-toggle" style={{ margin: '0 18px 8px' }}>
+                        <input type="checkbox" checked={frontendDotted}
+                          onChange={(e) => setFrontendDotted(e.target.checked)} />
+                        Konduyt dotted background
+                      </label>
                       <pre className="code-pre">{highlightCode(content, frontend.iconKey)}</pre>
                     </div>
                   )}

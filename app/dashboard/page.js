@@ -136,6 +136,7 @@ export default function Dashboard() {
   const [envPlatform, setEnvPlatform] = useState('render'); // which hosting platform's steps are shown
   const [csFrontendOpen, setCsFrontendOpen] = useState(true); // Code Samples "Copy your frontend" -- visible by default, same as steps 1 and 3, not hidden behind a click
   const [csFrontendCodeOpen, setCsFrontendCodeOpen] = useState(false); // the actual code block within it -- collapsed by default, shown only on click
+  const [csFrontendDotted, setCsFrontendDotted] = useState(false); // real user choice: Konduyt's own dotted background for this code block, off by default
   const [csFrontendId, setCsFrontendId] = useState('html'); // Code Samples selected frontend option
   const [providers, setProviders] = useState([]);
   const [capGroups, setCapGroups] = useState([]);
@@ -2153,7 +2154,12 @@ export default function Dashboard() {
                                   {copied === copyId ? 'Copied' : 'Copy'}
                                 </button>
                               </div>
-                              <div className="keys-codeblock">
+                              <label className="dotted-bg-toggle">
+                                <input type="checkbox" checked={csFrontendDotted}
+                                  onChange={(e) => setCsFrontendDotted(e.target.checked)} />
+                                Konduyt dotted background
+                              </label>
+                              <div className={`keys-codeblock${csFrontendDotted ? ' dotted-bg' : ''}`}>
                               <pre>{highlightCode(content, frontend.id)}</pre>
                               </div>
                             </div>

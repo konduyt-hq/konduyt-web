@@ -318,6 +318,12 @@
     border-radius:12px;
     overflow:hidden;
   }
+  .code-box.dotted-bg{
+    background-color:var(--code-bg);
+    background-image: radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 0 0;
+  }
   .code-box-head{
     display:flex; align-items:center; justify-content:space-between;
     padding:14px 18px 6px;
@@ -1636,6 +1642,17 @@
   .keys-lang{font-size:12px; font-weight:600; border:1px solid var(--border); background:var(--elev); color:var(--text-secondary); border-radius:6px; padding:5px 11px; cursor:pointer; font-family:inherit;}
   .keys-lang.sel{background:var(--green); color:#ffffff; border-color:var(--green);}
   .keys-codeblock{position:relative; background:#0f0f0f; border-radius:10px; overflow-x:auto; overflow-y:hidden; max-width:100%;}
+  .keys-codeblock.dotted-bg{
+    background-color:#0f0f0f;
+    background-image: radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 0 0;
+  }
+  .dotted-bg-toggle{
+    display:flex; align-items:center; gap:6px; font-size:12px; color:#8a8a8a;
+    margin-bottom:8px; cursor:pointer; user-select:none; width:fit-content;
+  }
+  .dotted-bg-toggle input{cursor:pointer;}
   .keys-codeblock pre{margin:0; padding:16px; overflow-x:auto;}
   .keys-codeblock code{font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.6; color:#e6e6e6; white-space:pre;}
   .keys-code-copy{position:absolute; top:10px; right:10px; font-size:12px; font-weight:700; border:1px solid #333; background:#1a1a1a; color:#e6e6e6; border-radius:6px; padding:5px 10px; cursor:pointer; z-index:1; font-family:inherit;}
