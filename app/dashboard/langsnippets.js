@@ -112,15 +112,24 @@ const KONDUYT_SECRET_KEY = process.env.KONDUYT_SECRET_KEY;
 // payment (keyed to email), so you don't need to collect or pass it
 // again on their next purchase.
 async function createPayment({ amount, email, phone, method = "mpesa" }) {
-  const res = await fetch("{{API}}/v1/payments", {
-    method: "POST",
-    headers: {
-      "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ amount, currency: "KES", method, customer: { email, phone } }),
-  });
-  return res.json();
+  // A non-JSON or failed upstream response (Konduyt down, a network
+  // blip, a malformed key) must never crash the route with a raw,
+  // unhandled 500 -- res.json() below always gets a real object either
+  // way, same as this file's own konduyt() helper already does for
+  // every other language's samples.
+  try {
+    const res = await fetch("{{API}}/v1/payments", {
+      method: "POST",
+      headers: {
+        "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ amount, currency: "KES", method, customer: { email, phone } }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { error: "backend_error", message: e.message };
+  }
 }
 
 // amount either comes from the shopper, or is a price you already know:
@@ -301,19 +310,28 @@ app.listen(3000, () => console.log("Backend running on http://localhost:3000"));
 // Creates a session; the customer authorizes once in the checkout popup,
 // Konduyt then charges the same amount automatically every interval.
 async function createSubscriptionSession() {
-  const res = await fetch("{{API}}/v1/payment_sessions", {
-    method: "POST",
-    headers: {
-      "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      amount: 100000, currency: "KES",
-      recurring: true, interval: "monthly",
-      reference: "sub_pro_plan",
-    }),
-  });
-  return res.json(); // { id: "sess_...", ... }
+  // Same real reason as createPayment() above: a failed or non-JSON
+  // upstream response must return a real, readable error object, not
+  // crash the route with a raw, unhandled 500 -- confirmed directly:
+  // this exact function, unguarded, was the real cause of Subscribe
+  // showing a broken-looking stack-trace page instead of a clear error.
+  try {
+    const res = await fetch("{{API}}/v1/payment_sessions", {
+      method: "POST",
+      headers: {
+        "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: 100000, currency: "KES",
+        recurring: true, interval: "monthly",
+        reference: "sub_pro_plan",
+      }),
+    });
+    return await res.json(); // { id: "sess_...", ... }
+  } catch (e) {
+    return { error: "backend_error", message: e.message };
+  }
 }
 
 // Client-side, once you have the session id:

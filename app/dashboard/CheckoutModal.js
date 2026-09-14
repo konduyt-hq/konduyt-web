@@ -139,7 +139,7 @@ export default function CheckoutModal({
                 ? (dearest.fee_percent - rec.fee_percent).toFixed(2) : null;
               return (
                 <div className="ckt-intel">
-                  <div className="ckt-intel-badge">Konduyt intelligence</div>
+                  <div className="ckt-intel-badge">Best value</div>
                   <div className="ckt-intel-text">
                     Recommends <strong>{rec.name}</strong> — the lowest-cost rail for this
                     payment{rec.settlement ? ` (${String(rec.settlement).toUpperCase()} settlement)` : ''}.

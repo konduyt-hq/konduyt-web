@@ -403,7 +403,7 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
         <button id="confirmButton" type="button">Confirm — Pay</button>
         <div id="resultDiv"></div>
       </div>
-      <div class="intel-modal-footer">Powered by Konduyt.dev</div>
+      <div class="intel-modal-footer">by Konduyt.dev</div>
     </div>
   </div>
 
