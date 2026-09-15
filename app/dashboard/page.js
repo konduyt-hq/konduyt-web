@@ -1705,6 +1705,23 @@ export default function Dashboard() {
                           </div>
                           <div className="provider-card-tags">
                             {p.status === 'beta' && <span className="provider-card-tag beta">Beta</span>}
+                            {p.onboarding && (
+                              /* How much work the live keys take. Clickable
+                                 rather than a bare badge, so the criteria
+                                 behind the label are one click away. */
+                              <a className={`provider-card-tag onboarding tier-${p.onboarding.tier}`}
+                                 href={`/docs${p.onboarding.docs_anchor}`}
+                                 title={p.onboarding.summary}>
+                                {p.onboarding.label}
+                              </a>
+                            )}
+                            {p.onboarding?.geo_note && (
+                              <a className="provider-card-tag geo-warn"
+                                 href={`/docs${p.onboarding.docs_anchor}`}
+                                 title="This provider is not in Konduyt's catalogue for your country.">
+                                {p.onboarding.geo_note}
+                              </a>
+                            )}
                             {connected && <span className="provider-card-tag connected">✓ Connected</span>}
                           </div>
                         </div>

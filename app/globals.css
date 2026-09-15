@@ -1511,6 +1511,16 @@
   .provider-card-tag{font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; white-space:nowrap;}
   .provider-card-tag.beta{background:#fff4e0; color:#9a6400;}
   .provider-card-tag.connected{background:#e8f5ee; color:#0a7a3e;}
+  /* Onboarding difficulty tag -- same pill shape as the status tags, but a
+     link, so the tier criteria are one click away on the docs page. */
+  .provider-card-tag.onboarding{text-decoration:none; cursor:pointer; background:#eef2f7; color:#41506b;}
+  .provider-card-tag.onboarding:hover{background:#e2e8f2;}
+  .provider-card-tag.tier-instant{background:#e8f5ee; color:#0a7a3e;}
+  .provider-card-tag.tier-quick{background:#eef4fb; color:#1f5c99;}
+  .provider-card-tag.tier-heavy{background:#fdeeee; color:#a3312c;}
+  .provider-card-tag.tier-bank{background:#f0edf9; color:#54409c;}
+  .provider-card-tag.tier-operator{background:#fff4e0; color:#9a6400;}
+  .provider-card-tag.geo-warn{text-decoration:none; cursor:pointer; background:#f4f4f5; color:#5b5b66;}
   .provider-card-methods-line{font-size:13px; color:var(--text-secondary); margin:0; line-height:1.5;}
   .provider-card-countries-line{font-size:11.5px; color:var(--text-secondary); opacity:.75; margin:4px 0 0; line-height:1.5;}
   .provider-card-actions{display:flex; gap:8px; margin-top:2px;}
