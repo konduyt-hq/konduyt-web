@@ -2,6 +2,38 @@
 
 Working notes for agents in this repo.
 
+## Deploy topology
+
+Two separate services, two separate repos. One deploy does not cover both, and
+a commit hash is only meaningful once you know which repo it belongs to.
+
+| Surface | Host | Repo | Config |
+| --- | --- | --- | --- |
+| `konduyt.dev` (this repo) | Cloudflare Pages | `konduyt-hq/konduyt-web` | dashboard-managed |
+| `konduyt-api.onrender.com` | Render | `konduyt-hq/konduyt-api` | `render.yaml` in that repo |
+
+A Render commit hash refers to `konduyt-api`, **not** this repo. Before
+diagnosing a "stale deploy", check which service is being looked at, and
+compare `git rev-list --count origin/main..HEAD` in each repo separately.
+
+Both deploys are dashboard-configured with auto-deploy on `main` (there is no
+`.github/` or `wrangler.toml` here), so a push is the whole deploy trigger.
+
+### Verifying a deploy actually landed
+
+The served HTML is a Next.js shell, so page content lives in JS chunks and a
+plain `curl` of a route will not show source markers. Verify against an
+artifact served as static text instead:
+
+```
+curl -sSL https://konduyt.dev/checkout-page.html | grep -c rankByCost
+```
+
+`/checkout-page.html` 308-redirects to `/checkout-page`, so follow redirects.
+For the API, exercise a feature added by the newest commit rather than trusting
+the dashboard hash -- e.g. POST `/v1/demo/run` with `customer.phone` and check
+for the `carrier` block.
+
 ## Build & verify
 
 - Next.js 14 App Router with `output: 'export'` (static export). `next start`
