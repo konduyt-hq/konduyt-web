@@ -60,8 +60,9 @@ const priced = (label, minor) => ({ method: label, provider: 'p', label, fee_min
   });
   check('popup opened', r.open, true);
   check('every real KE method listed', r.labels.sort(),
-        ['AIRTEL_MONEY', 'APPLE_PAY', 'Cards', 'MPESA', 'PESALINK', 'PESAPAL', 'T_KASH'].sort());
-  check('badge on the priced rail, not index 0', r.badged, ['MPESA']);
+        ['Airtel Money', 'Apple Pay', 'Bank Transfer', 'Card', 'M-Pesa',
+         'Mobile Money', 'PesaLink', 'Pesapal', 'T-Kash'].sort());
+  check('badge on the priced rail, not index 0', r.badged, ['M-Pesa']);
 
   console.log('\nUS -- 9 real rails, two priced, cheapest wins:');
   r = await run('US', '1', 10, {

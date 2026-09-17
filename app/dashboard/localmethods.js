@@ -1,12 +1,18 @@
-// Country -> real local payment methods, generated from
-// konduyt-api app/routing/*.py. 110 countries, validated against the 8
-// countries the live /v1/demo/run endpoint answers for today.
+// Country -> real local payment methods, generated from konduyt-api
+// app/routing/*.py by scripts/build-checkout-page.py. Regenerate, do not edit.
 export const LOCAL_METHODS = {
   "AD": [
+    "Bank Transfer",
+    "Card",
     "Cards (SEPA/interchange-regulated)"
   ],
   "AE": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "Cbuae Aani",
+    "Paymes",
+    "Paytabs",
+    "Telr"
   ],
   "AF": [
     "HesabPay"
@@ -16,30 +22,55 @@ export const LOCAL_METHODS = {
     "Cards",
     "Online Banking"
   ],
+  "AL": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "AM": [
+    "Wallet"
+  ],
+  "AO": [
+    "Bank Transfer",
+    "Card",
+    "Intl Card",
+    "Mobile Money",
+    "Multicaixa",
+    "Multicaixa Express",
+    "Unitel Money"
+  ],
   "AR": [
     "American Express",
+    "Bank Transfer",
+    "Card",
     "Cuenta DNI",
     "MODO",
     "Mastercard",
     "Mercado Pago",
     "Pago Fácil",
+    "QR",
     "Rapipago",
+    "Transfer 30",
     "Transferencias 3.0",
-    "Visa"
+    "Visa",
+    "Wallet"
   ],
   "AT": [
+    "Bank Transfer",
+    "Card",
     "EPS"
   ],
   "AU": [
     "Apple Pay/Google Pay",
     "BECS Direct Debit",
     "BPAY",
+    "Bank Transfer",
+    "Card",
+    "Eftpos",
     "NPP",
     "Osko",
     "PayID",
     "Visa/Mastercard",
-    "card",
-    "eftpos"
+    "Wallet"
   ],
   "BB": [
     "Bank Transfer",
@@ -48,28 +79,67 @@ export const LOCAL_METHODS = {
     "SurePay",
     "WiPay"
   ],
+  "BD": [
+    "Bank Transfer",
+    "Nagad",
+    "Wallet",
+    "bKash"
+  ],
   "BE": [
-    "Bancontact"
+    "Bancontact",
+    "Bank Transfer",
+    "Card"
+  ],
+  "BF": [
+    "Bank Transfer",
+    "Card",
+    "Mobile Money",
+    "Moov Money",
+    "Orange Money",
+    "Waemu Rail"
   ],
   "BG": [
     "BORICA",
+    "Bank Transfer",
+    "Card",
     "ePay.bg"
   ],
   "BH": [
-    "card"
+    "Card",
+    "Telr"
   ],
   "BI": [
-    "Burundi"
+    "Bank Transfer",
+    "Burundi",
+    "Card",
+    "Mobile Money"
+  ],
+  "BJ": [
+    "Bank Transfer",
+    "Card",
+    "MTN MoMo",
+    "Mobile Money",
+    "Moov Money",
+    "Waemu Rail"
+  ],
+  "BN": [
+    "Bank Transfer",
+    "Bibd Quickpay"
   ],
   "BO": [
+    "Bank Transfer",
     "Bank Transfers",
     "Cards",
+    "QR",
     "QR Simple",
     "Tigo Money",
     "Yape Bolivia"
   ],
   "BR": [
+    "Bank Transfer",
+    "Boleto",
     "Boleto Bancário",
+    "Card",
     "Elo",
     "Hipercard",
     "Mastercard",
@@ -88,6 +158,12 @@ export const LOCAL_METHODS = {
     "Online Banking",
     "Sand Dollar"
   ],
+  "BW": [
+    "Bank Transfer",
+    "Card",
+    "EFT",
+    "Intl Card"
+  ],
   "BZ": [
     "Bank Transfer",
     "Cards",
@@ -95,19 +171,58 @@ export const LOCAL_METHODS = {
   ],
   "CA": [
     "Apple Pay/Google Pay",
+    "Bank Transfer",
+    "Card",
+    "EFT",
     "Interac Debit",
+    "Interac Etransfer",
     "Interac Online",
     "Interac e-Transfer",
+    "RTR",
     "Visa/Mastercard"
   ],
+  "CD": [
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "M-Pesa",
+    "Mobile Money",
+    "Orange Money",
+    "Wallet"
+  ],
+  "CF": [
+    "Bank Transfer",
+    "Card",
+    "Cemac Rail",
+    "Mobile Money"
+  ],
+  "CG": [
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "Cemac Rail",
+    "MTN MoMo",
+    "Mobile Money",
+    "Wallet"
+  ],
   "CH": [
+    "Bank Transfer",
+    "Card",
     "TWINT"
   ],
   "CI": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "MTN MoMo",
+    "Mobile Money",
+    "Moov Money",
+    "Orange Money",
+    "Waemu Rail",
+    "Wave"
   ],
   "CL": [
     "Bank Transfer",
+    "Card",
     "Khipu",
     "MACH",
     "Mastercard",
@@ -115,23 +230,48 @@ export const LOCAL_METHODS = {
     "Onepay",
     "Redcompra",
     "Visa",
+    "WEBPAY",
+    "Wallet",
     "Webpay"
   ],
-  "CO": [
+  "CM": [
     "Bank Transfer",
+    "Card",
+    "Cemac Rail",
+    "MTN MoMo",
+    "Mobile Money",
+    "Orange Money"
+  ],
+  "CN": [
+    "Alipay",
+    "Card",
+    "UNIONPAY",
+    "Wallet",
+    "WeChat Pay"
+  ],
+  "CO": [
+    "BRE B",
+    "Bank Transfer",
+    "DAVIPLATA",
     "Daviplata",
     "Efecty",
     "Mastercard",
     "Mercado Pago",
+    "NEQUI",
     "Nequi",
     "PSE",
     "Transfiya",
-    "Visa"
+    "Visa",
+    "Wallet"
   ],
   "CR": [
+    "Bank Transfer",
+    "Card",
     "Cards",
+    "SINPE",
     "SINPE Móvil",
-    "SINPE Transfers"
+    "SINPE Transfers",
+    "Sinpe Movil"
   ],
   "CU": [
     "Bank Cards",
@@ -139,15 +279,37 @@ export const LOCAL_METHODS = {
     "Transfermóvil"
   ],
   "CV": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "Intl Card",
+    "Vinti4"
+  ],
+  "CY": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "CZ": [
+    "Bank Transfer",
+    "Card"
   ],
   "DE": [
+    "Bank Transfer",
+    "Card",
+    "Girocard",
     "Wero"
   ],
   "DJ": [
-    "Djibouti"
+    "Bank Transfer",
+    "Card",
+    "Djibouti",
+    "Intl Card",
+    "MOBILE",
+    "Mobile Money"
   ],
   "DK": [
+    "Bank Transfer",
+    "Card",
+    "DANKORT",
     "MobilePay"
   ],
   "DM": [
@@ -159,28 +321,67 @@ export const LOCAL_METHODS = {
   "DO": [
     "Bank Mobile Apps",
     "Bank Transfer",
+    "Card",
     "Cards",
     "Pago Móvil",
     "tPago"
   ],
   "DZ": [
+    "Bank Transfer",
+    "Baridimob",
+    "CIB",
+    "Card",
     "Cards (CIB/EDAHABIA)",
-    "card"
+    "Edahabia",
+    "Intl Card",
+    "Mobile Money"
   ],
   "EC": [
     "Bank Transfer",
     "Deuna",
     "Mastercard",
     "PayPhone",
-    "Visa"
+    "QR",
+    "Visa",
+    "Wallet"
+  ],
+  "EE": [
+    "Bank Transfer",
+    "Card"
   ],
   "EG": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "Etisalat Cash",
+    "Fawry",
+    "InstaPay",
+    "Intl Card",
+    "Meeza",
+    "Mobile Money",
+    "Paytabs",
+    "Wallet"
+  ],
+  "ER": [
+    "Bank Transfer",
+    "Card",
+    "Mobile Money Generic"
   ],
   "ES": [
-    "Bizum"
+    "Bank Transfer",
+    "Bizum",
+    "Card"
+  ],
+  "ET": [
+    "Bank Transfer",
+    "Card",
+    "Intl Card",
+    "M-Pesa",
+    "Mobile Money",
+    "Telebirr"
   ],
   "FI": [
+    "Bank Transfer",
+    "Card",
     "MobilePay"
   ],
   "FJ": [
@@ -196,27 +397,69 @@ export const LOCAL_METHODS = {
     "Mobile/Internet Banking"
   ],
   "FR": [
+    "Bank Transfer",
+    "Card",
+    "Cartes Bancaires",
     "Cartes Bancaires / Wero"
   ],
+  "GA": [
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "Cemac Rail",
+    "Mobile Money",
+    "Moov Money"
+  ],
   "GB": [
-    "Pay by Bank (Open Banking)",
-    "card"
+    "Bank Transfer",
+    "Card",
+    "Faster Payments",
+    "Open Banking",
+    "Pay by Bank (Open Banking)"
   ],
   "GD": [
     "Bank Transfer",
     "Cards",
     "Online Banking"
   ],
+  "GE": [
+    "Bank Transfer",
+    "TBC Bank"
+  ],
   "GH": [
-    "card"
+    "AirtelTigo Money",
+    "Bank Transfer",
+    "Card",
+    "GhanaPay",
+    "MTN MoMo",
+    "Mobile Money",
+    "Telecel Cash"
+  ],
+  "GM": [
+    "Bank Transfer",
+    "Card",
+    "Mobile Money",
+    "Wallet"
   ],
   "GN": [
-    "Guinea"
+    "Bank Transfer",
+    "Card",
+    "Guinea",
+    "MTN MoMo",
+    "Mobile Money",
+    "Orange Money"
   ],
   "GQ": [
-    "Equatorial Guinea"
+    "Bank Transfer",
+    "Card",
+    "Cemac Rail",
+    "Equatorial Guinea",
+    "MOBILE",
+    "Mobile Money"
   ],
   "GR": [
+    "Bank Transfer",
+    "Card",
     "IRIS"
   ],
   "GT": [
@@ -225,7 +468,12 @@ export const LOCAL_METHODS = {
     "Mobile Banking"
   ],
   "GW": [
-    "Guinea-Bissau"
+    "Bank Transfer",
+    "Card",
+    "Guinea-Bissau",
+    "Mobile Money",
+    "Orange Money",
+    "Waemu Rail"
   ],
   "GY": [
     "Bank Transfer",
@@ -241,7 +489,9 @@ export const LOCAL_METHODS = {
     "Tigo Money"
   ],
   "HR": [
-    "Aircash"
+    "Aircash",
+    "Bank Transfer",
+    "Card"
   ],
   "HT": [
     "Bank Transfer",
@@ -250,48 +500,125 @@ export const LOCAL_METHODS = {
     "NatCash"
   ],
   "HU": [
+    "Bank Transfer",
     "Barion",
-    "SimplePay",
-    "qvik"
+    "Card",
+    "Qvik",
+    "SimplePay"
   ],
   "ID": [
-    "card"
+    "Bank Indonesia Qris",
+    "Bank Transfer",
+    "Card",
+    "DANA",
+    "GoPay",
+    "OVO",
+    "QRIS",
+    "Wallet"
+  ],
+  "IE": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "IL": [
+    "BIT",
+    "Paybox",
+    "Wallet"
+  ],
+  "IN": [
+    "Bank Transfer",
+    "Card",
+    "Npci UPI",
+    "RuPay",
+    "UPI"
+  ],
+  "IQ": [
+    "Wallet"
+  ],
+  "IS": [
+    "Bank Transfer",
+    "Card"
   ],
   "IT": [
     "Bancomat Pay",
+    "Bank Transfer",
+    "Card",
     "Satispay"
   ],
   "JM": [
     "Bank Transfer",
+    "Card",
     "Cards",
     "Lynk",
     "Online Banking",
+    "Wallet",
     "WiPay"
   ],
   "JO": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "Jopacc Cliq",
+    "Paymes",
+    "Telr",
+    "Wallet"
+  ],
+  "JP": [
+    "Bank Transfer",
+    "Card",
+    "PayPay",
+    "Wallet"
   ],
   "KE": [
-    "AIRTEL_MONEY",
-    "APPLE_PAY",
-    "MPESA",
-    "PESALINK",
-    "PESAPAL",
-    "T_KASH",
-    "card"
+    "Airtel Money",
+    "Apple Pay",
+    "Bank Transfer",
+    "Card",
+    "M-Pesa",
+    "Mobile Money",
+    "PesaLink",
+    "Pesapal",
+    "T-Kash"
+  ],
+  "KH": [
+    "Bank Transfer",
+    "NBC Bakong"
   ],
   "KI": [
     "Bank Transfer",
     "Cards",
     "Mobile Banking"
   ],
+  "KM": [
+    "Bank Transfer",
+    "Card",
+    "Huri Money",
+    "MOBILE",
+    "Mobile Money",
+    "Wallet"
+  ],
   "KN": [
     "Bank Transfer",
     "Cards",
     "Online Banking"
   ],
+  "KR": [
+    "Bank Transfer",
+    "KakaoPay",
+    "Kakaopay",
+    "Naver Pay",
+    "Wallet"
+  ],
   "KW": [
-    "card"
+    "Card",
+    "Knet"
+  ],
+  "KZ": [
+    "Bank Transfer",
+    "Kaspi PAY"
+  ],
+  "LA": [
+    "Bank Transfer",
+    "Bcel Onepay"
   ],
   "LC": [
     "Bank Transfer",
@@ -299,27 +626,133 @@ export const LOCAL_METHODS = {
     "Online Banking",
     "WiPay"
   ],
+  "LI": [
+    "Bank Transfer",
+    "Card"
+  ],
   "LK": [
-    "qr"
+    "Lankapay Lankaqr",
+    "QR"
   ],
   "LR": [
-    "Liberia"
+    "Bank Transfer",
+    "Card",
+    "Liberia",
+    "MTN Money",
+    "Mobile Money",
+    "Orange Money"
+  ],
+  "LS": [
+    "Bank Transfer",
+    "Card",
+    "EFT",
+    "MOBILE",
+    "Mobile Money"
+  ],
+  "LT": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "LU": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "LV": [
+    "Bank Transfer",
+    "Card"
   ],
   "LY": [
+    "Bank Transfer",
+    "Card",
+    "Intl Card",
     "Libya"
   ],
   "MA": [
+    "Bank Transfer",
+    "CMI",
+    "Card",
+    "Intl Card",
+    "Local Card",
+    "MOBILE",
+    "Mobile Money",
     "Morocco"
+  ],
+  "MC": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "MD": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "ME": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "MG": [
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "MVOLA",
+    "Mobile Money",
+    "Orange Money"
   ],
   "MH": [
     "Bank Transfer",
     "Cards",
     "Mobile/Internet Banking"
   ],
+  "MK": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "ML": [
+    "Bank Transfer",
+    "Card",
+    "Mobile Money",
+    "Moov Money",
+    "Orange Money",
+    "Waemu Rail",
+    "Wave"
+  ],
   "MN": [
-    "card"
+    "Card",
+    "Qpay"
+  ],
+  "MR": [
+    "Bank Transfer",
+    "Card",
+    "Intl Card",
+    "MOBILE",
+    "Mobile Money"
+  ],
+  "MT": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "MU": [
+    "Bank Transfer",
+    "Card",
+    "DIGITAL",
+    "GATEWAY",
+    "Intl Card",
+    "Mobile Money"
+  ],
+  "MV": [
+    "Bank OF Maldives",
+    "Bank Transfer"
+  ],
+  "MW": [
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "Mobile Money",
+    "TNM Mpamba"
   ],
   "MX": [
+    "Bank Transfer",
+    "CODI",
+    "Card",
     "Cards",
     "CoDi",
     "DiMo",
@@ -328,16 +761,47 @@ export const LOCAL_METHODS = {
     "SPEI"
   ],
   "MY": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "DuitNow",
+    "DuitNow QR",
+    "FPX",
+    "Paynet Duitnow",
+    "Wallet"
+  ],
+  "MZ": [
+    "Bank Transfer",
+    "Card",
+    "M-Pesa",
+    "Mobile Money",
+    "e-Mola",
+    "mKesh"
   ],
   "NA": [
+    "Bank Transfer",
+    "Card",
+    "EFT",
+    "MOBILE",
+    "Mobile Money",
     "Namibia"
   ],
   "NE": [
-    "Niger"
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "Mobile Money",
+    "Moov Money",
+    "Niger",
+    "Waemu Rail"
   ],
   "NG": [
-    "card"
+    "Account-to-Account",
+    "Bank Transfer",
+    "Card",
+    "International Card",
+    "Mobile Money",
+    "USSD Transfer",
+    "Wallet"
   ],
   "NI": [
     "Bank Mobile Banking",
@@ -345,10 +809,21 @@ export const LOCAL_METHODS = {
     "Cards"
   ],
   "NL": [
+    "Bank Transfer",
+    "Card",
+    "iDEAL",
     "iDEAL / Wero"
   ],
   "NO": [
+    "Bank Transfer",
+    "Card",
     "Vipps"
+  ],
+  "NP": [
+    "Bank Transfer",
+    "CONNECTIPS",
+    "Esewa",
+    "Wallet"
   ],
   "NR": [
     "Bank Transfer",
@@ -357,11 +832,16 @@ export const LOCAL_METHODS = {
   "NZ": [
     "Account-to-Account Bank Transfer",
     "Apple Pay/Google Pay",
+    "Bank Transfer",
+    "Card",
+    "Eftpos",
     "POLi",
     "Visa/Mastercard",
-    "Windcave",
-    "card",
-    "eftpos"
+    "Windcave"
+  ],
+  "OM": [
+    "Bank Transfer",
+    "Paymob Omannet"
   ],
   "PA": [
     "ACH",
@@ -375,10 +855,15 @@ export const LOCAL_METHODS = {
     "Bank Transfer",
     "Lukita",
     "Mastercard",
+    "PAGOEFECTIVO",
+    "PLIN",
     "PagoEfectivo",
     "Plin",
+    "QR",
     "Tunki",
     "Visa",
+    "Wallet",
+    "YAPE",
     "Yape"
   ],
   "PG": [
@@ -390,11 +875,31 @@ export const LOCAL_METHODS = {
     "Kina Bank Mobile Banking",
     "MiBank Mobile Banking"
   ],
+  "PH": [
+    "BSP QR",
+    "Bank Transfer",
+    "GCash",
+    "Hitpay",
+    "InstaPay",
+    "Maya",
+    "PESONet",
+    "Wallet"
+  ],
+  "PK": [
+    "Bank Transfer",
+    "Easypaisa",
+    "JazzCash",
+    "Wallet"
+  ],
   "PL": [
     "BLIK",
+    "Bank Transfer",
+    "Card",
     "Przelewy24"
   ],
   "PT": [
+    "Bank Transfer",
+    "Card",
     "MB WAY",
     "Multibanco"
   ],
@@ -411,20 +916,41 @@ export const LOCAL_METHODS = {
     "Pago Móvil",
     "Personal Pay",
     "Practipago",
+    "QR",
     "Tigo Money",
     "Zimple"
   ],
+  "QA": [
+    "Bank Transfer",
+    "QCB Fawran"
+  ],
   "RO": [
+    "Bank Transfer",
+    "Card",
     "RoPay"
   ],
   "RS": [
+    "Bank Transfer",
+    "Card",
     "IPS"
   ],
   "RW": [
-    "card"
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "MTN MoMo",
+    "Mobile Money"
   ],
   "SA": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "Paymes",
+    "Paytabs",
+    "SARIE",
+    "Sama Mada",
+    "Telr",
+    "Wallet",
+    "mada"
   ],
   "SB": [
     "ANZ goMoney",
@@ -434,17 +960,69 @@ export const LOCAL_METHODS = {
     "Cards",
     "M-Selen"
   ],
+  "SC": [
+    "Bank Transfer",
+    "Card",
+    "DIGITAL",
+    "Mobile Money"
+  ],
+  "SD": [
+    "Bank Transfer",
+    "Card",
+    "DIGITAL",
+    "Mobile Money"
+  ],
   "SE": [
+    "Bank Transfer",
+    "Card",
     "Swish"
   ],
+  "SG": [
+    "ABS Paynow",
+    "Bank Transfer",
+    "Card",
+    "NETS",
+    "PayNow"
+  ],
   "SI": [
+    "Bank Transfer",
+    "Card",
     "Flik"
   ],
   "SK": [
+    "Bank Transfer",
+    "Card",
     "TatraPay"
   ],
   "SL": [
+    "Africell Money",
+    "Bank Transfer",
+    "Card",
+    "Mobile Money",
+    "Orange Money",
     "Sierra Leone"
+  ],
+  "SM": [
+    "Bank Transfer",
+    "Card"
+  ],
+  "SN": [
+    "Bank Transfer",
+    "Card",
+    "Expresso Money",
+    "Free Money",
+    "Mobile Money",
+    "Orange Money",
+    "Waemu Rail",
+    "Wave"
+  ],
+  "SO": [
+    "Bank Transfer",
+    "Card",
+    "EVC Plus",
+    "Mobile Money",
+    "Sahal",
+    "Zaad"
   ],
   "SR": [
     "Bank Transfer",
@@ -452,7 +1030,18 @@ export const LOCAL_METHODS = {
     "Telesur Mobile Money",
     "Uni5Pay+"
   ],
+  "SS": [
+    "Bank Transfer",
+    "Card",
+    "Mgurush",
+    "Mobile Money"
+  ],
   "ST": [
+    "Bank Transfer",
+    "Card",
+    "DIGITAL",
+    "Intl Card",
+    "Mobile Money",
     "São Tomé and Príncipe"
   ],
   "SV": [
@@ -461,10 +1050,49 @@ export const LOCAL_METHODS = {
     "Chivo",
     "Mobile Banking"
   ],
+  "SZ": [
+    "Bank Transfer",
+    "Card",
+    "EFT",
+    "Intl Card",
+    "MOBILE",
+    "Mobile Money"
+  ],
+  "TD": [
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "Cemac Rail",
+    "Mobile Money",
+    "Moov Money"
+  ],
+  "TG": [
+    "Bank Transfer",
+    "Card",
+    "Flooz",
+    "Mobile Money",
+    "T Money",
+    "T-Money",
+    "Waemu Rail"
+  ],
+  "TH": [
+    "Bank Transfer",
+    "National Itmx Promptpay",
+    "PromptPay",
+    "Wallet"
+  ],
   "TL": [
     "Bank Transfer",
     "Mobile Banking",
     "Visa/Mastercard"
+  ],
+  "TN": [
+    "Bank Transfer",
+    "Card",
+    "E Dinar",
+    "GATEWAY",
+    "Intl Card",
+    "Local Card"
   ],
   "TO": [
     "ANZ Mobile Banking",
@@ -474,11 +1102,14 @@ export const LOCAL_METHODS = {
     "Digicel MyCash"
   ],
   "TR": [
+    "Bank Transfer",
     "FAST",
-    "Papara"
+    "Papara",
+    "Tcmb Fast"
   ],
   "TT": [
     "Bank Transfer",
+    "Card",
     "Cards",
     "Online Banking",
     "SurePay",
@@ -488,35 +1119,65 @@ export const LOCAL_METHODS = {
     "Bank Transfer",
     "Cards"
   ],
+  "TW": [
+    "Jkopay",
+    "Wallet"
+  ],
   "TZ": [
-    "card"
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "HaloPesa",
+    "M-Pesa (Vodacom)",
+    "Mixx by Yas",
+    "Mobile Money",
+    "Tigo Pesa"
   ],
   "UA": [
     "LiqPay"
   ],
   "UG": [
-    "card"
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "MTN MoMo",
+    "Mobile Money"
   ],
   "US": [
     "ACH",
+    "ACH Credit",
+    "ACH Debit",
     "Apple Pay/Google Pay",
+    "Bank Transfer",
+    "Card",
     "Cash App",
     "Debit/Credit Cards",
     "FedNow",
+    "Mastercard",
     "PayPal",
     "RTP",
     "Venmo",
-    "Zelle",
-    "card"
+    "Visa",
+    "Zelle"
   ],
   "UY": [
     "Abitab",
     "BANRED",
     "Bank Transfer",
+    "Card",
     "Cards",
     "Mercado Pago",
     "Paganza",
     "Redpagos"
+  ],
+  "UZ": [
+    "Click",
+    "Payme",
+    "Wallet"
+  ],
+  "VA": [
+    "Bank Transfer",
+    "Card"
   ],
   "VC": [
     "Bank Transfer",
@@ -527,8 +1188,15 @@ export const LOCAL_METHODS = {
   "VE": [
     "Bank Transfer",
     "Cards",
+    "Pago Movil",
     "Pago Móvil Interbancario",
     "PagoClave"
+  ],
+  "VN": [
+    "Bank Transfer",
+    "Napas Vietqr",
+    "QR",
+    "Wallet"
   ],
   "VU": [
     "ANZ Mobile Banking",
@@ -546,122 +1214,32 @@ export const LOCAL_METHODS = {
     "Digicel MyCash"
   ],
   "ZA": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "EFT",
+    "Instant EFT",
+    "Intl Card",
+    "Mobile Money",
+    "Ozow",
+    "Pay by Bank",
+    "Snapscan",
+    "Wallet"
+  ],
+  "ZM": [
+    "Airtel Money",
+    "Bank Transfer",
+    "Card",
+    "MTN MoMo",
+    "Mobile Money",
+    "Zamtel Money"
   ],
   "ZW": [
-    "card"
+    "Bank Transfer",
+    "Card",
+    "EcoCash",
+    "InnBucks",
+    "Intl Card",
+    "Mobile Money",
+    "PayNow"
   ]
-};
-
-export const COUNTRY_NAMES = {
-  "AD": "EUR",
-  "AE": "AED",
-  "AF": "AFN",
-  "AG": "XCD",
-  "AR": "ARS",
-  "AT": "EUR",
-  "AU": "AUD",
-  "BB": "BBD",
-  "BE": "EUR",
-  "BG": "EUR",
-  "BH": "BHD",
-  "BI": "BIF",
-  "BO": "BOB",
-  "BR": "BRL",
-  "BS": "BSD",
-  "BZ": "BZD",
-  "CA": "CAD",
-  "CH": "CHF",
-  "CI": "XOF",
-  "CL": "CLP",
-  "CO": "COP",
-  "CR": "CRC",
-  "CU": "CUP",
-  "CV": "CVE",
-  "DE": "EUR",
-  "DJ": "DJF",
-  "DK": "DKK",
-  "DM": "XCD",
-  "DO": "DOP",
-  "DZ": "DZD",
-  "EC": "USD",
-  "EG": "EGP",
-  "ES": "EUR",
-  "FI": "EUR",
-  "FJ": "FJD",
-  "FM": "USD",
-  "FR": "EUR",
-  "GB": "GBP",
-  "GD": "XCD",
-  "GH": "GHS",
-  "GN": "GNF",
-  "GQ": "XAF",
-  "GR": "EUR",
-  "GT": "GTQ",
-  "GW": "XOF",
-  "GY": "GYD",
-  "HN": "HNL",
-  "HR": "EUR",
-  "HT": "HTG",
-  "HU": "HUF",
-  "ID": "IDR",
-  "IT": "EUR",
-  "JM": "JMD",
-  "JO": "JOD",
-  "KE": "KES",
-  "KI": "AUD",
-  "KN": "XCD",
-  "KW": "KWD",
-  "LC": "XCD",
-  "LK": "LKR",
-  "LR": "LRD",
-  "LY": "LYD",
-  "MA": "MAD",
-  "MH": "USD",
-  "MN": "MNT",
-  "MX": "MXN",
-  "MY": "MYR",
-  "NA": "NAD",
-  "NE": "XOF",
-  "NG": "NGN",
-  "NI": "NIO",
-  "NL": "EUR",
-  "NO": "NOK",
-  "NR": "AUD",
-  "NZ": "NZD",
-  "PA": "USD",
-  "PE": "PEN",
-  "PG": "PGK",
-  "PL": "PLN",
-  "PT": "EUR",
-  "PW": "USD",
-  "PY": "PYG",
-  "RO": "RON",
-  "RS": "RSD",
-  "RW": "RWF",
-  "SA": "SAR",
-  "SB": "SBD",
-  "SE": "SEK",
-  "SI": "EUR",
-  "SK": "EUR",
-  "SL": "SLE",
-  "SR": "SRD",
-  "ST": "STN",
-  "SV": "USD",
-  "TL": "USD",
-  "TO": "TOP",
-  "TR": "TRY",
-  "TT": "TTD",
-  "TV": "AUD",
-  "TZ": "TZS",
-  "UA": "UAH",
-  "UG": "UGX",
-  "US": "USD",
-  "UY": "UYU",
-  "VC": "XCD",
-  "VE": "VES",
-  "VU": "VUV",
-  "WS": "WST",
-  "ZA": "ZAR",
-  "ZW": "ZWG"
 };

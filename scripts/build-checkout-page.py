@@ -4,18 +4,20 @@ Starting from the page that already works (INTELLIGENCE_TESTING_SDK) means
 the popup every backend snippet serves is the same markup and logic, not a
 retyped near-copy that drifts.
 """
+import os
+import sys
 import re
 import json
 import glob
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 WEB = "/workspace/repos/konduyt-web/app/dashboard"
 
 page = open(f"{WEB}/intelligencesdk.js", encoding="utf-8").read()
 page = re.search(r"export const INTELLIGENCE_TESTING_SDK = `([\s\S]*)`;\s*$", page).group(1)
 
-methods = json.loads(
-    open(f"{WEB}/localmethods.js", encoding="utf-8").read()
-    .split("export const LOCAL_METHODS = ")[1].split(";\n")[0])
+from extract_methods import build as build_methods
+methods = build_methods(with_generic=True)
 
 # The reference price is server-decided, so the same page works for every
 # visit instead of a hardcoded KES 5,000.
@@ -58,7 +60,15 @@ page = page.replace("function renderRails(options) {", """function renderMethods
       var listed = (LOCAL_METHODS[iso] || []).slice();
       var rows = [];
       for (var m = 0; m < listed.length; m++) {
-        rows.push(priced[normKey(listed[m])] || { label: listed[m], fee_minor: null });
+        var match = priced[normKey(listed[m])];
+        if (match) {
+          // Keep the curated display name (local_methods.py's own label, e.g.
+          // "M-Pesa") and take only the price from the API, whose label is the
+          // raw uppercase id.
+          rows.push({ label: listed[m], provider: match.provider, fee_minor: match.fee_minor });
+        } else {
+          rows.push({ label: listed[m], fee_minor: null });
+        }
       }
       // Anything the API priced but the local table didn't list: keep it.
       for (var p = 0; p < options.length; p++) {
