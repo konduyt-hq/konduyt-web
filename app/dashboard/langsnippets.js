@@ -1377,8 +1377,14 @@ public class MainActivity extends AppCompatActivity {
             // phoneInput is optional but recommended for mobile money -- it's
             // what receives the STK push. If left blank and the customer has
             // paid before with this email, your backend/Konduyt fills in the
-            // number saved from their last payment automatically.
+            // number saved from their last payment automatically. The XML
+            // already restricts the field to digits; the length check below
+            // is what makes a short number impossible to submit.
             String phone = phoneInput.getText().toString();
+            if (!phone.isEmpty() && (phone.length() < 6 || phone.length() > 15)) {
+                resultText.setText("Enter the full phone number (digits only).");
+                return;
+            }
             createPayment(amount, email, phone);
         });
     }
@@ -1532,8 +1538,14 @@ class MainActivity : AppCompatActivity() {
             // phoneInput is optional but recommended for mobile money -- it's
             // what receives the STK push. If left blank and the customer has
             // paid before with this email, your backend/Konduyt fills in the
-            // number saved from their last payment automatically.
+            // number saved from their last payment automatically. The XML
+            // already restricts the field to digits; the length check below
+            // is what makes a short number impossible to submit.
             val phone = phoneInput.text.toString()
+            if (phone.isNotEmpty() && phone.length !in 6..15) {
+                resultText.text = "Enter the full phone number (digits only)."
+                return@setOnClickListener
+            }
             createPayment(amount, email, phone)
         }
     }
@@ -1664,8 +1676,14 @@ class ViewController: UIViewController {
         // phoneField is optional but recommended for mobile money -- it's
         // what receives the STK push. If left blank and the customer has
         // paid before with this email, your backend/Konduyt fills in the
-        // number saved from their last payment automatically.
-        let phone = phoneField.text ?? ""
+        // number saved from their last payment automatically. Digits are
+        // filtered here as well as in the storyboard so a paste can't slip a
+        // "+" or a space through, and a short number cannot be submitted.
+        let phone = (phoneField.text ?? "").filter(\\.isNumber)
+        if !phone.isEmpty && !(6...15).contains(phone.count) {
+            resultLabel.text = "Enter the full phone number (digits only)."
+            return
+        }
         Task { await createPayment(amount: amount, email: email, phone: phone) }
     }
 

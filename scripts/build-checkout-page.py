@@ -132,5 +132,14 @@ export const SHARED_CHECKOUT_HTML = `'''
 out = f"{WEB}/checkoutpage.js"
 open(out, "w", encoding="utf-8").write(header + page + "`;\n")
 print("wrote", out)
+
+# The same page is shipped as a plain .html file for the backend snippets to
+# serve, where it is read verbatim rather than evaluated as a JS template
+# literal. Writing both here keeps them from drifting; the only difference is
+# the backslash escaping the template literal needs.
+public = "/workspace/repos/konduyt-web/public/checkout-page.html"
+open(public, "w", encoding="utf-8").write(page.replace("\\\\", "\\"))
+print("wrote", public)
+
 print("countries embedded:", len(methods))
 print("bytes:", len(page))

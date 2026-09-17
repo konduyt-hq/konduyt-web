@@ -49,11 +49,17 @@ export const ANDROID_LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
         android:hint="customer@example.com"
         android:layout_marginBottom="8dp" />
 
+    <!-- Digits only. Android's phone input type would also accept
+         + - ( ) and spaces, and the rule everywhere else in this product is
+         that the field holds digits and nothing else. maxLength mirrors the
+         web page's E.164 cap. -->
     <EditText
         android:id="@+id/phoneInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:inputType="phone"
+        android:inputType="number"
+        android:digits="0123456789"
+        android:maxLength="15"
         android:hint="Phone (optional — for mobile money)"
         android:layout_marginBottom="16dp" />
 
@@ -110,7 +116,10 @@ export const IOS_STORYBOARD_XML = `<?xml version="1.0" encoding="UTF-8"?>
                                     <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="phoneField">
+                            <!-- keyboardType 4 is the number pad: digits only,
+                                 matching the Android XML's digits="0123456789"
+                                 and the web page's inputmode="numeric". -->
+                            <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="phoneField" keyboardType="4">
                                 <rect key="frame" x="24" y="220" width="345" height="34"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Phone (optional — for mobile money)" id="phoneField-cell">
