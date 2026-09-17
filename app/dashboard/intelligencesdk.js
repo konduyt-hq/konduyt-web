@@ -559,11 +559,26 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
       }
     });
 
+    function rankByCost(options) {
+      // Most affordable first -- the whole point of the comparison. A method
+      // the API didn't price sorts after every priced one (unknown cost is
+      // not the same as cheap, and this is a cost ranking), keeping the
+      // table's stable order within each group so equal costs don't shuffle
+      // between two identical page loads.
+      return options.slice().sort(function (a, b) {
+        var af = a.fee_minor == null, bf = b.fee_minor == null;
+        if (af !== bf) return af ? 1 : -1;
+        if (!af && a.fee_minor !== b.fee_minor) return a.fee_minor - b.fee_minor;
+        return 0;
+      });
+    }
+
     function renderRails(options) {
+      options = rankByCost(options);
       var rows = '';
       for (var i = 0; i < options.length; i++) {
         var o = options[i];
-        var isBest = i === 0;
+        var isBest = i === 0 && o.fee_minor != null;
         rows += '<tr class="rail' + (isBest ? ' best' : '') + '" data-provider="' + o.provider + '" data-label="' + o.label + '">' +
           '<td>' + o.label + (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
           '<td>' + (o.fee_minor != null ? fmt(o.fee_minor) : '—') + '</td></tr>';

@@ -41,12 +41,10 @@ page = page.replace(
     "renderRails(options);",
     "renderMethods(options, iso);")
 
-# "Best value" must mark a method with a real price. Once unpriced methods
-# are listed, index 0 can be one of them, which would badge a rail with no
-# fee as the cheapest.
-page = page.replace(
-    "        var isBest = i === 0;",
-    "        var isBest = i === bestIndex(options);")
+# "Best value" marks the cheapest method that actually carries a price, and
+# the table is ordered most-affordable-first. Both live in renderRails
+# (see its rankByCost helper) rather than being patched in from here, so the
+# HTML/CSS/JS tab and the generated shared page rank identically.
 
 page = page.replace("function renderRails(options) {", """function renderMethods(options, iso) {
       // Start from every real local method this country has (embedded table),
@@ -83,18 +81,6 @@ page = page.replace("function renderRails(options) {", """function renderMethods
 
     function normKey(s) {
       return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
-
-    function bestIndex(options) {
-      // Cheapest method that actually carries a fee. Returns -1 when the API
-      // priced nothing for this country, so no badge is shown at all rather
-      // than badging an unpriced rail as the best value.
-      var best = -1;
-      for (var i = 0; i < options.length; i++) {
-        if (options[i].fee_minor == null) continue;
-        if (best === -1 || options[i].fee_minor < options[best].fee_minor) best = i;
-      }
-      return best;
     }
 
     function renderRails(options) {""")

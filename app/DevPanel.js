@@ -90,10 +90,19 @@ document.getElementById('payButton').addEventListener('click', function () {
 });
 
 function renderRails(options) {
+  // Cheapest first -- the whole point of the comparison. A method the API
+  // didn't price sorts after every priced one, because unknown cost is not
+  // the same as cheap.
+  options = options.slice().sort(function (a, b) {
+    var af = a.fee_minor == null, bf = b.fee_minor == null;
+    if (af !== bf) return af ? 1 : -1;
+    if (!af && a.fee_minor !== b.fee_minor) return a.fee_minor - b.fee_minor;
+    return 0;
+  });
   var rows = '';
   for (var i = 0; i < options.length; i++) {
     var o = options[i];
-    var isBest = i === 0;
+    var isBest = i === 0 && o.fee_minor != null;
     rows += '<tr class="rail' + (isBest ? ' best' : '') + '" data-provider="' + o.provider + '" data-label="' + o.label + '">' +
       '<td>' + o.label + (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
       '<td>' + (o.fee_minor != null ? fmt(o.fee_minor) : '—') + '</td></tr>';
@@ -1365,6 +1374,15 @@ const RAIL_REQUIRED_CARRIER = {
   PESAPAL: null,     // card processing in this demo's real Kenya data
 };
 
+function rankByCost(options) {
+  return options.slice().sort((a, b) => {
+    const ae = a.fee_minor == null, be = b.fee_minor == null;
+    if (ae !== be) return ae ? 1 : -1;
+    if (!ae && a.fee_minor !== b.fee_minor) return a.fee_minor - b.fee_minor;
+    return 0;
+  });
+}
+
 function detectKenyaCarrier(phone) {
   const digits = phone.replace(/\D/g, '');
   // Accepts 07XXXXXXXX, 01XXXXXXXX, 2547XXXXXXXX, 2541XXXXXXXX, +254...
@@ -1436,7 +1454,12 @@ export default function DevPanel() {
 
   function selectLang(id) { setActiveId(id); setRunState('idle'); setResult(null); setRunsWhere('machine'); }
 
-  const options = (result && result.intelligence && result.intelligence.options) || [];
+  // Most affordable first, and "Best value" marks the cheapest method that
+  // actually carries a fee -- not simply row 0. Some methods come back with
+  // no priced fee, so indexing row 0 would badge the top row of a cost
+  // ranking that may not have a price at all.
+  const options = rankByCost((result && result.intelligence && result.intelligence.options) || []);
+  const bestIdx = options.findIndex((o) => o.fee_minor != null);
   const payment = result && result.payment;
 
   return (
@@ -1656,10 +1679,10 @@ export default function DevPanel() {
               <div className="test-more-h">What each way to pay would cost</div>
               <div className="test-more-rails">
                 {options.map((o, i) => (
-                  <div key={o.label} className={`test-more-rail test-more-rail-2col ${i === 0 ? 'best' : ''}`}>
+                  <div key={o.label} className={`test-more-rail test-more-rail-2col ${i === bestIdx ? 'best' : ''}`}>
                     <span className="test-more-rail-name">{o.label}</span>
                     <span className="test-more-rail-fee">{o.fee_minor != null ? fmtMoney(o.fee_minor, payment.currency) : '—'}{o.fee_percent_effective != null ? ` · ${o.fee_percent_effective}%` : ''}</span>
-                    {i === 0 && <span className="test-more-rail-reason">Best value for this payment — chosen automatically.</span>}
+                    {i === bestIdx && <span className="test-more-rail-reason">Best value for this payment — chosen automatically.</span>}
                   </div>
                 ))}
               </div>
@@ -1719,10 +1742,10 @@ export default function DevPanel() {
                   const isDisabled = requiredCarrier != null && detectedCarrier != null && detectedCarrier !== requiredCarrier;
                   const isMatch = requiredCarrier == null || (detectedCarrier != null && detectedCarrier === requiredCarrier);
                   return (
-                    <div key={o.label} className={`intel-modal-row intel-row-2col ${i === 0 ? 'best' : ''} ${isDisabled ? 'rail-disabled' : ''}`}>
+                    <div key={o.label} className={`intel-modal-row intel-row-2col ${i === bestIdx ? 'best' : ''} ${isDisabled ? 'rail-disabled' : ''}`}>
                       <span className="intel-rail-name">
                         {o.label}
-                        {i === 0 && !isDisabled && <span className="intel-best-badge">Best value</span>}
+                        {i === bestIdx && !isDisabled && <span className="intel-best-badge">Best value</span>}
                         <button type="button"
                           className={`fee-intel-dot ${o.verified ? 'verified' : 'unverified'}`}
                           title={o.verified ? 'Verified — a confirmed fee' : 'Estimated — not yet confirmed against an official source'}

@@ -4,7 +4,19 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
-const REFERENCE_AMOUNT_KES = 420000; // KES 4,200.00 in minor units -- the reference price this demo quotes
+const REFERENCE_AMOUNT_KES = 500000; // KES 5,000.00 in minor units -- the reference price this demo quotes
+
+// Most affordable first. The backend already ranks cheapest-first, but the
+// popup's whole promise is a cost ranking, so this doesn't depend on the
+// caller's order: unpriced rows sort last, and equal fees keep their order.
+function rankByCost(options) {
+  return options.slice().sort((a, b) => {
+    const ae = a.fee_minor == null, be = b.fee_minor == null;
+    if (ae !== be) return ae ? 1 : -1;
+    if (!ae && a.fee_minor !== b.fee_minor) return a.fee_minor - b.fee_minor;
+    return 0;
+  });
+}
 
 // Cost-based verdict only — no settlement/speed claims.
 function verdict(rail) {
@@ -54,7 +66,7 @@ export default function DemoCheckout() {
     return () => { cancelled = true; };
   }, []);
 
-  const options = demo?.intelligence?.options || [];
+  const options = rankByCost(demo?.intelligence?.options || []);
   const displayAmount = demo?.payment?.amount ?? REFERENCE_AMOUNT_KES;
   const currency = demo?.payment?.currency ?? 'KES';
   const cheapest = options[0];

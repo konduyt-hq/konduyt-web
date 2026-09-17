@@ -4,10 +4,14 @@
 import { readFileSync } from 'fs';
 import { JSDOM } from 'jsdom';
 
-const html = readFileSync('/tmp/kdt/shared.html', 'utf8');
+const html = readFileSync('public/checkout-page.html', 'utf8');
+
+// Ground truth is the table the page actually embeds, not a separate snapshot
+// file: a second copy could silently drift out of date and make this suite
+// assert against numbers the served page never had. Parsing it back out means
+// this really checks "every method the page lists is rendered".
 const LOCAL = JSON.parse(
-  readFileSync('/workspace/repos/konduyt-web/app/dashboard/localmethods.js', 'utf8')
-    .split('export const LOCAL_METHODS = ')[1].split(';\n')[0]);
+  html.match(/var LOCAL_METHODS = (\{.*?\});\n/s)[1]);
 
 let failures = 0;
 const check = (n, a, e) => {
@@ -71,6 +75,19 @@ const priced = (label, minor) => ({ method: label, provider: 'p', label, fee_min
   });
   check('all US methods listed', r.labels.length, LOCAL.US.length);
   check('badge is ACH (cheapest priced)', r.badged, ['ACH']);
+
+  console.log('\nRanking is by cost, not table order:');
+  r = await run('US', '1', 10, {
+    payment: { amount: 3864, currency: 'USD', country: 'US', is_representative_example: false },
+    intelligence: { options: [priced('PayPal', 184), priced('ACH', 31), priced('Card', 142)] },
+  });
+  // Sent dearest-first on purpose: the rendered order must be cost order, and
+  // the priced rows must come before the unpriced ones.
+  check('priced rows ascending, cheapest first',
+        r.fees.filter((f) => f !== '—'), ['$0.31', '$1.42', '$1.84']);
+  check('cheapest is the first row', r.labels[0], 'ACH');
+  check('unpriced rows sort after every priced row',
+        r.fees.indexOf('—') > r.fees.lastIndexOf('$1.84'), true);
 
   console.log('\nCountry with zero live pricing (Germany):');
   r = await run('DE', '49', 10, {
