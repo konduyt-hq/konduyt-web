@@ -45,6 +45,7 @@ function run(iso, dial, nsn, payload) {
   return new Promise((res) => setTimeout(() => {
     const rows = [...doc.querySelectorAll('#railRows tr')];
     res({
+      window, doc, phone,
       open: doc.getElementById('intelOverlay').classList.contains('open'),
       labels: rows.map((r) => r.querySelector('td').textContent.replace('Best value', '').trim()),
       badged: rows.filter((r) => r.textContent.includes('Best value'))
@@ -104,6 +105,77 @@ const priced = (label, minor) => ({ method: label, provider: 'p', label, fee_min
     intelligence: { options: [] },
   });
   check('NG methods listed', r.labels.length, (LOCAL.NG || []).length);
+
+  // Dismissal. The overlay sits on top of the confirm form, so closing it
+  // without also closing the form leaves the customer's details hidden behind
+  // a dismissed layer -- and re-opening must not resurrect that stale form.
+  console.log('\nClosing the popup:');
+  r = await run('KE', '254', 9, {
+    payment: { amount: 3864, currency: 'KES', country: 'KE', is_representative_example: false },
+    intelligence: { options: [priced('MPESA', 5700)] },
+  });
+  const { window: w, doc, phone } = r;
+  const overlay = doc.getElementById('intelOverlay');
+  const checkoutForm = doc.getElementById('checkout');
+  const isOpen = () => overlay.classList.contains('open');
+  const formOpen = () => checkoutForm.classList.contains('open');
+  const clickInside = () => doc.querySelector('.intel-modal')
+    .dispatchEvent(new w.Event('click', { bubbles: true }));
+
+  check('popup is open to begin with', isOpen(), true);
+  clickInside();
+  check('clicking inside does not dismiss it', isOpen(), true);
+
+  // Selecting a rail reveals the confirm form.
+  doc.querySelector('#railRows tr.rail').dispatchEvent(new w.Event('click', { bubbles: true }));
+  check('selecting a rail reveals the confirm form', formOpen(), true);
+
+  doc.getElementById('intelClose').click();
+  check('X dismisses the popup', isOpen(), false);
+  check('X also hides the confirm form', formOpen(), false);
+
+  // Reopen: the form from the previous session must be gone.
+  doc.getElementById('payButton').click();
+  await new Promise((res) => setTimeout(res, 350));
+  check('popup reopens', isOpen(), true);
+  check('reopened popup has no stale confirm form', formOpen(), false);
+
+  // Backdrop click -- but not a click on the modal's own contents.
+  overlay.dispatchEvent(new w.Event('click', { bubbles: true }));
+  check('backdrop click dismisses the popup', isOpen(), false);
+
+  // Phone field: digits only, and only a full-length number enables Pay.
+  console.log('\nPhone number field (KE, 9 digits):');
+  const pay = doc.getElementById('payButton');
+  const setPhone = (v) => {
+    phone.value = v;
+    phone.dispatchEvent(new w.Event('input', { bubbles: true }));
+  };
+  const country = doc.getElementById('countryCode');
+
+  setPhone('71234');
+  check('a short number leaves Pay disabled', pay.disabled, true);
+  setPhone('712345678');
+  check('a full-length number enables Pay', pay.disabled, false);
+
+  setPhone('7a1b2c3d4e5f6g7h8');
+  check('letters are stripped from the value', phone.value, '712345678');
+  setPhone('71 234-5678');
+  check('spaces and dashes are stripped', phone.value, '712345678');
+  setPhone('712345678999999');
+  check('an over-long number is capped to the country length', phone.value, '712345678');
+  setPhone('712345678');
+  check('a pasted non-numeric value cannot re-enable Pay early', pay.disabled, false);
+
+  // Changing country changes the required length, so Pay must re-lock.
+  [...country.options].forEach((o) =>
+    o.toggleAttribute('selected', o.getAttribute('data-iso') === 'CI'));
+  country.dispatchEvent(new w.Event('change', { bubbles: true }));
+  check('switching to a 10-digit country re-disables Pay at 9 digits', pay.disabled, true);
+  setPhone('7123456789');
+  check('the 10-digit number enables Pay again', pay.disabled, false);
+  setPhone('712345678');
+  check('switching to CI capped the value back to 10', phone.value.length <= 10, true);
 
   console.log(`\n${failures === 0 ? 'ALL CHECKS PASSED' : failures + ' FAILED'}`);
   process.exit(failures ? 1 : 0);
