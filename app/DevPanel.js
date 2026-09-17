@@ -52,7 +52,7 @@ echo`,
   {
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
     backendLabel: 'server.mjs — your own backend (a terminal locally, or an online editor with a built-in terminal like vscode.dev, if Node/VS Code aren\'t installed)',
-    deps: 'Node 18+ (fetch and http are both built in). Run: node server.mjs -- or paste this into vscode.dev (opens in any browser, no install) and use its built-in terminal the same way. Then open checkout.html next to it.',
+    deps: 'Node 18+ (fetch, http and fs are all built in). Run: node server.mjs -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     frontendLabel: "checkout.html's own click handler — runs in the browser, no install",
     frontendCode: `var AMOUNT_MINOR = 500000; // KES 5,000.00
@@ -180,6 +180,12 @@ document.getElementById('subscribeButton').addEventListener('click', function ()
   `,
     code: `// server.mjs  —  run with:  node server.mjs
 import http from "node:http";
+import { readFileSync } from "node:fs";
+
+// The shared checkout page, served by every backend example in these docs so
+// the popup is defined once instead of drifting per language. Download
+// checkout-page.html next to this file; it is the same file in every tab.
+const CHECKOUT_PAGE = readFileSync(new URL("./checkout-page.html", import.meta.url));
 
 // SECRET KEY -- stays on the server, never sent to a browser. This is
 // Konduyt's own universal demo key (safe here since it's already public),
@@ -218,6 +224,16 @@ const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
+
+  // Serve the shared checkout page at the root, so the popup is exercised
+  // against this backend without needing a separate file open.
+  const path = req.url.split("?")[0];
+  if (req.method === "GET" && (path === "/" || path === "/index.html")) {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(CHECKOUT_PAGE);
+    return;
+  }
+
   if (req.method !== "POST") { res.writeHead(404); res.end(); return; }
 
   let raw = "";
@@ -262,13 +278,30 @@ server.listen(3000, () => console.log("Backend running on http://localhost:3000"
   },
   {
     id: 'python', label: 'Python', filename: 'server.py',
-    deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open checkout.html next to it.',
+    deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.py  —  pip install flask requests, then: python server.py
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import requests
 
 app = Flask(__name__)
+
+# The shared checkout page, served by every backend example in these docs so
+# the popup is defined once instead of drifting per language. Download
+# checkout-page.html next to this file; it is the same file in every tab.
+CHECKOUT_PAGE = "checkout-page.html"
+
+
+@app.route("/", methods=["GET"])
+def checkout_page():
+    return send_file(CHECKOUT_PAGE, mimetype="text/html")
+
+
+@app.route("/index.html", methods=["GET"])
+def checkout_page_alias():
+    # Opening the root normally yields index.html; this keeps the page
+    # reachable under that name so the URL doesn't have to be learned.
+    return send_file(CHECKOUT_PAGE, mimetype="text/html")
 
 # checkout.html is served from a different origin than this server
 # (a real file, or konduyt.dev itself) -- without this, the browser
@@ -346,7 +379,7 @@ if __name__ == "__main__":
   },
   {
     id: 'php', label: 'PHP', filename: 'index.php',
-    deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open checkout.html next to it.',
+    deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), two real scenarios.',
     code: `<?php
 // index.php  —  run with:  php -S localhost:3000
@@ -373,6 +406,16 @@ function konduyt($path, $body, $secret, $api) {
 }
 
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+
+// Serve the shared checkout page at the root so the popup is exercised
+// against this backend directly. checkout-page.html sits next to this file;
+// it is the same file in every language tab in these docs.
+if ($_SERVER["REQUEST_METHOD"] === "GET" && ($path === "/" || $path === "/index.html")) {
+    header("Content-Type: text/html; charset=utf-8");
+    readfile(__DIR__ . "/checkout-page.html");
+    exit;
+}
+
 header("Content-Type: application/json");
 // checkout.html is served from a different origin than this server
 // (a real file, or konduyt.dev itself) -- without these, the browser
@@ -413,7 +456,7 @@ if ($path === "/api/create-payment") {
   },
   {
     id: 'go', label: 'Go', filename: 'main.go',
-    deps: 'Standard library only. Run: go run main.go -- then open checkout.html next to it.',
+    deps: 'Standard library only. Run: go run main.go -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.go  —  run with:  go run main.go
 package main
@@ -425,6 +468,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 // SECRET KEY -- stays on the server, never sent to a browser. This is
@@ -469,7 +513,27 @@ func main() {
 		return false
 	}
 
-	http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
+	// Serve the shared checkout page at the root so the popup is exercised
+        // against this backend directly. checkout-page.html sits next to this
+        // file; it is the same file in every language tab in these docs.
+        http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+                if cors(w, r) {
+                        return
+                }
+                if r.URL.Path != "/" && r.URL.Path != "/index.html" {
+                        http.NotFound(w, r)
+                        return
+                }
+                page, err := os.ReadFile("checkout-page.html")
+                if err != nil {
+                        http.Error(w, "checkout-page.html not found next to this file", http.StatusNotFound)
+                        return
+                }
+                w.Header().Set("Content-Type", "text/html; charset=utf-8")
+                w.Write(page)
+        })
+
+        http.HandleFunc("/api/create-payment", func(w http.ResponseWriter, r *http.Request) {
 		if cors(w, r) {
 			return
 		}
@@ -528,7 +592,7 @@ func main() {
   },
   {
     id: 'ruby', label: 'Ruby', filename: 'server.rb',
-    deps: 'Install: gem install sinatra net-http   ·   Run: ruby server.rb -- then open checkout.html next to it.',
+    deps: 'Install: gem install sinatra net-http rackup puma   ·   Run: ruby server.rb -- then open http://localhost:3000/ (this server serves checkout-page.html itself). Sinatra needs rackup and puma at startup, not just sinatra.',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `# server.rb  —  gem install sinatra net-http, then: ruby server.rb
 require "sinatra"
@@ -574,6 +638,17 @@ options "/api/create-subscription" do
   204
 end
 
+# Serve the shared checkout page at the root so the popup is exercised against
+# this backend directly. checkout-page.html sits next to this file; it is the
+# same file in every language tab in these docs.
+get "/" do
+  send_file File.join(__dir__, "checkout-page.html"), type: :html
+end
+
+get "/index.html" do
+  send_file File.join(__dir__, "checkout-page.html"), type: :html
+end
+
 post "/api/create-payment" do
   # One-time: amount either comes from the shopper (a donation), or is a
   # fixed price you already know (a product) -- same field either way.
@@ -602,7 +677,7 @@ end`,
   },
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
-    deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open checkout.html next to it.',
+    deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json tiny_http
 use reqwest::blocking::Client;
@@ -657,6 +732,28 @@ fn main() {
             continue;
         }
         if request.method() != &Method::Post {
+            // Serve the shared checkout page at the root (a GET) so the popup
+            // is exercised against this backend directly.
+            let url = request.url().split('?').next().unwrap_or("/").to_string();
+            if url == "/" || url == "/index.html" {
+                match std::fs::read_to_string("checkout-page.html") {
+                    Ok(page) => {
+                        let mut response = Response::from_string(page)
+                            .with_header(
+                                Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap(),
+                            );
+                        for h in cors_headers() { response.add_header(h); }
+                        request.respond(response).ok();
+                    }
+                    Err(_) => {
+                        let mut response = Response::from_string("checkout-page.html not found")
+                            .with_status_code(404);
+                        for h in cors_headers() { response.add_header(h); }
+                        request.respond(response).ok();
+                    }
+                }
+                continue;
+            }
             let mut response = Response::from_string("").with_status_code(404);
             for h in cors_headers() { response.add_header(h); }
             request.respond(response).ok();
@@ -702,7 +799,7 @@ fn main() {
   },
   {
     id: 'csharp', label: 'C#', filename: 'Program.cs',
-    deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs. Run: dotnet run -- then open checkout.html next to it.',
+    deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs as Program.cs, with checkout-page.html beside it. Run: dotnet run -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// Program.cs  —  dotnet new web -o ., paste over Program.cs, then: dotnet run
 using System.Net.Http.Headers;
@@ -738,6 +835,14 @@ async Task<string> Konduyt(string path, object body) {
     var res = await client.PostAsync(Api + path, content);
     return await res.Content.ReadAsStringAsync();
 }
+
+// Serve the shared checkout page at the root so the popup is exercised
+// against this backend directly. checkout-page.html sits next to Program.cs;
+// it is the same file in every language tab in these docs. Path.GetFullPath
+// resolves it against the working directory dotnet run uses.
+var page = Path.GetFullPath("checkout-page.html");
+app.MapGet("/", () => Results.File(page, "text/html"));
+app.MapGet("/index.html", () => Results.File(page, "text/html"));
 
 app.MapPost("/api/create-payment", async (HttpRequest req) => {
     // One-time: amount either comes from the shopper (a donation), or is a
@@ -1055,12 +1160,14 @@ class ViewController: UIViewController {
   },
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
-    deps: 'Needs libcurl and cpp-httplib (a single header -- no library to link). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -o server && ./server -- then open checkout.html next to it.',
+    deps: 'Needs libcurl and cpp-httplib. Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Debian ships cpp-httplib as a compiled library, so link it explicitly: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open http://localhost:3000/ (this server serves checkout-page.html itself). On systems with the single-header form, drop -lcpp-httplib.',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
     code: `// main.cpp  —  g++ main.cpp -lcurl -o server && ./server
 #include <curl/curl.h>
 #include <httplib.h>
 #include <string>
+#include <fstream>
+#include <sstream>
 
 // SECRET KEY -- stays on the server, never sent to a browser. This is
 // Konduyt's own universal demo key (safe here since it's already public),
@@ -1117,6 +1224,23 @@ int main() {
         if (req.method == "OPTIONS") { res.status = 204; return httplib::Server::HandlerResponse::Handled; }
         return httplib::Server::HandlerResponse::Unhandled;
     });
+
+    // Serve the shared checkout page at the root so the popup is exercised
+    // against this backend directly. checkout-page.html sits next to the
+    // binary; it is the same file in every language tab in these docs.
+    auto serve_page = [](const httplib::Request&, httplib::Response& res) {
+        std::ifstream in("checkout-page.html");
+        if (!in) {
+            res.status = 404;
+            res.set_content("checkout-page.html not found", "text/plain");
+            return;
+        }
+        std::stringstream buf;
+        buf << in.rdbuf();
+        res.set_content(buf.str(), "text/html; charset=utf-8");
+    };
+    svr.Get("/", serve_page);
+    svr.Get("/index.html", serve_page);
 
     svr.Post("/api/create-payment", [](const httplib::Request& req, httplib::Response& res) {
         // One-time: amount either comes from the shopper (a donation), or is
