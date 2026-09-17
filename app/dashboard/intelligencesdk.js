@@ -379,8 +379,9 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
         <option value="260" data-iso="ZM">🇿🇲 Zambia +260</option>
         <option value="263" data-iso="ZW">🇿🇼 Zimbabwe +263</option>
       </select>
-      <input id="phoneInput" type="tel" placeholder="722 123 456" />
+      <input id="phoneInput" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="15" placeholder="722 123 456" />
     </div>
+    <p class="phone-hint" id="phoneHint" style="display:none; color:#b00020; margin-top:-8px;"></p>
     <p class="phone-hint">Konduyt uses the country code to know which country's real rail catalogue to rank -- this is how a real checkout works too, not a demo-only step.</p>
 
     <button id="payButton" type="button" disabled>Pay</button>
@@ -431,10 +432,54 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     var phoneInputEl = document.getElementById('phoneInput');
     var payButtonEl = document.getElementById('payButton');
 
+    // Required national-number length per country, so Pay enables only once
+    // the number is the right length for the country selected -- not merely
+    // "long enough". These are the same real lengths the backend's own
+    // carrier detection uses (app/routing/carrier_detection.py). A country
+    // absent from this table falls back to a generic E.164 band rather than
+    // a guessed per-country length.
+    var NATIONAL_LENGTHS = { KE: 9, TZ: 9, GH: 9, UG: 9, RW: 9, ZM: 9, CI: 10, SN: 9, CM: 9 };
+    var FALLBACK_MIN_DIGITS = 6;
+    var MAX_DIGITS = 15; // E.164 maximum
+
+    var phoneHintEl = document.getElementById('phoneHint');
+
+    function digitsOnly(v) { return (v || '').replace(/\\D/g, ''); }
+
+    function expectedDigits() {
+      var iso = countryCodeEl.selectedOptions[0].getAttribute('data-iso');
+      return NATIONAL_LENGTHS[iso] || null;
+    }
+
     function updatePayButtonState() {
-      payButtonEl.disabled = phoneInputEl.value.trim().length < 6;
+      // Strip anything that isn't a digit, so a letter can never be typed
+      // or pasted into the field.
+      var expected = expectedDigits();
+      phoneInputEl.maxLength = expected || MAX_DIGITS;
+
+      // Strip non-digits, then cap to the length this country allows.
+      // maxlength alone only constrains user typing/pasting, so the cap is
+      // applied here too and held in one place.
+      var digits = digitsOnly(phoneInputEl.value).slice(0, expected || MAX_DIGITS);
+      if (digits !== phoneInputEl.value) phoneInputEl.value = digits;
+
+      var ok = expected ? digits.length === expected
+                        : (digits.length >= FALLBACK_MIN_DIGITS && digits.length <= MAX_DIGITS);
+      payButtonEl.disabled = !ok;
+
+      if (!digits.length || ok) {
+        phoneHintEl.style.display = 'none';
+      } else {
+        phoneHintEl.style.display = 'block';
+        phoneHintEl.textContent = expected
+          ? 'Enter all ' + expected + ' digits of your number (' + digits.length + ' so far).'
+          : 'Enter at least ' + FALLBACK_MIN_DIGITS + ' digits.';
+      }
     }
     phoneInputEl.addEventListener('input', updatePayButtonState);
+    // Changing country changes the required length, so re-check.
+    countryCodeEl.addEventListener('change', updatePayButtonState);
+    updatePayButtonState();
 
     payButtonEl.addEventListener('click', function () {
       var btn = payButtonEl;
