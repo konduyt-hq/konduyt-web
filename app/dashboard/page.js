@@ -169,6 +169,11 @@ export default function Dashboard() {
   const [routeMethods, setRouteMethods] = useState([]);
   const [routeAmount, setRouteAmount] = useState('1500.00');
   const [routeCustomerCountry, setRouteCustomerCountry] = useState('');
+  // Where the customer country CAME FROM, straight from the backend: stated,
+  // detected, assumed or unknown. Drives the uncertainty note below, so the
+  // panel never presents an undetected shopper's sale as a known domestic one.
+  const [routeLocations, setRouteLocations] = useState(null);
+  const [routeCrossBorderWarning, setRouteCrossBorderWarning] = useState(null);
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   // Konduyt Sentinel
@@ -580,8 +585,18 @@ export default function Dashboard() {
     let cancelled = false;
     (async () => {
       try {
+        // The customer country has to go ON THE REQUEST. This effect already
+        // depended on routeCustomerCountry, so changing it re-ran the fetch --
+        // but the request never carried the value, so the landscape was loading
+        // the merchant's own country and the re-run was pure cost. Merchant
+        // country governs which methods exist; customer country governs the
+        // shopper's side, and the backend returns both plus whether the
+        // customer country is actually known (see `locations`).
+        const cc = routeCustomerCountry
+          ? `?customer_country=${encodeURIComponent(routeCustomerCountry)}`
+          : '';
         const r = await fetch(
-          `${API_BASE}/projects/${activeId}/routing/landscape`,
+          `${API_BASE}/projects/${activeId}/routing/landscape${cc}`,
           { headers: authHeaders() });
         if (!r.ok) return;
         const d = await r.json();
@@ -591,6 +606,8 @@ export default function Dashboard() {
           status: m.status, reason: m.reason,
         }));
         setRouteMethods(methods);
+        setRouteLocations(d.locations || null);
+        setRouteCrossBorderWarning(d.cross_border_warning || null);
         // Keep the current selection if it is still real; otherwise select the
         // first method that can actually be routed, else the first listed.
         if (methods.length && !methods.some((m) => m.id === routeMethod)) {
@@ -2476,11 +2493,39 @@ export default function Dashboard() {
                     <span className="route-label">Customer location</span>
                     <select className="con-connect-input" value={routeCustomerCountry}
                       onChange={(e) => setRouteCustomerCountry(e.target.value)}>
-                      <option value="">Same as merchant (domestic)</option>
+                      {/* Deliberately NOT labelled "domestic": leaving this
+                          unset means the backend must fall back to the merchant
+                          country, and it reports that as an ASSUMPTION rather
+                          than a known domestic sale. Calling it "domestic" here
+                          would assert something the panel cannot know. */}
+                      <option value="">Not specified</option>
                       {MERCHANT_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                     </select>
                   </label>
                 </div>
+
+                {/* Location honesty note. Merchant country decides which methods
+                    exist; customer country decides the shopper's side. When the
+                    backend could not determine the shopper's country it falls
+                    back to the merchant's and says so -- showing that here is
+                    what stops a cross-border sale reading as a known domestic
+                    one. */}
+                {routeCrossBorderWarning && (
+                  <div className="route-gap" role="status">
+                    <span className="route-gap-icon">🌍</span>
+                    <span>{routeCrossBorderWarning}</span>
+                  </div>
+                )}
+                {routeLocations?.is_cross_border && (
+                  <div className="route-gap" role="status">
+                    <span className="route-gap-icon">🌍</span>
+                    <span>
+                      Cross-border: {routeLocations.merchant_country} merchant,
+                      {' '}{routeLocations.customer_country} customer. Methods come
+                      from your country; limits apply to the customer&apos;s.
+                    </span>
+                  </div>
+                )}
 
                 {routeLoading && <div className="route-loading">Ranking rails…</div>}
 
