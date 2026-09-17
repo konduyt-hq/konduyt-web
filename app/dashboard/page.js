@@ -165,6 +165,8 @@ export default function Dashboard() {
   const [previewCurrency, setPreviewCurrency] = useState('KES');
   // Routing intelligence panel
   const [routeMethod, setRouteMethod] = useState('mpesa');
+  // [{id,label}] from the backend landscape -- replaces a hardcoded list.
+  const [routeMethods, setRouteMethods] = useState([]);
   const [routeAmount, setRouteAmount] = useState('1500.00');
   const [routeCustomerCountry, setRouteCustomerCountry] = useState('');
   const [routeData, setRouteData] = useState(null);
@@ -567,6 +569,39 @@ export default function Dashboard() {
   useEffect(() => {
     if (activeId) loadProjectData(activeId);
   }, [activeId, loadProjectData]);
+
+  // Load the method landscape for the merchant's country, method-FIRST: the
+  // full list of methods comes from the backend, so the dropdown reflects the
+  // real catalogue (and this merchant's connection state) rather than a fixed
+  // list. Runs before/independently of loadRouting so choosing a method is a
+  // choice within the landscape, not a guess made before seeing it.
+  useEffect(() => {
+    if (tab !== 'routing' || !activeId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(
+          `${API_BASE}/projects/${activeId}/routing/landscape`,
+          { headers: authHeaders() });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (cancelled) return;
+        const methods = (d.methods || []).map((m) => ({
+          id: m.method, label: m.label || m.method,
+          status: m.status, reason: m.reason,
+        }));
+        setRouteMethods(methods);
+        // Keep the current selection if it is still real; otherwise select the
+        // first method that can actually be routed, else the first listed.
+        if (methods.length && !methods.some((m) => m.id === routeMethod)) {
+          const best = methods.find((m) => m.status === 'ROUTABLE') || methods[0];
+          setRouteMethod(best.id);
+        }
+      } catch { /* landscape is additive -- never block the panel on it */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, activeId, routeCustomerCountry]);
 
   // Load routing intelligence when the Routing tab is active or inputs change.
   useEffect(() => {
@@ -2411,10 +2446,18 @@ export default function Dashboard() {
                     <span className="route-label">Method</span>
                     <select className="con-connect-input" value={routeMethod}
                       onChange={(e) => setRouteMethod(e.target.value)}>
-                      {[['mpesa','M-Pesa'],['card','Cards'],['apple_pay','Apple Pay'],['paypal_wallet','PayPal'],
-                        ['bank_transfer','Bank Transfer'],['rtgs','RTGS'],['pesalink','PesaLink'],['ach','ACH'],
-                        ['sepa','SEPA'],['upi','UPI'],['pix','Pix']].map(([id,label]) => (
-                        <option key={id} value={id}>{label}</option>
+                      {/* Loaded from the backend's own landscape for the selected
+                          country -- never a hardcoded global list. A fixed list
+                          could never show a method the catalogue knows about but
+                          this build didn't happen to enumerate (Airtel Money and
+                          T-Kash were invisible for exactly that reason). Falls
+                          back to the current value so the select never renders
+                          empty while the landscape is loading. */}
+                      {(routeMethods.length
+                        ? routeMethods
+                        : [{ id: routeMethod, label: routeMethod }]
+                      ).map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
                       ))}
                     </select>
                   </label>
