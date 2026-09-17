@@ -19,7 +19,7 @@
 
 export const ANDROID_LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
 <!-- app/src/main/res/layout/activity_main.xml
-     The real Android UI-definition file -- what MainActivity's
+     The real Android UI-definition file — what MainActivity's
      setContentView(R.layout.activity_main) actually loads. This is
      Android's equivalent of HTML/CSS: a real, separate file describing
      the screen, not something written inline in the Activity code.
@@ -54,7 +54,7 @@ export const ANDROID_LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="phone"
-        android:hint="Phone (optional -- for mobile money; Konduyt remembers it after the first payment)"
+        android:hint="Phone (optional — for mobile money)"
         android:layout_marginBottom="16dp" />
 
     <Button
@@ -74,35 +74,80 @@ export const ANDROID_LAYOUT_XML = `<?xml version="1.0" encoding="utf-8"?>
 
 export const IOS_STORYBOARD_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <!-- Main.storyboard
-     iOS's classic UIKit equivalent of HTML/CSS -- a real, separate XML
-     file describing the screen, used instead of (or alongside) SwiftUI.
-     Every id/selector below (amountField, emailField, phoneField, buyButton,
-     the createPaymentTapped: action, resultLabel) is read by name in the
-     Swift backend tab via @IBOutlet / @IBAction. -->
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0">
+     iOS's classic UIKit equivalent of HTML/CSS — a real, separate XML
+     file describing the screen. Every outlet and action below
+     (amountField, emailField, phoneField, buyButton, resultLabel, and the
+     createPaymentTapped: action) is connected by name to the same
+     view controller in the Swift tab, which is UIKit for that reason. -->
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" initialViewController="main-vc">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+    </dependencies>
     <scenes>
-        <scene>
+        <scene sceneID="main-scene">
             <objects>
-                <viewController id="main-vc" customClass="ViewController">
-                    <view key="view" contentMode="scaleToFill">
+                <viewController storyboardIdentifier="main-vc" id="main-vc" customClass="ViewController" customModule="KonduytDemo" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="main-view">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <textField placeholder="Amount (e.g. a donation, or leave for the fixed price)"
-                                keyboardType="numberPad" id="amountField"/>
-                            <textField placeholder="customer@example.com"
-                                keyboardType="emailAddress" id="emailField"/>
-                            <textField placeholder="Phone (optional -- for mobile money; Konduyt remembers it after the first payment)"
-                                keyboardType="phonePad" id="phoneField"/>
-                            <button opaque="NO" contentMode="scaleToFill" id="buyButton">
+                            <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="amountField">
+                                <rect key="frame" x="24" y="120" width="345" height="34"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Amount" id="amountField-cell">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                            <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="emailField">
+                                <rect key="frame" x="24" y="170" width="345" height="34"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="customer@example.com" id="emailField-cell">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                            <textField opaque="NO" contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="phoneField">
+                                <rect key="frame" x="24" y="220" width="345" height="34"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Phone (optional — for mobile money)" id="phoneField-cell">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="buyButton">
+                                <rect key="frame" x="24" y="278" width="345" height="34"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Buy now"/>
                                 <connections>
-                                    <action selector="createPaymentTapped:" destination="main-vc" eventType="touchUpInside" id="buy-action"/>
+                                    <action selector="createPaymentTapped:" destination="main-vc" eventType="touchUpInside" id="buyButton-action"/>
                                 </connections>
                             </button>
-                            <label text="" id="resultLabel"/>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="resultLabel">
+                                <rect key="frame" x="24" y="332" width="345" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                            </label>
                         </subviews>
+                        <viewLayoutGuide key="safeArea" id="main-safe-area"/>
+                        <color key="backgroundColor" name="systemBackgroundColor" catalog="System" colorSpace="catalog"/>
                     </view>
+                    <connections>
+                        <outlet property="amountField" destination="amountField" id="outlet-amount"/>
+                        <outlet property="emailField" destination="emailField" id="outlet-email"/>
+                        <outlet property="phoneField" destination="phoneField" id="outlet-phone"/>
+                        <outlet property="buyButton" destination="buyButton" id="outlet-buy"/>
+                        <outlet property="resultLabel" destination="resultLabel" id="outlet-result"/>
+                    </connections>
                 </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="main-first-responder" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
+            <point key="canvasLocation" x="53" y="375"/>
         </scene>
     </scenes>
 </document>`;

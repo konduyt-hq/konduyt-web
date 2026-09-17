@@ -310,9 +310,15 @@ def create_payment():
         return "", 204
     # One-time: amount either comes from the shopper (a donation), or is a
     # fixed price you already know (a product) -- same field either way.
-    amount = request.json.get("amount")   # whatever the shopper typed in, OR
-    # amount = 5000                         # a fixed price you already know
-    email = request.json.get("email")     # real, read here -- see below for why it stops here
+    data = request.get_json(silent=True) or {}
+    amount = data.get("amount")   # whatever the shopper typed in, OR
+    # amount = 5000               # a fixed price you already know
+    email = data.get("email")     # real, read here -- see below for why it stops here
+
+    # Validate before forwarding: an amount that isn't a positive integer
+    # would otherwise reach Konduyt as a string and come back a 422.
+    if not isinstance(amount, int) or isinstance(amount, bool) or amount <= 0:
+        return jsonify({"error": "invalid_amount"}), 400
 
     # email deliberately isn't forwarded to this test endpoint: test
     # payments never accept or store a customer email on purpose. A real
@@ -334,8 +340,9 @@ def create_subscription():
     }))  # {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
 
 if __name__ == "__main__":
-    app.run(port=3000)
-    print("Backend running on http://localhost:3000")`,
+    # Print first: app.run() blocks, so a print after it would never fire.
+    print("Backend running on http://localhost:3000")
+    app.run(port=3000)`,
   },
   {
     id: 'php', label: 'PHP', filename: 'index.php',
@@ -416,6 +423,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -427,8 +435,14 @@ const konduytSecretKey = "{{SECRET}}"
 const api = "{{API}}"
 
 func konduyt(path string, body map[string]any) ([]byte, error) {
-	buf, _ := json.Marshal(body)
-	req, _ := http.NewRequest("POST", api+path, bytes.NewBuffer(buf))
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", api+path, bytes.NewBuffer(buf))
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", "Bearer "+konduytSecretKey)
 	req.Header.Set("Content-Type", "application/json")
 	res, err := http.DefaultClient.Do(req)
@@ -461,19 +475,30 @@ func main() {
 		}
 		// One-time: amount either comes from the shopper (a donation), or
 		// is a fixed price you already know (a product) -- same field either way.
-		var in struct{ Amount int; Email string }
-		json.NewDecoder(r.Body).Decode(&in)
-		amount := in.Amount // whatever the shopper typed in, OR
+		var in struct {
+			Amount int \`json:"amount"\`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			http.Error(w, \`{"error":"invalid_json"}\`, http.StatusBadRequest)
+			return
+		}
+		amount := in.Amount
+		// Note: no email field. This test endpoint deliberately does not
+		// accept or store a customer email -- see the comment below.
 		// amount := 5000     // a fixed price you already know
-		email := in.Email    // real, read here -- see below for why it stops here
 
 		// email deliberately isn't forwarded to this test endpoint: test
 		// payments never accept or store a customer email on purpose. A
 		// real account calling the real /v1/payments instead WOULD pass
 		// it, as map[string]any{"email": email} under "customer".
-		out, _ := konduyt("/v1/payments/test", map[string]any{
+		out, err := konduyt("/v1/payments/test", map[string]any{
 			"amount": amount, "currency": "KES", "provider": "test",
 		})
+		if err != nil {
+			http.Error(w, \`{"error":"bad_gateway"}\`, http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(out)
 	})
 
@@ -482,16 +507,23 @@ func main() {
 			return
 		}
 		// Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-		out, _ := konduyt("/v1/payment_sessions", map[string]any{
+		out, err := konduyt("/v1/payment_sessions", map[string]any{
 			"amount": 100000, "currency": "KES",
 			"recurring": true, "interval": "monthly",
 			"reference": "sub_pro_plan",
 		})
+		if err != nil {
+			http.Error(w, \`{"error":"bad_gateway"}\`, http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(out) // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
 	})
 
 	fmt.Println("Backend running on http://localhost:3000")
-	http.ListenAndServe(":3000", nil)
+	if err := http.ListenAndServe(":3000", nil); err != nil {
+		log.Fatal(err)
+	}
 }`,
   },
   {
@@ -586,13 +618,21 @@ const KONDUYT_SECRET_KEY: &str = "{{SECRET}}";
 const API: &str = "{{API}}";
 
 fn konduyt(path: &str, body: Value) -> String {
-    Client::new()
+    let response = Client::new()
         .post(format!("{}{}", API, path))
         .bearer_auth(KONDUYT_SECRET_KEY)
         .json(&body)
-        .send()
-        .and_then(|r| r.text())
-        .unwrap_or_else(|e| format!("{{\\"error\\": \\"{}\\"}}", e))
+        .send();
+
+    match response {
+        // json! keeps the error body real JSON, so a message containing a
+        // quote or backslash can't produce a malformed response.
+        Err(e) => json!({"error": "backend_error", "message": e.to_string()}).to_string(),
+        Ok(res) => match res.text() {
+            Ok(text) => text,
+            Err(e) => json!({"error": "backend_error", "message": e.to_string()}).to_string(),
+        },
+    }
 }
 
 fn main() {
@@ -633,7 +673,6 @@ fn main() {
                 // is a fixed price you already know (a product) -- same field either way.
                 let amount = body["amount"].clone(); // whatever the shopper typed in, OR
                 // let amount = json!(5000);           // a fixed price you already know
-                let email = body["email"].clone();   // real, read here -- see below for why it stops here
 
                 // email deliberately isn't forwarded to this test endpoint:
                 // test payments never accept or store a customer email on
@@ -704,9 +743,13 @@ app.MapPost("/api/create-payment", async (HttpRequest req) => {
     // One-time: amount either comes from the shopper (a donation), or is a
     // fixed price you already know (a product) -- same field either way.
     var body = await JsonSerializer.DeserializeAsync<Dictionary<string, JsonElement>>(req.Body);
-    var amount = body!["amount"].GetInt32();   // whatever the shopper typed in, OR
-    // var amount = 5000;                         // a fixed price you already know
-    var email = body["email"].GetString();     // real, read here -- see below for why it stops here
+    // Indexing body["amount"] directly throws KeyNotFoundException on a
+    // request that omits it -- a 500 with no explanation. TryGetValue
+    // turns that into a clear 400.
+    if (body is null || !body.TryGetValue("amount", out var amountEl) || !amountEl.TryGetInt32(out var amount)) {
+        return Results.BadRequest(new { error = "invalid_amount" });
+    }
+    // var amount = 5000;                        // a fixed price you already know
 
     // email deliberately isn't forwarded to this test endpoint: test
     // payments never accept or store a customer email on purpose. A real
@@ -763,6 +806,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import okhttp3.*;
+import org.json.JSONObject;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
@@ -773,33 +817,44 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText amountInput;
     private EditText emailInput;
+    private EditText phoneInput;
     private TextView resultText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main); // a real layout file -- ids: amountInput, emailInput, buyButton, resultText
+        setContentView(R.layout.activity_main); // a real layout file -- ids: amountInput, emailInput, phoneInput, buyButton, resultText
 
         amountInput = findViewById(R.id.amountInput);
         emailInput = findViewById(R.id.emailInput);
+        phoneInput = findViewById(R.id.phoneInput);
         resultText = findViewById(R.id.resultText);
 
         Button buyButton = findViewById(R.id.buyButton);
         buyButton.setOnClickListener(v -> createPayment(
             Integer.parseInt(amountInput.getText().toString()),
-            emailInput.getText().toString()));
+            emailInput.getText().toString(),
+            phoneInput.getText().toString()));
     }
 
-    void createPayment(int amount, String email) {
+    void createPayment(int amount, String email, String phone) {
         // amount either comes from the shopper (typed into amountInput, a
         // donation), or is a fixed price you already know (a product) --
         // same field either way.
         OkHttpClient client = new OkHttpClient();
         Executors.newSingleThreadExecutor().execute(() -> {
-            String json = "{\\"amount\\": " + amount + ", \\"email\\": \\"" + email + "\\"}";
+            // Build the JSON, don't concatenate it: an email containing a
+            // quote or backslash would otherwise produce malformed JSON.
+            JSONObject payload = new JSONObject();
+            payload.put("amount", amount);
+            payload.put("email", email);
+            payload.put("phone", phone); // optional -- needed for mobile money
+            RequestBody body = RequestBody.create(
+                payload.toString(), MediaType.get("application/json"));
+
             Request request = new Request.Builder()
                 .url(BACKEND + "/api/create-payment")
-                .post(RequestBody.create(json, MediaType.get("application/json")))
+                .post(body)
                 .build();
             try (Response res = client.newCall(request).execute()) {
                 String payment = res.body().string();
@@ -846,10 +901,12 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.*
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
     // This app calls YOUR OWN backend, never Konduyt directly -- there is
@@ -859,51 +916,65 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var amountInput: EditText
     private lateinit var emailInput: EditText
+    private lateinit var phoneInput: EditText
     private lateinit var resultText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main) // a real layout file -- ids: amountInput, emailInput, buyButton, resultText
+        setContentView(R.layout.activity_main) // a real layout file -- ids: amountInput, emailInput, phoneInput, buyButton, resultText
 
         amountInput = findViewById(R.id.amountInput)
         emailInput = findViewById(R.id.emailInput)
+        phoneInput = findViewById(R.id.phoneInput)
         resultText = findViewById(R.id.resultText)
 
         findViewById<Button>(R.id.buyButton).setOnClickListener {
-            createPayment(amountInput.text.toString().toInt(), emailInput.text.toString())
+            createPayment(
+                amountInput.text.toString().toInt(),
+                emailInput.text.toString(),
+                phoneInput.text.toString())
         }
     }
 
-    fun createPayment(amount: Int, email: String) {
+    fun createPayment(amount: Int, email: String, phone: String) {
         // amount either comes from the shopper (typed into amountInput, a
         // donation), or is a fixed price you already know (a product) --
         // same field either way.
-        CoroutineScope(Dispatchers.IO).launch {
-            val client = OkHttpClient()
-            val json = "application/json".toMediaType()
-            val payload = """{ "amount": $amount, "email": "$email" }"""
-
-            val request = Request.Builder()
-                .url("$backend/api/create-payment")
-                .post(payload.toRequestBody(json))
-                .build()
-
+        // lifecycleScope cancels with the Activity -- CoroutineScope(...)
+        // would leak the request past onDestroy.
+        lifecycleScope.launch {
             try {
-                client.newCall(request).execute().use { res ->
-                    val payment = res.body?.string()
-                    // your backend returns whatever Konduyt gave it -- show
-                    // it in resultText on the main thread
-                    withContext(Dispatchers.Main) { resultText.text = payment }
+                val payment = withContext(Dispatchers.IO) {
+                    val client = OkHttpClient()
+                    val json = "application/json".toMediaType()
+                    // Build the JSON, don't interpolate it: an email
+                    // containing a quote or backslash would break it.
+                    val payload = JSONObject()
+                        .put("amount", amount)
+                        .put("email", email)
+                        .put("phone", phone) // optional -- needed for mobile money
+                        .toString()
+
+                    val request = Request.Builder()
+                        .url("$backend/api/create-payment")
+                        .post(payload.toRequestBody(json))
+                        .build()
+
+                    client.newCall(request).execute().use { res ->
+                        res.body?.string().orEmpty()
+                    }
                 }
+                // your backend returns whatever Konduyt gave it -- show it
+                resultText.text = payment
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { resultText.text = "Could not reach your backend -- is it running?" }
+                resultText.text = "Could not reach your backend -- is it running?"
             }
         }
     }
 }`,
   },
   {
-    id: 'swift', label: 'Swift', filename: 'ContentView.swift',
+    id: 'swift', label: 'Swift', filename: 'ViewController.swift',
     deps: `// No package dependency needed -- URLSession is built into Foundation.
 
 // Info.plist — a real, separate file, not a comment. Goes at your
@@ -928,51 +999,65 @@ class MainActivity : AppCompatActivity() {
 </dict>
 </plist>`,
     note: 'A real, minimal iOS project needs both pieces above and below: Info.plist (real App Transport Security config for local testing) and the view itself. This app talks to your OWN backend (see the other language tabs) -- never Konduyt directly, and never holds a secret key.',
-    code: `// ContentView.swift
-import SwiftUI
+    code: `// ViewController.swift
+import UIKit
 
-struct ContentView: View {
-    @State private var result: String = ""
+// The SwiftUI version of this screen lives in the dashboard's Code Samples
+// tab. This tab is paired with the iOS Storyboard (step 2), and a
+// storyboard's outlets and actions only connect to a UIKit
+// UIViewController -- so this is UIKit on purpose.
+class ViewController: UIViewController {
+
+    // These five outlets are the ones Main.storyboard actually connects.
+    @IBOutlet weak var amountField: UITextField!
+    @IBOutlet weak var emailField: UITextField!
+    @IBOutlet weak var phoneField: UITextField!
+    @IBOutlet weak var buyButton: UIButton!
+    @IBOutlet weak var resultLabel: UILabel!
 
     // This app calls YOUR OWN backend, never Konduyt directly -- there is
     // no safe way to hold a secret key on a device. Whichever of the other
     // 11 language tabs you run as your backend, this points at it.
     let backend = "http://localhost:3000" // your backend, from the iOS Simulator
 
-    var body: some View {
-        VStack(spacing: 16) {
-            Text(result).font(.footnote)
-            Button("Buy now") {
-                Task { await createPayment(amount: 5000, email: "customer@example.com") }
-            }
-        }
-        .padding()
+    @IBAction func createPaymentTapped(_ sender: UIButton) {
+        let amount = Int(amountField.text ?? "") ?? 0
+        let email = emailField.text ?? ""
+        let phone = phoneField.text ?? ""
+        Task { await createPayment(amount: amount, email: email, phone: phone) }
     }
 
-    func createPayment(amount: Int, email: String) async {
+    func createPayment(amount: Int, email: String, phone: String) async {
         // amount either comes from the shopper (a donation), or is a fixed
         // price you already know (a product) -- same field either way.
-        var request = URLRequest(url: URL(string: "\\(backend)/api/create-payment")!)
+        guard let url = URL(string: "\\(backend)/api/create-payment") else { return }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["amount": amount, "email": email])
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "amount": amount,
+            "email": email,
+            "phone": phone,
+        ])
 
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
             // your backend returns whatever Konduyt gave it -- open
             // authorization_url in an SFSafariViewController
-            result = String(data: data, encoding: .utf8) ?? ""
+            let text = String(data: data, encoding: .utf8) ?? ""
+            await MainActor.run { resultLabel.text = text }
         } catch {
-            result = "Could not reach your backend -- is it running?"
+            await MainActor.run { resultLabel.text = "Could not reach your backend -- is it running?" }
         }
     }
 }`,
   },
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
-    deps: 'Needs libcurl and cpp-httplib (a single header). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open checkout.html next to it.',
+    deps: 'Needs libcurl and cpp-httplib (a single header -- no library to link). Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Compile: g++ main.cpp -lcurl -o server && ./server -- then open checkout.html next to it.',
     note: 'This is the BACKEND for the checkout.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
-    code: `// main.cpp  —  g++ main.cpp -lcurl -lcpp-httplib -o server && ./server
+    code: `// main.cpp  —  g++ main.cpp -lcurl -o server && ./server
 #include <curl/curl.h>
 #include <httplib.h>
 #include <string>
@@ -992,7 +1077,7 @@ static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::stri
 std::string konduyt(const std::string& path, const std::string& jsonBody) {
     CURL* curl = curl_easy_init();
     std::string response;
-    if (!curl) return "{}";
+    if (!curl) return R"({"error":"curl_init_failed"})";
 
     struct curl_slist* headers = nullptr;
     headers = curl_slist_append(headers, ("Authorization: Bearer " + KONDUYT_SECRET_KEY).c_str());
@@ -1003,7 +1088,15 @@ std::string konduyt(const std::string& path, const std::string& jsonBody) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, jsonBody.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-    curl_easy_perform(curl);
+    CURLcode code = curl_easy_perform(curl);
+
+    // A real bug, caught by actually running this: without checking the
+    // transfer, a DNS failure or a TLS error leaves \`response\` empty and
+    // this returns "" -- which the browser then reports as a JSON parse
+    // error, pointing at the wrong problem entirely.
+    if (code != CURLE_OK) {
+        response = R"({"error":"backend_unreachable","message":")" + std::string(curl_easy_strerror(code)) + R"("})";
+    }
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
@@ -1029,7 +1122,7 @@ int main() {
         // One-time: amount either comes from the shopper (a donation), or is
         // a fixed price you already know (a product) -- same field either way.
         // (Parsing req.body's real "amount" and "email" fields is left to a
-        // JSON library of your choice -- shown here as fixed values for
+        // JSON library of your choice -- shown here as a fixed value for
         // brevity. email, once parsed, deliberately isn't forwarded to this
         // test endpoint: test payments never accept or store a customer
         // email on purpose. A real account calling the real /v1/payments
