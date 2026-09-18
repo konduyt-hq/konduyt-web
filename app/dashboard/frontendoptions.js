@@ -8,7 +8,7 @@
 
 export const FRONTEND_OPTIONS = [
   {
-    id: 'html', label: 'Web (HTML, CSS & JS)', filename: 'checkout.html', iconKey: 'html',
+    id: 'html', label: 'Web (HTML, CSS & JS)', filename: 'checkout-page.html', iconKey: 'html',
     hint: 'The whole web frontend in one file -- markup, styling, and the real click handler that calls your backend. Works with any of the 12 backend languages below.',
   },
   {

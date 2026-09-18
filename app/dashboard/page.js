@@ -2284,7 +2284,7 @@ export default function Dashboard() {
                       )}
                       {(() => {
                         // The JS tab's one special case: one of its sections
-                        // ("checkout.html's own click handler") is real
+                        // ("checkout-page.html's own click handler") is real
                         // browser code, not something that runs on a
                         // machine at all -- doesn't need Node, doesn't need
                         // a terminal, works straight from an online editor's
@@ -2294,7 +2294,7 @@ export default function Dashboard() {
                         // once buried the one-off browser section under a
                         // pile of machine-run code with no way to tell them
                         // apart at a glance.
-                        const browserTitle = "checkout.html's own click handler";
+                        const browserTitle = "checkout-page.html's own click handler";
                         const hasBrowserSection = lang.sections.some((s) => s.title === browserTitle);
                         const visibleSections = !hasBrowserSection ? lang.sections
                           : runsWhere === 'browser' ? lang.sections.filter((s) => s.title === browserTitle)

@@ -137,9 +137,9 @@ const amount = Number(req.body.amount);   // whatever the shopper typed in (a do
 // const amount = selectedItem.price;      // a fixed price you already know (a product)
 const payment = await createPayment({ amount, email: req.body.email, phone: req.body.phone });
 // res.redirect(payment.authorization_url);` },
-      { title: "checkout.html's own click handler", code:
+      { title: "checkout-page.html's own click handler", code:
 `// This is real, existing code -- not something to write. It already
-// lives inside checkout.html's own <script> tag (Step 2 above) --
+// lives inside checkout-page.html's own <script> tag (Step 2 above) --
 // shown here as its own piece so it's not missed while looking at
 // backend code. It calls getElementById on the frontend's own real
 // ids (payButton, railRows, emailInput, confirmButton, ...), and is
@@ -268,8 +268,8 @@ document.getElementById('subscribeButton').addEventListener('click', function ()
     });
 });
   ` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
-`// checkout.html's own real markup (Step 2 above), verbatim:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
+`// checkout-page.html's own real markup (Step 2 above), verbatim:
 //   <input id="emailInput" type="email" ... />
 //   <button id="confirmButton" ...>Confirm — Pay</button>
 // its click handler POSTs { amount, email } to exactly this route.
@@ -279,7 +279,7 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-// checkout.html is served from a different origin than this server
+// checkout-page.html is served from a different origin than this server
 // (a real file, or konduyt.dev itself) -- without this, the browser
 // blocks every request before it ever reaches these routes,
 // indistinguishable from "the server isn't running" even when it is.
@@ -297,7 +297,7 @@ app.post("/api/create-payment", async (req, res) => {
 });
 
 // The "Recurring" tab's own createSubscriptionSession() -- mounted here so
-// checkout.html's "Subscribe" button (Step 2 above) actually has a
+// checkout-page.html's "Subscribe" button (Step 2 above) actually has a
 // real route to call, not just a function defined but never wired to one.
 app.post("/api/create-subscription", async (req, res) => {
   const session = await createSubscriptionSession();
@@ -409,8 +409,8 @@ def create_payment(amount, email, phone=None, method="mpesa"):
 amount = int(request.form["amount"])   # whatever the shopper typed in (a donation)
 # amount = selected_item.price          # a fixed price you already know (a product)
 payment = create_payment(amount, request.form["email"], request.form.get("phone"))` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
-`# checkout.html's own real markup (Step 2 above), verbatim:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
+`# checkout-page.html's own real markup (Step 2 above), verbatim:
 #   <input id="emailInput" type="email" ... />
 #   <button id="confirmButton" ...>Confirm — Pay</button>
 # its click handler POSTs { amount, email } to exactly this route.
@@ -419,7 +419,7 @@ payment = create_payment(amount, request.form["email"], request.form.get("phone"
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 
-# checkout.html is served from a different origin than this server
+# checkout-page.html is served from a different origin than this server
 # (a real file, or konduyt.dev itself) -- without this, the browser
 # blocks every request before it ever reaches these routes,
 # indistinguishable from "the server isn't running" even when it is.
@@ -439,7 +439,7 @@ def handle_create_payment():
     return jsonify(payment)
 
 # The "Recurring" tab's own create_subscription_session() -- mounted here
-# so checkout.html's "Subscribe" button (Step 2 above) actually has a
+# so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
 # real route to call, not just a function defined but never wired to one.
 @app.route("/api/create-subscription", methods=["POST", "OPTIONS"])
 def handle_create_subscription():
@@ -544,10 +544,10 @@ function create_payment($secret, $amount, $email, $phone = null, $method = "mpes
 $amount = (int) $_POST["amount"];       // whatever the shopper typed in (a donation)
 // $amount = $selectedItem["price"];    // a fixed price you already know (a product)
 $payment = create_payment($secret, $amount, $_POST["email"], $_POST["phone"] ?? null);` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
 `// ---- api/create-payment.php ----
 <?php
-// checkout.html's own real markup (Step 2 above), verbatim:
+// checkout-page.html's own real markup (Step 2 above), verbatim:
 //   <input id="emailInput" type="email" ... />
 //   <button id="confirmButton" ...>Confirm — Pay</button>
 // its click handler POSTs { amount, email } to exactly this route.
@@ -555,7 +555,7 @@ $payment = create_payment($secret, $amount, $_POST["email"], $_POST["phone"] ?? 
 // needed: PHP's built-in server routes by file/path natively.
 // Save as api/create-payment.php, run: php -S localhost:3000
 header("Content-Type: application/json");
-// checkout.html is served from a different origin than this server
+// checkout-page.html is served from a different origin than this server
 // (a real file, or konduyt.dev itself) -- without these, the browser
 // blocks every request before it ever reaches this code, indistinguishable
 // from "the server isn't running" even when it is. Same three headers
@@ -572,7 +572,7 @@ echo json_encode(create_payment($secret, (int) $body["amount"], $body["email"]))
 // The "Recurring" tab's own create_subscription_session() -- as its own
 // file here (PHP's built-in server routes by file, one route per file, so
 // this needs to be genuinely separate, not appended to the file above),
-// so checkout.html's "Subscribe" button (Step 2 above) actually has a
+// so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
 // real route to call, not just a function defined but never wired to one.
 <?php
 header("Content-Type: application/json");
@@ -717,15 +717,15 @@ func handleDonation(w http.ResponseWriter, r *http.Request) {
 	payment, _ := createPayment(in.Amount, in.Email, in.Phone) // whatever the shopper typed in
 	json.NewEncoder(w).Encode(payment)
 }` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
-`// checkout.html's own real markup (Step 2 above), verbatim:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
+`// checkout-page.html's own real markup (Step 2 above), verbatim:
 //   <input id="emailInput" type="email" ... />
 //   <button id="confirmButton" ...>Confirm — Pay</button>
 // its click handler POSTs { amount, email } to exactly this route.
 // net/http shown
 // here (no framework needed); Gin/Echo mount the same route the same way.
 func main() {
-	// checkout.html is served from a different origin than this server
+	// checkout-page.html is served from a different origin than this server
 	// (a real file, or konduyt.dev itself) -- without these, the browser
 	// blocks every request before it ever reaches these routes,
 	// indistinguishable from "the server isn't running" even when it is.
@@ -755,7 +755,7 @@ func main() {
 	})
 
 	// The "Recurring" tab's own createSubscriptionSession() -- mounted here
-	// so checkout.html's "Subscribe" button (Step 2 above) actually has
+	// so checkout-page.html's "Subscribe" button (Step 2 above) actually has
 	// a real route to call, not just a function defined but never wired to one.
 	http.HandleFunc("/api/create-subscription", func(w http.ResponseWriter, r *http.Request) {
 		if cors(w, r) {
@@ -900,8 +900,8 @@ end
 amount = params[:amount].to_i     # whatever the shopper typed in (a donation)
 # amount = selected_item.price    # a fixed price you already know (a product)
 payment = create_payment(amount, params[:email], phone: params[:phone])` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
-`# checkout.html's own real markup (Step 2 above), verbatim:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
+`# checkout-page.html's own real markup (Step 2 above), verbatim:
 #   <input id="emailInput" type="email" ... />
 #   <button id="confirmButton" ...>Confirm — Pay</button>
 # its click handler POSTs { amount, email } to exactly this route.
@@ -910,7 +910,7 @@ payment = create_payment(amount, params[:email], phone: params[:phone])` },
 require "sinatra"
 require "json"
 
-# checkout.html is served from a different origin than this server
+# checkout-page.html is served from a different origin than this server
 # (a real file, or konduyt.dev itself) -- without this, the browser
 # blocks every request before it ever reaches these routes,
 # indistinguishable from "the server isn't running" even when it is.
@@ -934,7 +934,7 @@ post "/api/create-payment" do
 end
 
 # The "Recurring" tab's own create_subscription_session() -- mounted here
-# so checkout.html's "Subscribe" button (Step 2 above) actually has a
+# so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
 # real route to call, not just a function defined but never wired to one.
 post "/api/create-subscription" do
   content_type :json
@@ -1050,8 +1050,8 @@ fn handle_donation(body: &serde_json::Value) -> Result<serde_json::Value, reqwes
     let phone = body["phone"].as_str().unwrap_or("");
     create_payment(amount, email, phone)
 }` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
-`// checkout.html's own real markup (Step 2 above), verbatim:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
+`// checkout-page.html's own real markup (Step 2 above), verbatim:
 //   <input id="emailInput" type="email" ... />
 //   <button id="confirmButton" ...>Confirm — Pay</button>
 // its click handler POSTs { amount, email } to exactly this route.
@@ -1064,7 +1064,7 @@ fn main() {
     let server = Server::http("0.0.0.0:3000").unwrap();
     println!("Backend running on http://localhost:3000");
 
-    // checkout.html is served from a different origin than this
+    // checkout-page.html is served from a different origin than this
     // server (a real file, or konduyt.dev itself) -- without these, the
     // browser blocks every request before it ever reaches this code,
     // indistinguishable from "the server isn't running" even when it is.
@@ -1093,7 +1093,7 @@ fn main() {
         let body: serde_json::Value = serde_json::from_str(&body_str).unwrap_or(json!({}));
 
         // The "Recurring" tab's own create_subscription_session() --
-        // mounted here so checkout.html's "Subscribe" button (Step 2
+        // mounted here so checkout-page.html's "Subscribe" button (Step 2
         // above) actually has a real route to call, not just a function
         // defined but never wired to one.
         let result_json = if request.url() == "/api/create-subscription" {
@@ -1214,8 +1214,8 @@ async Task<string> HandleDonation(JsonElement body) {
     string phone = body.TryGetProperty("phone", out var p) ? p.GetString() : null;
     return await CreatePayment(amount, email, phone);
 }` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
-`// checkout.html's own real markup (Step 2 above), verbatim:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
+`// checkout-page.html's own real markup (Step 2 above), verbatim:
 //   <input id="emailInput" type="email" ... />
 //   <button id="confirmButton" ...>Confirm — Pay</button>
 // its click handler POSTs { amount, email } to exactly this route.
@@ -1225,7 +1225,7 @@ async Task<string> HandleDonation(JsonElement body) {
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// checkout.html is served from a different origin than this server
+// checkout-page.html is served from a different origin than this server
 // (a real file, or konduyt.dev itself) -- without this, the browser
 // blocks every request before it ever reaches these routes,
 // indistinguishable from "the server isn't running" even when it is.
@@ -1246,7 +1246,7 @@ app.MapPost("/api/create-payment", async (HttpRequest req) => {
 });
 
 // The "Recurring" tab's own CreateSubscriptionSession() -- mounted here
-// so checkout.html's "Subscribe" button (Step 2 above) actually has a
+// so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
 // real route to call, not just a function defined but never wired to one.
 app.MapPost("/api/create-subscription", async () => {
     var session = await CreateSubscriptionSession();
@@ -1799,8 +1799,8 @@ void create_payment(long amount, const std::string& email, const std::string& ph
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 }` },
-      { title: 'Wire it to the Buy button (checkout.html)', code:
-`// checkout.html's own real markup (Step 2 above), verbatim:
+      { title: 'Wire it to the Buy button (checkout-page.html)', code:
+`// checkout-page.html's own real markup (Step 2 above), verbatim:
 //   <input id="emailInput" type="email" ... />
 //   <button id="confirmButton" ...>Confirm — Pay</button>
 // its click handler POSTs { amount, email } to exactly this route.
@@ -1812,7 +1812,7 @@ void create_payment(long amount, const std::string& email, const std::string& ph
 int main() {
     httplib::Server svr;
 
-    // checkout.html is served from a different origin than this
+    // checkout-page.html is served from a different origin than this
     // server (a real file, or konduyt.dev itself) -- without this, the
     // browser blocks every request before it ever reaches these routes,
     // indistinguishable from "the server isn't running" even when it is.
@@ -1834,7 +1834,7 @@ int main() {
     });
 
     // The "Recurring" tab's own create_subscription_session() -- mounted
-    // here so checkout.html's "Subscribe" button (Step 2 above)
+    // here so checkout-page.html's "Subscribe" button (Step 2 above)
     // actually has a real route to call, not just a function defined but
     // never wired to one.
     svr.Post("/api/create-subscription", [](const httplib::Request& req, httplib::Response& res) {

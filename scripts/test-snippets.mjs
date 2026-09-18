@@ -180,7 +180,7 @@ check('the Java sample inflates the layout file shipped beside it',
 check('the Kotlin sample inflates the layout file shipped beside it',
   kotlinClassIds.every((id) => id === 'activity_main'), `[${kotlinClassIds}]`);
 
-// The frontend snippet is presented as "checkout.html's own click handler", so
+// The frontend snippet is presented as "checkout-page.html's own click handler", so
 // every id it reaches for must be an id checkout-page.html actually declares.
 // A missing one is not cosmetic: getElementById returns null and the first
 // .classList.add throws, which is what "none of the buttons work" looks like.
