@@ -140,13 +140,20 @@ document.getElementById('payButton').addEventListener('click', function () {
   btn.disabled = true;
   btn.textContent = 'Loading…';
 
+  // The customer's own country, read from the country code they picked.
+  // Always send it: the backend prices the transaction from this, so a
+  // KES 5,000 checkout stays KES 5,000 no matter who opens the page.
+  // Leaving it out lets the backend fall back on something that describes
+  // the viewer rather than the customer, and the currency moves with them.
+  var iso = document.getElementById('countryCode').selectedOptions[0].getAttribute('data-iso');
+
   // The real, public intelligence endpoint -- no key, no backend of
   // your own needed for this step. Same one DevPanel.js's own
   // "Test before you sign up" button calls.
   fetch('https://konduyt-api.onrender.com/v1/demo/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY })
+    body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY, country: iso })
   })
     .then(function (r) { return r.json(); })
     .then(function (data) {

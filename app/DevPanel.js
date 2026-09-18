@@ -57,13 +57,20 @@ document.getElementById('payButton').addEventListener('click', function () {
   btn.disabled = true;
   btn.textContent = 'Loading…';
 
+  // The customer's own country, read from the country code they picked.
+  // Always send it: the backend prices the transaction from this, so a
+  // KES 5,000 checkout stays KES 5,000 no matter who opens the page.
+  // Leaving it out lets the backend fall back on something that describes
+  // the viewer rather than the customer, and the currency moves with them.
+  var iso = document.getElementById('countryCode').selectedOptions[0].getAttribute('data-iso');
+
   // The real, public intelligence endpoint -- no key, no backend of
   // your own needed for this step. Same one DevPanel.js's own
   // "Test before you sign up" button calls.
   fetch('https://konduyt-api.onrender.com/v1/demo/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY })
+    body: JSON.stringify({ amount: AMOUNT_MINOR, currency: CURRENCY, country: iso })
   })
     .then(function (r) { return r.json(); })
     .then(function (data) {
@@ -1308,16 +1315,21 @@ export default function DevPanel() {
     try {
       // Self-contained landing-page demo: no publishable key, no project
       // lookup, works reliably regardless of what's set up (or not) in any
-      // real account. Still real, geo-aware intelligence underneath --
-      // real detected country, real currency conversion, real sourced fee
-      // data -- see /v1/demo/run on the backend for how it stays reliable
-      // even for a visitor whose own country doesn't have full rail data
-      // sourced yet (falls back to a real representative example rather
-      // than showing nothing).
+      // real account. Still real intelligence underneath -- real sourced fee
+      // data, and a real country for the transaction.
+      //
+      // The reference transaction is Kenyan (KES 5,000), so `country: 'KE'`
+      // states that explicitly. Without it the backend would have no
+      // customer country to work from, and the demo must never substitute
+      // the BROWSER's location for the customer's: this page is often
+      // viewed from somewhere else entirely, and letting the viewer's
+      // country pick the currency is exactly what made one Kenyan KES 5,000
+      // transaction present itself as USD, MUR or EUR depending on who was
+      // looking. See /v1/demo/run's own docstring.
       const res = await fetch(`${API_BASE}/v1/demo/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 500000, currency: 'KES' }),
+        body: JSON.stringify({ amount: 500000, currency: 'KES', country: 'KE' }),
       });
       const data = await res.json();
       setResult(data);
@@ -1587,11 +1599,13 @@ export default function DevPanel() {
               <div className="intel-modal-title">Payment intelligence</div>
               <div className="intel-modal-sub">
                 A {fmtMoney(payment.amount, payment.currency)} payment, ranked cheapest-first by real
-                charges. Enter a real Kenyan number below and we&apos;ll show which one actually works for it —
-                the rest stay visible, just not usable for that number.
+                charges. The price and currency come from that reference transaction — not from
+                where you&apos;re browsing from. Enter a real Kenyan number below and we&apos;ll show
+                which one actually works for it; a number only decides carrier eligibility, never the
+                currency — the rest stay visible, just not usable for that number.
                 {result && result.is_representative_example && (
-                  <> Shown in {payment.currency} — Kenya&apos;s real connected-provider pricing, as a representative example
-                    for your detected location.</>
+                  <> Kenya&apos;s real connected-provider pricing, shown as the representative
+                    example for this reference transaction.</>
                 )}
               </div>
               <input

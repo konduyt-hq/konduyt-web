@@ -40,18 +40,23 @@ export default function DemoCheckout() {
   const [demo, setDemo] = useState(null); // the real /v1/demo/run response
   const [loadError, setLoadError] = useState(false);
 
-  // Real data, not a client-side estimate: the backend does its own real
-  // geo-detection (from the request itself, server-side) and returns the
-  // visitor's actual country's real, sourced fee data where Konduyt has
-  // it -- or Kenya's real data as an honestly-labelled representative
-  // example otherwise. No client-side FX/geo logic needed here at all.
+  // Real data, not a client-side estimate: this demo is a Kenyan checkout
+  // (Rine Farm Feeds, KES 5,000.00), so the transaction's country is stated
+  // as KE rather than left to be inferred. The backend prices it from that
+  // country's real, sourced fee data, or falls back to Kenya's real data as
+  // an honestly-labelled representative example. Deliberately NOT the
+  // visitor's own IP-derived country: this page is frequently opened from
+  // outside Kenya, and letting the viewer's location decide the currency is
+  // exactly what made one Kenyan KES 5,000 transaction describe itself as
+  // USD, MUR or EUR depending on who was looking. No client-side FX/geo
+  // logic needed here at all.
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         const res = await fetch(`${API_BASE}/v1/demo/run`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currency: 'KES', amount: REFERENCE_AMOUNT_KES }),
+          body: JSON.stringify({ currency: 'KES', amount: REFERENCE_AMOUNT_KES, country: 'KE' }),
         });
         const data = await res.json();
         if (cancelled) return;
@@ -104,7 +109,7 @@ export default function DemoCheckout() {
           <Link href="/" className="demo-back">← Back to Konduyt</Link>
           <span className="demo-flag">Demo. No real charge.</span>
         </div>
-        <div className="demo-center"><p>Loading real fee data for your location…</p></div>
+        <div className="demo-center"><p>Loading real fee data for this transaction…</p></div>
       </div>
     );
   }
@@ -127,7 +132,7 @@ export default function DemoCheckout() {
             {demo.is_representative_example && (
               <div className="demo-fx-note">
                 Showing Kenya&apos;s real connected-provider pricing as a representative example —
-                Konduyt doesn&apos;t have sourced rail data for your detected location yet.
+                Konduyt doesn&apos;t have sourced rail data for this transaction&apos;s country yet.
               </div>
             )}
           </div>
