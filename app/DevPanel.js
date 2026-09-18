@@ -33,27 +33,20 @@ const LANGUAGES = [
   {
     id: 'curl', label: 'cURL', filename: 'test.sh',
     deps: 'No dependencies — cURL is built into macOS and Linux.',
-    note: 'curl is different from the other 11 tabs: it can\'t serve an endpoint, only call one. These test whichever backend you\'re actually running (any one of the other language tabs) on localhost:3000 -- start that backend first, then run these.',
+    note: 'curl is different from the other 11 tabs: it can\'t serve an endpoint, only call one. These test whichever backend you\'re actually running (any one of the other language tabs) on localhost:3000 -- start that backend first, then run it.',
     code: `#!/bin/bash
 # test.sh  —  run against whichever backend you have running (localhost:3000)
 
-echo "1. One-time purchase"
 curl -X POST http://localhost:3000/api/create-payment \\
   -H "Content-Type: application/json" \\
   -d '{"amount": 5000, "email": "customer@example.com"}'
-echo
-
-echo "2. Recurring"
-curl -X POST http://localhost:3000/api/create-subscription \\
-  -H "Content-Type: application/json" \\
-  -d '{}'
 echo`,
   },
   {
     id: 'javascript', label: 'JavaScript', filename: 'server.mjs',
     backendLabel: 'server.mjs — your own backend (a terminal locally, or an online editor with a built-in terminal like vscode.dev, if Node/VS Code aren\'t installed)',
     deps: 'Node 18+ (fetch, http and fs are all built in). Run: node server.mjs -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server serving the one real flow.',
     frontendLabel: "checkout-page.html's own click handler — runs in the browser, no install",
     frontendCode: `var AMOUNT_MINOR = 500000; // KES 5,000.00
 var CURRENCY = 'KES';
@@ -154,38 +147,6 @@ document.getElementById('confirmButton').addEventListener('click', function () {
       btn.textContent = 'Confirm — Pay';
     });
 });
-
-// A fixed recurring price -- calls YOUR OWN backend's
-// /api/create-subscription route, the same one every backend language
-// tab implements alongside /api/create-payment. No intelligence
-// comparison step here on purpose: a subscription authorizes once, in
-// Konduyt's own checkout widget, not per-charge -- there's no per-
-// transaction rail to rank yet. A real integration would take the
-// session id this returns and open it with Konduyt.checkout({ sessionId }).
-document.getElementById('subscribeButton').addEventListener('click', function () {
-  var btn = document.getElementById('subscribeButton');
-  var resultDiv = document.getElementById('subResultDiv');
-
-  btn.disabled = true;
-  btn.textContent = 'Processing…';
-  resultDiv.textContent = '';
-
-  fetch('http://localhost:3000/api/create-subscription', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
-  })
-    .then(function (r) { return r.json(); })
-    .then(function (session) {
-      resultDiv.textContent = JSON.stringify(session) + ' -- open with Konduyt.checkout({ sessionId }).';
-    })
-    .catch(function () {
-      resultDiv.textContent = 'Could not reach your backend at localhost:3000 -- is it running?';
-    })
-    .finally(function () {
-      btn.disabled = false;
-      btn.textContent = 'Subscribe';
-    });
-});
   `,
     code: `// server.mjs  —  run with:  node server.mjs
 import http from "node:http";
@@ -261,23 +222,13 @@ const server = http.createServer(async (req, res) => {
     // payments never accept or store a customer email on purpose (a
     // developer poking around here might paste a real one, and there's
     // no legitimate reason to keep it). A real account calling the real
-    // /v1/payments instead WOULD pass it, as customer: { email } -- see
-    // the "One-time purchase" tab above for that real version.
+    // /v1/payments instead WOULD pass it, as customer: { email }.
     const payment = await konduyt("/v1/payments/test", {
       amount, currency: "KES", provider: "test",
     });
     res.end(JSON.stringify(payment));
 
-  } else if (req.url === "/api/create-subscription") {
-    // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-    const session = await konduyt("/v1/payment_sessions", {
-      amount: 100000, currency: "KES",
-      recurring: true, interval: "monthly",
-      reference: "sub_pro_plan",
-    });
-    res.end(JSON.stringify(session)); // { id: "sess_...", ... } -- open with Konduyt.checkout({ sessionId })
-
-  } else {
+    } else {
     res.writeHead(404);
     res.end();
   }
@@ -288,7 +239,7 @@ server.listen(3000, () => console.log("Backend running on http://localhost:3000"
   {
     id: 'python', label: 'Python', filename: 'server.py',
     deps: 'Install: pip install flask requests   ·   Run: python server.py -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server serving the one real flow.',
     code: `# server.py  —  pip install flask requests, then: python server.py
 from flask import Flask, request, jsonify, send_file
 import requests
@@ -369,18 +320,6 @@ def create_payment():
     return jsonify(konduyt("/v1/payments/test", {
         "amount": amount, "currency": "KES", "provider": "test",
     }))
-
-@app.route("/api/create-subscription", methods=["POST", "OPTIONS"])
-def create_subscription():
-    if request.method == "OPTIONS":
-        return "", 204
-    # Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-    return jsonify(konduyt("/v1/payment_sessions", {
-        "amount": 100000, "currency": "KES",
-        "recurring": True, "interval": "monthly",
-        "reference": "sub_pro_plan",
-    }))  # {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
-
 if __name__ == "__main__":
     # Print first: app.run() blocks, so a print after it would never fire.
     print("Backend running on http://localhost:3000")
@@ -389,7 +328,7 @@ if __name__ == "__main__":
   {
     id: 'php', label: 'PHP', filename: 'index.php',
     deps: 'PHP 7.4+ with the curl extension (bundled by default). Run: php -S localhost:3000 -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server), two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server (PHP\'s own built-in dev server) serving the one real flow.',
     code: `<?php
 // index.php  —  run with:  php -S localhost:3000
 
@@ -450,15 +389,6 @@ if ($path === "/api/create-payment") {
     echo konduyt("/v1/payments/test", [
         "amount" => $amount, "currency" => "KES", "provider" => "test",
     ], $KONDUYT_SECRET_KEY, $API);
-
-} elseif ($path === "/api/create-subscription") {
-    // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-    echo konduyt("/v1/payment_sessions", [
-        "amount" => 100000, "currency" => "KES",
-        "recurring" => true, "interval" => "monthly",
-        "reference" => "sub_pro_plan",
-    ], $KONDUYT_SECRET_KEY, $API); // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
-
 } else {
     http_response_code(404);
 }`,
@@ -466,7 +396,7 @@ if ($path === "/api/create-payment") {
   {
     id: 'go', label: 'Go', filename: 'main.go',
     deps: 'Standard library only. Run: go run main.go -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server serving the one real flow.',
     code: `// main.go  —  run with:  go run main.go
 package main
 
@@ -575,23 +505,7 @@ func main() {
 		w.Write(out)
 	})
 
-	http.HandleFunc("/api/create-subscription", func(w http.ResponseWriter, r *http.Request) {
-		if cors(w, r) {
-			return
-		}
-		// Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-		out, err := konduyt("/v1/payment_sessions", map[string]any{
-			"amount": 100000, "currency": "KES",
-			"recurring": true, "interval": "monthly",
-			"reference": "sub_pro_plan",
 		})
-		if err != nil {
-			http.Error(w, \`{"error":"bad_gateway"}\`, http.StatusBadGateway)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(out) // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
-	})
 
 	fmt.Println("Backend running on http://localhost:3000")
 	if err := http.ListenAndServe(":3000", nil); err != nil {
@@ -603,7 +517,7 @@ func main() {
   {
     id: 'ruby', label: 'Ruby', filename: 'server.rb',
     deps: 'Install: gem install sinatra net-http rackup puma   ·   Run: ruby server.rb -- then open http://localhost:3000/ (this server serves checkout-page.html itself). Sinatra needs rackup and puma at startup, not just sinatra.',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server serving the one real flow.',
     code: `# server.rb  —  gem install sinatra net-http, then: ruby server.rb
 require "sinatra"
 require "net/http"
@@ -644,10 +558,6 @@ end
 options "/api/create-payment" do
   204
 end
-options "/api/create-subscription" do
-  204
-end
-
 # Serve the shared checkout page at the root so the popup is exercised against
 # this backend directly. checkout-page.html sits next to this file; it is the
 # same file in every language tab in these docs.
@@ -673,22 +583,12 @@ post "/api/create-payment" do
   # customer: { email: email }.
   content_type :json
   konduyt("/v1/payments/test", { amount: amount, currency: "KES", provider: "test" })
-end
-
-post "/api/create-subscription" do
-  # Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-  content_type :json
-  konduyt("/v1/payment_sessions", {
-    amount: 100000, currency: "KES",
-    recurring: true, interval: "monthly",
-    reference: "sub_pro_plan",
-  }) # {"id" => "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
 end`,
   },
   {
     id: 'rust', label: 'Rust', filename: 'main.rs',
     deps: 'Cargo.toml: reqwest = { version = "0.12", features = ["blocking","json"] }  ·  serde_json = "1"  ·  tiny_http = "0.12"   —   Run: cargo run -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server serving the one real flow.',
     code: `// src/main.rs  —  cargo add reqwest --features blocking,json && cargo add serde_json tiny_http
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
@@ -789,14 +689,7 @@ fn main() {
                     "amount": amount, "currency": "KES", "provider": "test"
                 }))
             }
-            "/api/create-subscription" => {
-                // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-                konduyt("/v1/payment_sessions", json!({
-                    "amount": 100000, "currency": "KES",
-                    "recurring": true, "interval": "monthly",
-                    "reference": "sub_pro_plan"
-                })) // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
-            }
+                        }
             _ => { request.respond(Response::from_string("").with_status_code(404)).ok(); continue; }
         };
 
@@ -809,7 +702,7 @@ fn main() {
   {
     id: 'csharp', label: 'C#', filename: 'Program.cs',
     deps: '.NET 6+ (minimal APIs are built in). dotnet new web -o . then paste over Program.cs as Program.cs, with checkout-page.html beside it. Run: dotnet run -- then open http://localhost:3000/ (this server serves checkout-page.html itself).',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server serving the one real flow.',
     code: `// Program.cs  —  dotnet new web -o ., paste over Program.cs, then: dotnet run
 using System.Net.Http.Headers;
 using System.Text;
@@ -873,14 +766,6 @@ app.MapPost("/api/create-payment", async (HttpRequest req) => {
         amount, currency = "KES", provider = "test"
     }), "application/json");
 });
-
-app.MapPost("/api/create-subscription", async () => {
-    // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-    return Results.Content(await Konduyt("/v1/payment_sessions", new {
-        amount = 100000, currency = "KES",
-        recurring = true, interval = "monthly",
-        reference = "sub_pro_plan"
-    }), "application/json"); // { "id": "sess_...", ... } -- open with Konduyt.checkout({ sessionId })
 });
 
 app.Urls.Add("http://localhost:3000");
@@ -1170,7 +1055,7 @@ class ViewController: UIViewController {
   {
     id: 'cpp', label: 'C++', filename: 'main.cpp',
     deps: 'Needs libcurl and cpp-httplib. Install: apt install libcurl4-openssl-dev libcpp-httplib-dev (Debian/Ubuntu) or brew install curl cpp-httplib (macOS). Debian ships cpp-httplib as a compiled library, so link it explicitly: g++ main.cpp -lcurl -lcpp-httplib -o server && ./server -- then open http://localhost:3000/ (this server serves checkout-page.html itself). On systems with the single-header form, drop -lcpp-httplib.',
-    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server, two real scenarios.',
+    note: 'This is the BACKEND for the checkout-page.html frontend from step 2. Its real markup: <input id="emailInput"> and <button id="confirmButton">Confirm — Pay</button> -- that click handler POSTs { amount, email } to /api/create-payment, which this file serves. One real server serving the one real flow.',
     code: `// main.cpp  —  g++ main.cpp -lcurl -o server && ./server
 #include <curl/curl.h>
 #include <httplib.h>
@@ -1263,14 +1148,6 @@ int main() {
         std::string amount = "5000"; // whatever the shopper typed in, OR a fixed price you already know
         std::string body = R"({"amount":)" + amount + R"(,"currency":"KES","provider":"test"})";
         res.set_content(konduyt("/v1/payments/test", body), "application/json");
-    });
-
-    svr.Post("/api/create-subscription", [](const httplib::Request&, httplib::Response& res) {
-        // Recurring: a fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-        std::string body = R"({"amount":100000,"currency":"KES","recurring":true,)"
-                            R"("interval":"monthly","reference":"sub_pro_plan"})";
-        res.set_content(konduyt("/v1/payment_sessions", body), "application/json");
-        // {"id": "sess_...", ...} -- open with Konduyt.checkout({ sessionId })
     });
 
     printf("Backend running on http://localhost:3000\\n");

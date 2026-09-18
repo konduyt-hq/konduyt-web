@@ -1,9 +1,9 @@
 // A real, standalone demo -- one self-contained HTML file, HTML + CSS + JS
 // together, no build step, no dependency.
 //
-// Two real flows, matching a real product, not just one scenario:
+// One real flow, matching a real product:
 //
-// ONE-TIME (the top section): a simple product with ONE "Pay" button.
+// ONE-TIME: a simple product with ONE "Pay" button.
 //   1. Click Pay -> calls the real, public /v1/demo/run (same endpoint
 //      DevPanel.js's own "Test before you sign up" button uses -- no key,
 //      no backend needed for this step) -- shows the real, ranked payment
@@ -18,18 +18,10 @@
 // country's real rail catalogue to rank against, the same real "country"
 // field /v1/demo/run's own backend already accepts and honors.
 //
-// RECURRING (the section below it): a fixed subscription price with its
-// own "Subscribe" button, calling YOUR OWN backend's
-// /api/create-subscription -- the SAME route every backend language tab
-// implements alongside create-payment. No intelligence comparison step
-// here -- a subscription authorizes once, in Konduyt's own checkout, not
-// per-charge.
-//
-// Both routes are real ids in this file (payButton, subscribeButton, and
-// so on), read by name in every backend language tab's own comments --
-// open this file next to a running backend from any of those tabs and
-// both flows work end to end, the same way a real customer would
-// actually use them.
+// The one route this file calls is a real id in this file (payButton),
+// read by name in every backend language tab's own comments -- open this
+// file next to a running backend from any of those tabs and the flow
+// works end to end, the same way a real customer would actually use it.
 
 export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
 <html lang="en">
@@ -156,21 +148,6 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     cursor: pointer;
   }
   #resultDiv { margin-top: 12px; font-size: 12.5px; color: #6b6b6b; word-break: break-all; }
-
-  .divider { border: none; border-top: 1px solid #e5e5e5; margin: 32px 0; }
-  #subscribeButton {
-    width: 100%;
-    padding: 13px;
-    border: 1px solid #0a0a0a;
-    border-radius: 9px;
-    background: #fff;
-    color: #0a0a0a;
-    font-size: 14.5px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  #subscribeButton:disabled { opacity: 0.5; cursor: default; }
-  #subResultDiv { margin-top: 12px; font-size: 12.5px; color: #6b6b6b; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -408,16 +385,6 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     </div>
   </div>
 
-  <hr class="divider" />
-
-  <div class="product">
-    <h1>Sample subscription</h1>
-    <p class="sub">A fixed recurring price -- e.g. a Pro Plan. No comparison step: the customer authorizes once, in Konduyt's own checkout, and every later charge reuses that authorization automatically.</p>
-    <div class="price">KES 1,000.00 / month</div>
-    <button id="subscribeButton" type="button">Subscribe</button>
-    <div id="subResultDiv"></div>
-  </div>
-
   <script>
     var AMOUNT_MINOR = 500000; // KES 5,000.00 -- the REFERENCE price; the
     // real, displayed currency/amount always come from the backend's own
@@ -629,38 +596,6 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
         .finally(function () {
           btn.disabled = false;
           btn.textContent = 'Confirm — Pay';
-        });
-    });
-
-    // A fixed recurring price -- calls YOUR OWN backend's
-    // /api/create-subscription route, the same one every backend language
-    // tab implements alongside /api/create-payment. No intelligence
-    // comparison step here on purpose: a subscription authorizes once, in
-    // Konduyt's own checkout widget, not per-charge -- there's no per-
-    // transaction rail to rank yet. A real integration would take the
-    // session id this returns and open it with Konduyt.checkout({ sessionId }).
-    document.getElementById('subscribeButton').addEventListener('click', function () {
-      var btn = document.getElementById('subscribeButton');
-      var resultDiv = document.getElementById('subResultDiv');
-
-      btn.disabled = true;
-      btn.textContent = 'Processing…';
-      resultDiv.textContent = '';
-
-      fetch('http://localhost:3000/api/create-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (session) {
-          resultDiv.textContent = JSON.stringify(session) + ' -- open with Konduyt.checkout({ sessionId }).';
-        })
-        .catch(function () {
-          resultDiv.textContent = 'Could not reach your backend at localhost:3000 -- is it running?';
-        })
-        .finally(function () {
-          btn.disabled = false;
-          btn.textContent = 'Subscribe';
         });
     });
   </script>

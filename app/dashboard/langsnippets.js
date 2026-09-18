@@ -10,21 +10,20 @@
 // directly -- there is no safe way to hold a secret key on a device.
 // {{API}} is replaced at render time with the API base URL.
 //
-// Deliberately just two scenarios -- the two things the large majority of
+// Deliberately just the one scenario -- the thing the large majority of
 // merchants actually need on day one:
-//   - One-time purchase -- POST /v1/payments. The one-time example shows
-//     BOTH ways an amount can come from: a shopper typing it in (a
-//     donation), and a fixed price you already know (a product) -- the
-//     same amount variable either way, just where it comes from differs.
-//   - Recurring          -- POST /v1/payment_sessions (recurring: true),
-//     then Konduyt.checkout({ sessionId }). A fixed subscription price.
-// Split payments (/v1/marketplace_payments) and usage-based billing are
-// real, separate Konduyt capabilities -- just not shown here, to keep the
-// first thing a developer reads as small as possible.
+//   - One-time purchase -- POST /v1/payments. Shows BOTH ways an amount
+//     can come from: a shopper typing it in (a donation), and a fixed
+//     price you already know (a product) -- the same amount variable
+//     either way, just where it comes from differs.
+// Recurring subscriptions (/v1/payment_sessions), split payments
+// (/v1/marketplace_payments) and usage-based billing are real, separate
+// Konduyt capabilities -- just not shown here, to keep the first thing a
+// developer reads as small as possible.
 //
 // Everything else (wiring the Buy button, failover/rerouting, cross-border
-// eligibility) is a separate, real concern of its own -- not about which
-// of the two scenarios above -- so it stays as its own section.
+// eligibility) is a separate, real concern of its own -- not about the
+// scenario above -- so it stays as its own section.
 
 export const LANG_SNIPPETS = [
   {
@@ -53,22 +52,7 @@ curl -X POST {{API}}/v1/payments \\
     \\"method\\": \\"mpesa\\",
     \\"customer\\": { \\"email\\": \\"customer@example.com\\", \\"phone\\": \\"0722123456\\" }
   }"` },
-      { title: 'Recurring', code:
-`# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-# Creates a session; the customer authorizes once in the checkout popup,
-# Konduyt then charges the same amount automatically every interval.
-curl -X POST {{API}}/v1/payment_sessions \\
-  -H "Authorization: Bearer $KONDUYT_SECRET_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "amount": 100000,
-    "currency": "KES",
-    "recurring": true,
-    "interval": "monthly",
-    "reference": "sub_pro_plan"
-  }'
-# Returns {"id": "sess_...", ...} -- pass that id to Konduyt.checkout({ sessionId })` },
-      { title: 'Failover + rerouting', code:
+            { title: 'Failover + rerouting', code:
 `# "method", not "provider" -- this is what triggers real failover: Konduyt
 # tries every provider configured for mpesa, in order, stopping on success
 # or on a genuinely unsafe/ambiguous outcome. Never guessed, never a blind
@@ -101,6 +85,8 @@ curl "{{API}}/checkout/config?pk=$KONDUYT_PUBLISHABLE_KEY&amount=500000&currency
   {
     id: 'js', label: 'JavaScript', icon: 'js',
     sections: [
+      { title: 'Dependency', code:
+`npm install express   # only the route sample below needs it; the API calls use built-in fetch` },
       { title: 'One-time purchase', code:
 `// Runs server-side (Node). The key is read from the environment — never
 // hardcoded, never sent to the browser.
@@ -236,37 +222,6 @@ document.getElementById('confirmButton').addEventListener('click', function () {
     });
 });
 
-// A fixed recurring price -- calls YOUR OWN backend's
-// /api/create-subscription route, the same one every backend language
-// tab implements alongside /api/create-payment. No intelligence
-// comparison step here on purpose: a subscription authorizes once, in
-// Konduyt's own checkout widget, not per-charge -- there's no per-
-// transaction rail to rank yet. A real integration would take the
-// session id this returns and open it with Konduyt.checkout({ sessionId }).
-document.getElementById('subscribeButton').addEventListener('click', function () {
-  var btn = document.getElementById('subscribeButton');
-  var resultDiv = document.getElementById('subResultDiv');
-
-  btn.disabled = true;
-  btn.textContent = 'Processing…';
-  resultDiv.textContent = '';
-
-  fetch('http://localhost:3000/api/create-subscription', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
-  })
-    .then(function (r) { return r.json(); })
-    .then(function (session) {
-      resultDiv.textContent = JSON.stringify(session) + ' -- open with Konduyt.checkout({ sessionId }).';
-    })
-    .catch(function () {
-      resultDiv.textContent = 'Could not reach your backend at localhost:3000 -- is it running?';
-    })
-    .finally(function () {
-      btn.disabled = false;
-      btn.textContent = 'Subscribe';
-    });
-});
   ` },
       { title: 'Wire it to the Buy button (checkout-page.html)', code:
 `// checkout-page.html's own real markup (Step 2 above), verbatim:
@@ -296,47 +251,9 @@ app.post("/api/create-payment", async (req, res) => {
   res.json(payment);
 });
 
-// The "Recurring" tab's own createSubscriptionSession() -- mounted here so
-// checkout-page.html's "Subscribe" button (Step 2 above) actually has a
-// real route to call, not just a function defined but never wired to one.
-app.post("/api/create-subscription", async (req, res) => {
-  const session = await createSubscriptionSession();
-  res.json(session);
-});
 
 app.listen(3000, () => console.log("Backend running on http://localhost:3000"));` },
-      { title: 'Recurring', code:
-`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Creates a session; the customer authorizes once in the checkout popup,
-// Konduyt then charges the same amount automatically every interval.
-async function createSubscriptionSession() {
-  // Same real reason as createPayment() above: a failed or non-JSON
-  // upstream response must return a real, readable error object, not
-  // crash the route with a raw, unhandled 500 -- confirmed directly:
-  // this exact function, unguarded, was the real cause of Subscribe
-  // showing a broken-looking stack-trace page instead of a clear error.
-  try {
-    const res = await fetch("{{API}}/v1/payment_sessions", {
-      method: "POST",
-      headers: {
-        "Authorization": \`Bearer \${KONDUYT_SECRET_KEY}\`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount: 100000, currency: "KES",
-        recurring: true, interval: "monthly",
-        reference: "sub_pro_plan",
-      }),
-    });
-    return await res.json(); // { id: "sess_...", ... }
-  } catch (e) {
-    return { error: "backend_error", message: e.message };
-  }
-}
-
-// Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+            { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
 // success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
@@ -379,7 +296,8 @@ async function eligibleMethodsFor(customerCountry) {
   {
     id: 'python', label: 'Python', icon: 'python',
     sections: [
-      { title: 'Dependency', code: `pip install requests` },
+      { title: 'Dependency', code:
+`pip install flask requests   # flask serves the route below; requests calls Konduyt` },
       { title: 'One-time purchase', code:
 `import os
 import requests
@@ -438,37 +356,12 @@ def handle_create_payment():
     payment = create_payment(body["amount"], body["email"])
     return jsonify(payment)
 
-# The "Recurring" tab's own create_subscription_session() -- mounted here
-# so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
-# real route to call, not just a function defined but never wired to one.
-@app.route("/api/create-subscription", methods=["POST", "OPTIONS"])
-def handle_create_subscription():
-    if request.method == "OPTIONS":
-        return "", 204
-    return jsonify(create_subscription_session())
 
 if __name__ == "__main__":
-    app.run(port=3000)
-    print("Backend running on http://localhost:3000")` },
-      { title: 'Recurring', code:
-`# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-# Creates a session; the customer authorizes once in the checkout popup,
-# Konduyt then charges the same amount automatically every interval.
-def create_subscription_session():
-    res = requests.post(
-        "{{API}}/v1/payment_sessions",
-        headers={"Authorization": f"Bearer {KONDUYT_SECRET_KEY}"},
-        json={
-            "amount": 100000, "currency": "KES",
-            "recurring": True, "interval": "monthly",
-            "reference": "sub_pro_plan",
-        },
-    )
-    return res.json()  # {"id": "sess_...", ...}
-
-# Client-side, once you have the session id:
-# Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+    # Print first: app.run() blocks, so a print after it would never fire.
+    print("Backend running on http://localhost:3000")
+    app.run(port=3000)` },
+            { title: 'Failover + rerouting', code:
 `# "method", not "provider" -- this is what triggers real failover: Konduyt
 # tries every provider configured for this method, in order, stopping on
 # success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
@@ -567,48 +460,8 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(204); exit; }
 
 $body = json_decode(file_get_contents("php://input"), true);
 echo json_encode(create_payment($secret, (int) $body["amount"], $body["email"]));
-
-// ---- api/create-subscription.php ----
-// The "Recurring" tab's own create_subscription_session() -- as its own
-// file here (PHP's built-in server routes by file, one route per file, so
-// this needs to be genuinely separate, not appended to the file above),
-// so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
-// real route to call, not just a function defined but never wired to one.
-<?php
-header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") { http_response_code(204); exit; }
-
-echo json_encode(create_subscription_session($secret));` },
-      { title: 'Recurring', code:
-`<?php
-// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Creates a session; the customer authorizes once in the checkout popup,
-// Konduyt then charges the same amount automatically every interval.
-function create_subscription_session($secret) {
-    $ch = curl_init("{{API}}/v1/payment_sessions");
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            "Authorization: Bearer " . $secret,
-            "Content-Type: application/json",
-        ],
-        CURLOPT_POSTFIELDS => json_encode([
-            "amount" => 100000, "currency" => "KES",
-            "recurring" => true, "interval" => "monthly",
-            "reference" => "sub_pro_plan",
-        ]),
-    ]);
-    $session = json_decode(curl_exec($ch), true);
-    curl_close($ch);
-    return $session; // ["id" => "sess_...", ...]
-}
-// Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+` },
+            { title: 'Failover + rerouting', code:
 `<?php
 // "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
@@ -754,50 +607,11 @@ func main() {
 		json.NewEncoder(w).Encode(payment)
 	})
 
-	// The "Recurring" tab's own createSubscriptionSession() -- mounted here
-	// so checkout-page.html's "Subscribe" button (Step 2 above) actually has
-	// a real route to call, not just a function defined but never wired to one.
-	http.HandleFunc("/api/create-subscription", func(w http.ResponseWriter, r *http.Request) {
-		if cors(w, r) {
-			return
-		}
-		session, _ := createSubscriptionSession()
-		json.NewEncoder(w).Encode(session)
-	})
 
 	fmt.Println("Backend running on http://localhost:3000")
 	http.ListenAndServe(":3000", nil)
 }` },
-      { title: 'Recurring', code:
-`import "fmt"
-
-// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Creates a session; the customer authorizes once in the checkout popup,
-// Konduyt then charges the same amount automatically every interval.
-func createSubscriptionSession() (map[string]any, error) {
-	body, _ := json.Marshal(map[string]any{
-		"amount": 100000, "currency": "KES",
-		"recurring": true, "interval": "monthly",
-		"reference": "sub_pro_plan",
-	})
-
-	req, _ := http.NewRequest("POST", "{{API}}/v1/payment_sessions", bytes.NewBuffer(body))
-	req.Header.Set("Authorization", "Bearer "+konduytSecret)
-	req.Header.Set("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	var session map[string]any
-	json.NewDecoder(res.Body).Decode(&session) // {"id": "sess_...", ...}
-	return session, nil
-}
-// Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+            { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
 // success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
@@ -867,6 +681,8 @@ func eligibleMethodsFor(customerCountry string) ([]any, error) {
   {
     id: 'ruby', label: 'Ruby', icon: 'ruby',
     sections: [
+      { title: 'Dependency', code:
+`gem install sinatra rackup puma   # Sinatra needs rackup and puma at startup, not just sinatra` },
       { title: 'One-time purchase', code:
 `require "net/http"
 require "json"
@@ -922,10 +738,6 @@ end
 options "/api/create-payment" do
   204
 end
-options "/api/create-subscription" do
-  204
-end
-
 post "/api/create-payment" do
   body = JSON.parse(request.body.read)
   payment = create_payment(body["amount"], body["email"])
@@ -933,37 +745,8 @@ post "/api/create-payment" do
   payment.to_json
 end
 
-# The "Recurring" tab's own create_subscription_session() -- mounted here
-# so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
-# real route to call, not just a function defined but never wired to one.
-post "/api/create-subscription" do
-  content_type :json
-  create_subscription_session.to_json
-end
 # Run: ruby server.rb -- backend on http://localhost:3000` },
-      { title: 'Recurring', code:
-`# A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-# Creates a session; the customer authorizes once in the checkout popup,
-# Konduyt then charges the same amount automatically every interval.
-def create_subscription_session
-  uri = URI("{{API}}/v1/payment_sessions")
-  http = Net::HTTP.new(uri.host, uri.port)
-  http.use_ssl = true
-
-  req = Net::HTTP::Post.new(uri)
-  req["Authorization"] = "Bearer #{KONDUYT_SECRET_KEY}"
-  req["Content-Type"] = "application/json"
-  req.body = {
-    amount: 100000, currency: "KES",
-    recurring: true, interval: "monthly",
-    reference: "sub_pro_plan",
-  }.to_json
-
-  JSON.parse(http.request(req).body) # {"id" => "sess_...", ...}
-end
-# Client-side, once you have the session id:
-# Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+            { title: 'Failover + rerouting', code:
 `# "method", not "provider" -- this is what triggers real failover: Konduyt
 # tries every provider configured for this method, in order, stopping on
 # success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
@@ -1014,7 +797,8 @@ end` },
       { title: 'Dependency (Cargo.toml)', code:
 `[dependencies]
 reqwest = { version = "0.12", features = ["json", "blocking"] }
-serde_json = "1"` },
+serde_json = "1"
+tiny_http = "0.12"   # only the route sample below needs it` },
       { title: 'One-time purchase', code:
 `use serde_json::json;
 use std::env;
@@ -1092,44 +876,16 @@ fn main() {
         request.as_reader().read_to_string(&mut body_str).ok();
         let body: serde_json::Value = serde_json::from_str(&body_str).unwrap_or(json!({}));
 
-        // The "Recurring" tab's own create_subscription_session() --
-        // mounted here so checkout-page.html's "Subscribe" button (Step 2
-        // above) actually has a real route to call, not just a function
-        // defined but never wired to one.
-        let result_json = if request.url() == "/api/create-subscription" {
-            create_subscription_session().unwrap().to_string()
-        } else {
-            let amount = body["amount"].as_u64().unwrap_or(0);
-            let email = body["email"].as_str().unwrap_or("");
-            let phone = body["phone"].as_str().unwrap_or("");
-            create_payment(amount, email, phone).unwrap().to_string()
-        };
+        let amount = body["amount"].as_u64().unwrap_or(0);
+        let email = body["email"].as_str().unwrap_or("");
+        let phone = body["phone"].as_str().unwrap_or("");
+        let result_json = create_payment(amount, email, phone).unwrap().to_string();
         let mut response = Response::from_string(result_json);
         for h in cors_headers() { response.add_header(h); }
         request.respond(response).ok();
     }
 }` },
-      { title: 'Recurring', code:
-`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Creates a session; the customer authorizes once in the checkout popup,
-// Konduyt then charges the same amount automatically every interval.
-fn create_subscription_session() -> Result<serde_json::Value, reqwest::Error> {
-    let secret = env::var("KONDUYT_SECRET_KEY").expect("KONDUYT_SECRET_KEY not set");
-    let client = reqwest::blocking::Client::new();
-    client
-        .post("{{API}}/v1/payment_sessions")
-        .bearer_auth(secret)
-        .json(&json!({
-            "amount": 100000, "currency": "KES",
-            "recurring": true, "interval": "monthly",
-            "reference": "sub_pro_plan"
-        }))
-        .send()?
-        .json() // {"id": "sess_...", ...}
-}
-// Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+            { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
 // success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
@@ -1245,37 +1001,10 @@ app.MapPost("/api/create-payment", async (HttpRequest req) => {
     return Results.Content(payment, "application/json");
 });
 
-// The "Recurring" tab's own CreateSubscriptionSession() -- mounted here
-// so checkout-page.html's "Subscribe" button (Step 2 above) actually has a
-// real route to call, not just a function defined but never wired to one.
-app.MapPost("/api/create-subscription", async () => {
-    var session = await CreateSubscriptionSession();
-    return Results.Content(session, "application/json");
-});
 
 app.Urls.Add("http://localhost:3000");
 app.Run();` },
-      { title: 'Recurring', code:
-`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Creates a session; the customer authorizes once in the checkout popup,
-// Konduyt then charges the same amount automatically every interval.
-async Task<string> CreateSubscriptionSession() {
-    var client = new HttpClient();
-    client.DefaultRequestHeaders.Authorization =
-        new AuthenticationHeaderValue("Bearer", secret);
-
-    var body = new StringContent(JsonSerializer.Serialize(new {
-        amount = 100000, currency = "KES",
-        recurring = true, interval = "monthly",
-        reference = "sub_pro_plan"
-    }), Encoding.UTF8, "application/json");
-
-    var res = await client.PostAsync("{{API}}/v1/payment_sessions", body);
-    return await res.Content.ReadAsStringAsync(); // { "id": "sess_...", ... }
-}
-// Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+            { title: 'Failover + rerouting', code:
 `// "method", not "provider" -- this is what triggers real failover: Konduyt
 // tries every provider configured for this method, in order, stopping on
 // success or on a genuinely unsafe/ambiguous outcome. Never guessed, never
@@ -1417,28 +1146,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 }` },
-      { title: 'Recurring — call YOUR backend', code:
-`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Your backend creates the real Konduyt session (recurring: true) using
-// its own secret key; your app only ever talks to your own endpoint
-// below, then opens the checkout it gets back. Wire this into the same
-// MainActivity above (e.g. a second button).
-void createSubscription(String email) throws IOException {
-    OkHttpClient client = new OkHttpClient();
-    String json = "{\\"email\\": \\"" + email + "\\", \\"plan\\": \\"pro_monthly\\"}";
-
-    Request request = new Request.Builder()
-        .url(BACKEND + "/api/create-subscription")
-        .post(RequestBody.create(json, MediaType.parse("application/json")))
-        .build();
-
-    try (Response response = client.newCall(request).execute()) {
-        String session = response.body().string();
-        // your backend returns the real Konduyt session id --
-        // open Konduyt's checkout with it in a Chrome Custom Tab
-    }
-}` },
-      { title: 'Failover + rerouting — call YOUR backend', code:
+            { title: 'Failover + rerouting — call YOUR backend', code:
 `// Your backend passes "method", not "provider" -- that's what triggers
 // real failover: Konduyt tries every provider configured for that method,
 // in order, stopping on success or a genuinely unsafe/ambiguous outcome.
@@ -1574,28 +1282,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }` },
-      { title: 'Recurring — call YOUR backend', code:
-`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Your backend creates the real Konduyt session (recurring: true) using
-// its own secret key; your app only ever talks to your own endpoint
-// below, then opens the checkout it gets back. Wire this into the same
-// MainActivity above (e.g. a second button).
-fun createSubscription(email: String) {
-    val client = OkHttpClient()
-    val json = """{ "email": "$email", "plan": "pro_monthly" }""".trimIndent()
-
-    val request = Request.Builder()
-        .url("$backend/api/create-subscription")
-        .post(json.toRequestBody("application/json".toMediaType()))
-        .build()
-
-    client.newCall(request).execute().use { response ->
-        val session = response.body?.string()
-        // your backend returns the real Konduyt session id --
-        // open Konduyt's checkout with it in a Chrome Custom Tab
-    }
-}` },
-      { title: 'Failover + rerouting — call YOUR backend', code:
+            { title: 'Failover + rerouting — call YOUR backend', code:
 `// Your backend passes "method", not "provider" -- that's what triggers
 // real failover: Konduyt tries every provider configured for that method,
 // in order, stopping on success or a genuinely unsafe/ambiguous outcome.
@@ -1705,26 +1392,7 @@ class ViewController: UIViewController {
     }
 }
 // e.g. try await createPayment(amount: selectedItem.price, email: email, phone: phone)` },
-      { title: 'Recurring — call YOUR backend', code:
-`// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Your backend creates the real Konduyt session (recurring: true) using
-// its own secret key; your app only ever talks to your own endpoint
-// below, then opens the checkout it gets back. Wire this into the same
-// ViewController above (e.g. a second button).
-func createSubscription(email: String) async throws -> [String: Any] {
-    var request = URLRequest(url: URL(string: "\\(backend)/api/create-subscription")!)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    let body: [String: Any] = ["email": email, "plan": "pro_monthly"]
-    request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-    let (data, _) = try await URLSession.shared.data(for: request)
-    // your backend returns the real Konduyt session id --
-    // open Konduyt's checkout with it
-    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
-}` },
-      { title: 'Failover + rerouting — call YOUR backend', code:
+            { title: 'Failover + rerouting — call YOUR backend', code:
 `// Your backend passes "method", not "provider" -- that's what triggers
 // real failover: Konduyt tries every provider configured for that method,
 // in order, stopping on success or a genuinely unsafe/ambiguous outcome.
@@ -1833,54 +1501,11 @@ int main() {
         res.set_content("{\\"status\\": \\"submitted\\"}", "application/json");
     });
 
-    // The "Recurring" tab's own create_subscription_session() -- mounted
-    // here so checkout-page.html's "Subscribe" button (Step 2 above)
-    // actually has a real route to call, not just a function defined but
-    // never wired to one.
-    svr.Post("/api/create-subscription", [](const httplib::Request& req, httplib::Response& res) {
-        create_subscription_session();
-        res.set_content("{\\"status\\": \\"submitted\\"}", "application/json");
-    });
 
     printf("Backend running on http://localhost:3000\\n");
     svr.listen("0.0.0.0", 3000);
 }` },
-      { title: 'Recurring', code:
-`#include <curl/curl.h>
-#include <cstdlib>
-#include <string>
-
-// A fixed subscription price -- e.g. a Pro Plan at KES 1,000/month.
-// Creates a session; the customer authorizes once in the checkout popup,
-// Konduyt then charges the same amount automatically every interval.
-void create_subscription_session() {
-    const char* secret = std::getenv("KONDUYT_SECRET_KEY");
-    if (!secret) return;
-
-    CURL* curl = curl_easy_init();
-    if (!curl) return;
-
-    std::string body =
-        "{\\"amount\\": 100000, \\"currency\\": \\"KES\\","
-        " \\"recurring\\": true, \\"interval\\": \\"monthly\\","
-        " \\"reference\\": \\"sub_pro_plan\\" }";
-
-    std::string auth = "Authorization: Bearer " + std::string(secret);
-    struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(headers, auth.c_str());
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-
-    curl_easy_setopt(curl, CURLOPT_URL, "{{API}}/v1/payment_sessions");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-    curl_easy_perform(curl); // response has {"id": "sess_...", ...}
-
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
-}
-// Client-side, once you have the session id:
-// Konduyt.checkout({ sessionId: session.id })` },
-      { title: 'Failover + rerouting', code:
+            { title: 'Failover + rerouting', code:
 `#include <curl/curl.h>
 #include <cstdlib>
 #include <string>
