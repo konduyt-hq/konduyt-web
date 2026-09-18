@@ -166,10 +166,10 @@ document.getElementById('payButton').addEventListener('click', function () {
     .then(function (data) {
       var options = (data.intelligence && data.intelligence.options) || [];
       renderRails(options);
-      document.getElementById('intel').classList.add('open');
+      document.getElementById('intelOverlay').classList.add('open');
     })
     .catch(function () {
-      document.getElementById('intel').classList.add('open');
+      document.getElementById('intelOverlay').classList.add('open');
       document.getElementById('railRows').innerHTML =
         '<tr><td colspan="2">Could not reach the intelligence endpoint. Try again.</td></tr>';
     })

@@ -42,10 +42,22 @@ for the `carrier` block.
 - `npm install` is required before `npx next build` (node_modules is not
   committed).
 - Syntax-check a single file with `node --check app/DevPanel.js`.
-- This repo has no test suite. Verification is: `npx next build` succeeds,
-  then grep the emitted `out/_next/static/chunks/app/page-*.js` for the
-  expected snippet text. Snippet content is split across chunks — a string
-  may live in `app/page-*.js` while another lives in `545-*.js`.
+- Test suite (no framework; plain Node scripts, `npm install` first):
+  - `npm run test:snippets` — extracts every published sample from
+    `app/DevPanel.js` into `.snippets/` (gitignored, regenerated each run) and
+    compiles it with the real toolchain. Also checks cross-file coupling: the
+    Android layout ids against the Java/Kotlin code, the storyboard outlets and
+    actions against the Swift code, and every `getElementById` in the frontend
+    snippets against the ids their target page declares. Malformed
+    `activity_main.xml` / `Main.storyboard` are caught here.
+  - `npm run test:snippet-runtime` — starts each backend sample for real and
+    serves requests over HTTP: the page at `/`, a bad amount must not come
+    back as a successful payment, and CORS preflight must be answered.
+  - `npm run test:checkout` — drives `public/checkout-page.html` through jsdom.
+  - Verification is still: `npx next build` succeeds, then grep the emitted
+    `out/_next/static/chunks/app/page-*.js` for expected snippet text. Snippet
+    content is split across chunks — a string may live in `app/page-*.js`
+    while another lives in `545-*.js`.
 
 ## Landing-page code snippets
 
@@ -79,3 +91,12 @@ for the `carrier` block.
 - The Swift tab is UIKit (`UIViewController` + `@IBOutlet`/`@IBAction`)
   because it pairs with `Main.storyboard`, not SwiftUI — the filename must
   be a view controller, not `ContentView.swift`.
+- The runtime suite is only meaningful on a free port. A backend left over
+  from an earlier run keeps :3000, every later backend "starts" while the
+  stale one answers its requests, and the result reads as several unrelated
+  languages failing the same assertion. The suite now refuses to run against
+  an occupied port and kills each server's whole process group; if you see
+  that failure shape, check for a stray listener before touching the snippets.
+- Name the served page exactly `checkout-page.html` in snippets and prose. The
+  samples used to say `checkout.html`, which does not exist anywhere in this
+  repo, so a reader following the comment would look for the wrong file.
