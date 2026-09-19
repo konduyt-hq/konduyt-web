@@ -13,6 +13,24 @@
  *     onSuccess: function (result) { ... },  // customer completed the step
  *     onClose:   function () { ... },        // customer closed the popup
  *
+ *     // ---- WHO THE CUSTOMER IS: explicit, never the viewer's IP ----
+ *     // The transaction is the MERCHANT's: amount + currency above are what
+ *     // will be charged, verbatim. Nothing here can change them -- a KES
+ *     // 5,000 sale stays a KES 5,000 sale no matter who opens this page.
+ *     // Customer country only decides which methods are OFFERED and how
+ *     // they are routed, never the merchant's price:
+ *     customerCountry: "KE",
+ *     //   ...or the object form, which also carries the phone:
+ *     customer: {
+ *       country: "KE",              // ISO-3166 alpha-2
+ *       phone: "0722123456",        // national or E.164; also implies country
+ *     },
+ *     // Resolution order: an explicit customerCountry (then customer.country)
+ *     // wins outright. Next, the customer's own phone dial code. Only then,
+ *     // with neither given, does Konduyt fall back to real IP detection --
+ *     // and the developer's/viewer's IP is never used to change the
+ *     // merchant's transaction currency.
+ *
  *     // ---- OR: session mode (section 5) -- recommended when possible ----
  *     // Your server creates the session first (secret key):
  *     //   POST /v1/payment_sessions { amount, currency, customer_country, reference }
@@ -80,19 +98,37 @@
 
   function fmt(amount, currency) {
     var major = (Number(amount) || 0) / 100;
-    var sym = CURRENCY_SYMBOL[currency] || (currency ? currency + " " : "");
-    return sym + major.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var body = major.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var sym = CURRENCY_SYMBOL[currency];
+    if (sym) return sym + (sym.length === 1 ? "" : " ") + body;
+    return (currency ? currency + " " : "") + body;
   }
 
+  // What the customer actually does next, for the method they picked. Derived
+  // from the REAL method id the API returned for this checkout -- never a
+  // guessed default, and never a claim that a payment succeeded.
   function nextStep(methodId) {
-    if (methodId === "mpesa") return "An M-Pesa STK push is sent to your phone to authorise payment.";
-    if (["apple_pay", "google_pay", "samsung_pay"].indexOf(methodId) > -1) return "Your device wallet opens to confirm.";
-    if (methodId === "card") return "You'll enter your card details on the secure form.";
-    if (methodId === "paypal_wallet") return "You'll be redirected to PayPal to approve.";
-    if (methodId === "pix") return "Scan the Pix QR code to pay.";
-    if (methodId === "upi") return "Approve the UPI request on your phone.";
-    if (["bank_transfer", "rtgs", "pesalink", "ach", "sepa", "eft", "wire_transfer", "faster_payments"].indexOf(methodId) > -1) return "You'll be shown bank transfer / authorisation details.";
-    return "You'll be taken to the provider's secure step to complete payment.";
+    var id = (methodId || "").toLowerCase();
+    if (id === "mpesa") return "Payment request sent to your phone. Check your phone and enter your M-Pesa PIN.";
+    if (["mtn_momo", "airtel_money", "tigo_pesa", "halopesa", "vodacom_mpesa",
+         "orange_money", "wave", "telecel_cash", "g_money", "mtn_momo_gh",
+         "airteltigo_money", "evc_plus", "momo"].indexOf(id) > -1)
+      return "Payment request sent to your phone. Approve it on your phone to complete the payment.";
+    if (id === "juice" || id === "emtel_mobile_payment")
+      return "Approve the payment request in your mobile money app.";
+    if (["apple_pay", "google_pay", "samsung_pay"].indexOf(id) > -1)
+      return "Your device wallet opens to confirm the payment.";
+    if (id === "card") return "Enter your card details on the secure form to complete the payment.";
+    if (id === "paypal_wallet") return "Continue to PayPal to approve the payment.";
+    if (id === "pix") return "Scan the Pix QR code to pay.";
+    if (id === "upi") return "Approve the UPI request on your phone.";
+    if (id === "gcash" || id === "maya" || id === "bkash" || id === "jazzcash")
+      return "Approve the request in your mobile wallet app.";
+    if (["bank_transfer", "rtgs", "pesalink", "ach", "sepa", "eft",
+         "wire_transfer", "faster_payments", "maucas", "instant_eft",
+         "open_banking", "pay_by_bank"].indexOf(id) > -1)
+      return "You'll be shown bank transfer / authorisation details to complete the payment.";
+    return "You'll be taken to the provider's secure step to complete the payment.";
   }
 
   // ---- Styles injected once -------------------------------------------------
@@ -192,6 +228,25 @@
       ".kdu-m.dark .kdu-mtd-n{color:#fafafa}" +
       ".kdu-mtd-v{font-size:11.5px;color:#6b6b6b}" +
       ".kdu-m.dark .kdu-mtd-v{color:#a1a1aa}" +
+      ".kdu-mtd-fee{font-size:11.5px;color:#0a0a0a;font-weight:600}" +
+      ".kdu-m.dark .kdu-mtd-fee{color:#fafafa}" +
+      ".kdu-mtd-fee.unknown{color:#a3a3a3;font-weight:500}" +
+      ".kdu-mtd-fee .kdu-est{color:#6b6b6b;font-weight:500}" +
+      ".kdu-best{display:inline-block;margin-left:6px;font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--kdu-brand-dark,#15803d);padding:2px 6px;border-radius:4px;vertical-align:middle}" +
+      ".kdu-mtd.na{cursor:default;opacity:.72;background:#fafafa}" +
+      ".kdu-m.dark .kdu-mtd.na{background:#1c1c21}" +
+      ".kdu-na{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:#a16207;text-transform:uppercase}" +
+      ".kdu-m.dark .kdu-na{color:#eab308}" +
+      ".kdu-note{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;color:#7a5a12;background:#fef9e7;border:1px solid #f2e2b6;border-radius:10px;padding:9px 11px;margin-bottom:12px}" +
+      ".kdu-m.dark .kdu-note{background:#2c2513;color:#e5d5a0;border-color:#4a3f1c}" +
+      ".kdu-phone{margin-bottom:14px}" +
+      ".kdu-phone label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b6b6b;margin-bottom:6px}" +
+      ".kdu-m.dark .kdu-phone label{color:#a1a1aa}" +
+      ".kdu-phone input{width:100%;box-sizing:border-box;padding:12px 13px;border:1.5px solid #e7e7e7;border-radius:calc(var(--kdu-radius,18px) * 0.5);font-size:15px;font-family:inherit;color:#0a0a0a;background:#fff;outline:none}" +
+      ".kdu-m.dark .kdu-phone input{background:#212126;border-color:#2c2c31;color:#fafafa}" +
+      ".kdu-phone input:focus{border-color:var(--kdu-brand,#22c55e)}" +
+      ".kdu-phone-err{font-size:11.5px;color:#b00020;margin-top:5px}" +
+      ".kdu-m.dark .kdu-phone-err{color:#f87171}" +
       ".kdu-rd{width:18px;height:18px;border-radius:50%;border:2px solid #e7e7e7;flex-shrink:0;position:relative}" +
       ".kdu-m.dark .kdu-rd{border-color:#3f3f46}" +
       ".kdu-rd.on{border-color:var(--kdu-brand,#22c55e)}" +
@@ -286,6 +341,24 @@
     return result;
   }
 
+  // A method's real fee, rendered from API values only. Never computed here.
+  // An unpriced method shows an explicit "Fee unavailable" -- a null fee is
+  // NEVER turned into 0, because unknown is not free.
+  function feeLabel(m) {
+    if (m && m.fee_minor_low != null && m.fee_minor_high != null) {
+      return fmt(m.fee_minor_low, m._currency) + "\u2013" + fmt(m.fee_minor_high, m._currency) + " \u00b7 estimated";
+    }
+    if (m && m.fee_minor != null) {
+      var s = fmt(m.fee_minor, m._currency);
+      if (m.fee_percent != null) s += " \u00b7 " + m.fee_percent + "%";
+      else if (m.fee_estimated) s += " \u00b7 estimated";
+      return s;
+    }
+    return "Fee unavailable";
+  }
+
+  var NOT_AVAILABLE_STATES = { "NOT_ON_KONDUYT": true, "PROVIDER_SUPPORTED": true, "UNAVAILABLE": true };
+
   function el(tag, cls, html) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -295,7 +368,12 @@
 
   function footer() {
     var f = el("div", "kdu-ft");
-    f.innerHTML = "\uD83D\uDD12 Secured &amp; optimized by <a class='kdu-br' href='https://konduyt.dev' target='_blank' rel='noreferrer'>" + BRAND + "</a>";
+    // The direct-to-merchant message is the meaningful one for Konduyt's
+    // positioning: we orchestrate the payment, the merchant receives the
+    // money -- this is not a wallet balance the customer funds with us. The
+    // security wording stays, but it is no longer the only thing said.
+    f.innerHTML = "\uD83D\uDD12 Your money goes directly to the merchant. " +
+      "Secured &amp; optimized by <a class='kdu-br' href='https://konduyt.dev' target='_blank' rel='noreferrer'>" + BRAND + "</a>";
     return f;
   }
 
@@ -369,11 +447,62 @@
       return h;
     }
 
-    function render(rawMethods, reason, isDemoKey) {
+    // Which methods genuinely need a phone number for this customer to
+    // complete payment. Drives whether the phone field appears at all, so a
+    // card-only checkout is never forced through a phone step it doesn't need.
+    function methodNeedsPhone(methodId) {
+      var id = (methodId || "").toLowerCase();
+      return ["mpesa", "mtn_momo", "airtel_money", "tigo_pesa", "halopesa",
+              "orange_money", "wave", "telecel_cash", "g_money", "evc_plus",
+              "mtn_momo_gh", "airteltigo_money", "juice", "emtel_mobile_payment",
+              "gcash", "maya", "bkash", "jazzcash", "momo"].indexOf(id) > -1;
+    }
+
+    function digitsOnly(v) { return (v || "").replace(/\D/g, ""); }
+
+    // Validate the customer's phone against the requirements the API supplied
+    // for this country. The rules come from the API (phone_rules) so this file
+    // does not become a second, silently-diverging country/phone database.
+    //
+    // Accepted forms are the ones shoppers actually type: '+254 722 123 456',
+    // '254722123456', '0722123456' and '722123456' all describe the same
+    // Kenyan number. The country code and trunk '0' are stripped before the
+    // length check, so a correct number is never rejected for being written a
+    // different -- but equally valid -- way. With no per-country length on
+    // record, a generic E.164 band is used rather than a guessed length.
+    var E164_MIN = 6, E164_MAX = 15;
+    function validatePhone(value, rules) {
+      var raw = digitsOnly(value);
+      var required = rules && rules.required_digits;
+      var max = (rules && rules.max_digits) || E164_MAX;
+      var digits = raw;
+      if (digits.slice(0, 2) === "00") digits = digits.slice(2);
+      if (rules && rules.dial && digits.indexOf(rules.dial) === 0 && digits.length > rules.dial.length) {
+        digits = digits.slice(rules.dial.length);
+      }
+      if (required && digits.charAt(0) === "0" && digits.length === required + 1) {
+        digits = digits.slice(1);
+      }
+      if (required) {
+        if (digits.length === required) return { ok: true, digits: digits, raw: raw, max: max };
+        return {
+          ok: false, digits: digits, raw: raw, max: max,
+          message: "Enter all " + required + " digits of your number (" + digits.length + " so far).",
+        };
+      }
+      if (digits.length >= E164_MIN && digits.length <= max) return { ok: true, digits: digits, raw: raw, max: max };
+      return { ok: false, digits: digits, raw: raw, max: max,
+               message: "Enter at least " + E164_MIN + " digits." };
+    }
+
+    function render(rawMethods, reason, isDemoKey, data) {
+      data = data || {};
       // Filter/reorder within the server's real eligible list -- never adds
       // to it. See applyMerchantPreferences for why this is safe by
       // construction, not just by convention.
       var methods = applyMerchantPreferences(rawMethods, opts);
+      modal._phoneRules = data.phone_rules || null;
+      modal._customerCountry = data.customer_country || null;
       modal.innerHTML = "";
       var x = el("button", "kdu-x", "\u2715");
       x.addEventListener("click", close);
@@ -390,6 +519,19 @@
         warn.innerHTML = "You're using Konduyt's universal demo keys, shared by everyone \u2014 not your own. " +
           "<a href=\"https://konduyt.dev/signup/\" target=\"_blank\" rel=\"noreferrer\">Sign up</a> to get your own real keys.";
         modal.appendChild(warn);
+      }
+
+      var coverage = data.coverage || [];
+      if (data.coverage_representative) {
+        // The production equivalent of the demo's is_representative_example:
+        // some prices shown here are market intelligence for methods Konduyt
+        // cannot execute for this customer yet. That must be visible, not
+        // passed off as this customer's real eligibility.
+        var rep = el("div", "kdu-note",
+          "\u2139\uFE0F Showing representative local pricing" +
+          (modal._customerCountry ? " for " + modal._customerCountry : "") +
+          ". Methods marked \"not on Konduyt yet\" are listed for comparison \u2014 they can't be paid through Konduyt yet.");
+        modal.appendChild(rep);
       }
 
       if (!methods || methods.length === 0) {
@@ -415,6 +557,11 @@
           emptyMsg = "No payment methods are available yet. The merchant needs to connect a provider.";
         }
         modal.appendChild(el("div", "kdu-empty", emptyMsg));
+        // The country's own methods are still shown even when Konduyt can
+        // execute none of them -- "none available through Konduyt" is not the
+        // same claim as "this country has no payment methods", and only the
+        // first is true. Rendered below the honest empty message.
+        appendCoverageExtras(coverage, methods);
         modal.appendChild(footer());
         return;
       }
@@ -423,32 +570,172 @@
       var list = el("div", "kdu-list");
       var selected = null;
       var payBtn;
+      var phoneInput, phoneErr;
+      var phoneRequired = methods.some(function (m) { return methodNeedsPhone(m.id); });
 
-      methods.forEach(function (m) {
+      // Best value: the cheapest genuinely PRICED eligible method. An unknown
+      // fee is never labelled best value -- that would be a claim the API did
+      // not make. The minimum is computed over every priced method rather than
+      // taking the first priced row: the server returns cheapest-first, but
+      // applyMerchantPreferences can legitimately reorder the list
+      // (preferredMethods), and reordering must not move the badge onto a more
+      // expensive method.
+      var bestIndex = -1;
+      var bestFee = null;
+      for (var bi = 0; bi < methods.length; bi++) {
+        var f = methods[bi].fee_minor;
+        if (f == null) continue;
+        if (bestFee === null || f < bestFee) { bestFee = f; bestIndex = bi; }
+      }
+
+      methods.forEach(function (m, i) {
+        m._currency = modal._currency;
         var b = el("button", "kdu-mtd");
         var t = el("div", "kdu-mtd-t");
-        t.appendChild(el("span", "kdu-mtd-n", m.name));
+        var nameRow = el("span", "kdu-mtd-n");
+        nameRow.textContent = m.name;
+        if (i === bestIndex) {
+          var badge = el("span", "kdu-best", "Best value");
+          nameRow.appendChild(badge);
+        }
+        t.appendChild(nameRow);
+        // The provider route, then the REAL fee from the API. Never computed
+        // here; a null fee renders as "Fee unavailable", never as 0.
         if (m.via) t.appendChild(el("span", "kdu-mtd-v", "via " + m.via));
+        var fee = el("span", "kdu-mtd-fee" + (m.fee_minor == null && m.fee_minor_low == null ? " unknown" : ""));
+        fee.textContent = feeLabel(m);
+        t.appendChild(fee);
         b.appendChild(t);
         var rd = el("span", "kdu-rd");
         b.appendChild(rd);
+        b._method = m;
         b.addEventListener("click", function () {
           selected = m.id;
-          Array.prototype.forEach.call(list.children, function (c) { c.className = "kdu-mtd"; c.querySelector(".kdu-rd").className = "kdu-rd"; });
+          Array.prototype.forEach.call(list.children, function (c) {
+            c.className = "kdu-mtd";
+            var r = c.querySelector(".kdu-rd"); if (r) r.className = "kdu-rd";
+          });
           b.className = "kdu-mtd sel"; rd.className = "kdu-rd on";
-          payBtn.disabled = false;
-          var amtLabel = fmt(modal._amount, modal._currency);
-          payBtn.textContent = modal._recurring ? "Subscribe \u2014 " + amtLabel : "Pay " + amtLabel;
+          updatePayState();
         });
         list.appendChild(b);
       });
       modal.appendChild(list);
 
+      if (phoneRequired) {
+        // Phone handling ported from the demo: digits only, capped to the
+        // country's length, and Pay stays disabled until the number is valid
+        // for this country. The requirements themselves come from the API.
+        var pr = modal._phoneRules || {};
+        var wrap = el("div", "kdu-phone");
+        var lab = el("label", null, pr.dial ? "Phone number (+" + pr.dial + ")" : "Phone number");
+        lab.setAttribute("for", "kdu-phone-input");
+        wrap.appendChild(lab);
+        phoneInput = document.createElement("input");
+        phoneInput.type = "tel";
+        phoneInput.id = "kdu-phone-input";
+        phoneInput.setAttribute("inputmode", "numeric");
+        phoneInput.setAttribute("autocomplete", "tel-national");
+        phoneInput.placeholder = pr.dial ? "71 234 5678" : "Phone number";
+        var preset = (opts.customer && opts.customer.phone) || opts.customerPhone || "";
+        phoneInput.value = digitsOnly(preset);
+        wrap.appendChild(phoneInput);
+        phoneErr = el("div", "kdu-phone-err");
+        wrap.appendChild(phoneErr);
+        modal.appendChild(wrap);
+
+        var onPhone = function () {
+          var res = validatePhone(phoneInput.value, modal._phoneRules);
+          phoneInput.maxLength = res.max;
+          // Keep what the shopper typed (digits only); normalisation for the
+          // length check is not written back, so a leading '0' or '+254' they
+          // entered is not silently dropped from what they see.
+          if (res.raw !== phoneInput.value) phoneInput.value = res.raw;
+          if (!res.raw.length || res.ok) { phoneErr.textContent = ""; }
+          else { phoneErr.textContent = res.message; }
+          updatePayState();
+        };
+        phoneInput.addEventListener("input", onPhone);
+        onPhone();
+      }
+
+      function payDisabled() {
+        if (!selected) return true;
+        if (phoneRequired && phoneInput) {
+          return !validatePhone(phoneInput.value, modal._phoneRules).ok;
+        }
+        return false;
+      }
+
+      function updatePayState() {
+        // Called during phone-field setup, before the Pay button exists --
+        // the final state is applied once below, right after it is created.
+        if (!payBtn) return;
+        payBtn.disabled = payDisabled();
+        if (payBtn.disabled && !selected) {
+          payBtn.textContent = "Select a method";
+          return;
+        }
+        var amtLabel = fmt(modal._amount, modal._currency);
+        payBtn.textContent = modal._recurring ? "Subscribe \u2014 " + amtLabel : "Pay " + amtLabel;
+      }
+
+      // The country's own methods Konduyt cannot execute yet, shown for
+      // completeness -- no radio, no Pay button. A method shown here is real
+      // and local; it just isn't payable through Konduyt today, and the UI
+      // says exactly that rather than hiding the method or offering a Pay
+      // button that cannot work.
+      appendCoverageExtras(coverage, methods);
+
       payBtn = el("button", "kdu-pay", "Select a method");
       payBtn.disabled = true;
-      payBtn.addEventListener("click", function () { pay(selected); });
+      payBtn.addEventListener("click", function () {
+        var phone = phoneInput ? digitsOnly(phoneInput.value) : null;
+        pay(selected, phone);
+      });
       modal.appendChild(payBtn);
+      updatePayState();
       modal.appendChild(footer());
+    }
+
+    function appendCoverageExtras(coverage, methods) {
+      // The methods Konduyt can execute are already rendered above; this adds
+      // the country's remaining known-local methods underneath, plainly
+      // labelled, each with its real fee where the API supplied one.
+      if (!coverage || !coverage.length) return;
+      var payable = {};
+      (methods || []).forEach(function (m) {
+        payable[m.id] = true;
+        // A coverage entry names the same method through capability_id
+        // (methods are keyed by connector capability, coverage by routing
+        // rail), so both keys are marked -- otherwise a LIVE method is
+        // rendered a second time underneath as "not on Konduyt yet".
+        if (m.capability_id) payable[m.capability_id] = true;
+      });
+      var extras = coverage.filter(function (c) {
+        if (!NOT_AVAILABLE_STATES[c.konduyt_state]) return false;
+        if (payable[c.id]) return false;
+        if (c.capability_id && payable[c.capability_id]) return false;
+        return true;
+      });
+      if (!extras.length) return;
+      modal.appendChild(el("div", "kdu-lbl",
+        "Also available in " + (modal._customerCountry || "this country")));
+      var wrap = el("div", "kdu-list");
+      extras.forEach(function (c) {
+        var b = el("button", "kdu-mtd na");
+        b.disabled = true;
+        var t = el("div", "kdu-mtd-t");
+        t.appendChild(el("span", "kdu-mtd-n", c.name));
+        if (c.fee_minor != null) {
+          t.appendChild(el("span", "kdu-mtd-fee", fmt(c.fee_minor, modal._currency)));
+        }
+        var label = c.konduyt_state === "UNAVAILABLE" ? "Unavailable here" : "Not on Konduyt yet";
+        t.appendChild(el("span", "kdu-na", label));
+        b.appendChild(t);
+        wrap.appendChild(b);
+      });
+      modal.appendChild(wrap);
     }
 
     function processing() {
@@ -461,10 +748,15 @@
       modal.appendChild(footer());
     }
 
-    function result(methodId, ok, msg) {
+    function result(methodId, ok, msg, phone) {
       modal.innerHTML = "";
       var x = el("button", "kdu-x", "\u2715"); x.addEventListener("click", close); modal.appendChild(x);
       modal.appendChild(header());
+      var info = { method: methodId, reference: modal._reference };
+      if (phone) info.phone = phone;
+      if (modal._customerCountry) info.country = modal._customerCountry;
+      if (modal._amount != null) info.amount = modal._amount;
+      if (modal._currency) info.currency = modal._currency;
       var wrap = el("div", "kdu-nx");
       wrap.appendChild(el("div", "kdu-nx-i" + (ok ? "" : " err"), ok ? "\u2192" : "!"));
       wrap.appendChild(el("div", "kdu-nx-t", ok ? "Next step" : "Couldn't start payment"));
@@ -474,17 +766,35 @@
       wrap.appendChild(btn);
       modal.appendChild(wrap);
       modal.appendChild(footer());
-      if (ok && typeof opts.onSuccess === "function") opts.onSuccess({ method: methodId, reference: modal._reference });
+      if (ok && typeof opts.onSuccess === "function") opts.onSuccess(info);
     }
 
-    function pay(methodId) {
+    function pay(methodId, phone) {
       if (!methodId) return;
       processing();
-      // The drop-in signals the merchant's page to create the charge server-side
-      // (with the secret key). We surface the honest next step here.
-      setTimeout(function () {
-        result(methodId, true, nextStep(methodId));
-      }, 700);
+      // The drop-in signals the merchant's page to create the charge
+      // server-side (with the secret key). We surface the honest next step
+      // here -- what the customer must actually do to complete this specific
+      // method. No timer implies the payment succeeded: the merchant's server
+      // (or a real status check) is what knows that.
+      result(methodId, true, nextStep(methodId), phone);
+    }
+
+    // The customer's country, explicit and never derived from the viewer's IP
+    // client-side. An explicit customerCountry (or customer.country) is passed
+    // through as-is; the phone, when given, is passed too so the API can use
+    // its dial code as the next-strongest signal. Only when neither is
+    // supplied does the backend fall back to real IP detection -- and even
+    // then it only changes which methods are offered, never the merchant's
+    // transaction currency.
+    function customerParams() {
+      var country = opts.customerCountry ||
+                    (opts.customer && opts.customer.country) || "";
+      var phone = (opts.customer && opts.customer.phone) || opts.customerPhone || "";
+      var parts = [];
+      if (country) parts.push("customer_country=" + encodeURIComponent(country));
+      if (phone) parts.push("customer_phone=" + encodeURIComponent(phone));
+      return parts.length ? "&" + parts.join("&") : "";
     }
 
     function boot() {
@@ -495,12 +805,18 @@
       // Only checkout() calls that explicitly ask for it get the shopper's
       // real detected country, real local currency conversion, and real
       // local eligible methods instead of the merchant's own quoted price.
+      // Session mode fixes the customer country server-side at session
+      // creation, so nothing is appended there -- sending a query param the
+      // endpoint deliberately ignores would imply a control that isn't real.
       var url = opts.sessionId
         ? API_BASE + "/checkout/session/" + encodeURIComponent(opts.sessionId)
         : opts.convertToLocal
         ? API_BASE + "/checkout/local-intelligence?pk=" + encodeURIComponent(opts.publishableKey)
           + "&amount=" + encodeURIComponent(opts.amount) + "&currency=" + encodeURIComponent(opts.currency)
-        : API_BASE + "/checkout/config?pk=" + encodeURIComponent(opts.publishableKey);
+          + customerParams()
+        : API_BASE + "/checkout/config?pk=" + encodeURIComponent(opts.publishableKey)
+          + "&amount=" + encodeURIComponent(opts.amount) + "&currency=" + encodeURIComponent(opts.currency)
+          + customerParams();
       fetch(url)
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
@@ -533,7 +849,7 @@
             modal._shopperCountry = res.d.shopper_country;
             modal._fxStatus = res.d.fx_status;
           }
-          render(res.d.methods || [], res.d.reason, res.d.is_demo_key);
+          render(res.d.methods || [], res.d.reason, res.d.is_demo_key, res.d);
         })
         .catch(function () {
           modal._merchant = "Merchant";

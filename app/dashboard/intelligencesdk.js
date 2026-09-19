@@ -116,13 +116,34 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
   }
   .intel-modal-table { border: 1px solid #e7e7e7; border-radius: 11px; overflow: hidden; }
   table { width: 100%; border-collapse: collapse; }
-  tr.rail { cursor: pointer; }
+  th {
+    text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: #9a9a9a; padding: 9px 13px 6px;
+  }
+  th:last-child { text-align: right; }
+  tr.rail td { vertical-align: middle; }
   tr.rail:hover td { background: #fafafa; }
   tr.best td { font-weight: 700; }
   td { padding: 11px 13px; font-size: 13.5px; border-bottom: 1px solid #e7e7e7; }
   tr:last-child td { border-bottom: none; }
   .badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
     background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 6px; }
+  .rail-fee { white-space: nowrap; }
+  .rail-fee-note { display: block; font-size: 10px; color: #9a9a9a; font-weight: 500; }
+  .rail-est { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.03em; color: #9a9a9a; margin-left: 6px; }
+  .rail-action { text-align: right; white-space: nowrap; }
+  .rail-pay {
+    padding: 6px 14px; border: none; border-radius: 7px; background: #0a0a0a;
+    color: #fff; font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+  }
+  .rail-pay:hover { background: #262626; }
+  /* A real method Konduyt cannot route yet: shown, but plainly not payable. */
+  .rail-unsupported {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    color: #9a9a9a;
+  }
+  tr.rail-unsupported td { color: #6b6b6b; }
 
   #checkout { display: none; margin-top: 18px; }
   #checkout.open { display: block; }
@@ -372,7 +393,10 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
       <p class="intel-modal-shopper-note">This is what the customer sees</p>
       <div class="intel-modal-rep-note" id="repNote" style="display:none;"></div>
       <div class="intel-modal-table">
-        <table><tbody id="railRows"></tbody></table>
+        <table>
+          <thead><tr><th>Pay with</th><th>Transaction fee</th><th></th></tr></thead>
+          <tbody id="railRows"></tbody>
+        </table>
       </div>
 
       <div id="checkout">
@@ -391,6 +415,201 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
     // response (payment.currency / payment.amount), never assumed here.
     var CURRENCY = 'KES'; // default only -- overwritten below with whatever the backend actually used
     var chosenProvider = null;
+
+    // >>> konduyt-intelligence-methods (generated) >>>
+    var KDU_STATE_LIVE = 'LIVE';
+    var KDU_STATE_NOT_ON_KONDUYT = 'NOT_ON_KONDUYT';
+    var KDU_NO_METHODS = 'No payment methods found for this country.';
+
+    // Same method, written differently across the two arrays ("M-Pesa" vs
+    // "MPESA", "Debit/Credit Cards" vs "DEBIT/CREDIT_CARDS"). Compare on a
+    // normalized key so the overlay attaches to the right catalogue entry.
+    function kduMethodKey(label) {
+      return String(label == null ? '' : label).toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function kduIsExecutable(m) {
+      return !!(m && m.onKonduyt);
+    }
+
+    // Merge into one canonical entry per payment method.
+    //
+    // local_methods is the base because it is the complete country catalogue.
+    // options overlays it: a method Konduyt can execute carries its routed
+    // provider and price; one it cannot keeps the market figure and says so.
+    // Options that match no catalogue entry are still appended -- they are real
+    // ranked methods and dropping them would hide an executable route.
+    function kduMergeIntelligenceMethods(intelligence, opts) {
+      intelligence = intelligence || {};
+      opts = opts || {};
+      var locals = intelligence.local_methods || [];
+      var options = intelligence.options || [];
+
+      var byKey = {};
+      var merged = [];
+      var i, key;
+
+      for (i = 0; i < locals.length; i++) {
+        var m = locals[i] || {};
+        key = kduMethodKey(m.label);
+        if (!key || byKey[key]) continue;
+        var entry = {
+          key: key,
+          label: m.label,
+          method: (opts.methodFromLabel && opts.methodFromLabel[m.label]) || null,
+          methodType: m.method_type || null,
+          provider: m.provider || null,
+          onKonduyt: m.on_konduyt === true,
+          feeMinor: m.fee_minor,
+          feeSource: m.fee_source || null,
+          feePercent: null,
+          estimated: m.is_estimated === true,
+          feeLow: null,
+          feeHigh: null,
+          source: m.source || null,
+          recommended: false,
+          option: null,
+        };
+        entry.executable = kduIsExecutable(entry);
+        entry.state = entry.executable ? KDU_STATE_LIVE : KDU_STATE_NOT_ON_KONDUYT;
+        byKey[key] = entry;
+        merged.push(entry);
+      }
+
+      for (i = 0; i < options.length; i++) {
+        var o = options[i] || {};
+        key = kduMethodKey(o.label);
+        var target = key ? byKey[key] : null;
+        if (!target) {
+          // A ranked method the country catalogue doesn't list. Keep it: it
+          // exists in this response, so hiding it would lose a real route.
+          target = {
+            key: key || ('opt:' + i),
+            label: o.label,
+            method: o.method || null,
+            methodType: null,
+            provider: null,
+            onKonduyt: false,
+            feeMinor: null,
+            feeSource: null,
+            feePercent: null,
+            estimated: false,
+            feeLow: null,
+            feeHigh: null,
+            source: null,
+            recommended: false,
+            option: null,
+          };
+          if (key) byKey[key] = target;
+          merged.push(target);
+        }
+        if (o.method) target.method = o.method;
+        if (o.provider) target.provider = o.provider;
+        target.onKonduyt = o.on_konduyt === true;
+        target.executable = kduIsExecutable(target);
+        target.state = target.executable ? KDU_STATE_LIVE : KDU_STATE_NOT_ON_KONDUYT;
+        // The option's own price wins when it has one: it is the routed,
+        // fee-source-labelled figure. Only fall back to the catalogue price when
+        // the option carries none, and never turn "unknown" into zero.
+        if (o.fee_minor != null) {
+          target.feeMinor = o.fee_minor;
+          target.feeSource = o.fee_source || (target.executable ? 'konduyt' : 'market');
+          target.feePercent = o.fee_percent_effective != null ? o.fee_percent_effective : null;
+        }
+        if (o.estimated != null) target.estimated = o.estimated === true;
+        if (o.fee_minor_low != null) target.feeLow = o.fee_minor_low;
+        if (o.fee_minor_high != null) target.feeHigh = o.fee_minor_high;
+        if (o.source) target.source = o.source;
+        target.recommended = o.recommended === true;
+        target.option = o;
+      }
+
+      for (i = 0; i < merged.length; i++) {
+        merged[i].executable = kduIsExecutable(merged[i]);
+        merged[i].state = merged[i].executable ? KDU_STATE_LIVE : KDU_STATE_NOT_ON_KONDUYT;
+      }
+      return merged;
+    }
+
+    // Cheapest first, unknown prices last. "value" reads the price to sort on,
+    // so the same comparator serves both groups.
+    function kduSortByCost(list, value) {
+      return list.slice().sort(function (a, b) {
+        var av = value(a), bv = value(b);
+        var ae = av == null, be = bv == null;
+        if (ae !== be) return ae ? 1 : -1;
+        if (!ae && av !== bv) return av - bv;
+        return 0;
+      });
+    }
+
+    function kduFeeOf(m) {
+      return m ? m.feeMinor : null;
+    }
+
+    // Executable methods are ranked among themselves. Unsupported methods are
+    // never mixed into that ranking -- a market fee the merchant cannot charge
+    // must not outrank a route they can.
+    function kduRankExecutableMethods(methods) {
+      var out = [];
+      for (var i = 0; i < methods.length; i++) {
+        if (kduIsExecutable(methods[i])) out.push(methods[i]);
+      }
+      return kduSortByCost(out, kduFeeOf);
+    }
+
+    function kduRankUnsupportedMethods(methods) {
+      var out = [];
+      for (var i = 0; i < methods.length; i++) {
+        if (!kduIsExecutable(methods[i])) out.push(methods[i]);
+      }
+      return kduSortByCost(out, kduFeeOf);
+    }
+
+    // Best value means the cheapest route the merchant can actually charge --
+    // never the cheapest method in the country's whole market. The API's own
+    // "recommended" flag is used when present; otherwise the cheapest priced
+    // executable method. Unsupported methods are never eligible.
+    function kduBestValueMethod(methods) {
+      var exec = kduRankExecutableMethods(methods);
+      if (!exec.length) return null;
+      for (var i = 0; i < exec.length; i++) {
+        if (exec[i].recommended && exec[i].feeMinor != null) return exec[i];
+      }
+      for (var j = 0; j < exec.length; j++) {
+        if (exec[j].feeMinor != null) return exec[j];
+      }
+      return null;
+    }
+
+    // Full display order: executable first (ranked), unsupported after. The two
+    // groups stay distinct so the UI can make the difference obvious, and it
+    // never claims a country has no methods while its catalogue is populated.
+    function kduOrderedMethods(methods) {
+      return kduRankExecutableMethods(methods).concat(kduRankUnsupportedMethods(methods));
+    }
+
+    // Empty only when BOTH arrays are empty. "Nothing ranked" is not "nothing
+    // exists" -- a country full of local methods Konduyt can't route yet has
+    // plenty to show, and saying otherwise is the bug this file fixes.
+    function kduHasAnyMethod(methods) {
+      return !!(methods && methods.length);
+    }
+
+    function kduEmptyStateMessage(methods) {
+      return kduHasAnyMethod(methods) ? '' : KDU_NO_METHODS;
+    }
+
+    function kduFeeLabel(m) {
+      if (!m || m.feeMinor == null) return null;
+      return m.feeSource === 'konduyt' ? 'fee' : 'Market fee';
+    }
+    // <<< konduyt-intelligence-methods (generated) <<<
+
+    var mergeIntelligenceMethods = kduMergeIntelligenceMethods;
+    var orderMethods = kduOrderedMethods;
+    var bestValueMethod = kduBestValueMethod;
+    var emptyStateMessage = kduEmptyStateMessage;
 
     // The phone number (with its real country code) has to be filled in
     // before Pay is even clickable -- Konduyt needs it to know which
@@ -500,8 +719,12 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
             repNote.style.display = 'none';
           }
 
-          var options = (data.intelligence && data.intelligence.options) || [];
-          renderRails(options);
+          // The country's OWN catalogue is the list of ways to pay here --
+          // including methods Konduyt cannot execute yet. The ranked
+          // options are layered on top of it, not used instead of it;
+          // reading only "options" is what made every unintegrated country
+          // look like it had no payment methods at all.
+          renderMethods(mergeIntelligenceMethods(data.intelligence || {}));
           document.getElementById('intelOverlay').classList.add('open');
         })
         .catch(function () {
@@ -526,38 +749,57 @@ export const INTELLIGENCE_TESTING_SDK = `<!DOCTYPE html>
       }
     });
 
-    function rankByCost(options) {
-      // Most affordable first -- the whole point of the comparison. A method
-      // the API didn't price sorts after every priced one (unknown cost is
-      // not the same as cheap, and this is a cost ranking), keeping the
-      // table's stable order within each group so equal costs don't shuffle
-      // between two identical page loads.
-      return options.slice().sort(function (a, b) {
-        var af = a.fee_minor == null, bf = b.fee_minor == null;
-        if (af !== bf) return af ? 1 : -1;
-        if (!af && a.fee_minor !== b.fee_minor) return a.fee_minor - b.fee_minor;
-        return 0;
-      });
-    }
-
-    function renderRails(options) {
-      options = rankByCost(options);
+    function renderMethods(methods) {
+      var ordered = orderMethods(methods);
+      var best = bestValueMethod(methods);
       var rows = '';
-      for (var i = 0; i < options.length; i++) {
-        var o = options[i];
-        var isBest = i === 0 && o.fee_minor != null;
-        rows += '<tr class="rail' + (isBest ? ' best' : '') + '" data-provider="' + o.provider + '" data-label="' + o.label + '">' +
-          '<td>' + o.label + (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
-          '<td>' + (o.fee_minor != null ? fmt(o.fee_minor) : '—') + '</td></tr>';
+      for (var i = 0; i < ordered.length; i++) {
+        var m = ordered[i];
+        var isBest = best != null && m.key === best.key;
+        // Only a method Konduyt can actually charge gets a Pay action. An
+        // unsupported one is real and worth showing, but it is not payable,
+        // so it is never clickable -- offering a button that cannot work
+        // would be the dishonest half of the bug this fixes.
+        var action = m.executable
+          ? '<button type="button" class="rail-pay" data-key="' + m.key + '">Pay</button>'
+          : '<span class="rail-unsupported">NOT ON KONDUYT YET</span>';
+        var fee;
+        if (m.estimated && m.feeLow != null && m.feeHigh != null) {
+          fee = fmt(m.feeLow) + '\u2013' + fmt(m.feeHigh);
+        } else if (m.feeMinor != null) {
+          fee = fmt(m.feeMinor);
+        } else {
+          fee = '\u2014';
+        }
+        var feeNote = '';
+        if (m.feeMinor != null && m.feeSource !== 'konduyt') {
+          feeNote = '<span class="rail-fee-note">Market fee</span>';
+        }
+        rows += '<tr class="rail' + (m.executable ? ' rail-executable' : ' rail-unsupported') + (isBest ? ' best' : '') + '" data-key="' + m.key + '">' +
+          '<td><span class="rail-name">' + m.label + '</span>' +
+          (isBest ? '<span class="badge">Best value</span>' : '') +
+          (m.estimated ? '<span class="rail-est">estimated</span>' : '') + '</td>' +
+          '<td class="rail-fee">' + fee + feeNote + '</td>' +
+          '<td class="rail-action">' + action + '</td></tr>';
       }
-      document.getElementById('railRows').innerHTML = rows ||
-        '<tr><td colspan="2">No ranked options for this amount right now.</td></tr>';
 
-      var trs = document.querySelectorAll('#railRows tr.rail');
-      for (var j = 0; j < trs.length; j++) {
-        trs[j].addEventListener('click', function () {
-          chosenProvider = this.getAttribute('data-provider');
-          document.getElementById('chosenRail').textContent = this.getAttribute('data-label');
+      // Nothing at all here means the country genuinely has no catalogue --
+      // never the message shown while real local methods exist.
+      document.getElementById('railRows').innerHTML = rows ||
+        '<tr><td colspan="3">' + emptyStateMessage(methods) + '</td></tr>';
+
+      var buttons = document.querySelectorAll('#railRows button.rail-pay');
+      for (var j = 0; j < buttons.length; j++) {
+        buttons[j].addEventListener('click', function (e) {
+          e.stopPropagation();
+          var key = this.getAttribute('data-key');
+          var picked = null;
+          for (var k = 0; k < ordered.length; k++) {
+            if (ordered[k].key === key) { picked = ordered[k]; break; }
+          }
+          if (!picked || !picked.executable) return;
+          chosenProvider = picked.method || picked.provider;
+          document.getElementById('chosenRail').textContent = picked.label;
           document.getElementById('checkout').classList.add('open');
         });
       }

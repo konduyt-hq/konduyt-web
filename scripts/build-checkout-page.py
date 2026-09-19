@@ -3,21 +3,29 @@
 Starting from the page that already works (INTELLIGENCE_TESTING_SDK) means
 the popup every backend snippet serves is the same markup and logic, not a
 retyped near-copy that drifts.
+
+The page used to carry its own embedded country -> local-methods table, which
+meant a second frontend database that had to be regenerated and kept in step
+with the API's. It now reads the country catalogue from the API's own
+local_methods (the same array every other surface uses), so there is one
+source of truth and nothing to regenerate. Only the same-origin rewrites and
+the template-literal escaping differ from the SDK.
+
+Run with --check to verify the generated files match this script without
+writing them.
 """
 import os
-import sys
 import re
-import json
-import glob
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sys
 
-WEB = "/workspace/repos/konduyt-web/app/dashboard"
+HERE = os.path.dirname(os.path.abspath(__file__))
+WEB = os.path.join(os.path.dirname(HERE), "app", "dashboard")
+PUBLIC = os.path.join(os.path.dirname(HERE), "public")
 
-page = open(f"{WEB}/intelligencesdk.js", encoding="utf-8").read()
-page = re.search(r"export const INTELLIGENCE_TESTING_SDK = `([\s\S]*)`;\s*$", page).group(1)
+CHECK = "--check" in sys.argv
 
-from extract_methods import build as build_methods
-methods = build_methods(with_generic=True)
+src = open(os.path.join(WEB, "intelligencesdk.js"), encoding="utf-8").read()
+page = re.search(r"export const INTELLIGENCE_TESTING_SDK = `([\s\S]*)`;\s*$", src).group(1)
 
 # The reference price is server-decided, so the same page works for every
 # visit instead of a hardcoded KES 5,000.
@@ -28,77 +36,17 @@ page = page.replace(
     "fetch('http://localhost:3000/api/create-payment'",
     "fetch('/api/create-payment'")
 page = page.replace(
-    "fetch('http://localhost:3000/api/create-subscription'",
-    "fetch('/api/create-subscription'")
-page = page.replace(
     "Could not reach your backend at localhost:3000 -- is it running?",
     "Could not reach the server that served this page.")
 
-# Ranked options come from the live API, which only answers for 8 countries
-# today. The popup must list every real local method per country, so the
-# full table is embedded and merged with whatever ranking came back.
-page = page.replace(
-    "renderRails(options);",
-    "renderMethods(options, iso);")
-
-# "Best value" marks the cheapest method that actually carries a price, and
-# the table is ordered most-affordable-first. Both live in renderRails
-# (see its rankByCost helper) rather than being patched in from here, so the
-# HTML/CSS/JS tab and the generated shared page rank identically.
-
-page = page.replace("function renderRails(options) {", """function renderMethods(options, iso) {
-      // Start from every real local method this country has (embedded table),
-      // then attach the live ranked fee wherever the API priced that method.
-      // A method with no live price still gets listed -- it exists, and
-      // hiding it would understate what the customer can actually pay with.
-      var priced = {};
-      for (var k = 0; k < options.length; k++) {
-        priced[normKey(options[k].label)] = options[k];
-      }
-      var listed = (LOCAL_METHODS[iso] || []).slice();
-      var rows = [];
-      for (var m = 0; m < listed.length; m++) {
-        var match = priced[normKey(listed[m])];
-        if (match) {
-          // Keep the curated display name (local_methods.py's own label, e.g.
-          // "M-Pesa") and take only the price from the API, whose label is the
-          // raw uppercase id.
-          rows.push({ label: listed[m], provider: match.provider, fee_minor: match.fee_minor });
-        } else {
-          rows.push({ label: listed[m], fee_minor: null });
-        }
-      }
-      // Anything the API priced but the local table didn't list: keep it.
-      for (var p = 0; p < options.length; p++) {
-        var seen = false;
-        for (var q = 0; q < listed.length; q++) {
-          if (normKey(listed[q]) === normKey(options[p].label)) { seen = true; break; }
-        }
-        if (!seen) rows.push(options[p]);
-      }
-      renderRails(rows);
-    }
-
-    function normKey(s) {
-      return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
-
-    function renderRails(options) {""")
-
-# A bare lowercase "card" is a pricing CATEGORY declared in pricing_data.py,
-# not a product name. Give it a readable label rather than shouting "card"
-# or hiding a capability most countries genuinely have.
-GENERIC_DISPLAY = {"card": "Cards", "bank": "Bank transfer"}
-methods = {c: [GENERIC_DISPLAY.get(m, m) for m in v] for c, v in methods.items()}
-
-# Embed the table. JSON is safe inside a JS array literal.
-page = page.replace(
-    "var AMOUNT_MINOR = 500000;",
-    "var LOCAL_METHODS = " + json.dumps(methods, ensure_ascii=False) + ";\n    var AMOUNT_MINOR = 500000;")
-
-assert "LOCAL_METHODS" in page
-assert "renderMethods" in page
 assert "localhost:3000" not in page
+assert "LOCAL_METHODS" not in page, (
+    "the country catalogue must come from the API's local_methods, not an "
+    "embedded table")
+assert "renderMethods(mergeIntelligenceMethods" in page, (
+    "the page must merge local_methods with the ranked options")
+assert ">>> konduyt-intelligence-methods (generated) >>>" in page, (
+    "run node scripts/sync-intelligence-methods.mjs first")
 
 # Guard the JS-template-literal delimiters.
 assert "`" not in page, "backtick would break the JS template literal"
@@ -108,24 +56,37 @@ header = '''// The single checkout page every backend snippet serves at "/".
 //
 // Generated from the working HTML/CSS/JS tab so all twelve language servers
 // render the identical popup -- one definition, not twelve drifting copies.
-// It lists every real local payment method for the selected country (table
-// generated from konduyt-api app/routing/*.py), attaching a live ranked fee
-// wherever the intelligence endpoint priced one.
+// It lists every real local payment method for the selected country, read
+// from the intelligence endpoint's own local_methods (the country's complete
+// catalogue, including methods Konduyt cannot execute yet) and overlays the
+// ranked, priced options Konduyt can actually route. No country table is
+// embedded here: the API is the one source of truth.
 //
 // Regenerate with scripts/build-checkout-page.py rather than editing by hand.
 export const SHARED_CHECKOUT_HTML = `'''
 
-out = f"{WEB}/checkoutpage.js"
-open(out, "w", encoding="utf-8").write(header + page + "`;\n")
-print("wrote", out)
+targets = [
+    (os.path.join(WEB, "checkoutpage.js"), header + page + "`;\n"),
+    # The same page is shipped as a plain .html file for the backend snippets
+    # to serve, where it is read verbatim rather than evaluated as a JS
+    # template literal. Writing both here keeps them from drifting; the only
+    # difference is the backslash escaping the template literal needs.
+    (os.path.join(PUBLIC, "checkout-page.html"), page.replace("\\\\", "\\")),
+]
 
-# The same page is shipped as a plain .html file for the backend snippets to
-# serve, where it is read verbatim rather than evaluated as a JS template
-# literal. Writing both here keeps them from drifting; the only difference is
-# the backslash escaping the template literal needs.
-public = "/workspace/repos/konduyt-web/public/checkout-page.html"
-open(public, "w", encoding="utf-8").write(page.replace("\\\\", "\\"))
-print("wrote", public)
+stale = []
+for path, content in targets:
+    existing = open(path, encoding="utf-8").read() if os.path.exists(path) else None
+    if existing == content:
+        print("up to date", path)
+        continue
+    if CHECK:
+        stale.append(path)
+        continue
+    open(path, "w", encoding="utf-8").write(content)
+    print("wrote", path)
 
-print("countries embedded:", len(methods))
-print("bytes:", len(page))
+if stale:
+    for path in stale:
+        print("ERROR stale:", path, "-- run scripts/build-checkout-page.py", file=sys.stderr)
+    sys.exit(1)

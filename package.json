@@ -9,7 +9,13 @@
     "lint": "next lint",
     "test:snippets": "node scripts/test-snippets.mjs",
     "test:snippet-runtime": "node scripts/test-snippet-runtime.mjs",
-    "test:checkout": "node scripts/test-checkout-page.mjs"
+    "test:checkout": "node scripts/test-checkout-page.mjs",
+    "test:production-sdk": "node scripts/test-production-sdk.mjs",
+    "test:intelligence-sdk": "node scripts/test-intelligence-sdk.mjs",
+    "test:dashboard-snippets": "node scripts/extract-dashboard-snippets.mjs && node scripts/test-dashboard-snippets.mjs",
+    "sync:intelligence-methods": "node scripts/sync-intelligence-methods.mjs",
+    "check:generated": "node scripts/sync-intelligence-methods.mjs --check && python3 scripts/build-checkout-page.py --check",
+    "test": "npm run test:intelligence-sdk && npm run test:production-sdk && npm run test:checkout && npm run test:dashboard-snippets && npm run test:snippets && npm run check:generated"
   },
   "dependencies": {
     "next": "14.2.5",
