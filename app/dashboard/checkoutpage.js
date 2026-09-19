@@ -414,6 +414,15 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
       return String(label == null ? '' : label).toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
+    // The join key for one array entry. Prefer the API's stable method_id: it is
+    // the same string in both arrays for the same method, so the overlay cannot
+    // miss because a label was spelled or punctuated differently. The normalized
+    // label remains the fallback for older responses that carry no method_id.
+    function kduEntryKey(entry, fallback) {
+      var id = entry && entry.method_id;
+      return id ? ('id:' + id) : fallback;
+    }
+
     function kduIsExecutable(m) {
       return !!(m && m.onKonduyt);
     }
@@ -437,10 +446,11 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
 
       for (i = 0; i < locals.length; i++) {
         var m = locals[i] || {};
-        key = kduMethodKey(m.label);
+        key = kduEntryKey(m, kduMethodKey(m.label));
         if (!key || byKey[key]) continue;
         var entry = {
           key: key,
+          methodId: m.method_id || null,
           label: m.label,
           method: (opts.methodFromLabel && opts.methodFromLabel[m.label]) || null,
           methodType: m.method_type || null,
@@ -464,13 +474,14 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
 
       for (i = 0; i < options.length; i++) {
         var o = options[i] || {};
-        key = kduMethodKey(o.label);
+        key = kduEntryKey(o, kduMethodKey(o.label));
         var target = key ? byKey[key] : null;
         if (!target) {
           // A ranked method the country catalogue doesn't list. Keep it: it
           // exists in this response, so hiding it would lose a real route.
           target = {
             key: key || ('opt:' + i),
+            methodId: o.method_id || null,
             label: o.label,
             method: o.method || null,
             methodType: null,
