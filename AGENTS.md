@@ -62,6 +62,11 @@ for the `carrier` block.
     `out/_next/static/chunks/app/page-*.js` for expected snippet text. Snippet
     content is split across chunks — a string may live in `app/page-*.js`
     while another lives in `545-*.js`.
+- Toolchains the suites call when present; a bare machine fails them for a
+  missing binary, not a broken snippet: `libcurl4-openssl-dev` (C++ grep of
+  `curl/curl.h`), `flask` + `requests` (Python runtime server), `php`, `ruby`,
+  `go`, `xmllint`, plus the Android/.NET/Swift SDKs which stay skipped. Install
+  what you can before reading a failure as a real defect.
 
 ## Landing-page code snippets
 
