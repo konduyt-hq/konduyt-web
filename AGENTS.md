@@ -26,10 +26,14 @@ plain `curl` of a route will not show source markers. Verify against an
 artifact served as static text instead:
 
 ```
-curl -sSL https://konduyt.dev/checkout-page.html | grep -c rankByCost
+curl -sSL https://konduyt.dev/checkout-page.html | grep -c kduSortByCost
 ```
 
 `/checkout-page.html` 308-redirects to `/checkout-page`, so follow redirects.
+The ranking helper was renamed `rankByCost` -> `kduSortByCost` (2026-09-19,
+commit `224d081`); grep for the new name, an old marker silently returns 0 on a
+healthy deploy.
+
 For the API, exercise a feature added by the newest commit rather than trusting
 the dashboard hash -- e.g. POST `/v1/demo/run` with `customer.phone` and check
 for the `carrier` block.
