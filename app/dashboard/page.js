@@ -78,6 +78,13 @@ export default function Dashboard() {
   const [status, setStatus] = useState('loading'); // loading | ready | unauth
   const [user, setUser] = useState(null);
   const [accountNotice, setAccountNotice] = useState(null);
+  // Billing enforcement is a server-side fact (app/billing.py
+  // ENFORCEMENT_ENABLED, surfaced by GET /billing as enforcement_enabled).
+  // The dashboard must not invent its own pricing limit: while enforcement is
+  // off, project creation is never gated and no one is sent to /pricing/.
+  // Defaults to false so a failed read can never gate a user by accident.
+  const [billingEnforced, setBillingEnforced] = useState(false);
+  const [billingNotice, setBillingNotice] = useState('');
   const [greetingText, setGreetingText] = useState('');
   const [identities, setIdentities] = useState(null);
   const [identitiesLoading, setIdentitiesLoading] = useState(false);
@@ -267,6 +274,23 @@ export default function Dashboard() {
       .then((data) => setIdentities(data.identities || []))
       .catch(() => setIdentities([]))
       .finally(() => setIdentitiesLoading(false));
+  }, [user]);
+
+  // Read the real enforcement flag from the server rather than assuming a
+  // limit. /billing returns enforcement_enabled (false while billing is not
+  // operational) plus the notice the dashboard shows. On any failure we stay
+  // at the default (unenforced), so an unreachable billing endpoint can never
+  // block project creation.
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${API_BASE}/billing`, { headers: authHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setBillingEnforced(d.enforcement_enabled === true);
+        setBillingNotice(d.notice || '');
+      })
+      .catch(() => {});
   }, [user]);
 
   function linkProvider(provider) {
@@ -1232,13 +1256,13 @@ export default function Dashboard() {
       const data = await rl.json();
       const newProjects = data.projects || [];
 
-      // Real pricing model: 3 free projects, $10/mo per project beyond that
-      // once a project is actually live. The project is still created either
-      // way (a brand new project isn't live yet, so nothing is actually owed
-      // the instant it's created) -- but the developer is sent straight to
-      // pricing right now, not just shown a dismissible note, since that's
-      // what was actually asked for.
-      if (newProjects.length > 3) {
+      // Pricing is REPRESENTED but not ENFORCED while Konduyt Billing is not
+      // operational (app/billing.py ENFORCEMENT_ENABLED = False, read above as
+      // billingEnforced). While it is off, creating a project must always
+      // succeed and must never bounce the developer to /pricing/ -- the page
+      // that then cannot take a payment. Only when the server says billing is
+      // actually enforced does the free-allowance limit apply.
+      if (billingEnforced && newProjects.length > 3) {
         window.location.href = '/pricing/';
         return;
       }
@@ -1498,6 +1522,20 @@ export default function Dashboard() {
             className="con-notice-close"
             type="button"
             onClick={() => setAccountNotice(null)}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {billingNotice && !accountNotice && (
+        <div className="con-notice con-notice-info">
+          <span>{billingNotice}</span>
+          <button
+            className="con-notice-close"
+            type="button"
+            onClick={() => setBillingNotice('')}
             aria-label="Dismiss"
           >
             ×
@@ -3200,7 +3238,9 @@ export default function Dashboard() {
                           <div className="settings-row-d">
                             {projects.length <= 3
                               ? `Free — ${projects.length} of 3 free live projects used.`
-                              : `${projects.length} live projects · $${(projects.length - 3) * 10}/mo beyond the 3 free.`}
+                              : billingEnforced
+                                ? `${projects.length} live projects · $${(projects.length - 3) * 10}/mo beyond the 3 free.`
+                                : `${projects.length} live projects. Billing isn’t set up yet — nothing is charged.`}
                           </div>
                         </div>
                         <a href="/pricing/" className="settings-link-btn">View pricing</a>

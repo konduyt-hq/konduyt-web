@@ -100,3 +100,30 @@ for the `carrier` block.
 - Name the served page exactly `checkout-page.html` in snippets and prose. The
   samples used to say `checkout.html`, which does not exist anywhere in this
   repo, so a reader following the comment would look for the wrong file.
+
+## Billing enforcement is a server-side fact, never a frontend assumption
+
+Billing is REPRESENTED but not ENFORCED at launch. The API's
+`app/billing.ENFORCEMENT_ENABLED` is `False`, and `GET /billing` returns it as
+`enforcement_enabled` together with the `notice` to display
+(`app/billing.launch_billing_state()`).
+
+The dashboard must read that flag, not invent a limit. It previously hardcoded
+`projects.length > 3 -> window.location.href = '/pricing/'` in
+`app/dashboard/page.js`, so creating a 4th project bounced the developer to
+`/pricing/`, whose Subscribe button then reported "Billing isn't set up yet.
+Please try again shortly." — an unenforced model blocking project creation.
+
+Rules:
+
+- Project creation is never gated while `enforcement_enabled` is false. Only
+  when the server reports it is actually enforced may the free-allowance limit
+  apply.
+- Default the client's `billingEnforced` to false, so an unreachable or failed
+  `/billing` read can never gate a user by accident.
+- Any user-visible pricing claim (Settings "Current plan", pricing copy) must
+  agree with the same flag. Do not show a `$10/mo beyond the free` charge while
+  billing is not operational.
+- Regression coverage: `npm run test:billing-gate` asserts the redirect is
+  gated on the flag in both source and the built chunk. Run it after
+  `npx next build`.
