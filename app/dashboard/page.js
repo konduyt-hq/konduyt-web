@@ -21,6 +21,16 @@ const API_BASE =
 
 const TOKEN_KEY = 'kdu_token';
 
+// Pick the first value that is actually a number, else fall back. Used to read
+// billing figures from a server response without letting a missing/null field
+// become NaN in user-facing wording.
+function num(...candidates) {
+  for (const c of candidates) {
+    if (typeof c === 'number' && Number.isFinite(c)) return c;
+  }
+  return 0;
+}
+
 function getToken() {
   try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
 }
@@ -85,6 +95,21 @@ export default function Dashboard() {
   // Defaults to false so a failed read can never gate a user by accident.
   const [billingEnforced, setBillingEnforced] = useState(false);
   const [billingNotice, setBillingNotice] = useState('');
+  // The server's own pricing numbers (GET /billing -> pricing_model), so the
+  // "you'll pay this later" wording cannot drift from the real model. Defaults
+  // match app/billing.py and are only a fallback for a failed read.
+  const [billingFreeAllowance, setBillingFreeAllowance] = useState(3);
+  const [billingPricePerProject, setBillingPricePerProject] = useState(10);
+  // Only ACTIVE PRODUCTION (live) projects are billable -- sandbox/test
+  // projects never count. Read from /billing rather than counted from the
+  // project list, so a project that is merely created (and therefore not live
+  // yet) is never reported as owing money.
+  const [billingLiveProjects, setBillingLiveProjects] = useState(0);
+  const [billingMonthlyCharge, setBillingMonthlyCharge] = useState(0);
+  // Told to the developer at the moment a project takes them past the free
+  // allowance, while billing is not yet enforced. Succeeding silently would
+  // hide a future charge.
+  const [projectCreateNotice, setProjectCreateNotice] = useState('');
   const [greetingText, setGreetingText] = useState('');
   const [identities, setIdentities] = useState(null);
   const [identitiesLoading, setIdentitiesLoading] = useState(false);
@@ -278,20 +303,29 @@ export default function Dashboard() {
 
   // Read the real enforcement flag from the server rather than assuming a
   // limit. /billing returns enforcement_enabled (false while billing is not
-  // operational) plus the notice the dashboard shows. On any failure we stay
-  // at the default (unenforced), so an unreachable billing endpoint can never
-  // block project creation.
-  useEffect(() => {
-    if (!user) return;
-    fetch(`${API_BASE}/billing`, { headers: authHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d) return;
-        setBillingEnforced(d.enforcement_enabled === true);
-        setBillingNotice(d.notice || '');
-      })
-      .catch(() => {});
-  }, [user]);
+  // operational) plus the notice and the pricing model the dashboard shows. On
+  // any failure we stay at the defaults (unenforced, 3 free, $10), so an
+  // unreachable billing endpoint can never block project creation.
+  async function loadBillingState() {
+    try {
+      const r = await fetch(`${API_BASE}/billing`, { headers: authHeaders() });
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (!d) return null;
+      setBillingEnforced(d.enforcement_enabled === true);
+      setBillingNotice(d.notice || '');
+      const model = d.pricing_model || {};
+      if (typeof model.free_allowance === 'number') setBillingFreeAllowance(model.free_allowance);
+      if (typeof model.price_per_project_usd === 'number') setBillingPricePerProject(model.price_per_project_usd);
+      if (typeof d.active_production_projects === 'number') setBillingLiveProjects(d.active_production_projects);
+      if (typeof d.monthly_charge_usd === 'number') setBillingMonthlyCharge(d.monthly_charge_usd);
+      return d;
+    } catch {
+      return null;
+    }
+  }
+
+  useEffect(() => { if (user) loadBillingState(); }, [user]);
 
   function linkProvider(provider) {
     window.location.href = `${API_BASE}/auth/${provider}?link=1`;
@@ -1229,6 +1263,7 @@ export default function Dashboard() {
     // before assuming the bug was there -- it wasn't; this frontend gap
     // was the actual, confirmed cause.
     setProjectCreateError('');
+    setProjectCreateNotice('');
     setProjectCreating(true);
     try {
       const r = await fetch(`${API_BASE}/projects`, {
@@ -1267,9 +1302,44 @@ export default function Dashboard() {
         return;
       }
 
+      // Not enforced yet is not the same as free forever. Creating a project
+      // must not be silent about the charge that follows, so say plainly what
+      // it costs later and what costs nothing now.
+      //
+      // Only ACTIVE PRODUCTION (live) projects are billable (app/billing.py:
+      // billable = max(0, active_production - free_allowance)); a project that
+      // has merely been created is not live and owes nothing. So this notice
+      // is driven by the server's live count, never by the length of the
+      // project list, which would overstate the future charge for anyone with
+      // unused sandbox projects.
       setProjects(newProjects);
       setActiveId(p.id);
       setProjectMenuOpen(false);
+
+      // Re-read billing now that the project list has changed, so the notice
+      // reflects the server's current live count / charge rather than a value
+      // fetched before this project existed.
+      const fresh = await loadBillingState();
+      const allowance = num(fresh?.pricing_model?.free_allowance, billingFreeAllowance, 3);
+      const price = num(fresh?.pricing_model?.price_per_project_usd, billingPricePerProject, 10);
+      const liveNow = num(fresh?.active_production_projects, billingLiveProjects, 0);
+      const enforcedNow = fresh ? fresh.enforcement_enabled === true : billingEnforced;
+      if (!enforcedNow) {
+        setProjectCreateNotice(
+          liveNow >= allowance
+            ? `Project created. Nothing is charged today — test mode is free and a ` +
+              `new project isn't live yet. You already have ${liveNow} live projects, ` +
+              `and live projects past the first ${allowance} are $${price}/mo each, so ` +
+              `this one becomes billable at $${price}/mo once it goes live and billing ` +
+              `is switched on.`
+            : `Project created. Nothing is charged today — test mode and your first ` +
+              `${allowance} live projects are free. Each live project past ${allowance} ` +
+              `is $${price}/mo once billing is switched on; this one is within the free ` +
+              `allowance (you have ${liveNow} live).`
+        );
+      } else {
+        setProjectCreateNotice('');
+      }
     } catch (e) {
       setProjectCreateError('Could not reach the server. Check your connection and try again.');
     }
@@ -1508,6 +1578,9 @@ export default function Dashboard() {
                 </button>
                 {projectCreateError && (
                   <div className="con-proj-create-error">{projectCreateError}</div>
+                )}
+                {projectCreateNotice && (
+                  <div className="con-proj-create-notice">{projectCreateNotice}</div>
                 )}
               </div>
             )}
@@ -3236,11 +3309,13 @@ export default function Dashboard() {
                         <div>
                           <div className="settings-row-k">Current plan</div>
                           <div className="settings-row-d">
-                            {projects.length <= 3
-                              ? `Free — ${projects.length} of 3 free live projects used.`
-                              : billingEnforced
-                                ? `${projects.length} live projects · $${(projects.length - 3) * 10}/mo beyond the 3 free.`
-                                : `${projects.length} live projects. Billing isn’t set up yet — nothing is charged.`}
+                            {billingEnforced
+                              ? billingMonthlyCharge > 0
+                                ? `${billingLiveProjects} live projects · $${billingMonthlyCharge}/mo beyond the ${billingFreeAllowance} free.`
+                                : `Free — ${billingLiveProjects} of ${billingFreeAllowance} free live projects used.`
+                              : billingMonthlyCharge > 0
+                                ? `${billingLiveProjects} live projects. Nothing charged yet — billing isn't switched on. At launch this is $${billingMonthlyCharge}/mo beyond the first ${billingFreeAllowance} free.`
+                                : `${billingLiveProjects} of ${billingFreeAllowance} free live projects used. Billing isn't switched on, so nothing is charged yet.`}
                           </div>
                         </div>
                         <a href="/pricing/" className="settings-link-btn">View pricing</a>

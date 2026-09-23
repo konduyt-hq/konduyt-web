@@ -127,3 +127,15 @@ Rules:
 - Regression coverage: `npm run test:billing-gate` asserts the redirect is
   gated on the flag in both source and the built chunk. Run it after
   `npx next build`.
+- Only ACTIVE PRODUCTION (live) projects are billable. `app/billing.py`:
+  `billable = max(0, active_production - free_allowance)`, and sandbox/test or
+  merely-created projects never count. Never derive a charge from
+  `projects.length`; read `active_production_projects` / `monthly_charge_usd`
+  from `GET /billing`. Overstating a future charge is as dishonest as hiding it.
+- "Not enforced yet" is not "free forever". Creating a project that will be
+  billable later must say so at creation time (the `con-proj-create-notice`
+  banner) -- stating both that nothing is charged today and the charge that
+  applies once billing is switched on. A silent success hides a future bill.
+- Keep user-facing amounts driven by the server's figures, falling back to the
+  `app/billing.py` constants only when the read fails (see `num()` in
+  `app/dashboard/page.js`), so the wording cannot drift from the real model.
