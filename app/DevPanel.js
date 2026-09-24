@@ -1872,14 +1872,12 @@ export default function DevPanel() {
                       <span className="intel-rail-name">
                         {o.label}
                         {isBest && o.executable && !isDisabled && <span className="intel-best-badge">Best value</span>}
-                        {o.executable ? (
+                        {o.executable && (
                           <button type="button"
                             className={`fee-intel-dot ${o.verified ? 'verified' : 'unverified'}`}
                             title={o.verified ? 'Verified — a confirmed fee' : 'Estimated — not yet confirmed against an official source'}
                             aria-label="Fee confidence"
                             onClick={() => setIntelDetail(o.option || o)} />
-                        ) : (
-                          <span className="intel-rail-est">estimated</span>
                         )}
                         {isDisabled && <span className="intel-rail-disabled-note">Needs a {requiredCarrier} number</span>}
                       </span>

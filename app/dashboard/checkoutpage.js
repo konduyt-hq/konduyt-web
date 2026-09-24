@@ -116,8 +116,6 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
     background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 6px; }
   .rail-fee { white-space: nowrap; }
   .rail-fee-note { display: block; font-size: 10px; color: #9a9a9a; font-weight: 500; }
-  .rail-est { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.03em; color: #9a9a9a; margin-left: 6px; }
   .rail-action { text-align: right; white-space: nowrap; }
   .rail-pay {
     padding: 6px 14px; border: none; border-radius: 7px; background: #0a0a0a;
@@ -772,11 +770,15 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
         if (m.feeMinor != null && m.feeSource !== 'konduyt') {
           feeNote = '<span class="rail-fee-note">Market fee</span>';
         }
+        // "estimated" describes the FEE, never the payment method, so it
+        // belongs on the fee and not next to the name. A method's name is
+        // its name -- qualifying it reads as though the method itself were
+        // somehow provisional.
+        var estNote = m.estimated ? '<span class="rail-fee-note">estimated</span>' : '';
         rows += '<tr class="rail' + (m.executable ? ' rail-executable' : ' rail-unsupported') + (isBest ? ' best' : '') + '" data-key="' + m.key + '">' +
           '<td><span class="rail-name">' + m.label + '</span>' +
-          (isBest ? '<span class="badge">Best value</span>' : '') +
-          (m.estimated ? '<span class="rail-est">estimated</span>' : '') + '</td>' +
-          '<td class="rail-fee">' + fee + feeNote + '</td>' +
+          (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
+          '<td class="rail-fee">' + fee + estNote + feeNote + '</td>' +
           '<td class="rail-action">' + action + '</td></tr>';
       }
 
