@@ -64,7 +64,9 @@ for the `carrier` block.
     while another lives in `545-*.js`.
 - Toolchains the suites call when present; a bare machine fails them for a
   missing binary, not a broken snippet: `libcurl4-openssl-dev` (C++ grep of
-  `curl/curl.h`), `flask` + `requests` (Python runtime server), `php`, `ruby`,
+  `curl/curl.h`), `libcpp-httplib-dev` (the C++ sample `#include <httplib.h>`;
+  on Debian the header lands in the multiarch dir, which `g++` already searches
+  once installed), `flask` + `requests` (Python runtime server), `php`, `ruby`,
   `go`, `xmllint`, plus the Android/.NET/Swift SDKs which stay skipped. Install
   what you can before reading a failure as a real defect.
 
@@ -213,25 +215,24 @@ Rules:
   `app/billing.py` constants only when the read fails (see `num()` in
   `app/dashboard/page.js`), so the wording cannot drift from the real model.
 
-## Popup fee data comes from konduyt-api, and its operator pricing is wrong
+## Popup fee data comes from konduyt-api — never re-attribute a fee here
 
 The landing-page popup (`app/DevPanel.js`) and `/demo/` read fees from
 `POST https://konduyt-api.onrender.com/v1/demo/run`; `konduyt-web` renders those
 numbers verbatim and derives none of them. So a wrong fee in the popup is an API
-bug, not a frontend one.
+bug, not a frontend one. Do not "fix" a fee by editing the frontend — the popup
+must never invent or re-attribute a fee.
 
-As of 2026-09-24 the Kenya response (the popup's reference market) prices every
-mobile-money rail with **M-Pesa's** fee and source URL: Airtel Money, T-Kash and
-even Pesapal all came back as `daraja` / KES 57.00 /
-`safaricom.co.ke/.../mpesa-charges`. Cause: `resolve_country_methods` in
-`konduyt-api`'s `app/routing/capability_resolver.py` prices by the generic
-`mobile_money` category instead of the specific operator. The operator-aware
-alternative (`app/routing/local_methods.py::_priced_via`, used by
-`country_local_methods`) prices the same rails correctly (Airtel 0, T-Kash 5700,
-Pesapal 17500), so the underlying data is right.
-
-Tracked upstream: `konduyt-hq/konduyt-api#2`. Do not "fix" this by editing the
-frontend — the popup must never invent or re-attribute a fee.
+The Kenya operator-attribution bug recorded here on 2026-09-24 — every
+mobile-money rail priced with M-Pesa's fee and `safaricom.co.ke` source — is
+fixed on `konduyt-api` branch `fix/mpesa-operator-attribution` (commit
+`7cb37f0`, tracked upstream as `konduyt-hq/konduyt-api#2`). It is **not yet
+pushed/deployed**, so the live deploy the popup reads may still show the old
+M-Pesa fee on every mobile-money rail until that branch ships. In the fixed
+API, each rail is priced from its own operator (source and amount):
+`mpesa` KES 75.00 via `paystack.com/pricing`, `airtel_money` 0 via
+`airtelkenya.com`, `t_kash` 5700, `KE_PESAPAL` 17500 — matching the data
+`app/routing/local_methods.py::_priced_via` always had.
 
 Also note the distinction the popup's own copy has to keep straight: a method
 being *priced* is not the same as being *executable*. Airtel Money has a real
