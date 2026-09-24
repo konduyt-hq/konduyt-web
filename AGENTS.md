@@ -155,6 +155,25 @@ A probe that links the emitted stylesheet and prints `getComputedStyle(row)
 .gridTemplateColumns` next to each cell's `getBoundingClientRect()` shows a
 grid/cell mismatch directly.
 
+## The landing popup lists a fixed reference transaction, not the viewer
+
+Clicking "Run in test mode" curates the reference transaction the landing page
+advertises: a KES 5,000 Kenyan payment (`handleRun` posts `country: 'KE'`,
+`currency: 'KES'`, a fixed amount). It is a worked example, not a quote for
+whoever is looking at the page -- so it says nothing about the viewer's own
+country, and a method list that changes by visitor would misrepresent a fixed
+claim. Every `local_methods` entry there is Kenya's real catalogue.
+
+Apple Pay is a legitimate Kenya catalogue entry, but it carries no fee and no
+source -- it rides the card rail rather than being separately priceable. The
+popup drops fee-less non-executable entries, because a blank fee column plus
+"Not on Konduyt yet" shows the reader nothing they can act on. The filter
+lives at that one call site and applies only to the non-executable group, so
+executable methods and the `bestValueMethod` badge are untouched. Grouping
+(a currency-priced route ahead of a market figure the merchant cannot charge
+yet) is covered by a test in `scripts/test-intelligence-sdk.mjs`; ordering is
+never mixed across the two groups.
+
 ## Billing enforcement is a server-side fact, never a frontend assumption
 
 Billing is REPRESENTED but not ENFORCED at launch. The API's

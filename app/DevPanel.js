@@ -8,7 +8,7 @@ import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './dashboard/frontendfile
 import { FRONTEND_OPTIONS } from './dashboard/frontendoptions';
 import { highlightCode } from './dashboard/codehighlight';
 import {
-  mergeIntelligenceMethods, orderedMethods, bestValueMethod,
+  mergeIntelligenceMethods, rankExecutableMethods, rankUnsupportedMethods, bestValueMethod,
   emptyStateMessage, hasAnyMethod, STATE_LIVE, STATE_NOT_ON_KONDUYT,
 } from './dashboard/intelligenceMethods';
 
@@ -1572,7 +1572,14 @@ export default function DevPanel() {
   // methods at all.
   const intelligence = (result && result.intelligence) || {};
   const methods = mergeIntelligenceMethods(intelligence);
-  const options = orderedMethods(methods);
+  // The popup shows the reference transaction's real, fully priced catalogue:
+  // the methods Konduyt can charge, then everything else it cannot. A method
+  // with no fee and no source has nothing to show and no route behind it --
+  // Apple Pay, which rides the card rail rather than being its own priceable
+  // option -- so it is left out here instead of printing a blank fee column
+  // and a "not yet" that says nothing. The ranking itself is unchanged.
+  const options = rankExecutableMethods(methods)
+    .concat(rankUnsupportedMethods(methods).filter((m) => m.feeMinor != null));
   const bestMethod = bestValueMethod(methods);
   const hasMethods = hasAnyMethod(methods);
   const noMethodsMessage = emptyStateMessage(methods);
