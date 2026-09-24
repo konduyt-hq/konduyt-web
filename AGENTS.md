@@ -148,3 +148,29 @@ Rules:
 - Keep user-facing amounts driven by the server's figures, falling back to the
   `app/billing.py` constants only when the read fails (see `num()` in
   `app/dashboard/page.js`), so the wording cannot drift from the real model.
+
+## Popup fee data comes from konduyt-api, and its operator pricing is wrong
+
+The landing-page popup (`app/DevPanel.js`) and `/demo/` read fees from
+`POST https://konduyt-api.onrender.com/v1/demo/run`; `konduyt-web` renders those
+numbers verbatim and derives none of them. So a wrong fee in the popup is an API
+bug, not a frontend one.
+
+As of 2026-09-24 the Kenya response (the popup's reference market) prices every
+mobile-money rail with **M-Pesa's** fee and source URL: Airtel Money, T-Kash and
+even Pesapal all came back as `daraja` / KES 57.00 /
+`safaricom.co.ke/.../mpesa-charges`. Cause: `resolve_country_methods` in
+`konduyt-api`'s `app/routing/capability_resolver.py` prices by the generic
+`mobile_money` category instead of the specific operator. The operator-aware
+alternative (`app/routing/local_methods.py::_priced_via`, used by
+`country_local_methods`) prices the same rails correctly (Airtel 0, T-Kash 5700,
+Pesapal 17500), so the underlying data is right.
+
+Tracked upstream: `konduyt-hq/konduyt-api#2`. Do not "fix" this by editing the
+frontend — the popup must never invent or re-attribute a fee.
+
+Also note the distinction the popup's own copy has to keep straight: a method
+being *priced* is not the same as being *executable*. Airtel Money has a real
+sourced fee and is still `NOT_ON_KONDUYT_YET`, because no implemented connector
+can charge it (Flutterwave enumerates only Tanzanian/Ghanaian operators, Paystack's
+connector lists `mpesa` but not `airtel_money`, `daraja` is M-Pesa-only).
