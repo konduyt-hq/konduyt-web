@@ -2495,8 +2495,20 @@
   .intel-modal-row:last-child{border-bottom:none;}
   .intel-modal-row-head{background:#fafafa;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b6b6b;}
   .intel-modal-row.best{background:#f0fdf4;}
+  /* The popup's rows name, price and action one method -- three cells. The
+     base row above is a 4-column grid (Rail/Fee/Speed/action) from when a
+     speed column existed, so without this the third cell sits in the third
+     column and a phantom fourth column eats ~150px on the right. The
+     <=520px override below is a plain 3-column grid, which is why this only
+     ever looked wrong on a desktop-width popup. Proportions are the original
+     Rail/Fee/action widths with the dropped Speed column removed. */
+  .intel-modal-row.intel-row-3col{grid-template-columns:1.6fr 1.3fr 1fr;}
+  .intel-modal-row.rail-unsupported-row .intel-rail-name{color:#6b6b6b;}
   .intel-rail-name{font-weight:600;color:#0a0a0a;}
-  .intel-rail-fee{font-family:'JetBrains Mono',monospace;}
+  .intel-rail-fee{font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+  .intel-rail-fee-note{display:block;font-size:10px;color:#9a9a9a;font-weight:500;}
+  /* A real method Konduyt cannot route yet: shown, but plainly not payable. */
+  .intel-rail-unsupported{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#9a9a9a;}
   .intel-rail-money{color:#6b6b6b;font-size:11px;}
   .intel-rail-speed{color:#6b6b6b;}
   .intel-best-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;background:#0a0a0a;color:#ffffff;padding:2px 7px;border-radius:4px;white-space:nowrap;margin-left:6px;}
@@ -2570,6 +2582,11 @@
   /* Demo popup: 2-column (pay with / charge) */
   .intel-modal-row.intel-row-2col{grid-template-columns:1.4fr 1.3fr 1fr;}
   .test-more-rail.test-more-rail-2col{grid-template-columns:1.2fr 1.4fr;}
+  /* Explicit, not inherited from the base row: a variant class whose rule goes
+     missing is silent, and that is exactly how the popup lost its 3-column
+     grid. */
+  .test-more-rail.test-more-rail-3col{grid-template-columns:1.3fr 1.2fr 0.8fr;}
+  .test-more-rail-action{white-space:nowrap;}
 
   /* Payment intelligence popup: View demo CTA */
   .intel-modal-cta{display:block;text-align:center;margin-top:14px;background:var(--ink);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px;border-radius:9px;}

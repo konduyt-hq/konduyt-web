@@ -110,6 +110,51 @@ for the `carrier` block.
   samples used to say `checkout.html`, which does not exist anywhere in this
   repo, so a reader following the comment would look for the wrong file.
 
+## A layout-variant class with no CSS rule fails silently
+
+The landing popup's rows (`intel-modal-row`) are a 4-column grid left over
+from when a speed column existed, so a 3-cell row needs
+`intel-row-3col{grid-template-columns:...}`. Commit `224d081` added that class
+to the markup and never added the rule to `globals.css` — and because the
+popup's `<=520px` media query is already a plain 3-column grid, it only looked
+wrong at desktop width, where a phantom fourth column ate ~150px of every row.
+`intel-rail-unsupported`, `intel-rail-fee-note`, `intel-modal-head` and
+`test-more-rail-action`/`-3col` were in the same state: named in JSX, absent
+from CSS, so they rendered as full-size body text instead of small-caps
+markers.
+
+Grep both sides before trusting a variant class — take tokens only from the
+literal parts of `className`, or template expressions leak identifiers in:
+
+```
+python3 - <<'PY'
+import re
+js, css = open('app/DevPanel.js').read(), open('app/globals.css').read()
+used = set()
+for m in re.finditer(r'className=(?:"([^"]*)"|\{`([^`]*)`\}|\{([^}]*)\})', js):
+    raw = re.sub(r'\$\{[^}]*\}', ' ', ''.join(x for x in m.groups() if x))
+    used |= {t for t in re.split(r'[\s`?:\'"]+', raw) if re.fullmatch(r'[a-z][a-z0-9-]*', t)}
+defined = set(re.findall(r'\.([a-zA-Z][a-zA-Z0-9_-]*)', css))
+print(sorted(t for t in used if t not in defined and t != 'null'))
+PY
+```
+
+Run the same check against `public/checkout-page.html` and
+`app/dashboard/intelligencesdk.js`; each surface carries its own copy.
+
+Then confirm against the built CSS (`out/_next/static/css/*.css`), because
+that is what ships, and measure the real box model in headless Chromium rather
+than eyeballing a screenshot:
+
+```
+chromium --headless --disable-gpu --no-sandbox --virtual-time-budget=3000 \
+  --dump-dom http://localhost:12000/_probe.html
+```
+
+A probe that links the emitted stylesheet and prints `getComputedStyle(row)
+.gridTemplateColumns` next to each cell's `getBoundingClientRect()` shows a
+grid/cell mismatch directly.
+
 ## Billing enforcement is a server-side fact, never a frontend assumption
 
 Billing is REPRESENTED but not ENFORCED at launch. The API's
