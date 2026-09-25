@@ -2495,8 +2495,25 @@
   .intel-modal-row:last-child{border-bottom:none;}
   .intel-modal-row-head{background:#fafafa;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b6b6b;}
   .intel-modal-row.best{background:#f0fdf4;}
+  /* The popup's rows name, price and action one method -- three cells. The
+     base row above is a 4-column grid (Rail/Fee/Speed/action) from when a
+     speed column existed, so without this the third cell sits in the third
+     column and a phantom fourth column eats ~150px on the right. The
+     <=520px override below is a plain 3-column grid, which is why this only
+     ever looked wrong on a desktop-width popup. Proportions are the original
+     Rail/Fee/action widths with the dropped Speed column removed. */
+  .intel-modal-row.intel-row-3col{grid-template-columns:1.5fr 1.2fr minmax(116px,1fr);}
+  .intel-modal-row.rail-unsupported-row .intel-rail-name{color:#6b6b6b;}
   .intel-rail-name{font-weight:600;color:#0a0a0a;}
-  .intel-rail-fee{font-family:'JetBrains Mono',monospace;}
+  .intel-rail-fee{font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+  .intel-rail-fee-note{display:block;font-size:10px;color:#9a9a9a;font-weight:500;}
+  .intel-rail-action{text-align:right;white-space:nowrap;}
+  /* A real method Konduyt cannot route yet: shown, but plainly not payable.
+     nowrap for the same reason the checkout page's .rail-action has it: as
+     three ordinary words in a ~95px column the marker broke into three
+     one-word lines, which reads as a narrow vertical column of text rather
+     than the one short label it is. */
+  .intel-rail-unsupported{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#9a9a9a;white-space:nowrap;}
   .intel-rail-money{color:#6b6b6b;font-size:11px;}
   .intel-rail-speed{color:#6b6b6b;}
   .intel-best-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;background:#0a0a0a;color:#ffffff;padding:2px 7px;border-radius:4px;white-space:nowrap;margin-left:6px;}
@@ -2519,7 +2536,23 @@
   .intel-pay-btn.ready{opacity:1;}
   .intel-pay-btn:hover{opacity:1;}
   .intel-modal-foot{font-size:12px;color:#6b6b6b;margin-top:14px;text-align:center;}
-  @media (max-width:520px){ .intel-modal-row{grid-template-columns:1.4fr 1.2fr 0.8fr;} .intel-modal-row span:nth-child(4){display:none;} }
+  /* Below 520px the action column is sized by content, not a fraction, so the
+     one short marker or Pay button it holds never has to break mid-word. This
+     must stay after .intel-modal-row.intel-row-3col: equal specificity means
+     source order decides, and the marker rule would otherwise lose.
+
+     minmax(0,...) lets the text columns shrink below their min-content width,
+     which is what stops an executable row -- 'M-Pesa' plus a nowrap 'Best
+     value' badge beside a nowrap fee -- from pushing its last cell past the
+     table edge on a 320px-wide phone. The name cell stacks so the badge drops
+     to its own line instead of being clipped. */
+  @media (max-width:520px){
+    .intel-modal-row{grid-template-columns:1.4fr 1.2fr 0.8fr;}
+    .intel-modal-row.intel-row-3col{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto;}
+    .intel-modal-row span:nth-child(4){display:none;}
+    .intel-modal-row .intel-rail-name{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
+    .intel-modal-row .intel-best-badge{margin-left:0;margin-top:2px;}
+  }
 
   /* Legal: multi-doc layout + counsel note + table */
   .legal-layout{max-width:1000px;margin:0 auto;padding:32px 32px 80px;display:grid;grid-template-columns:210px 1fr;gap:36px;align-items:start;}
@@ -2570,6 +2603,11 @@
   /* Demo popup: 2-column (pay with / charge) */
   .intel-modal-row.intel-row-2col{grid-template-columns:1.4fr 1.3fr 1fr;}
   .test-more-rail.test-more-rail-2col{grid-template-columns:1.2fr 1.4fr;}
+  /* Explicit, not inherited from the base row: a variant class whose rule goes
+     missing is silent, and that is exactly how the popup lost its 3-column
+     grid. */
+  .test-more-rail.test-more-rail-3col{grid-template-columns:1.3fr 1.2fr 0.8fr;}
+  .test-more-rail-action{white-space:nowrap;}
 
   /* Payment intelligence popup: View demo CTA */
   .intel-modal-cta{display:block;text-align:center;margin-top:14px;background:var(--ink);color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px;border-radius:9px;}

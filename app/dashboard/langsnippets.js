@@ -508,11 +508,15 @@ function renderMethods(methods) {
     if (m.feeMinor != null && m.feeSource !== 'konduyt') {
       feeNote = '<span class="rail-fee-note">Market fee</span>';
     }
+    // "estimated" describes the FEE, never the payment method, so it
+    // belongs on the fee and not next to the name. A method's name is
+    // its name -- qualifying it reads as though the method itself were
+    // somehow provisional.
+    var estNote = m.estimated ? '<span class="rail-fee-note">estimated</span>' : '';
     rows += '<tr class="rail' + (m.executable ? ' rail-executable' : ' rail-unsupported') + (isBest ? ' best' : '') + '" data-key="' + m.key + '">' +
       '<td><span class="rail-name">' + m.label + '</span>' +
-      (isBest ? '<span class="badge">Best value</span>' : '') +
-      (m.estimated ? '<span class="rail-est">estimated</span>' : '') + '</td>' +
-      '<td class="rail-fee">' + fee + feeNote + '</td>' +
+      (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
+      '<td class="rail-fee">' + fee + estNote + feeNote + '</td>' +
       '<td class="rail-action">' + action + '</td></tr>';
   }
 
