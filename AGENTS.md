@@ -62,13 +62,21 @@ for the `carrier` block.
     `out/_next/static/chunks/app/page-*.js` for expected snippet text. Snippet
     content is split across chunks — a string may live in `app/page-*.js`
     while another lives in `545-*.js`.
-- Toolchains the suites call when present; a bare machine fails them for a
-  missing binary, not a broken snippet: `libcurl4-openssl-dev` (C++ grep of
-  `curl/curl.h`), `libcpp-httplib-dev` (the C++ sample `#include <httplib.h>`;
-  on Debian the header lands in the multiarch dir, which `g++` already searches
-  once installed), `flask` + `requests` (Python runtime server), `php`, `ruby`,
-  `go`, `xmllint`, plus the Android/.NET/Swift SDKs which stay skipped. Install
-  what you can before reading a failure as a real defect.
+- Toolchains the suites call when present: `libcurl4-openssl-dev` (the C++ sample
+  `#include <curl/curl.h>`), `libcpp-httplib-dev` (the C++ sample
+  `#include <httplib.h>`; on Debian the header lands in the multiarch dir, which
+  `g++` already searches once installed), `flask` + `requests` (Python runtime
+  server), `php`, `ruby`, `go`, `xmllint`, plus the Android/.NET/Swift SDKs which
+  stay skipped. Install what you can to get real coverage.
+- **A missing dependency is a SKIP, never a FAIL.** Both suites check the
+  *dependency*, not just the binary: `test:snippet-runtime` probes each
+  backend's own imports (`import flask, requests`, `require "sinatra"`) and
+  `test:snippets` recognizes a missing system header. A bare machine therefore
+  reports `ALL ... PASSED (n skipped)` with the reason named, instead of
+  implying the sample is broken. When adding a check that needs a tool or
+  package, add the same probe — do not let the environment read as a defect.
+  Match the missing-dependency diagnostic specifically, so a genuine syntax or
+  symbol error in a sample still fails.
 
 ## Landing-page code snippets
 
