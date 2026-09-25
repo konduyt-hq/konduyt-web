@@ -266,3 +266,43 @@ and the popup rendered `KES 0.00 · Market fee`, which reads as "accepting this
 costs the merchant nothing". The fallback now treats a 0 market reference as
 "not found" and reports no fee. Pinned by
 `app/demo_popup_fees_tests.py::test_a_free_consumer_tier_is_never_a_market_fee`.
+
+## Direct Connections dashboard tab
+
+`app/dashboard/DirectConnections.js` is the merchant-facing surface for Direct
+Connections: a merchant connects a payment account they already own (mobile
+money or bank) so customers can pay it directly. Konduyt never holds or moves
+the money. It is wired into `app/dashboard/page.js` as the `direct` tab
+(`TAB_TITLES.direct`, tab nav entry, and a `tab === 'direct'` body branch) and
+its classes live under the `dc-*` block in `globals.css`.
+
+The page renders the API's own verdicts and derives none of them. The
+authority is `GET /direct-connections/projects/:id/catalogue`, which returns
+per institution a `status` / `action` / `execution_capability`, plus the
+`connection` if one exists. Only an institution the backend marks `CONNECT`
+gets a Connect button; the rest read "Not currently supported" with the
+backend's own `limitation_note`. This matters because "the institution exists"
+is not "Konduyt can execute or observe a payment to it" — M-Pesa is executable
+because a `daraja` connector exists (beta, unverified); Airtel Money, T-Kash
+and the Kenyan banks are `NOT_SUPPORTED`. Do not re-derive any of that here;
+a second authority in the dashboard is exactly the drift the backend's ladder
+exists to prevent.
+
+Verification fields come from
+`GET /direct-connections/institutions/:id/verification`, which returns the
+connector's real credential schema (`fields[]`, each with `type` and possibly
+`options`) or `available: false` with a `note`. The form renders a `select`
+when a field carries `options` (M-Pesa's `environment` is
+`sandbox`/`production`) and disables Verify until every required field is
+filled. Confirmation wording ("automatically from the rail" / "by
+reconciliation" / "manually by you") is taken from the institution's
+`confirmation_mode`, never assumed.
+
+Local verification: build with the API base pointed at a reachable backend
+(`NEXT_PUBLIC_API_URL=... npx next build`), serve `out/`, and sign in by
+loading `/dashboard/#token=<jwt>`. CORS allows `${FRONTEND_URL}`; the dev API
+must be started with `FRONTEND_URL` set to the origin you browse from or the
+browser's preflight is rejected. The C++ snippet check needs
+`libcurl4-openssl-dev` and `libcpp-httplib-dev` installed; without them
+`npm run test` fails on `curl/curl.h` / `httplib.h` — a toolchain gap, not a
+code defect.
