@@ -9,7 +9,7 @@ import { FRONTEND_OPTIONS } from './dashboard/frontendoptions';
 import { highlightCode } from './dashboard/codehighlight';
 import {
   mergeIntelligenceMethods, rankExecutableMethods, rankUnsupportedMethods, bestValueMethod,
-  emptyStateMessage, hasAnyMethod, STATE_LIVE, STATE_NOT_ON_KONDUYT,
+  emptyStateMessage, hasAnyMethod, isRouteFee, representativeLabel, STATE_LIVE, STATE_NOT_ON_KONDUYT,
 } from './dashboard/intelligenceMethods';
 
 // Landing language ids -> icon keys (only javascript differs from 'js').
@@ -78,7 +78,21 @@ var chosenProvider = null;
   }
 
   function kduIsExecutable(m) {
+    // A representative method is NEVER executable, whatever the API said about
+    // the route it came from. It is another country's rail shown as an example;
+    // the selected country has no route, so there is no Pay button, no "Best
+    // value" badge and no live styling to earn. Enforced here -- the one place
+    // executability is decided -- so no renderer can reintroduce the bug by
+    // reading onKonduyt directly.
+    if (m && m.representative === true) return false;
     return !!(m && m.onKonduyt);
+  }
+
+  // Whether a method's fee is a real, chargeable route cost for THIS customer,
+  // as opposed to a market reference or example pricing. Renderers use this for
+  // the fee label so an example is never captioned as a route fee.
+  function kduIsRouteFee(m) {
+    return !!(m && !m.representative && m.feeSource === 'konduyt');
   }
 
   // Merge into one canonical entry per payment method.
@@ -112,6 +126,11 @@ var chosenProvider = null;
         onKonduyt: m.on_konduyt === true,
         feeMinor: m.fee_minor,
         feeSource: m.fee_source || null,
+        // The currency the fee is denominated in, straight from the API. A local
+        // method's fee is priced in ITS country's currency, which is not always
+        // this checkout's transaction currency.
+        feeCurrency: m.fee_currency || null,
+        feeKind: m.fee_kind || null,
         feePercent: null,
         estimated: m.is_estimated === true,
         feeLow: null,
@@ -119,6 +138,13 @@ var chosenProvider = null;
         source: m.source || null,
         recommended: false,
         option: null,
+        // EXAMPLE data vs the country's OWN data. Read from the API per entry,
+        // never inferred: a country with no catalogue gets another country's
+        // methods shown as an example, and every one of those entries says so.
+        // This is what makes executability a claim about the SHOPPER'S country
+        // rather than about the country the example came from.
+        representative: m.representative === true,
+        sourceCountry: m.source_country || null,
       };
       entry.executable = kduIsExecutable(entry);
       entry.state = entry.executable ? KDU_STATE_LIVE : KDU_STATE_NOT_ON_KONDUYT;
@@ -143,6 +169,8 @@ var chosenProvider = null;
           onKonduyt: false,
           feeMinor: null,
           feeSource: null,
+          feeCurrency: null,
+          feeKind: null,
           feePercent: null,
           estimated: false,
           feeLow: null,
@@ -150,6 +178,8 @@ var chosenProvider = null;
           source: null,
           recommended: false,
           option: null,
+          representative: o.representative === true,
+          sourceCountry: o.source_country || null,
         };
         if (key) byKey[key] = target;
         merged.push(target);
@@ -166,6 +196,14 @@ var chosenProvider = null;
         target.feeMinor = o.fee_minor;
         target.feeSource = o.fee_source || (target.executable ? 'konduyt' : 'market');
         target.feePercent = o.fee_percent_effective != null ? o.fee_percent_effective : null;
+        if (o.fee_currency) target.feeCurrency = o.fee_currency;
+        if (o.fee_kind) target.feeKind = o.fee_kind;
+      }
+      // An option states its own provenance too; take it when present so an
+      // example cannot be laundered into real data by arriving via options.
+      if (o.representative === true || target.representative) {
+        target.representative = true;
+        target.sourceCountry = o.source_country || target.sourceCountry || null;
       }
       if (o.estimated != null) target.estimated = o.estimated === true;
       if (o.fee_minor_low != null) target.feeLow = o.fee_minor_low;
@@ -253,7 +291,23 @@ var chosenProvider = null;
 
   function kduFeeLabel(m) {
     if (!m || m.feeMinor == null) return null;
-    return m.feeSource === 'konduyt' ? 'fee' : 'Market fee';
+    if (m.representative) return 'Example fee';
+    return kduIsRouteFee(m) ? 'fee' : 'Market fee';
+  }
+
+  // The badge text for an example method, e.g. "Example from Kenya". A concise
+  // label, not a paragraph: the row itself has to carry the distinction at a
+  // glance, because a country selector can otherwise make another country's rail
+  // read as this country's own payment infrastructure. The name table is tiny on
+  // purpose -- the example source is a single country today -- and an unknown
+  // code falls back to the code itself rather than to a guessed name.
+  var KDU_SOURCE_COUNTRY_NAMES = { KE: 'Kenya' };
+
+  function kduRepresentativeLabel(m) {
+    if (!m || !m.representative) return '';
+    var code = m.sourceCountry;
+    if (!code) return 'Example';
+    return 'Example from ' + (KDU_SOURCE_COUNTRY_NAMES[code] || code);
   }
   // <<< konduyt-intelligence-methods (generated) <<<
 
@@ -313,7 +367,10 @@ function renderMethods(methods) {
     var action = m.executable
       ? '<button type="button" class="rail-pay" data-key="' + m.key + '">Pay</button>'
       : '<span class="rail-unsupported">Not on Konduyt yet</span>';
-    var fee = m.feeMinor != null ? fmt(m.feeMinor) : '—';
+    // The fee's own currency when the API names one: a local method priced in
+    // its own country's currency must not be relabelled with the transaction
+    // currency just because that is the one this page is showing.
+    var fee = m.feeMinor != null ? fmt(m.feeMinor, m.feeCurrency || CURRENCY) : '—';
     var feeNote = (m.feeMinor != null && m.feeSource !== 'konduyt')
       ? '<span class="rail-fee-note">Market fee</span>' : '';
     rows += '<tr class="rail' + (m.executable ? ' rail-executable' : ' rail-unsupported') + (isBest ? ' best' : '') + '" data-key="' + m.key + '">' +
@@ -342,9 +399,10 @@ function renderMethods(methods) {
   }
 }
 
-function fmt(minor) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY }).format(minor / 100); }
-  catch (e) { return CURRENCY + ' ' + (minor / 100).toFixed(2); }
+function fmt(minor, currency) {
+  var c = currency || CURRENCY;
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).format(minor / 100); }
+  catch (e) { return c + ' ' + (minor / 100).toFixed(2); }
 }
 
 // The actual charge -- YOUR OWN backend, never Konduyt directly. Same
@@ -1803,7 +1861,7 @@ export default function DevPanel() {
                 {options.map((o) => (
                   <div key={o.key} className={`test-more-rail test-more-rail-3col ${bestMethod != null && o.key === bestMethod.key ? 'best' : ''}`}>
                     <span className="test-more-rail-name">{o.label}</span>
-                    <span className="test-more-rail-fee">{o.feeMinor != null ? fmtMoney(o.feeMinor, payment.currency) : '—'}{o.feePercent != null ? ` · ${o.feePercent}%` : ''}{o.feeMinor != null && o.feeSource !== 'konduyt' ? ' · market fee' : ''}</span>
+                    <span className="test-more-rail-fee">{o.feeMinor != null ? fmtMoney(o.feeMinor, o.feeCurrency || payment.currency) : '—'}{o.feePercent != null ? ` · ${o.feePercent}%` : ''}{o.feeMinor != null && o.feeSource !== 'konduyt' ? ' · market fee' : ''}</span>
                     <span className="test-more-rail-action">{o.executable ? 'Pay' : 'Not on Konduyt yet'}</span>
                     {bestMethod != null && o.key === bestMethod.key && <span className="test-more-rail-reason">Best value for this payment — chosen automatically.</span>}
                   </div>
@@ -1877,21 +1935,30 @@ export default function DevPanel() {
                     <div key={o.key} className={`intel-modal-row intel-row-3col ${isBest ? 'best' : ''} ${!o.executable ? 'rail-unsupported-row' : ''} ${isDisabled ? 'rail-disabled' : ''}`}>
                       <span className="intel-rail-name">
                         {o.label}
+                        {o.representative && (
+                          <span className="intel-best-badge">{representativeLabel(o)}</span>
+                        )}
                         {isBest && o.executable && !isDisabled && <span className="intel-best-badge">Best value</span>}
                         {isDisabled && <span className="intel-rail-disabled-note">Needs a {requiredCarrier} number</span>}
                       </span>
                       <span className="intel-rail-fee">
-                        {o.feeMinor != null ? fmtMoney(o.feeMinor, payment.currency) : '—'}
+                        {o.feeMinor != null ? fmtMoney(o.feeMinor, o.feeCurrency || payment.currency) : '—'}
                         {o.feePercent != null && <span className="intel-rail-money"> · {o.feePercent}%</span>}
-                        {o.feeMinor != null && o.feeSource !== 'konduyt' && <span className="intel-rail-fee-note">Market fee</span>}
+                        {o.feeMinor != null && !isRouteFee(o) && (
+                          <span className="intel-rail-fee-note">{o.representative ? 'Example fee' : 'Market fee'}</span>
+                        )}
                       </span>
                       <span className="intel-rail-action">
                         {/* Only a method Konduyt can actually charge is
                             payable. An unsupported local method is real and
                             stays visible, but it never gets a Pay button --
-                            that would promise a charge we cannot make. */}
+                            that would promise a charge we cannot make. An
+                            example borrowed from another country is neither
+                            local nor payable, so it says so. */}
                         {!o.executable ? (
-                          <span className="intel-rail-unsupported">Not on Konduyt yet</span>
+                          <span className="intel-rail-unsupported">
+                            {o.representative ? 'Example' : 'Not on Konduyt yet'}
+                          </span>
                         ) : isDisabled ? null : (
                           <button type="button" className={`intel-pay-btn ${isMatch && detectedCarrier ? 'ready' : ''}`}
                             onClick={() => alert('Test mode — no real charge. This is exactly what your customer would tap on a real project.')}>

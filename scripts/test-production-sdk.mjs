@@ -79,7 +79,10 @@ const KE_RESPONSE = {
     { id: 'PESALINK', name: 'PesaLink', fee_minor: 2000, konduyt_state: 'PROVIDER_SUPPORTED', on_konduyt: false },
     { id: 'T_KASH', name: 'T-Kash', fee_minor: null, konduyt_state: 'NOT_ON_KONDUYT', on_konduyt: false },
   ],
-  coverage_representative: true,
+  // Kenya's own real methods. Some are priced market rows and some are not
+  // executable -- but the data is Kenya's, so it is NOT representative.
+  coverage_representative: false,
+  coverage_has_unroutable_pricing: true,
 };
 
 const text = (node) => (node ? node.textContent : '');
@@ -163,6 +166,45 @@ console.log('\n=== explicit customer country is sent; transaction is untouched =
     /amount=500000/.test(cap.url) && /currency=KES/.test(cap.url), cap.url);
 }
 
+console.log('\n=== a fee is rendered in the currency the API priced it in ===');
+{
+  // A US shopper paying a KES 5,000 sale: the country's own catalogue prices
+  // local methods in USD. Rendering that figure as KES would quote a real
+  // price in the wrong unit -- a correct number, a wrong amount of money.
+  const us = {
+    merchant: 'Demo Store', customer_country: 'US', customer_country_source: 'explicit',
+    reference_amount: 500000, reference_currency: 'KES',
+    phone_rules: { country: 'US', dial: '1', required_digits: 10, max_digits: 15, has_numbering_data: true },
+    methods: [],
+    coverage: [
+      { id: 'ACH', name: 'ACH', fee_minor: 800, fee_currency: 'USD', fee_kind: 'market',
+        fee_source: 'market', konduyt_state: 'NOT_ON_KONDUYT', on_konduyt: false },
+    ],
+  };
+  const { window, document } = loadSdk(us);
+  window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'US' });
+  await flush(); await flush();
+  const fee = text([...document.querySelectorAll('.kdu-mtd')]
+    .map((r) => r.querySelector('.kdu-mtd-fee')).find(Boolean));
+  check('the fee says USD, the currency the API priced it in', fee.includes('$') || fee.includes('USD'), fee);
+  check('the fee is NOT relabelled as the KES transaction currency',
+    !fee.includes('KES') && !fee.includes('Ksh'), fee);
+}
+
+console.log('\n=== a zero-priced method is never shown as a real price ===');
+{
+  // A suppression row (Airtel Money, fee_minor 0) is "no known merchant fee",
+  // not "free to accept". It must read unavailable, never a figure of 0.
+  const { window, document } = loadSdk(KE_RESPONSE);
+  window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'KE' });
+  await flush(); await flush();
+  const row = [...document.querySelectorAll('.kdu-mtd')]
+    .find((r) => text(r).includes('Airtel Money'));
+  check('a zero fee renders as unavailable, not as 0.00',
+    !!row && !text(row.querySelector('.kdu-mtd-fee')).includes('0.00'),
+    row ? text(row.querySelector('.kdu-mtd-fee')) : 'row missing');
+}
+
 console.log('\n=== the viewer IP is never used to change the currency ===');
 {
   const cap = {};
@@ -193,6 +235,7 @@ console.log('\n=== a country with no priced methods still shows its local method
       { id: 'GH_CARD', name: 'Cards', fee_minor: null, konduyt_state: 'NOT_ON_KONDUYT', on_konduyt: false },
     ],
     coverage_representative: false,
+    coverage_has_unroutable_pricing: false,
   };
   const { window, document } = loadSdk(gh);
   window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'GHS', customerCountry: 'GH' });
@@ -213,15 +256,52 @@ console.log('\n=== a country with no priced methods still shows its local method
     'showed the generic no-provider message');
 }
 
-console.log('\n=== representative pricing is labelled as representative ===');
+console.log('\n=== a country\'s own methods are never labelled representative ===');
 {
+  // KE_RESPONSE has real Kenyan methods, some of which Konduyt can't execute
+  // (not on Konduyt yet) and some of which are market-priced. That is a fact
+  // about KENYA, not an example borrowed from elsewhere, so the note must say
+  // what is actually true and must NOT call the data representative.
   const { window, document } = loadSdk(KE_RESPONSE);
   window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'KE' });
   await flush(); await flush();
   const note = document.querySelector('.kdu-note');
-  check('representative note is visible', !!note, 'no representative note rendered');
-  check('it says the data is representative',
-    note && /representative/i.test(text(note)), note ? text(note) : '');
+  check('a note is visible when some methods are not executable', !!note, 'no note rendered');
+  check('it does NOT call a real country\'s data representative',
+    note && !/representative/i.test(text(note)), note ? text(note) : '');
+  check('it explains the real caveat -- some methods are not available yet',
+    note && /available through Konduyt yet/i.test(text(note)), note ? text(note) : '');
+}
+
+console.log('\n=== example (borrowed) pricing is labelled as an example ===');
+{
+  // A country with no catalogue of its own. The server substitutes another
+  // country's methods; that must read as an example, never as this country's
+  // payment infrastructure.
+  const ng = {
+    merchant: 'Demo Store',
+    customer_country: 'NG',
+    reference_amount: 500000,
+    reference_currency: 'KES',
+    methods: [],
+    reason: 'no_coverage',
+    coverage: [
+      { id: 'KE_MPESA', name: 'M-Pesa', fee_minor: 7500, konduyt_state: 'NOT_ON_KONDUYT', on_konduyt: false },
+    ],
+    coverage_representative: true,
+    coverage_source_country: 'KE',
+    coverage_has_unroutable_pricing: false,
+  };
+  const { window, document } = loadSdk(ng);
+  window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'NG' });
+  await flush(); await flush();
+  const note = document.querySelector('.kdu-note');
+  check('example note is visible', !!note, 'no example note rendered');
+  check('it says the data is an example, not this country\'s methods',
+    note && /example/i.test(text(note)) && /not payment methods available in/i.test(text(note)),
+    note ? text(note) : '');
+  check('it names the source country',
+    note && /KE/.test(text(note)), note ? text(note) : '');
 }
 
 console.log('\n=== phone validation follows the API country rules ===');
@@ -294,7 +374,8 @@ console.log('\n=== a method payable AND in coverage is never shown twice ===');
       { id: 'pm_us_wire', capability_id: null, name: 'Wire Transfer', method_type: 'BANK_TRANSFER',
         fee_minor: 2500, konduyt_state: 'NOT_ON_KONDUYT', on_konduyt: false },
     ],
-    coverage_representative: true,
+    coverage_representative: false,
+    coverage_has_unroutable_pricing: true,
   };
   const { window, document } = loadSdk(resp);
   window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'USD', customerCountry: 'US' });

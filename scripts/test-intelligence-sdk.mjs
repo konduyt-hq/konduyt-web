@@ -95,6 +95,32 @@ for (const country of CASES) {
   check('unsupported count matches every distinct non-executable method',
     unsupported.length === nonExecKeys.size, `ui=${unsupported.length} api=${nonExecKeys.size}`);
 
+  // A fee is rendered in the currency the API says it is in, not in the
+  // checkout's transaction currency. A correct number under the wrong unit is
+  // a wrong price, so check the string against what that currency formats to.
+  const apiByLabel = new Map();
+  for (const m of [...locals, ...options]) {
+    if (m.fee_minor != null && m.fee_currency) apiByLabel.set(m.label, m);
+  }
+  const mislabelled = [];
+  for (const r of rows) {
+    const label = r.querySelector('.rail-name')?.textContent || '';
+    const api = apiByLabel.get(label);
+    if (!api) continue;
+    let want;
+    try {
+      want = new Intl.NumberFormat(undefined, {
+        style: 'currency', currency: api.fee_currency,
+      }).format(api.fee_minor / 100);
+    } catch { continue; }
+    const shown = r.querySelector('.rail-fee')?.textContent || '';
+    if (!shown.includes(want)) mislabelled.push(`${label}: "${shown}" != ${want}`);
+  }
+  if (apiByLabel.size) {
+    check('every fee is shown in the currency the API priced it in',
+      mislabelled.length === 0, mislabelled.join('; '));
+  }
+
   // Best value must be executable and priced, and there must be at most one.
   const bestRows = rows.filter((r) => r.classList.contains('best'));
   check('at most one Best value', bestRows.length <= 1, `got ${bestRows.length}`);
@@ -124,6 +150,127 @@ for (const country of CASES) {
     check('executable methods are grouped before unsupported ones',
       lastExecutable < firstUnsupported, `lastExec=${lastExecutable} firstUnsup=${firstUnsupported}`);
   }
+}
+
+// A synthetic case, because real catalogues currently price every method in
+// the checkout's own currency -- which is exactly the condition under which a
+// missing fee_currency would go unnoticed. The API contract allows a method
+// priced in its own country's currency, so the render path is exercised
+// directly against a response where the two currencies DIFFER.
+{
+  console.log('\nSYNTHETIC (fee currency != transaction currency)');
+  const data = {
+    payment: { amount: 500000, currency: 'KES' },
+    intelligence: {
+      local_methods: [
+        {
+          method_id: 'bank_transfer', label: 'Nigerian Bank', rail_id: 'bank_transfer',
+          method_type: 'bank', provider: 'paystack', on_konduyt: false,
+          fee_minor: 100000, fee_currency: 'NGN', fee_kind: 'market',
+          fee_source: 'market', is_estimated: true, source: 'https://example.test',
+        },
+      ],
+      options: [],
+    },
+  };
+  // Render this payload through the SDK's own published script.
+  const vc = new VirtualConsole();
+  vc.on('jsdomError', (e) => { throw e; });
+  const dom = new JSDOM(html, { runScripts: 'dangerously', virtualConsole: vc, url: 'https://konduyt.dev/' });
+  const { window } = dom;
+  window.fetch = async () => ({ json: async () => data });
+  window.document.getElementById('phoneInput').value = '722123456';
+  window.document.getElementById('phoneInput').dispatchEvent(new window.Event('input'));
+  window.document.getElementById('payButton').click();
+  await new Promise((r) => setTimeout(r, 50));
+
+  const row = [...window.document.querySelectorAll('#railRows tr')]
+    .find((r) => r.querySelector('.rail-name')?.textContent === 'Nigerian Bank');
+  const shown = row?.querySelector('.rail-fee')?.textContent || '';
+  const wantNgn = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'NGN' }).format(1000);
+  const wantKes = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'KES' }).format(1000);
+  check('a method priced in another currency is rendered in that currency',
+    shown.includes(wantNgn), `shown="${shown}" want~"${wantNgn}"`);
+  check('and is NOT relabelled with the transaction currency',
+    !shown.includes(wantKes), `shown="${shown}"`);
+}
+
+// The representative-data regression, exercised through the SDK's own
+// published script. A country with no catalogue of its own gets another
+// country's methods shown as an example. The failure this guards against is
+// the whole point of the rule: the example must NOT read as that country's
+// own payment infrastructure, and must NOT be payable.
+{
+  console.log('\nSYNTHETIC (representative/example country)');
+  const data = {
+    payment: {
+      amount: 500000, currency: 'NGN', country: 'NG',
+      method: 'mpesa', provider: 'paystack', fee_minor: 76716,
+      is_representative_example: true, representative: true, source_country: 'KE',
+    },
+    is_representative_example: true,
+    rails_country: 'KE',
+    intelligence: {
+      local_methods: [
+        {
+          method_id: 'mpesa', label: 'M-Pesa', rail_id: 'KE_MPESA',
+          method_type: 'mobile_money', provider: 'paystack', on_konduyt: false,
+          fee_minor: 76716, fee_currency: 'NGN', fee_kind: 'market',
+          fee_source: 'market', is_estimated: false, source: 'https://example.test',
+          representative: true, source_country: 'KE',
+        },
+        {
+          method_id: 'card', label: 'Cards', rail_id: 'KE_CARD',
+          method_type: 'card', provider: 'paystack', on_konduyt: false,
+          fee_minor: 148317, fee_currency: 'NGN', fee_kind: 'market',
+          fee_source: 'market', is_estimated: false, source: 'https://example.test',
+          representative: true, source_country: 'KE',
+        },
+      ],
+      options: [],
+    },
+  };
+  const vc = new VirtualConsole();
+  vc.on('jsdomError', (e) => { throw e; });
+  const dom = new JSDOM(html, { runScripts: 'dangerously', virtualConsole: vc, url: 'https://konduyt.dev/' });
+  const { window } = dom;
+  window.fetch = async () => ({ json: async () => data });
+  window.document.getElementById('phoneInput').value = '8031234567';
+  window.document.getElementById('phoneInput').dispatchEvent(new window.Event('input'));
+  window.document.getElementById('payButton').click();
+  await new Promise((r) => setTimeout(r, 50));
+
+  const rows = [...window.document.querySelectorAll('#railRows tr')];
+  check('example methods are rendered', rows.length === 2, `rows=${rows.length}`);
+  check('no example method gets a Pay button',
+    rows.every((r) => !r.querySelector('button.rail-pay')),
+    rows.map((r) => r.textContent).join(' | '));
+  check('no example method is styled as an executable row',
+    rows.every((r) => !r.classList.contains('rail-executable')),
+    rows.map((r) => r.className).join(' | '));
+  check('no example method earns a Best value badge',
+    rows.every((r) => !r.classList.contains('best')),
+    rows.map((r) => r.textContent).join(' | '));
+  check('each example row is visibly labelled an example from its source country',
+    rows.every((r) => /example from kenya/i.test(r.textContent)),
+    rows.map((r) => r.textContent).join(' | '));
+  check('an example is not captioned "Not on Konduyt yet" -- that would read as a local method',
+    rows.every((r) => !/not on konduyt yet/i.test(r.textContent)),
+    rows.map((r) => r.textContent).join(' | '));
+  check('the example fee is labelled example pricing, not a market rate',
+    rows.every((r) => /example fee/i.test(r.textContent)),
+    rows.map((r) => r.textContent).join(' | '));
+  const note = window.document.getElementById('repNote');
+  check('the summary note says the data is example data, not this country\'s methods',
+    note && /example data from ke/i.test(note.textContent) && /not payment methods available here/i.test(note.textContent),
+    note ? note.textContent : '');
+  const sub = window.document.getElementById('intelModalSub');
+  check('the subtitle does not claim these are every way this customer could pay',
+    sub && !/every way this customer could pay/i.test(sub.textContent),
+    sub ? sub.textContent : '');
+  check('the subtitle says the methods are an example',
+    sub && /example payment methods/i.test(sub.textContent),
+    sub ? sub.textContent : '');
 }
 
 console.log(`\n${'-'.repeat(64)}\n  ${passed}/${passed + failed} passed\n${'-'.repeat(64)}`);

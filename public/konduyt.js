@@ -345,11 +345,13 @@
   // An unpriced method shows an explicit "Fee unavailable" -- a null fee is
   // NEVER turned into 0, because unknown is not free.
   function feeLabel(m) {
-    if (m && m.fee_minor_low != null && m.fee_minor_high != null) {
-      return fmt(m.fee_minor_low, m._currency) + "\u2013" + fmt(m.fee_minor_high, m._currency) + " \u00b7 estimated";
+    if (!m) return "Fee unavailable";
+    var cur = m.fee_currency || m._currency;
+    if (m.fee_minor_low != null && m.fee_minor_high != null) {
+      return fmt(m.fee_minor_low, cur) + "\u2013" + fmt(m.fee_minor_high, cur) + " \u00b7 estimated";
     }
-    if (m && m.fee_minor != null) {
-      var s = fmt(m.fee_minor, m._currency);
+    if (m.fee_minor != null) {
+      var s = fmt(m.fee_minor, cur);
       if (m.fee_percent != null) s += " \u00b7 " + m.fee_percent + "%";
       else if (m.fee_estimated) s += " \u00b7 estimated";
       return s;
@@ -523,15 +525,27 @@
 
       var coverage = data.coverage || [];
       if (data.coverage_representative) {
-        // The production equivalent of the demo's is_representative_example:
-        // some prices shown here are market intelligence for methods Konduyt
-        // cannot execute for this customer yet. That must be visible, not
-        // passed off as this customer's real eligibility.
+        // REAL example data: the server borrowed another country's methods
+        // because this one has no catalogue at all. This is never true on the
+        // production checkout path -- production never substitutes another
+        // country's methods -- but if a response ever says it, the shopper
+        // must be told the methods are an example, not their local options.
+        var repSource = data.coverage_source_country ? " from " + data.coverage_source_country : "";
         var rep = el("div", "kdu-note",
-          "\u2139\uFE0F Showing representative local pricing" +
-          (modal._customerCountry ? " for " + modal._customerCountry : "") +
-          ". Methods marked \"not on Konduyt yet\" are listed for comparison \u2014 they can't be paid through Konduyt yet.");
+          "\u2139\uFE0F Example pricing" + repSource +
+          " \u2014 these are not payment methods available in " +
+          (modal._customerCountry || "this country") + ".");
         modal.appendChild(rep);
+      } else if (data.coverage_has_unroutable_pricing) {
+        // The country's OWN real methods, some of which Konduyt cannot
+        // execute here yet. Labelling these "representative" was wrong -- the
+        // data is this country's, and the only honest caveat is that a few
+        // rows are market rates rather than routes you can pay through.
+        var marketNote = el("div", "kdu-note",
+          "\u2139\uFE0F Some methods below aren't available through Konduyt yet" +
+          (modal._customerCountry ? " in " + modal._customerCountry : "") +
+          ". Those rows show the local market rate for comparison and can't be paid through Konduyt yet.");
+        modal.appendChild(marketNote);
       }
 
       if (!methods || methods.length === 0) {
@@ -585,11 +599,19 @@
       for (var bi = 0; bi < methods.length; bi++) {
         var f = methods[bi].fee_minor;
         if (f == null) continue;
+        // Only compare like with like. A local method's fee is denominated in
+        // ITS country's currency, and ranking a USD figure against a KES one
+        // would put "Best value" on the numerically smaller number regardless
+        // of what it is worth.
+        if ((methods[bi].fee_currency || modal._currency) !== modal._currency) continue;
         if (bestFee === null || f < bestFee) { bestFee = f; bestIndex = bi; }
       }
 
       methods.forEach(function (m, i) {
-        m._currency = modal._currency;
+        // The API's own fee_currency when it has one: a method priced in its
+        // own country's currency must not be relabelled with the transaction
+        // currency just because that is what this modal is showing.
+        m._currency = m.fee_currency || modal._currency;
         var b = el("button", "kdu-mtd");
         var t = el("div", "kdu-mtd-t");
         var nameRow = el("span", "kdu-mtd-n");
@@ -727,8 +749,12 @@
         b.disabled = true;
         var t = el("div", "kdu-mtd-t");
         t.appendChild(el("span", "kdu-mtd-n", c.name));
-        if (c.fee_minor != null) {
-          t.appendChild(el("span", "kdu-mtd-fee", fmt(c.fee_minor, modal._currency)));
+        // A non-positive catalogue figure is NOT a price: these rows are the
+        // methods Konduyt cannot execute, and a `0` here is a suppressed or
+        // consumer-tier row, not a free merchant fee. Showing "0.00" would
+        // tell the merchant accepting this costs nothing. Unknown is honest.
+        if (c.fee_minor != null && c.fee_minor > 0) {
+          t.appendChild(el("span", "kdu-mtd-fee", fmt(c.fee_minor, c.fee_currency || modal._currency)));
         }
         var label = c.konduyt_state === "UNAVAILABLE" ? "Unavailable here" : "Not on Konduyt yet";
         t.appendChild(el("span", "kdu-na", label));
