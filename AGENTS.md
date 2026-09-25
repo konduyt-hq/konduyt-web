@@ -77,6 +77,21 @@ for the `carrier` block.
   package, add the same probe — do not let the environment read as a defect.
   Match the missing-dependency diagnostic specifically, so a genuine syntax or
   symbol error in a sample still fails.
+- **`test:intelligence-sdk` reads the live API, not local code.** It defaults
+  `KONDUYT_API` to the deployed `konduyt-api.onrender.com` and feeds that
+  response to locally-built jsdom markup. So a pass or fail there can mean the
+  *deploy* is stale rather than the local change being wrong. Set
+  `KONDUYT_API=http://127.0.0.1:<port>` against a local uvicorn to test local
+  code; run it both ways before concluding anything. Two merges have already
+  disagreed this way: a check passed pre-merge only because the deploy still
+  returned the old, wrong payload.
+- **Assert a caption over the subset it applies to.** Non-executable rows carry
+  one of two captions: ordinary unroutable rows say `NOT ON KONDUYT YET`, while
+  representative (example) rows say `EXAMPLE` with an `Example from <country>`
+  badge. Asserting one caption across *every* `.rail-unsupported` row
+  contradicts the other caption, and the contradiction stays hidden until a
+  country actually returns representative data. Filter on `.rail-example` and
+  assert each caption over its own group.
 
 ## Landing-page code snippets
 
