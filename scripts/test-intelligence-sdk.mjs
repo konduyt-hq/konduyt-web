@@ -82,8 +82,21 @@ for (const country of CASES) {
     payButtons.every((r) => r.classList.contains('rail-executable')), '');
   check('unsupported rows carry no Pay button',
     unsupported.every((r) => !r.querySelector('button.rail-pay')), '');
+  // A non-executable row has to say WHY it cannot be paid. An ordinary
+  // unroutable method says "Not on Konduyt yet". A representative row must not
+  // say that: it is another country's rail shown as an example, and that
+  // caption would read as a local method that merely lacks a connection. Both
+  // are non-executable, so the two captions are asserted separately -- asserting
+  // one caption over every unsupported row contradicts the other.
+  const plainUnsupported = unsupported.filter((r) => !r.classList.contains('rail-example'));
+  const exampleRows = unsupported.filter((r) => r.classList.contains('rail-example'));
   check('unsupported rows show "Not on Konduyt yet"',
-    unsupported.every((r) => /not on konduyt yet/i.test(r.textContent)), '');
+    plainUnsupported.every((r) => /not on konduyt yet/i.test(r.textContent)),
+    plainUnsupported.map((r) => r.textContent).join(' | '));
+  check('representative rows are captioned an example, not "Not on Konduyt yet"',
+    exampleRows.every((r) => /example/i.test(r.textContent)
+      && !/not on konduyt yet/i.test(r.textContent)),
+    exampleRows.map((r) => r.textContent).join(' | '));
   // Baseline is the DISTINCT non-executable methods across both arrays: the
   // same method can appear in the catalogue and in the ranked options (India
   // lists UPI in both), and the merge shows it once. Comparing raw array
