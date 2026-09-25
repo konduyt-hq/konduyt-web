@@ -117,7 +117,18 @@ if (have('cargo')) {
 
 if (have('g++')) {
   const r = run('g++', ['-fsyntax-only', '-std=c++17', join(SNIPPETS, 'main.cpp')]);
-  check('C++ compiles (g++ -fsyntax-only)', r.ok, r.out.slice(0, 800));
+  // The sample links libcurl, so a machine without libcurl's development
+  // headers cannot syntax-check it at all. That is a gap in this machine, not
+  // a defect in the snippet -- report it the same way as the other
+  // SDK-dependent samples instead of as a failure. Matched on the missing
+  // header specifically, so a genuine syntax or symbol error in the sample
+  // still fails the suite.
+  const missingHeader = r.out.match(/fatal error: ([^:]+\.h): No such file or directory/);
+  if (!r.ok && missingHeader) {
+    skip('C++ full syntax check', `system header ${missingHeader[1]} not installed`);
+  } else {
+    check('C++ compiles (g++ -fsyntax-only)', r.ok, r.out.slice(0, 800));
+  }
 } else skip('C++', 'g++ not installed');
 
 // Java/Kotlin/Swift/C# depend on platform SDKs that are not installed. Rather

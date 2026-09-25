@@ -60,11 +60,18 @@ async function portIsFree(url) {
 }
 
 // Each entry is a real command line from the snippet's own header comment.
+// `probe` verifies the snippet's declared packages are importable, the same way
+// `have` verifies its interpreter exists. A sample whose dependency is missing
+// is SKIPPED, not FAILED -- "flask is not installed here" is a fact about this
+// machine, not a defect in the snippet, and reporting it as a failure made a
+// missing package read as broken sample code.
 const BACKENDS = [
-  { lang: 'Python', cmd: 'python3', args: [join(WORK, 'server.py')], url: 'http://127.0.0.1:3000' },
+  { lang: 'Python', cmd: 'python3', args: [join(WORK, 'server.py')], url: 'http://127.0.0.1:3000',
+    probe: ['python3', ['-c', 'import flask, requests']], needs: 'flask requests' },
   { lang: 'JavaScript', cmd: 'node', args: [join(WORK, 'server.mjs')], url: 'http://127.0.0.1:3000' },
   { lang: 'PHP', cmd: 'php', args: ['-S', '127.0.0.1:3000', join(WORK, 'index.php')], url: 'http://127.0.0.1:3000' },
-  { lang: 'Ruby', cmd: 'ruby', args: [join(WORK, 'server.rb')], url: 'http://127.0.0.1:3000' },
+  { lang: 'Ruby', cmd: 'ruby', args: [join(WORK, 'server.rb')], url: 'http://127.0.0.1:3000',
+    probe: ['ruby', ['-e', 'require "sinatra"']], needs: 'sinatra' },
   { lang: 'Go', cmd: 'go', args: ['run', join(WORK, 'main.go')], url: 'http://127.0.0.1:3000' },
 ];
 
@@ -73,9 +80,16 @@ const have = (cmd) => {
   catch { return false; }
 };
 
+const hasDeps = (probe) => {
+  if (!probe) return true;
+  try { execFileSync(probe[0], probe[1], { stdio: 'pipe' }); return true; }
+  catch { return false; }
+};
+
 for (const b of BACKENDS) {
   console.log(`\n${b.lang} backend — real HTTP against the snippet's own server`);
   if (!have(b.cmd)) { console.log(`  [SKIP] ${b.cmd} not installed`); continue; }
+  if (!hasDeps(b.probe)) { console.log(`  [SKIP] ${b.cmd} installed but ${b.needs} missing`); continue; }
 
   if (!(await portIsFree(b.url))) {
     check(`${b.lang} server starts and answers`, false,
