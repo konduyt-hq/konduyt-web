@@ -194,6 +194,11 @@ function kduMergeIntelligenceMethods(intelligence, opts) {
       onKonduyt: m.on_konduyt === true,
       feeMinor: m.fee_minor,
       feeSource: m.fee_source || null,
+      // The currency the fee is denominated in, straight from the API. A local
+      // method's fee is priced in ITS country's currency, which is not always
+      // this checkout's transaction currency.
+      feeCurrency: m.fee_currency || null,
+      feeKind: m.fee_kind || null,
       feePercent: null,
       estimated: m.is_estimated === true,
       feeLow: null,
@@ -225,6 +230,8 @@ function kduMergeIntelligenceMethods(intelligence, opts) {
         onKonduyt: false,
         feeMinor: null,
         feeSource: null,
+        feeCurrency: null,
+        feeKind: null,
         feePercent: null,
         estimated: false,
         feeLow: null,
@@ -248,6 +255,8 @@ function kduMergeIntelligenceMethods(intelligence, opts) {
       target.feeMinor = o.fee_minor;
       target.feeSource = o.fee_source || (target.executable ? 'konduyt' : 'market');
       target.feePercent = o.fee_percent_effective != null ? o.fee_percent_effective : null;
+      if (o.fee_currency) target.feeCurrency = o.fee_currency;
+      if (o.fee_kind) target.feeKind = o.fee_kind;
     }
     if (o.estimated != null) target.estimated = o.estimated === true;
     if (o.fee_minor_low != null) target.feeLow = o.fee_minor_low;
@@ -498,9 +507,9 @@ function renderMethods(methods) {
       : '<span class="rail-unsupported">NOT ON KONDUYT YET</span>';
     var fee;
     if (m.estimated && m.feeLow != null && m.feeHigh != null) {
-      fee = fmt(m.feeLow) + '\u2013' + fmt(m.feeHigh);
+      fee = fmt(m.feeLow, m.feeCurrency) + '\u2013' + fmt(m.feeHigh, m.feeCurrency);
     } else if (m.feeMinor != null) {
-      fee = fmt(m.feeMinor);
+      fee = fmt(m.feeMinor, m.feeCurrency);
     } else {
       fee = '\u2014';
     }
@@ -542,9 +551,14 @@ function renderMethods(methods) {
   }
 }
 
-function fmt(minor) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY }).format(minor / 100); }
-  catch (e) { return CURRENCY + ' ' + (minor / 100).toFixed(2); }
+// Format a fee in the currency the FEE is actually in. cur is the API's
+// fee_currency; only when it is absent do we fall back to the page's
+// transaction currency. Labelling a fee with a currency it is not in is a
+// price lie, not a rounding detail.
+function fmt(minor, cur) {
+  var c = cur || CURRENCY;
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).format(minor / 100); }
+  catch (e) { return c + ' ' + (minor / 100).toFixed(2); }
 }
 
 // The actual charge -- YOUR OWN backend, never Konduyt directly. Same

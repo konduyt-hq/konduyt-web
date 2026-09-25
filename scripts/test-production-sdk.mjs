@@ -163,6 +163,45 @@ console.log('\n=== explicit customer country is sent; transaction is untouched =
     /amount=500000/.test(cap.url) && /currency=KES/.test(cap.url), cap.url);
 }
 
+console.log('\n=== a fee is rendered in the currency the API priced it in ===');
+{
+  // A US shopper paying a KES 5,000 sale: the country's own catalogue prices
+  // local methods in USD. Rendering that figure as KES would quote a real
+  // price in the wrong unit -- a correct number, a wrong amount of money.
+  const us = {
+    merchant: 'Demo Store', customer_country: 'US', customer_country_source: 'explicit',
+    reference_amount: 500000, reference_currency: 'KES',
+    phone_rules: { country: 'US', dial: '1', required_digits: 10, max_digits: 15, has_numbering_data: true },
+    methods: [],
+    coverage: [
+      { id: 'ACH', name: 'ACH', fee_minor: 800, fee_currency: 'USD', fee_kind: 'market',
+        fee_source: 'market', konduyt_state: 'NOT_ON_KONDUYT', on_konduyt: false },
+    ],
+  };
+  const { window, document } = loadSdk(us);
+  window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'US' });
+  await flush(); await flush();
+  const fee = text([...document.querySelectorAll('.kdu-mtd')]
+    .map((r) => r.querySelector('.kdu-mtd-fee')).find(Boolean));
+  check('the fee says USD, the currency the API priced it in', fee.includes('$') || fee.includes('USD'), fee);
+  check('the fee is NOT relabelled as the KES transaction currency',
+    !fee.includes('KES') && !fee.includes('Ksh'), fee);
+}
+
+console.log('\n=== a zero-priced method is never shown as a real price ===');
+{
+  // A suppression row (Airtel Money, fee_minor 0) is "no known merchant fee",
+  // not "free to accept". It must read unavailable, never a figure of 0.
+  const { window, document } = loadSdk(KE_RESPONSE);
+  window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'KE' });
+  await flush(); await flush();
+  const row = [...document.querySelectorAll('.kdu-mtd')]
+    .find((r) => text(r).includes('Airtel Money'));
+  check('a zero fee renders as unavailable, not as 0.00',
+    !!row && !text(row.querySelector('.kdu-mtd-fee')).includes('0.00'),
+    row ? text(row.querySelector('.kdu-mtd-fee')) : 'row missing');
+}
+
 console.log('\n=== the viewer IP is never used to change the currency ===');
 {
   const cap = {};

@@ -95,6 +95,32 @@ for (const country of CASES) {
   check('unsupported count matches every distinct non-executable method',
     unsupported.length === nonExecKeys.size, `ui=${unsupported.length} api=${nonExecKeys.size}`);
 
+  // A fee is rendered in the currency the API says it is in, not in the
+  // checkout's transaction currency. A correct number under the wrong unit is
+  // a wrong price, so check the string against what that currency formats to.
+  const apiByLabel = new Map();
+  for (const m of [...locals, ...options]) {
+    if (m.fee_minor != null && m.fee_currency) apiByLabel.set(m.label, m);
+  }
+  const mislabelled = [];
+  for (const r of rows) {
+    const label = r.querySelector('.rail-name')?.textContent || '';
+    const api = apiByLabel.get(label);
+    if (!api) continue;
+    let want;
+    try {
+      want = new Intl.NumberFormat(undefined, {
+        style: 'currency', currency: api.fee_currency,
+      }).format(api.fee_minor / 100);
+    } catch { continue; }
+    const shown = r.querySelector('.rail-fee')?.textContent || '';
+    if (!shown.includes(want)) mislabelled.push(`${label}: "${shown}" != ${want}`);
+  }
+  if (apiByLabel.size) {
+    check('every fee is shown in the currency the API priced it in',
+      mislabelled.length === 0, mislabelled.join('; '));
+  }
+
   // Best value must be executable and priced, and there must be at most one.
   const bestRows = rows.filter((r) => r.classList.contains('best'));
   check('at most one Best value', bestRows.length <= 1, `got ${bestRows.length}`);
@@ -124,6 +150,49 @@ for (const country of CASES) {
     check('executable methods are grouped before unsupported ones',
       lastExecutable < firstUnsupported, `lastExec=${lastExecutable} firstUnsup=${firstUnsupported}`);
   }
+}
+
+// A synthetic case, because real catalogues currently price every method in
+// the checkout's own currency -- which is exactly the condition under which a
+// missing fee_currency would go unnoticed. The API contract allows a method
+// priced in its own country's currency, so the render path is exercised
+// directly against a response where the two currencies DIFFER.
+{
+  console.log('\nSYNTHETIC (fee currency != transaction currency)');
+  const data = {
+    payment: { amount: 500000, currency: 'KES' },
+    intelligence: {
+      local_methods: [
+        {
+          method_id: 'bank_transfer', label: 'Nigerian Bank', rail_id: 'bank_transfer',
+          method_type: 'bank', provider: 'paystack', on_konduyt: false,
+          fee_minor: 100000, fee_currency: 'NGN', fee_kind: 'market',
+          fee_source: 'market', is_estimated: true, source: 'https://example.test',
+        },
+      ],
+      options: [],
+    },
+  };
+  // Render this payload through the SDK's own published script.
+  const vc = new VirtualConsole();
+  vc.on('jsdomError', (e) => { throw e; });
+  const dom = new JSDOM(html, { runScripts: 'dangerously', virtualConsole: vc, url: 'https://konduyt.dev/' });
+  const { window } = dom;
+  window.fetch = async () => ({ json: async () => data });
+  window.document.getElementById('phoneInput').value = '722123456';
+  window.document.getElementById('phoneInput').dispatchEvent(new window.Event('input'));
+  window.document.getElementById('payButton').click();
+  await new Promise((r) => setTimeout(r, 50));
+
+  const row = [...window.document.querySelectorAll('#railRows tr')]
+    .find((r) => r.querySelector('.rail-name')?.textContent === 'Nigerian Bank');
+  const shown = row?.querySelector('.rail-fee')?.textContent || '';
+  const wantNgn = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'NGN' }).format(1000);
+  const wantKes = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'KES' }).format(1000);
+  check('a method priced in another currency is rendered in that currency',
+    shown.includes(wantNgn), `shown="${shown}" want~"${wantNgn}"`);
+  check('and is NOT relabelled with the transaction currency',
+    !shown.includes(wantKes), `shown="${shown}"`);
 }
 
 console.log(`\n${'-'.repeat(64)}\n  ${passed}/${passed + failed} passed\n${'-'.repeat(64)}`);

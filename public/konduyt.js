@@ -345,11 +345,13 @@
   // An unpriced method shows an explicit "Fee unavailable" -- a null fee is
   // NEVER turned into 0, because unknown is not free.
   function feeLabel(m) {
-    if (m && m.fee_minor_low != null && m.fee_minor_high != null) {
-      return fmt(m.fee_minor_low, m._currency) + "\u2013" + fmt(m.fee_minor_high, m._currency) + " \u00b7 estimated";
+    if (!m) return "Fee unavailable";
+    var cur = m.fee_currency || m._currency;
+    if (m.fee_minor_low != null && m.fee_minor_high != null) {
+      return fmt(m.fee_minor_low, cur) + "\u2013" + fmt(m.fee_minor_high, cur) + " \u00b7 estimated";
     }
-    if (m && m.fee_minor != null) {
-      var s = fmt(m.fee_minor, m._currency);
+    if (m.fee_minor != null) {
+      var s = fmt(m.fee_minor, cur);
       if (m.fee_percent != null) s += " \u00b7 " + m.fee_percent + "%";
       else if (m.fee_estimated) s += " \u00b7 estimated";
       return s;
@@ -585,11 +587,19 @@
       for (var bi = 0; bi < methods.length; bi++) {
         var f = methods[bi].fee_minor;
         if (f == null) continue;
+        // Only compare like with like. A local method's fee is denominated in
+        // ITS country's currency, and ranking a USD figure against a KES one
+        // would put "Best value" on the numerically smaller number regardless
+        // of what it is worth.
+        if ((methods[bi].fee_currency || modal._currency) !== modal._currency) continue;
         if (bestFee === null || f < bestFee) { bestFee = f; bestIndex = bi; }
       }
 
       methods.forEach(function (m, i) {
-        m._currency = modal._currency;
+        // The API's own fee_currency when it has one: a method priced in its
+        // own country's currency must not be relabelled with the transaction
+        // currency just because that is what this modal is showing.
+        m._currency = m.fee_currency || modal._currency;
         var b = el("button", "kdu-mtd");
         var t = el("div", "kdu-mtd-t");
         var nameRow = el("span", "kdu-mtd-n");
@@ -727,8 +737,12 @@
         b.disabled = true;
         var t = el("div", "kdu-mtd-t");
         t.appendChild(el("span", "kdu-mtd-n", c.name));
-        if (c.fee_minor != null) {
-          t.appendChild(el("span", "kdu-mtd-fee", fmt(c.fee_minor, modal._currency)));
+        // A non-positive catalogue figure is NOT a price: these rows are the
+        // methods Konduyt cannot execute, and a `0` here is a suppressed or
+        // consumer-tier row, not a free merchant fee. Showing "0.00" would
+        // tell the merchant accepting this costs nothing. Unknown is honest.
+        if (c.fee_minor != null && c.fee_minor > 0) {
+          t.appendChild(el("span", "kdu-mtd-fee", fmt(c.fee_minor, c.fee_currency || modal._currency)));
         }
         var label = c.konduyt_state === "UNAVAILABLE" ? "Unavailable here" : "Not on Konduyt yet";
         t.appendChild(el("span", "kdu-na", label));

@@ -112,6 +112,11 @@ var chosenProvider = null;
         onKonduyt: m.on_konduyt === true,
         feeMinor: m.fee_minor,
         feeSource: m.fee_source || null,
+        // The currency the fee is denominated in, straight from the API. A local
+        // method's fee is priced in ITS country's currency, which is not always
+        // this checkout's transaction currency.
+        feeCurrency: m.fee_currency || null,
+        feeKind: m.fee_kind || null,
         feePercent: null,
         estimated: m.is_estimated === true,
         feeLow: null,
@@ -143,6 +148,8 @@ var chosenProvider = null;
           onKonduyt: false,
           feeMinor: null,
           feeSource: null,
+          feeCurrency: null,
+          feeKind: null,
           feePercent: null,
           estimated: false,
           feeLow: null,
@@ -166,6 +173,8 @@ var chosenProvider = null;
         target.feeMinor = o.fee_minor;
         target.feeSource = o.fee_source || (target.executable ? 'konduyt' : 'market');
         target.feePercent = o.fee_percent_effective != null ? o.fee_percent_effective : null;
+        if (o.fee_currency) target.feeCurrency = o.fee_currency;
+        if (o.fee_kind) target.feeKind = o.fee_kind;
       }
       if (o.estimated != null) target.estimated = o.estimated === true;
       if (o.fee_minor_low != null) target.feeLow = o.fee_minor_low;
@@ -313,7 +322,10 @@ function renderMethods(methods) {
     var action = m.executable
       ? '<button type="button" class="rail-pay" data-key="' + m.key + '">Pay</button>'
       : '<span class="rail-unsupported">Not on Konduyt yet</span>';
-    var fee = m.feeMinor != null ? fmt(m.feeMinor) : '—';
+    // The fee's own currency when the API names one: a local method priced in
+    // its own country's currency must not be relabelled with the transaction
+    // currency just because that is the one this page is showing.
+    var fee = m.feeMinor != null ? fmt(m.feeMinor, m.feeCurrency || CURRENCY) : '—';
     var feeNote = (m.feeMinor != null && m.feeSource !== 'konduyt')
       ? '<span class="rail-fee-note">Market fee</span>' : '';
     rows += '<tr class="rail' + (m.executable ? ' rail-executable' : ' rail-unsupported') + (isBest ? ' best' : '') + '" data-key="' + m.key + '">' +
@@ -342,9 +354,10 @@ function renderMethods(methods) {
   }
 }
 
-function fmt(minor) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: CURRENCY }).format(minor / 100); }
-  catch (e) { return CURRENCY + ' ' + (minor / 100).toFixed(2); }
+function fmt(minor, currency) {
+  var c = currency || CURRENCY;
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).format(minor / 100); }
+  catch (e) { return c + ' ' + (minor / 100).toFixed(2); }
 }
 
 // The actual charge -- YOUR OWN backend, never Konduyt directly. Same
@@ -1803,7 +1816,7 @@ export default function DevPanel() {
                 {options.map((o) => (
                   <div key={o.key} className={`test-more-rail test-more-rail-3col ${bestMethod != null && o.key === bestMethod.key ? 'best' : ''}`}>
                     <span className="test-more-rail-name">{o.label}</span>
-                    <span className="test-more-rail-fee">{o.feeMinor != null ? fmtMoney(o.feeMinor, payment.currency) : '—'}{o.feePercent != null ? ` · ${o.feePercent}%` : ''}{o.feeMinor != null && o.feeSource !== 'konduyt' ? ' · market fee' : ''}</span>
+                    <span className="test-more-rail-fee">{o.feeMinor != null ? fmtMoney(o.feeMinor, o.feeCurrency || payment.currency) : '—'}{o.feePercent != null ? ` · ${o.feePercent}%` : ''}{o.feeMinor != null && o.feeSource !== 'konduyt' ? ' · market fee' : ''}</span>
                     <span className="test-more-rail-action">{o.executable ? 'Pay' : 'Not on Konduyt yet'}</span>
                     {bestMethod != null && o.key === bestMethod.key && <span className="test-more-rail-reason">Best value for this payment — chosen automatically.</span>}
                   </div>
@@ -1881,7 +1894,7 @@ export default function DevPanel() {
                         {isDisabled && <span className="intel-rail-disabled-note">Needs a {requiredCarrier} number</span>}
                       </span>
                       <span className="intel-rail-fee">
-                        {o.feeMinor != null ? fmtMoney(o.feeMinor, payment.currency) : '—'}
+                        {o.feeMinor != null ? fmtMoney(o.feeMinor, o.feeCurrency || payment.currency) : '—'}
                         {o.feePercent != null && <span className="intel-rail-money"> · {o.feePercent}%</span>}
                         {o.feeMinor != null && o.feeSource !== 'konduyt' && <span className="intel-rail-fee-note">Market fee</span>}
                       </span>
