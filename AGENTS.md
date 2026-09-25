@@ -225,11 +225,11 @@ must never invent or re-attribute a fee.
 
 The Kenya operator-attribution bug recorded here on 2026-09-24 — every
 mobile-money rail priced with M-Pesa's fee and `safaricom.co.ke` source — is
-fixed on `konduyt-api` branch `fix/mpesa-operator-attribution` (commit
-`7cb37f0`, tracked upstream as `konduyt-hq/konduyt-api#2`). It is **not yet
-pushed/deployed**, so the live deploy the popup reads may still show the old
-M-Pesa fee on every mobile-money rail until that branch ships. In the fixed
-API, each rail is priced from its own operator (source and amount):
+fixed on `konduyt-api` branch `fix/mpesa-operator-attribution` (pushed as
+`0d54ca5`, tracked upstream as `konduyt-hq/konduyt-api#2`). It is pushed but
+**not yet merged/deployed**, so the live deploy the popup reads may still show
+the old M-Pesa fee on every mobile-money rail until that branch ships. In the
+fixed API, each rail is priced from its own operator (source and amount):
 `mpesa` KES 75.00 via `paystack.com/pricing`, `airtel_money` 0 via
 `airtelkenya.com`, `t_kash` 5700, `KE_PESAPAL` 17500 — matching the data
 `app/routing/local_methods.py::_priced_via` always had.
