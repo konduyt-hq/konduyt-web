@@ -125,6 +125,19 @@ wrong at desktop width, where a phantom fourth column ate ~150px of every row.
 from CSS, so they rendered as full-size body text instead of small-caps
 markers.
 
+Two things that rule alone will not catch, both found by measuring the built
+CSS in headless Chromium at several widths rather than by reading it:
+
+- A rule that exists but never wins the cascade. The `<=520px` override of
+  `.intel-modal-row` sits *before* `.intel-modal-row.intel-row-3col` in the
+  file; equal specificity, so source order decides and the override lost. The
+  mobile grid was dead code, and the action column stayed a fraction of the
+  row. Check the winning rule, not just that a rule exists.
+- A cell with no width floor. `.intel-rail-unsupported` ("Not on Konduyt yet")
+  had no `white-space:nowrap`, so in a ~95px column it broke into three
+  one-word lines. `intel-rail-action` now carries `nowrap` for the same reason
+  the checkout page's `.rail-action` always has it.
+
 Grep both sides before trusting a variant class — take tokens only from the
 literal parts of `className`, or template expressions leak identifiers in:
 
@@ -224,18 +237,32 @@ bug, not a frontend one. Do not "fix" a fee by editing the frontend — the popu
 must never invent or re-attribute a fee.
 
 The Kenya operator-attribution bug recorded here on 2026-09-24 — every
-mobile-money rail priced with M-Pesa's fee and `safaricom.co.ke` source — is
-fixed on `konduyt-api` branch `fix/mpesa-operator-attribution` (pushed as
-`0d54ca5`, tracked upstream as `konduyt-hq/konduyt-api#2`). It is pushed but
-**not yet merged/deployed**, so the live deploy the popup reads may still show
-the old M-Pesa fee on every mobile-money rail until that branch ships. In the
-fixed API, each rail is priced from its own operator (source and amount):
-`mpesa` KES 75.00 via `paystack.com/pricing`, `airtel_money` 0 via
-`airtelkenya.com`, `t_kash` 5700, `KE_PESAPAL` 17500 — matching the data
-`app/routing/local_methods.py::_priced_via` always had.
+mobile-money rail priced with M-Pesa's fee and `safaricom.co.ke` source — was
+fixed on `konduyt-api` by PR #3 (`4b63b7d`, merged as `f3db05f`). One part of
+it did NOT land and is still open on `konduyt-api` branch
+`fix/mpesa-operator-attribution`: the consumer-tariff family of fixes, whose
+tip is now `d5c69fa`. Until that branch ships, the live deploy the popup reads
+can still hand back a consumer tariff as the executable fee. The executable
+M-Pesa fee Konduyt routes is Paystack's merchant rate, KES 75.00 at KES 5,000
+(`paystack.com/pricing`, 1.5%), not Safaricom's KES 57.00 consumer send tariff
+(`daraja`, 1.14%) — that is the exact difference the popup shows when it reads
+the fixed API instead of the deployed one.
 
 Also note the distinction the popup's own copy has to keep straight: a method
-being *priced* is not the same as being *executable*. Airtel Money has a real
-sourced fee and is still `NOT_ON_KONDUYT_YET`, because no implemented connector
-can charge it (Flutterwave enumerates only Tanzanian/Ghanaian operators, Paystack's
-connector lists `mpesa` but not `airtel_money`, `daraja` is M-Pesa-only).
+being *priced* is not the same as being *executable*. Airtel Money is
+`NOT_ON_KONDUYT_YET`, and this is now doubly true: no provider that implements
+a connector declares it. `app/connectors/capabilities.py` lists Paystack's
+Kenya capabilities as `card, bank_transfer, mpesa, apple_pay, google_pay` —
+`airtel_money` is absent. Flutterwave declares `airtel_money`, but only for
+`TZ`/`GH` operators, `daraja` is M-Pesa-only, and `operator_support_for`
+returns `None` for every candidate in Kenya. So the rail stays
+`NOT_ON_KONDUYT_YET`, its fee is genuinely unknown (the resolver reports
+`fee_minor: None`, not a number), and it never gets a Pay button.
+
+A `0` market fee is never a merchant-collection fee. Kenya's Airtel Money is
+free for Airtel-to-Airtel sends, so its published consumer table yields 0;
+`capability_resolver._resolve`'s market fallback used to carry that 0 through
+and the popup rendered `KES 0.00 · Market fee`, which reads as "accepting this
+costs the merchant nothing". The fallback now treats a 0 market reference as
+"not found" and reports no fee. Pinned by
+`app/demo_popup_fees_tests.py::test_a_free_consumer_tier_is_never_a_market_fee`.

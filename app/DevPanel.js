@@ -1519,7 +1519,6 @@ export default function DevPanel() {
   const [runState, setRunState] = useState('idle'); // idle | running | done
   const [result, setResult] = useState(null);
   const [showIntel, setShowIntel] = useState(false);
-  const [intelDetail, setIntelDetail] = useState(null); // one rail's confidence detail, or null
   const [customerPhone, setCustomerPhone] = useState('');
   const [showMore, setShowMore] = useState(false);
   const [devPlatform, setDevPlatform] = useState('render');
@@ -1879,13 +1878,6 @@ export default function DevPanel() {
                       <span className="intel-rail-name">
                         {o.label}
                         {isBest && o.executable && !isDisabled && <span className="intel-best-badge">Best value</span>}
-                        {o.executable && (
-                          <button type="button"
-                            className={`fee-intel-dot ${o.verified ? 'verified' : 'unverified'}`}
-                            title={o.verified ? 'Verified — a confirmed fee' : 'Estimated — not yet confirmed against an official source'}
-                            aria-label="Fee confidence"
-                            onClick={() => setIntelDetail(o.option || o)} />
-                        )}
                         {isDisabled && <span className="intel-rail-disabled-note">Needs a {requiredCarrier} number</span>}
                       </span>
                       <span className="intel-rail-fee">
@@ -1893,7 +1885,7 @@ export default function DevPanel() {
                         {o.feePercent != null && <span className="intel-rail-money"> · {o.feePercent}%</span>}
                         {o.feeMinor != null && o.feeSource !== 'konduyt' && <span className="intel-rail-fee-note">Market fee</span>}
                       </span>
-                      <span>
+                      <span className="intel-rail-action">
                         {/* Only a method Konduyt can actually charge is
                             payable. An unsupported local method is real and
                             stays visible, but it never gets a Pay button --
@@ -1916,58 +1908,6 @@ export default function DevPanel() {
               Test mode — no real charge. Konduyt routes to the best-value option automatically for your customers.
             </div>
             <a href="/demo/" className="intel-modal-cta">View the full demo →</a>
-          </div>
-        </div>
-      )}
-
-      {intelDetail && (
-        <div className="fee-intel-overlay" onClick={() => setIntelDetail(null)}>
-          <div className="fee-intel-popup" onClick={(ev) => ev.stopPropagation()}>
-            <button type="button" className="fee-intel-close"
-              onClick={() => setIntelDetail(null)} aria-label="Close">✕</button>
-            <div className="fee-intel-state">
-              <span className={`fee-intel-state-dot ${intelDetail.verified ? 'verified' : 'unverified'}`} />
-              {intelDetail.verified ? 'Verified' : 'Estimated, not yet confirmed'}
-            </div>
-            <div className="fee-intel-method">{intelDetail.label}</div>
-            {intelDetail.provider && (
-              <div className="fee-intel-row">
-                <span className="fee-intel-row-label">Requires connecting</span>
-                <span className="fee-intel-row-value">
-                  {intelDetail.provider.split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
-                </span>
-              </div>
-            )}
-            {intelDetail.fee_percent_effective != null && (
-              <div className="fee-intel-row">
-                <span className="fee-intel-row-label">Effective rate</span>
-                <span className="fee-intel-row-value">{intelDetail.fee_percent_effective}%</span>
-              </div>
-            )}
-            {intelDetail.source && (
-              <div className="fee-intel-row">
-                <span className="fee-intel-row-label">Source</span>
-                <span className="fee-intel-row-value">
-                  {(() => {
-                    let host = intelDetail.source;
-                    try { host = new URL(intelDetail.source).hostname.replace('www.', ''); } catch (e) {}
-                    return <a href={intelDetail.source} target="_blank" rel="noreferrer">{host}</a>;
-                  })()}
-                </span>
-              </div>
-            )}
-            {!intelDetail.verified && (
-              <div className="fee-intel-note">
-                A fee estimate exists but hasn&#8217;t been confirmed against an official source yet
-                {intelDetail.fee_minor_low != null && intelDetail.fee_minor_high != null
-                  ? ` -- shown as a real range (${fmtMoney(intelDetail.fee_minor_low, payment.currency)}\u2013${fmtMoney(intelDetail.fee_minor_high, payment.currency)}) rather than a single confirmed number.`
-                  : '.'}
-              </div>
-            )}
-            <div className="fee-intel-note">
-              This is a separate provider connection, not bundled with any other method above.
-              Connecting one doesn&apos;t automatically enable this one for your customers.
-            </div>
           </div>
         </div>
       )}
