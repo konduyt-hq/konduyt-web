@@ -195,5 +195,83 @@ for (const country of CASES) {
     !shown.includes(wantKes), `shown="${shown}"`);
 }
 
+// The representative-data regression, exercised through the SDK's own
+// published script. A country with no catalogue of its own gets another
+// country's methods shown as an example. The failure this guards against is
+// the whole point of the rule: the example must NOT read as that country's
+// own payment infrastructure, and must NOT be payable.
+{
+  console.log('\nSYNTHETIC (representative/example country)');
+  const data = {
+    payment: {
+      amount: 500000, currency: 'NGN', country: 'NG',
+      method: 'mpesa', provider: 'paystack', fee_minor: 76716,
+      is_representative_example: true, representative: true, source_country: 'KE',
+    },
+    is_representative_example: true,
+    rails_country: 'KE',
+    intelligence: {
+      local_methods: [
+        {
+          method_id: 'mpesa', label: 'M-Pesa', rail_id: 'KE_MPESA',
+          method_type: 'mobile_money', provider: 'paystack', on_konduyt: false,
+          fee_minor: 76716, fee_currency: 'NGN', fee_kind: 'market',
+          fee_source: 'market', is_estimated: false, source: 'https://example.test',
+          representative: true, source_country: 'KE',
+        },
+        {
+          method_id: 'card', label: 'Cards', rail_id: 'KE_CARD',
+          method_type: 'card', provider: 'paystack', on_konduyt: false,
+          fee_minor: 148317, fee_currency: 'NGN', fee_kind: 'market',
+          fee_source: 'market', is_estimated: false, source: 'https://example.test',
+          representative: true, source_country: 'KE',
+        },
+      ],
+      options: [],
+    },
+  };
+  const vc = new VirtualConsole();
+  vc.on('jsdomError', (e) => { throw e; });
+  const dom = new JSDOM(html, { runScripts: 'dangerously', virtualConsole: vc, url: 'https://konduyt.dev/' });
+  const { window } = dom;
+  window.fetch = async () => ({ json: async () => data });
+  window.document.getElementById('phoneInput').value = '8031234567';
+  window.document.getElementById('phoneInput').dispatchEvent(new window.Event('input'));
+  window.document.getElementById('payButton').click();
+  await new Promise((r) => setTimeout(r, 50));
+
+  const rows = [...window.document.querySelectorAll('#railRows tr')];
+  check('example methods are rendered', rows.length === 2, `rows=${rows.length}`);
+  check('no example method gets a Pay button',
+    rows.every((r) => !r.querySelector('button.rail-pay')),
+    rows.map((r) => r.textContent).join(' | '));
+  check('no example method is styled as an executable row',
+    rows.every((r) => !r.classList.contains('rail-executable')),
+    rows.map((r) => r.className).join(' | '));
+  check('no example method earns a Best value badge',
+    rows.every((r) => !r.classList.contains('best')),
+    rows.map((r) => r.textContent).join(' | '));
+  check('each example row is visibly labelled an example from its source country',
+    rows.every((r) => /example from kenya/i.test(r.textContent)),
+    rows.map((r) => r.textContent).join(' | '));
+  check('an example is not captioned "Not on Konduyt yet" -- that would read as a local method',
+    rows.every((r) => !/not on konduyt yet/i.test(r.textContent)),
+    rows.map((r) => r.textContent).join(' | '));
+  check('the example fee is labelled example pricing, not a market rate',
+    rows.every((r) => /example fee/i.test(r.textContent)),
+    rows.map((r) => r.textContent).join(' | '));
+  const note = window.document.getElementById('repNote');
+  check('the summary note says the data is example data, not this country\'s methods',
+    note && /example data from ke/i.test(note.textContent) && /not payment methods available here/i.test(note.textContent),
+    note ? note.textContent : '');
+  const sub = window.document.getElementById('intelModalSub');
+  check('the subtitle does not claim these are every way this customer could pay',
+    sub && !/every way this customer could pay/i.test(sub.textContent),
+    sub ? sub.textContent : '');
+  check('the subtitle says the methods are an example',
+    sub && /example payment methods/i.test(sub.textContent),
+    sub ? sub.textContent : '');
+}
+
 console.log(`\n${'-'.repeat(64)}\n  ${passed}/${passed + failed} passed\n${'-'.repeat(64)}`);
 process.exit(failed ? 1 : 0);

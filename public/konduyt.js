@@ -525,15 +525,27 @@
 
       var coverage = data.coverage || [];
       if (data.coverage_representative) {
-        // The production equivalent of the demo's is_representative_example:
-        // some prices shown here are market intelligence for methods Konduyt
-        // cannot execute for this customer yet. That must be visible, not
-        // passed off as this customer's real eligibility.
+        // REAL example data: the server borrowed another country's methods
+        // because this one has no catalogue at all. This is never true on the
+        // production checkout path -- production never substitutes another
+        // country's methods -- but if a response ever says it, the shopper
+        // must be told the methods are an example, not their local options.
+        var repSource = data.coverage_source_country ? " from " + data.coverage_source_country : "";
         var rep = el("div", "kdu-note",
-          "\u2139\uFE0F Showing representative local pricing" +
-          (modal._customerCountry ? " for " + modal._customerCountry : "") +
-          ". Methods marked \"not on Konduyt yet\" are listed for comparison \u2014 they can't be paid through Konduyt yet.");
+          "\u2139\uFE0F Example pricing" + repSource +
+          " \u2014 these are not payment methods available in " +
+          (modal._customerCountry || "this country") + ".");
         modal.appendChild(rep);
+      } else if (data.coverage_has_unroutable_pricing) {
+        // The country's OWN real methods, some of which Konduyt cannot
+        // execute here yet. Labelling these "representative" was wrong -- the
+        // data is this country's, and the only honest caveat is that a few
+        // rows are market rates rather than routes you can pay through.
+        var marketNote = el("div", "kdu-note",
+          "\u2139\uFE0F Some methods below aren't available through Konduyt yet" +
+          (modal._customerCountry ? " in " + modal._customerCountry : "") +
+          ". Those rows show the local market rate for comparison and can't be paid through Konduyt yet.");
+        modal.appendChild(marketNote);
       }
 
       if (!methods || methods.length === 0) {

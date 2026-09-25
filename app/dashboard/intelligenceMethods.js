@@ -43,7 +43,21 @@ function kduEntryKey(entry, fallback) {
 }
 
 function kduIsExecutable(m) {
+  // A representative method is NEVER executable, whatever the API said about
+  // the route it came from. It is another country's rail shown as an example;
+  // the selected country has no route, so there is no Pay button, no "Best
+  // value" badge and no live styling to earn. Enforced here -- the one place
+  // executability is decided -- so no renderer can reintroduce the bug by
+  // reading onKonduyt directly.
+  if (m && m.representative === true) return false;
   return !!(m && m.onKonduyt);
+}
+
+// Whether a method's fee is a real, chargeable route cost for THIS customer,
+// as opposed to a market reference or example pricing. Renderers use this for
+// the fee label so an example is never captioned as a route fee.
+function kduIsRouteFee(m) {
+  return !!(m && !m.representative && m.feeSource === 'konduyt');
 }
 
 // Merge into one canonical entry per payment method.
@@ -89,6 +103,13 @@ function kduMergeIntelligenceMethods(intelligence, opts) {
       source: m.source || null,
       recommended: false,
       option: null,
+      // EXAMPLE data vs the country's OWN data. Read from the API per entry,
+      // never inferred: a country with no catalogue gets another country's
+      // methods shown as an example, and every one of those entries says so.
+      // This is what makes executability a claim about the SHOPPER'S country
+      // rather than about the country the example came from.
+      representative: m.representative === true,
+      sourceCountry: m.source_country || null,
     };
     entry.executable = kduIsExecutable(entry);
     entry.state = entry.executable ? KDU_STATE_LIVE : KDU_STATE_NOT_ON_KONDUYT;
@@ -122,6 +143,8 @@ function kduMergeIntelligenceMethods(intelligence, opts) {
         source: null,
         recommended: false,
         option: null,
+        representative: o.representative === true,
+        sourceCountry: o.source_country || null,
       };
       if (key) byKey[key] = target;
       merged.push(target);
@@ -140,6 +163,12 @@ function kduMergeIntelligenceMethods(intelligence, opts) {
       target.feePercent = o.fee_percent_effective != null ? o.fee_percent_effective : null;
       if (o.fee_currency) target.feeCurrency = o.fee_currency;
       if (o.fee_kind) target.feeKind = o.fee_kind;
+    }
+    // An option states its own provenance too; take it when present so an
+    // example cannot be laundered into real data by arriving via options.
+    if (o.representative === true || target.representative) {
+      target.representative = true;
+      target.sourceCountry = o.source_country || target.sourceCountry || null;
     }
     if (o.estimated != null) target.estimated = o.estimated === true;
     if (o.fee_minor_low != null) target.feeLow = o.fee_minor_low;
@@ -227,7 +256,23 @@ function kduEmptyStateMessage(methods) {
 
 function kduFeeLabel(m) {
   if (!m || m.feeMinor == null) return null;
-  return m.feeSource === 'konduyt' ? 'fee' : 'Market fee';
+  if (m.representative) return 'Example fee';
+  return kduIsRouteFee(m) ? 'fee' : 'Market fee';
+}
+
+// The badge text for an example method, e.g. "Example from Kenya". A concise
+// label, not a paragraph: the row itself has to carry the distinction at a
+// glance, because a country selector can otherwise make another country's rail
+// read as this country's own payment infrastructure. The name table is tiny on
+// purpose -- the example source is a single country today -- and an unknown
+// code falls back to the code itself rather than to a guessed name.
+var KDU_SOURCE_COUNTRY_NAMES = { KE: 'Kenya' };
+
+function kduRepresentativeLabel(m) {
+  if (!m || !m.representative) return '';
+  var code = m.sourceCountry;
+  if (!code) return 'Example';
+  return 'Example from ' + (KDU_SOURCE_COUNTRY_NAMES[code] || code);
 }
 `;
 
@@ -244,6 +289,9 @@ const impl = (() => {
     ' kduEmptyStateMessage: kduEmptyStateMessage,' +
     ' kduHasAnyMethod: kduHasAnyMethod,' +
     ' kduFeeLabel: kduFeeLabel,' +
+    ' kduIsExecutable: kduIsExecutable,' +
+    ' kduIsRouteFee: kduIsRouteFee,' +
+    ' kduRepresentativeLabel: kduRepresentativeLabel,' +
     ' KDU_STATE_LIVE: KDU_STATE_LIVE,' +
     ' KDU_STATE_NOT_ON_KONDUYT: KDU_STATE_NOT_ON_KONDUYT,' +
     ' KDU_NO_METHODS: KDU_NO_METHODS };'
@@ -260,6 +308,9 @@ export const orderedMethods = impl.kduOrderedMethods;
 export const emptyStateMessage = impl.kduEmptyStateMessage;
 export const hasAnyMethod = impl.kduHasAnyMethod;
 export const feeLabel = impl.kduFeeLabel;
+export const isExecutable = impl.kduIsExecutable;
+export const isRouteFee = impl.kduIsRouteFee;
+export const representativeLabel = impl.kduRepresentativeLabel;
 export const STATE_LIVE = impl.KDU_STATE_LIVE;
 export const STATE_NOT_ON_KONDUYT = impl.KDU_STATE_NOT_ON_KONDUYT;
 export const NO_METHODS_MESSAGE = impl.KDU_NO_METHODS;

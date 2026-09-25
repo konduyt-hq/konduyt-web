@@ -114,6 +114,10 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
   tr:last-child td { border-bottom: none; }
   .badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
     background: #0a0a0a; color: #fff; padding: 3px 7px; border-radius: 5px; margin-left: 6px; }
+  /* An example borrowed from another country: visibly not this country's own
+     infrastructure, and never styled as an executable option. */
+  .badge-example { background: #fde68a; color: #7c5300; }
+  .rail-example { background: #fde68a; color: #7c5300; }
   .rail-fee { white-space: nowrap; }
   .rail-fee-note { display: block; font-size: 10px; color: #9a9a9a; font-weight: 500; }
   .rail-action { text-align: right; white-space: nowrap; }
@@ -422,7 +426,21 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
     }
 
     function kduIsExecutable(m) {
+      // A representative method is NEVER executable, whatever the API said about
+      // the route it came from. It is another country's rail shown as an example;
+      // the selected country has no route, so there is no Pay button, no "Best
+      // value" badge and no live styling to earn. Enforced here -- the one place
+      // executability is decided -- so no renderer can reintroduce the bug by
+      // reading onKonduyt directly.
+      if (m && m.representative === true) return false;
       return !!(m && m.onKonduyt);
+    }
+
+    // Whether a method's fee is a real, chargeable route cost for THIS customer,
+    // as opposed to a market reference or example pricing. Renderers use this for
+    // the fee label so an example is never captioned as a route fee.
+    function kduIsRouteFee(m) {
+      return !!(m && !m.representative && m.feeSource === 'konduyt');
     }
 
     // Merge into one canonical entry per payment method.
@@ -468,6 +486,13 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
           source: m.source || null,
           recommended: false,
           option: null,
+          // EXAMPLE data vs the country's OWN data. Read from the API per entry,
+          // never inferred: a country with no catalogue gets another country's
+          // methods shown as an example, and every one of those entries says so.
+          // This is what makes executability a claim about the SHOPPER'S country
+          // rather than about the country the example came from.
+          representative: m.representative === true,
+          sourceCountry: m.source_country || null,
         };
         entry.executable = kduIsExecutable(entry);
         entry.state = entry.executable ? KDU_STATE_LIVE : KDU_STATE_NOT_ON_KONDUYT;
@@ -501,6 +526,8 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
             source: null,
             recommended: false,
             option: null,
+            representative: o.representative === true,
+            sourceCountry: o.source_country || null,
           };
           if (key) byKey[key] = target;
           merged.push(target);
@@ -519,6 +546,12 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
           target.feePercent = o.fee_percent_effective != null ? o.fee_percent_effective : null;
           if (o.fee_currency) target.feeCurrency = o.fee_currency;
           if (o.fee_kind) target.feeKind = o.fee_kind;
+        }
+        // An option states its own provenance too; take it when present so an
+        // example cannot be laundered into real data by arriving via options.
+        if (o.representative === true || target.representative) {
+          target.representative = true;
+          target.sourceCountry = o.source_country || target.sourceCountry || null;
         }
         if (o.estimated != null) target.estimated = o.estimated === true;
         if (o.fee_minor_low != null) target.feeLow = o.fee_minor_low;
@@ -606,7 +639,23 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
 
     function kduFeeLabel(m) {
       if (!m || m.feeMinor == null) return null;
-      return m.feeSource === 'konduyt' ? 'fee' : 'Market fee';
+      if (m.representative) return 'Example fee';
+      return kduIsRouteFee(m) ? 'fee' : 'Market fee';
+    }
+
+    // The badge text for an example method, e.g. "Example from Kenya". A concise
+    // label, not a paragraph: the row itself has to carry the distinction at a
+    // glance, because a country selector can otherwise make another country's rail
+    // read as this country's own payment infrastructure. The name table is tiny on
+    // purpose -- the example source is a single country today -- and an unknown
+    // code falls back to the code itself rather than to a guessed name.
+    var KDU_SOURCE_COUNTRY_NAMES = { KE: 'Kenya' };
+
+    function kduRepresentativeLabel(m) {
+      if (!m || !m.representative) return '';
+      var code = m.sourceCountry;
+      if (!code) return 'Example';
+      return 'Example from ' + (KDU_SOURCE_COUNTRY_NAMES[code] || code);
     }
     // <<< konduyt-intelligence-methods (generated) <<<
 
@@ -614,6 +663,7 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
     var orderMethods = kduOrderedMethods;
     var bestValueMethod = kduBestValueMethod;
     var emptyStateMessage = kduEmptyStateMessage;
+    var representativeLabel = kduRepresentativeLabel;
 
     // The phone number (with its real country code) has to be filled in
     // before Pay is even clickable -- Konduyt needs it to know which
@@ -704,7 +754,13 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
           // relabeled as if $5,000 were the original price.
           var subEl = document.getElementById('intelModalSub');
           if (subEl && data.payment && typeof data.payment.amount === 'number') {
-            subEl.textContent = 'Every way this customer could pay, converted into ' + CURRENCY + ' (' + fmt(data.payment.amount) + ').';
+            // On the example path these are NOT ways this customer could pay:
+            // the country has no catalogue, so the rows below are another
+            // country's methods shown as an example. The subtitle must not
+            // promise "every way this customer could pay" while showing that.
+            subEl.textContent = data.is_representative_example
+              ? 'Example payment methods, converted into ' + CURRENCY + ' (' + fmt(data.payment.amount) + ').'
+              : 'Every way this customer could pay, converted into ' + CURRENCY + ' (' + fmt(data.payment.amount) + ').';
           }
 
           var repNote = document.getElementById('repNote');
@@ -715,8 +771,12 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
             // country, the backend says so directly
             // (is_representative_example) rather than silently showing
             // Kenya-only methods as if they were genuinely available
-            // wherever the customer is.
-            repNote.textContent = 'Estimate based on Kenya connected-provider rates, converted to ' + CURRENCY + '.';
+            // wherever the customer is. The rows below carry the same
+            // provenance individually, so the interface does not depend on
+            // this line being read.
+            var srcName = data.rails_country || 'another country';
+            repNote.textContent = 'Example data from ' + srcName + '\u2014 these are ' + srcName +
+              '\u2019s methods and rates, converted to ' + CURRENCY + ', not payment methods available here.';
 
             repNote.style.display = 'block';
           } else {
@@ -763,10 +823,20 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
         // Only a method Konduyt can actually charge gets a Pay action. An
         // unsupported one is real and worth showing, but it is not payable,
         // so it is never clickable -- offering a button that cannot work
-        // would be the dishonest half of the bug this fixes.
-        var action = m.executable
-          ? '<button type="button" class="rail-pay" data-key="' + m.key + '">Pay</button>'
-          : '<span class="rail-unsupported">NOT ON KONDUYT YET</span>';
+        // would be the dishonest half of the bug this fixes. A representative
+        // method (another country's rail shown as an example) is never
+        // executable, so it can never reach the Pay branch.
+        var action;
+        if (m.executable) {
+          action = '<button type="button" class="rail-pay" data-key="' + m.key + '">Pay</button>';
+        } else if (m.representative) {
+          // Not "NOT ON KONDUYT YET": this rail is not part of this country's
+          // payment infrastructure at all. Say example, so a shopper cannot
+          // read it as a local method that merely lacks a connection.
+          action = '<span class="rail-unsupported rail-example">EXAMPLE</span>';
+        } else {
+          action = '<span class="rail-unsupported">NOT ON KONDUYT YET</span>';
+        }
         var fee;
         if (m.estimated && m.feeLow != null && m.feeHigh != null) {
           fee = fmt(m.feeLow, m.feeCurrency) + '\u2013' + fmt(m.feeHigh, m.feeCurrency);
@@ -776,16 +846,26 @@ export const SHARED_CHECKOUT_HTML = `<!DOCTYPE html>
           fee = '\u2014';
         }
         var feeNote = '';
-        if (m.feeMinor != null && m.feeSource !== 'konduyt') {
-          feeNote = '<span class="rail-fee-note">Market fee</span>';
+        if (m.feeMinor != null && !kduIsRouteFee(m)) {
+          // An example's price is example pricing, never this country's
+          // market rate.
+          feeNote = '<span class="rail-fee-note">' + (m.representative ? 'Example fee' : 'Market fee') + '</span>';
         }
+        // The row carries the example provenance itself, at a glance. The
+        // one-line note below the table is a summary, not the load-bearing
+        // signal -- a country selector must never make another country's rail
+        // read as this country's own methods.
+        var repBadge = m.representative
+          ? '<span class="badge badge-example">' + representativeLabel(m) + '</span>'
+          : '';
         // "estimated" describes the FEE, never the payment method, so it
         // belongs on the fee and not next to the name. A method's name is
         // its name -- qualifying it reads as though the method itself were
         // somehow provisional.
         var estNote = m.estimated ? '<span class="rail-fee-note">estimated</span>' : '';
-        rows += '<tr class="rail' + (m.executable ? ' rail-executable' : ' rail-unsupported') + (isBest ? ' best' : '') + '" data-key="' + m.key + '">' +
+        rows += '<tr class="rail' + (m.executable ? ' rail-executable' : ' rail-unsupported') + (m.representative ? ' rail-example' : '') + (isBest ? ' best' : '') + '" data-key="' + m.key + '">' +
           '<td><span class="rail-name">' + m.label + '</span>' +
+          repBadge +
           (isBest ? '<span class="badge">Best value</span>' : '') + '</td>' +
           '<td class="rail-fee">' + fee + estNote + feeNote + '</td>' +
           '<td class="rail-action">' + action + '</td></tr>';
