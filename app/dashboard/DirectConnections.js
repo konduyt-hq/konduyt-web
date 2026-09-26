@@ -365,6 +365,11 @@ export default function DirectConnections({ active, onNotice }) {
                             ) : req.credentials_required ? (
                               <>
                                 <p className="dc-hint">{req.note}</p>
+                                {req.credentials_handling && (
+                                  <p className="dc-hint dc-credentials-handling">
+                                    {req.credentials_handling}
+                                  </p>
+                                )}
                                 {(req.fields || []).map((f) => (
                                   <div key={f.name} className="dc-field">
                                     <label className="dc-label" htmlFor={`f-${i.institution_id}-${f.name}`}>
