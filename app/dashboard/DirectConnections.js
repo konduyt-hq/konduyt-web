@@ -2,23 +2,33 @@
 import { useState, useEffect, useCallback } from 'react';
 import DirectConnectionsCountries from './DirectConnectionsCountries';
 
-// Direct Connections — the merchant's own payment account, connected.
+// Direct Connections — how this merchant receives money from customers in
+// their country.
 //
-// This is NOT provider orchestration. A merchant connects an account THEY
-// ALREADY OWN (mobile money or bank) so their customers can pay it directly.
-// Konduyt never holds or moves the money.
+// This is NOT a provider/API directory, and it is NOT "integrate with each
+// provider". The question it answers is: "How can I get paid here?" The answer
+// is: give Konduyt the account your customers pay — a mobile number or a bank
+// account — and you are receiving money. No provider integration is required.
+//
+// Two MODES, and they are different things:
+//   * DIRECT    the merchant adds their own account. Low-friction default.
+//               Konduyt may not be able to observe the rail, so those payments
+//               are confirmed by the merchant, not claimed automatically.
+//   * CONNECTED the merchant has a real provider integration, so Konduyt can
+//               confirm automatically. An ENHANCEMENT on top of DIRECT, never
+//               a prerequisite for it.
 //
 // The page renders EXACTLY what the API returns and derives nothing itself:
-// the status shown per institution ("Connect" / "Connected" / "Not currently
-// supported") and the action that follows come from
-// GET /direct-connections/projects/:id/catalogue. Re-deriving that rule here
-// would make the dashboard a second, drifting authority for a fact the backend
-// already owns — the same class of bug the backend's ladder exists to prevent.
+// status, action, `direct_available`, `connected_available`,
+// `automatically_confirmed` and the destination field schema all come from
+// GET /direct-connections/projects/:id/catalogue. Re-deriving any of those here
+// would make the dashboard a second, drifting authority for facts the backend
+// already owns.
 //
-// Nothing on this page claims a capability the backend has not stated:
-//   * only EXECUTABLE institutions offer a Connect button;
-//   * verification fields come from the connector's real credential schema;
-//   * an institution Konduyt cannot observe says so, and why.
+// The honesty rule this page must never break: a method being LISTED is not a
+// claim Konduyt can observe a payment to it. So the page shows the merchant's
+// own account as the primary path, marks whether Konduyt can auto-confirm, and
+// never turns a listing (or a lack of data) into a capability.
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -38,6 +48,17 @@ function StatusPill({ status }) {
   return <span className={cls}>{status}</span>;
 }
 
+// Every required field in the method's own schema is filled. Uses the schema
+// the API returned; if there is none, only the single fallback account field
+// must be present. No field-shaped rule is hard-coded per brand here.
+function destFieldsReady(inst, values) {
+  const schema = inst.destination_schema;
+  const fields = (schema && schema.fields)
+    || [{ name: 'account_number', required: true }];
+  return fields.every((f) => !f.required
+    || String((values || {})[f.name] || '').trim());
+}
+
 export default function DirectConnections({ active, onNotice }) {
   const projectId = active?.id;
   const country = active?.merchant_country;
@@ -48,7 +69,11 @@ export default function DirectConnections({ active, onNotice }) {
   const [busyId, setBusyId] = useState(null);
   // The connect/verify forms, keyed by institution id, so only one is open.
   const [openForm, setOpenForm] = useState(null);
-  const [account, setAccount] = useState('');
+  // The destination form is schema-driven: `destFields` holds the values keyed
+  // by the method's own field names (e.g. sort_code/account_number), so a bank
+  // in one market asks for different fields than a mobile rail -- without any
+  // per-brand form hard-coded here.
+  const [destFields, setDestFields] = useState({});
   const [verifyRef, setVerifyRef] = useState('');
   const [creds, setCreds] = useState({});
 
@@ -83,7 +108,7 @@ export default function DirectConnections({ active, onNotice }) {
   const [requirements, setRequirements] = useState({});
   const openConnect = async (inst, connection) => {
     setOpenForm(inst.institution_id);
-    setAccount('');
+    setDestFields({});
     setVerifyRef('');
     setCreds({});
     // Only the verify step needs the requirements; a plain connect does not.
@@ -101,18 +126,25 @@ export default function DirectConnections({ active, onNotice }) {
   const connect = async (inst) => {
     setBusyId(inst.institution_id);
     try {
+      // Send the schema field map. The API accepts either a single `account`
+      // (mapped to the primary field) or the full `fields` map for a
+      // multi-field destination -- the SAME endpoint, because the fields are
+      // the method's own, not a per-institution special case.
       const r = await fetch(
         `${API_BASE}/direct-connections/projects/${projectId}/connections`,
         { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ institution_id: inst.institution_id, account }) });
+          body: JSON.stringify({ institution_id: inst.institution_id,
+                                 fields: destFields }) });
       const d = await r.json();
       if (!r.ok) {
-        onNotice?.(d.message || d.error || 'Could not connect that account.');
+        onNotice?.(d.message || d.error || 'Could not add that payment account.');
         return;
       }
       setOpenForm(null);
       await load();
-      onNotice?.(`Connected ${inst.name} ${d.display_account}.`);
+      onNotice?.(`Added ${inst.name} ${d.display_account}. ` +
+        `Customers can now pay it; Konduyt will confirm those payments ${
+          inst.automatically_confirmed ? 'automatically' : 'with you'}.`);
     } finally {
       setBusyId(null);
     }
@@ -138,8 +170,8 @@ export default function DirectConnections({ active, onNotice }) {
       setOpenForm(null);
       await load();
       onNotice?.(d.offerable
-        ? `${inst.name} is verified and can now be offered to customers.`
-        : `${inst.name} is verified. Konduyt still cannot execute payments to it, so it is not offered at checkout.`);
+        ? `${inst.name} is verified. Customers can pay it, and Konduyt will confirm ${inst.automatically_confirmed ? 'automatically' : 'those payments with you'}.`
+        : `${inst.name} is verified, but it is not offered at checkout yet.`);
     } finally {
       setBusyId(null);
     }
@@ -201,8 +233,9 @@ export default function DirectConnections({ active, onNotice }) {
         <div>
           <h1 className="con-h1">Direct Connections</h1>
           <p className="con-sub">
-            Connect a payment account you already own — mobile money or bank — so
-            customers can pay it directly. Konduyt never holds or moves your money.
+            How you get paid in {country || 'your country'}: add the account
+            your customers pay — a mobile number or a bank account. No provider
+            integration needed. Konduyt never holds or moves your money.
           </p>
         </div>
       </div>
@@ -230,36 +263,41 @@ export default function DirectConnections({ active, onNotice }) {
 
       {catalogue && (
         <>
-          {/* The coverage line must not dress zero capability up as success.
-              A catalogued country with no connector, or a country with no
-              catalogue at all, reads as a neutral/warning statement -- never a
-              green tick implying you can connect something you cannot. */}
+          {/* The coverage line answers "how can I receive money here?", not
+              "how many APIs exist". A method being LISTED (or a country having
+              a bank list) is never dressed up as a capability: the tick is only
+              green when the API says at least one method can actually receive.
+              "Can receive" is `direct_available`, which is true for a rail the
+              merchant can be paid into even when Konduyt cannot observe it. */}
           <div className={`coverage-banner ${
-            catalogue.summary.total > 0 && catalogue.summary.executable > 0
-              ? 'coverage-ok' : 'coverage-warn'}`}>
+            catalogue.summary.direct_available > 0 ? 'coverage-ok' : 'coverage-warn'}`}>
             <span className="coverage-banner-icon">
-              {catalogue.summary.total > 0 && catalogue.summary.executable > 0
-                ? '✓' : 'ℹ'}
+              {catalogue.summary.direct_available > 0 ? '✓' : 'ℹ'}
             </span>
             <span>
               {catalogue.summary.total === 0 ? (
-                <>Konduyt has no catalogued institutions for {catalogue.country}
-                  {' '}yet, so there is nothing to connect here.</>
-              ) : catalogue.summary.executable > 0 ? (
+                <>Konduyt has no catalogued ways to receive money in
+                  {' '}{catalogue.country} yet. That is a gap in our data, not a
+                  statement that none exist.</>
+              ) : catalogue.summary.direct_available > 0 ? (
                 <>
-                  {catalogue.summary.executable} of {catalogue.summary.total}{' '}
-                  institutions in {catalogue.country} can accept a payment today.
+                  You can receive money in {catalogue.country} today.{' '}
+                  {catalogue.summary.direct_available} of {catalogue.summary.total}{' '}
+                  ways work by adding your own account — no provider setup.{' '}
+                  {catalogue.summary.executable > 0
+                    ? `${catalogue.summary.executable} can also be confirmed automatically once connected.`
+                    : ''}
                 </>
               ) : (
                 <>
-                  Konduyt describes {catalogue.summary.total} institutions in
-                  {' '}{catalogue.country}, but none can accept a payment yet —
-                  no implemented connector. Being listed is not a claim Konduyt
-                  can execute a payment to it.
+                  Konduyt describes {catalogue.summary.total} ways to receive
+                  money in {catalogue.country}, but none can accept a payment
+                  yet. Being listed is not a claim that Konduyt can receive into
+                  it.
                 </>
               )}
               {catalogue.summary.connected > 0
-                ? ` ${catalogue.summary.connected} connected.` : ''}
+                ? ` ${catalogue.summary.connected} already set up.` : ''}
             </span>
           </div>
 
@@ -301,23 +339,37 @@ export default function DirectConnections({ active, onNotice }) {
                             <span className="dc-account-name"> · {conn.account_name}</span>
                           )}
                           <span className="dc-account-state">
-                            {conn.state === 'EXECUTABLE'
-                              ? (conn.offerable
-                                ? 'Verified · live at checkout'
-                                : 'Verified · not offered to customers')
-                              : conn.state === 'VERIFIED'
-                                ? 'Verified · not executable yet'
-                                : 'Connected · not verified yet'}
+                            {conn.state === 'CONNECTED'
+                              ? 'Added · not verified yet'
+                              : (conn.state === 'EXECUTABLE' || conn.state === 'DIRECT_READY')
+                                ? (conn.offerable
+                                  ? `Verified · live at checkout · ${
+                                    conn.state === 'EXECUTABLE'
+                                      ? 'confirmed automatically'
+                                      : 'confirmed with you'}`
+                                  : 'Verified · not offered to customers')
+                                : 'Verified · not offered yet'}
                           </span>
                         </div>
-                      ) : i.execution_capability === 'EXECUTABLE' ? (
-                        <div className="dc-account">
-                          Connect your {i.account_label || 'account'} (
-                          {i.account_format})
-                        </div>
+                      ) : i.direct_available ? (
+                        <>
+                          <div className="dc-account">
+                            Customers pay your {i.account_label || 'account'}
+                            {' '}({i.account_format}). No provider setup needed.
+                          </div>
+                          <div className="dc-meta">
+                            {i.connected_available
+                              ? 'You can add the account now. Connecting a provider '
+                                + 'integration is optional — it only lets Konduyt '
+                                + 'confirm these payments automatically.'
+                              : 'Konduyt cannot observe this rail, so you confirm '
+                                + 'these payments yourself. It can still receive.'}
+                          </div>
+                        </>
                       ) : (
                         <div className="dc-account dc-unsupported-reason">
-                          {i.limitation_note || 'Not supported yet.'}
+                          {i.limitation_note
+                            || 'Konduyt has no way to receive money here yet.'}
                           {i.obtain_instructions && (
                             <>
                               {' '}
@@ -330,14 +382,16 @@ export default function DirectConnections({ active, onNotice }) {
                         </div>
                       )}
 
-                      {/* Only claim a confirmation mode the backend says applies. */}
-                      {i.execution_capability === 'EXECUTABLE' && (
+                      {/* The confirmation mode is a backend fact, never inferred
+                          here. Shown for any payable method -- including DIRECT
+                          ones where it is MANUAL -- so a merchant is never told
+                          "automatic" for a rail Konduyt cannot observe. */}
+                      {conn && (conn.state === 'EXECUTABLE' || conn.state === 'DIRECT_READY')
+                        && (
                         <div className="dc-meta">
-                          Payments are confirmed {i.confirmation_mode === 'AUTOMATIC'
+                          Payments are confirmed {conn.state === 'EXECUTABLE'
                             ? 'automatically from the rail'
-                            : i.confirmation_mode === 'RECONCILIATION'
-                              ? 'by reconciliation against the rail'
-                              : 'manually by you'}.
+                            : 'manually by you'}.
                           {i.refund_note ? ` ${i.refund_note}` : ''}
                         </div>
                       )}
@@ -355,10 +409,11 @@ export default function DirectConnections({ active, onNotice }) {
                           )}
                           {/* Offering is a switch, separate from connecting: a
                               verified account can be taken out of checkout
-                              without disconnecting it. Only shown when the
-                              backend says the connection is executable, so the
-                              button never offers a capability the rail lacks. */}
-                          {conn.state === 'EXECUTABLE' && (
+                              without disconnecting it. Shown for any PAYABLE
+                              connection the backend marks offerable-capable
+                              (EXECUTABLE or DIRECT_READY) -- the API decides,
+                              not this page. */}
+                          {(conn.state === 'EXECUTABLE' || conn.state === 'DIRECT_READY') && (
                             <button type="button" className="dc-btn"
                               disabled={busy}
                               onClick={() => setOffering(i, conn, !conn.offerable)}>
@@ -375,7 +430,7 @@ export default function DirectConnections({ active, onNotice }) {
                         <button type="button" className="dc-btn dc-btn-primary"
                           disabled={busy}
                           onClick={() => openConnect(i)}>
-                          Connect
+                          Add payment account
                         </button>
                       ) : (
                         <button type="button" className="dc-btn" disabled>
@@ -388,21 +443,40 @@ export default function DirectConnections({ active, onNotice }) {
                       <div className="dc-form">
                         {!conn && (
                           <>
-                            <label className="dc-label" htmlFor={`acct-${i.institution_id}`}>
-                              {i.account_label || 'Account'}
-                            </label>
-                            <input id={`acct-${i.institution_id}`} className="dc-input"
-                              value={account} placeholder={i.account_example || ''}
-                              onChange={(e) => setAccount(e.target.value)} />
-                            <p className="dc-hint">
-                              {i.account_format}
-                              {i.account_example ? ` · e.g. ${i.account_example}` : ''}
-                            </p>
+                            {/* The fields come from the method's OWN destination
+                                schema (i.destination_schema), so a Kenyan mobile
+                                rail asks for a number and a UK bank asks for a
+                                sort code + account number — with no per-brand
+                                form hard-coded on this page. If the API sends no
+                                schema, fall back to a single account field. */}
+                            {((i.destination_schema && i.destination_schema.fields)
+                              || [{ name: 'account_number',
+                                    label: i.account_label || 'Account',
+                                    required: true, type: 'text',
+                                    help: i.account_format,
+                                    example: i.account_example }]).map((f) => (
+                              <div key={f.name} className="dc-field">
+                                <label className="dc-label"
+                                  htmlFor={`dest-${i.institution_id}-${f.name}`}>
+                                  {f.label}{f.required ? '' : ' (optional)'}
+                                </label>
+                                <input id={`dest-${i.institution_id}-${f.name}`}
+                                  className="dc-input" type="text"
+                                  placeholder={f.example || ''}
+                                  value={destFields[f.name] || ''}
+                                  onChange={(e) => setDestFields((s) => ({
+                                    ...s, [f.name]: e.target.value }))} />
+                                {f.help && <p className="dc-hint">{f.help}</p>}
+                              </div>
+                            ))}
+                            {i.destination_schema && i.destination_schema.note && (
+                              <p className="dc-hint">{i.destination_schema.note}</p>
+                            )}
                             <div className="dc-form-actions">
                               <button type="button" className="dc-btn dc-btn-primary"
-                                disabled={busy || !account}
+                                disabled={busy || !destFieldsReady(i, destFields)}
                                 onClick={() => connect(i)}>
-                                {busy ? 'Connecting…' : 'Connect account'}
+                                {busy ? 'Adding…' : 'Add payment account'}
                               </button>
                               <button type="button" className="dc-btn"
                                 onClick={() => setOpenForm(null)}>Cancel</button>
