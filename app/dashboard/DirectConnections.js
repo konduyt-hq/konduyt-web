@@ -229,13 +229,36 @@ export default function DirectConnections({ active, onNotice }) {
 
       {catalogue && (
         <>
-          <div className="coverage-banner coverage-ok">
-            <span className="coverage-banner-icon">✓</span>
+          {/* The coverage line must not dress zero capability up as success.
+              A catalogued country with no connector, or a country with no
+              catalogue at all, reads as a neutral/warning statement -- never a
+              green tick implying you can connect something you cannot. */}
+          <div className={`coverage-banner ${
+            catalogue.summary.total > 0 && catalogue.summary.executable > 0
+              ? 'coverage-ok' : 'coverage-warn'}`}>
+            <span className="coverage-banner-icon">
+              {catalogue.summary.total > 0 && catalogue.summary.executable > 0
+                ? '✓' : 'ℹ'}
+            </span>
             <span>
-              {catalogue.summary.executable} of {catalogue.summary.total} institutions
-              in {catalogue.country} can be connected today
+              {catalogue.summary.total === 0 ? (
+                <>Konduyt has no catalogued institutions for {catalogue.country}
+                  {' '}yet, so there is nothing to connect here.</>
+              ) : catalogue.summary.executable > 0 ? (
+                <>
+                  {catalogue.summary.executable} of {catalogue.summary.total}{' '}
+                  institutions in {catalogue.country} can accept a payment today.
+                </>
+              ) : (
+                <>
+                  Konduyt describes {catalogue.summary.total} institutions in
+                  {' '}{catalogue.country}, but none can accept a payment yet —
+                  no implemented connector. Being listed is not a claim Konduyt
+                  can execute a payment to it.
+                </>
+              )}
               {catalogue.summary.connected > 0
-                ? ` — ${catalogue.summary.connected} connected.` : '.'}
+                ? ` ${catalogue.summary.connected} connected.` : ''}
             </span>
           </div>
 

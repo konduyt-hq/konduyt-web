@@ -63,10 +63,10 @@ const check = (name, ok, detail = '') => {
 // The API's own catalogue shape: the page renders this and derives nothing.
 // `connection.state` and `connection.offerable` are the two API facts the
 // status text is allowed to depend on.
-function catalogue(connectionState, offerable) {
+function catalogue(connectionState, offerable, summary) {
   return {
     country: 'KE',
-    summary: { executable: 1, total: 2, connected: 1 },
+    summary: summary || { executable: 1, total: 2, connected: 1 },
     sections: [{
       category: 'MOBILE_MONEY', title: 'Mobile Money',
       institutions: [{
@@ -131,6 +131,29 @@ check('a connected-but-unverified connection says "not verified yet"',
   text.includes('Connected · not verified yet'), text);
 check('a connected-but-unverified connection never reads "live at checkout"',
   !text.includes('live at checkout'), text);
+
+// The coverage line is the other half of "no invented coverage": a country the
+// API catalogues with ZERO executable institutions must not read as a green
+// success banner. This is the global-directory case -- every row is listed but
+// none can be paid.
+console.log('\nDirect Connections dashboard: the coverage line is honest at zero');
+console.log('-----------------------------------------------------------');
+
+// A directory country: many institutions, none executable.
+text = await render(catalogue('NOT_SUPPORTED', false,
+  { executable: 0, total: 47, connected: 0 }));
+check('a zero-executable country says none can accept a payment yet',
+  text.includes('none can accept a payment yet'), text);
+check('a zero-executable country does NOT say "can accept a payment today"',
+  !text.includes('can accept a payment today'), text);
+check('a zero-executable country does NOT show the green success tick',
+  !text.includes('✓'), text);
+
+// A country with nothing catalogued at all.
+text = await render(catalogue('NOT_SUPPORTED', false,
+  { executable: 0, total: 0, connected: 0 }));
+check('a country with no catalogue says there is nothing to connect',
+  text.includes('nothing to connect'), text);
 
 rmSync(TMP, { force: true });
 

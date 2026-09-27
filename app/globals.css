@@ -2880,3 +2880,27 @@
   .dc-hint{font-size:11.5px; color:var(--text-secondary); margin-top:5px; line-height:1.5; max-width:520px;}
   .dc-form-actions{display:flex; gap:8px; margin-top:14px;}
   .dc-footnote{font-size:12px; color:var(--text-secondary); line-height:1.55; max-width:680px;}
+  .coverage-neutral{background:var(--panel); color:var(--body); border:1px solid var(--border);}
+  .coverage-neutral .coverage-banner-icon{color:var(--text-secondary);}
+
+  /* Direct Connections directory browser
+     (app/dashboard/DirectConnectionsDirectory.js). Every class named there has a
+     rule here, so nothing falls back to full-size body text. */
+  .dc-dir{max-width:980px;}
+  .dc-dir-search{display:flex; gap:8px; align-items:center; margin-bottom:18px;}
+  .dc-dir-search-input{max-width:520px;}
+  .dc-dir-results{margin-top:6px;}
+  .dc-dir-detail{margin-top:6px;}
+  .dc-dir-detail-head{margin-bottom:12px;}
+  .dc-dir-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
+    gap:8px; margin-top:10px;}
+  .dc-dir-country{display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+    font:inherit; text-align:left; border:1px solid var(--border); border-radius:10px;
+    background:#fff; padding:10px 12px; cursor:pointer; width:100%;}
+  .dc-dir-country:hover{border-color:var(--accent); background:var(--panel);}
+  .dc-dir-country .dc-name{font-size:13px;}
+  .dc-dir-country .dc-operator{margin-top:0;}
+  .dc-dir-bank{font-size:12.5px; color:var(--body); border:1px solid var(--border);
+    border-radius:8px; padding:7px 10px; background:#fff; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;}
+  .dc-dir-browse{margin-top:4px;}
