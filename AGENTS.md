@@ -329,3 +329,32 @@ when the backend reports the connection `EXECUTABLE`. Disabling is not a
 disconnect -- the row stays connected and verified and stays listed; it just
 leaves checkout. The status text must reflect `offerable`, or it claims "live at
 checkout" for an account the merchant just removed.
+
+## The directory browser tab: a listing is never a capability
+
+`app/dashboard/DirectConnectionsDirectory.js` is the dashboard's "Directory"
+tab (registered in `page.js` as `['directory', 'Directory']`). It is the
+"what exists where" surface, deliberately split from `DirectConnections.js`
+("connect an account I own"), and it reads only three public API endpoints:
+`/direct-connections/countries`, `/countries/{code}` and `/search?q=`.
+
+This is the surface where "listed" is most likely to be misread as "payable",
+so three claims are forbidden and pinned by
+`scripts/test-direct-connections-directory-render.mjs` (wired into `npm test`
+as `test:direct-connections-directory`):
+
+* **A zero-connector country must say none can accept a payment.** Its banner
+  text and the `✓` icon are gated on `execution.executable > 0` from the API;
+  the icon is an `ℹ`, never a green tick, when the count is zero.
+* **An uncatalogued country must say "a gap in our data", not "no banks".**
+  `discovery_state === 'not_discovered'` renders "Not catalogued yet" and the
+  gap sentence. Silence (or a bare empty list) would read as a claim of
+  absence, which is a different and false thing.
+* **Search never implies capability.** Bank and mobile-money hits show their
+  country and source link and repeat the API's "not a capability" note.
+
+The component derives nothing: every number comes from the payload. It also
+follows the repo's layout-variant rule -- every class in its JSX has a rule in
+`globals.css` (the `dc-dir-*` block) or reuses a `dc-*` / `coverage-*` one, and
+`.coverage-neutral` was added for the neutral (not success, not warning)
+banner used on the browse list.
