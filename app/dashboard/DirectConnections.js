@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import DirectConnectionsCountries from './DirectConnectionsCountries';
 
 // Direct Connections — the merchant's own payment account, connected.
 //
@@ -486,6 +487,12 @@ export default function DirectConnections({ active, onNotice }) {
           <p className="dc-footnote">{catalogue.note}</p>
         </>
       )}
+
+      {/* The global landscape: every country, its mobile-money services and its
+          banks. This is the same Direct Connections surface, not a separate
+          destination — it uses the same page, heading and honesty rules. */}
+      <div className="dc-detail-divider" />
+      <DirectConnectionsCountries active={active} />
     </div>
   );
 }

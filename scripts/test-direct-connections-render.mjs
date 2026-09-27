@@ -29,6 +29,27 @@ const { JSDOM } = require('jsdom');
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+function compile(relPath, outName) {
+  const src = readFileSync(join(ROOT, relPath), 'utf8');
+  const code = babel.transformSync(src, {
+    filename: relPath.split('/').pop(),
+    presets: [[presetReact, { runtime: 'classic' }]],
+    plugins: [pluginCjs],
+    babelrc: false, configFile: false,
+  }).code;
+  // 'use client' is a Next directive the plain CommonJS module does not need,
+  // and classic JSX emit expects `React` in scope (Next injects it at build).
+  const body = code.replace(/^['"]use client['"];?/, '');
+  const out = join(ROOT, outName);
+  writeFileSync(out, `var React = require('react');\n${body}`);
+  return out;
+}
+
+// The dashboard now renders the country browser inside DirectConnections, so
+// both modules must be in the CommonJS require graph. Point the import at the
+// compiled child before writing the parent.
+const TMP_COUNTRIES = compile('app/dashboard/DirectConnectionsCountries.js',
+  '.dc-countries-render.cjs');
 const SRC = readFileSync(join(ROOT, 'app/dashboard/DirectConnections.js'), 'utf8');
 const compiled = babel.transformSync(SRC, {
   filename: 'DirectConnections.js',
@@ -36,10 +57,10 @@ const compiled = babel.transformSync(SRC, {
   plugins: [pluginCjs],
   babelrc: false, configFile: false,
 }).code;
-// 'use client' is a Next directive the plain CommonJS module does not need, and
-// classic JSX emit expects `React` in scope (Next injects it at build time).
 const TMP = join(ROOT, '.direct-connections-render.cjs');
-const body = compiled.replace(/^['"]use client['"];?/, '');
+const body = compiled.replace(/^['"]use client['"];?/, '')
+  .replace(/require\(['"]\.\/DirectConnectionsCountries['"]\)/,
+    "require('./.dc-countries-render.cjs')");
 writeFileSync(TMP, `var React = require('react');\n${body}`);
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>',
@@ -87,9 +108,25 @@ function catalogue(connectionState, offerable, summary) {
 }
 
 async function render(payload) {
-  const fakeFetch = () => Promise.resolve({
-    ok: true, status: 200, json: () => Promise.resolve(payload),
-  });
+  // The country browser now lives inside DirectConnections and fetches the
+  // country list on mount. Serve that too, so the parent's own assertions see
+  // the same text they always did.
+  const countryList = {
+    total: 197, discovered: 189,
+    countries: [
+      { code: 'KE', name: 'Kenya', region: 'Africa', subregion: 'Eastern Africa',
+        discovery_state: 'discovered' },
+      { code: 'NG', name: 'Nigeria', region: 'Africa', subregion: 'Western Africa',
+        discovery_state: 'not_discovered' },
+    ],
+  };
+  const fakeFetch = (url) => {
+    const body = String(url).includes('/direct-connections/countries')
+      ? countryList : payload;
+    return Promise.resolve({
+      ok: true, status: 200, json: () => Promise.resolve(body),
+    });
+  };
   dom.window.fetch = fakeFetch;
   global.fetch = fakeFetch;
   const container = dom.window.document.createElement('div');
@@ -156,6 +193,7 @@ check('a country with no catalogue says there is nothing to connect',
   text.includes('nothing to connect'), text);
 
 rmSync(TMP, { force: true });
+rmSync(TMP_COUNTRIES, { force: true });
 
 console.log('-----------------------------------------------------------');
 console.log(`${checks - failures}/${checks} checks passed`);

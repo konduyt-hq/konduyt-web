@@ -349,20 +349,27 @@ cannot quietly drop or rewrite it.
 
 ### Completeness, and the two counts that are not interchangeable
 
-The directory renders the whole `countries` array the API returns (197), one
-button per country, grouped by region -- there is no `.slice`, no pagination,
-no lazy loading, no "discovered only" filter, and no hard-coded country list or
-total. The regression suite asserts that on the mounted DOM (one button per API
-country, nothing missing, nothing duplicated), not on the payload, because a
-subset would still pass an API check. It also opens the user-facing countries
-across regions (Kenya, Nigeria, India, Brazil, US, Germany, Japan, Australia,
-Kosovo, Taiwan, Vatican City) and asserts each detail renders the bank and
-mobile-money rows the API supplied.
+The landscape renders the whole `countries` array the API returns (197), one
+button per country, grouped into six region chips -- there is no `.slice`, no
+pagination, no lazy loading, no "discovered only" filter, and no hard-coded
+country list or total. The regression suite asserts that on the mounted DOM (one
+button per API country, nothing missing, nothing duplicated), not on the
+payload, because a subset would still pass an API check. It also opens the
+user-facing countries across regions (Kenya, Nigeria, India, Brazil, US, Germany,
+Japan, Australia, Kosovo, Taiwan, Vatican City) and asserts each detail renders
+the bank and mobile-money rows the API supplied.
+
+The six chips are a reading aid, not a filter over a seventh bucket: the API
+groups the western hemisphere under the single `Americas` region with a
+`subregion`, and `regionOf` maps South America to its own chip and everything
+else (North, Central America, the Caribbean) to North America. The flag is
+derived from the ISO code by `flagEmoji`, never from a hand-maintained table, so
+a country can never be shown under a flag that disagrees with its code.
 
 A country detail carries two different counts and they must never be swapped:
 
 * `detail.banks` / `detail.mobile_money` are the **sourced directory rows** the
-  panel below lists (e.g. Nigeria: 40 banks, 3 mobile-money services);
+  panel below lists (e.g. Kenya: 37 banks, 3 mobile-money services);
 * `execution.listed` is the **connector-registry** count in `dc_institutions`,
   which is empty for most countries.
 
@@ -370,61 +377,83 @@ A country detail carries two different counts and they must never be swapped:
 {execution.listed} institutions here" printed "0 institutions" directly above a
 panel listing 40 banks for 188 of 197 countries -- a false statement on the
 honesty-critical surface. The registry count is still reported, separately, when
-non-zero. Check 3 of the render suite pins this.
+non-zero. The render suite pins this.
 
 Regenerate `scripts/fixtures/direct-connections.sample.json` from the live API
-whenever the payload shape or directory data changes; the fixture now covers the
-browse list plus all eleven inspected countries and two searches.
+whenever the payload shape or directory data changes; the fixture covers the
+browse list plus all eleven inspected countries and four searches. Kenya's rows
+in the fixture come from `app/direct_connections/directory_data.py` because the
+`/countries/{code}` endpoint is DB-backed and cannot run without Postgres.
 
-## The directory browser tab: a listing is never a capability
+## Direct Connections: one destination, no separate Directory tab
 
-`app/dashboard/DirectConnectionsDirectory.js` is the dashboard's "Directory"
-tab (registered in `page.js` as `['directory', 'Directory']`). It is the
-"what exists where" surface, deliberately split from `DirectConnections.js`
-("connect an account I own"), and it reads only three public API endpoints:
-`/direct-connections/countries`, `/countries/{code}` and `/search?q=`.
+The global landscape ("what exists where") is **not** a separate tab. It lives
+inside the Direct Connections destination as
+`app/dashboard/DirectConnectionsCountries.js`, rendered at the bottom of
+`DirectConnections.js` ("connect an account I own"). `page.js` has no
+`['directory', 'Directory']` entry, no `direct`/`directory` split, and no
+`DirectConnectionsDirectory` import. Removing the tab was deliberate: the
+landscape is the information that powers the connect surface, so splitting them
+made the user cross a boundary that does not exist in the data model.
 
-This is the surface where "listed" is most likely to be misread as "payable",
-so three claims are forbidden and pinned by
-`scripts/test-direct-connections-directory-render.mjs` (wired into `npm test`
-as `test:direct-connections-directory`):
+The component reads three public endpoints: `/direct-connections/countries`,
+`/countries/{code}` and `/search?q=`. It is the surface where "listed" is most
+likely to be misread as "payable", so these claims are forbidden and pinned by
+`scripts/test-direct-connections-countries-render.mjs` (wired into `npm test` as
+`test:direct-connections-countries`):
 
 * **A zero-connector country must say none can accept a payment.** Its banner
   text and the `✓` icon are gated on `execution.executable > 0` from the API;
   the icon is an `ℹ`, never a green tick, when the count is zero.
 * **An uncatalogued country must say "a gap in our data", not "no banks".**
-  `discovery_state === 'not_discovered'` renders "Not catalogued yet" and the
-  gap sentence. Silence (or a bare empty list) would read as a claim of
-  absence, which is a different and false thing.
-* **Search never implies capability.** Bank and mobile-money hits show their
-  country and source link and repeat the API's "not a capability" note.
+  `discovery_state === 'not_discovered'` renders "Not yet in our data" and the
+  gap sentence. Silence (or a bare empty list) would read as a claim of absence,
+  which is a different and false thing.
+* **Per-service state comes from the API's own `execution_capability`.**
+  `EXECUTABLE` reads "Can accept a payment"; anything else reads "Not
+  connectable yet". The component never invents a status from the list size.
+* **There is no Connect affordance here.** The test asserts no
+  `dc-btn-primary` exists on this surface; connecting happens on the connect
+  half, against a real project, and only for executable services.
 
 The component derives nothing: every number comes from the payload. It also
 follows the repo's layout-variant rule -- every class in its JSX has a rule in
-`globals.css` (the `dc-dir-*` block) or reuses a `dc-*` / `coverage-*` one, and
-`.coverage-neutral` was added for the neutral (not success, not warning)
-banner used on the browse list.
+`globals.css` (the `dc-dir-*` / `dc-region*` / `dc-flag` block) or reuses a
+`dc-*` / `coverage-*` one, and `.coverage-neutral` was added for the neutral
+(not success, not warning) banner used on the browse list.
 
 ### Real-data pass and the wiring guard
 
 The test has two halves. The first uses hand-shaped stubs to exercise the
-forbidden claims. The second, `Direct Connections directory vs the real API
-payloads`, drives the same component with
-`scripts/fixtures/direct-connections.sample.json` -- payloads captured from the
-running `konduyt-api` (`/countries`, `/countries/KE|NG|VA`, `/search`). That
-half asserts the component reproduces the API's own 197/discovered/executable
-numbers and lists the real banks, so the honesty claims hold against the real
-world and not only against stubs. **Regenerate the fixture from `konduyt-api`
-whenever the API payload shape or the directory data changes**, or this half
-will pin stale expectations.
+forbidden claims. The second drives the same component with
+`scripts/fixtures/direct-connections.sample.json`, payloads captured from the
+running `konduyt-api` (`/countries`, `/countries/{KE,NG,IN,BR,US,DE,JP,AU,XK,VA,TW}`,
+`/institutions?country=KE`, four searches). That half asserts the component
+reproduces the API's own 197/discovered numbers and lists the real banks, so the
+honesty claims hold against the real world and not only against stubs.
+**Regenerate the fixture whenever the API payload shape or the directory data
+changes**, or this half will pin stale expectations.
 
 The test also guards the *wiring*, because a component that renders correctly
-but is never mounted is not delivered: it asserts `page.js` imports
-`DirectConnectionsDirectory`, registers the `['directory', 'Directory']` tab,
-and mounts `<DirectConnectionsDirectory>` under `tab === 'directory'`, and that
-the Directory view and the "connect an account" view stay separate tabs.
+but is never mounted is not delivered: it asserts `DirectConnections.js`
+imports `DirectConnectionsCountries` and renders `<DirectConnectionsCountries>`,
+and that `page.js` no longer imports `DirectConnectionsDirectory`, no longer
+registers the `['directory', 'Directory']` tab, and no longer carries a
+`directory:` entry in `TAB_TITLES` -- and that the old component file is gone.
+
+### Kenya names T-Kash, and listing is still not capability
+
+The served directory for Kenya previously listed only M-Pesa and Airtel Money.
+T-Kash (Telkom Kenya's wallet, rebrand of Orange Money Kenya) was missing even
+though it is in the connector registry. It is now in the directory
+(`app/direct_connections/directory_data.py`) with operator `Telkom Kenya` and a
+citable source. **Listing is not capability**: T-Kash stays `NOT_SUPPORTED`
+because Telkom has no implemented connector, and the API test suite pins that
+pair. Equitel is deliberately *not* added -- Equity Bank's MVNO pairs a SIM with
+the Equity Bank account and CAK has not examined it as a mobile-money product,
+so it is bank-based rather than mobile money.
 
 The 197 here is a composition, not a bare number: 193 UN members + 2 observers
 (VA, PS) + Taiwan = 196, + Kosovo = 197. `banks_unique` (API-side) counts
-distinct normalized names, not legal entities; the directory never restates it
+distinct normalized names, not legal entities; the landscape never restates it
 as an entity count.
