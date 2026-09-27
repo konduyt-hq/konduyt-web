@@ -330,6 +330,22 @@ disconnect -- the row stays connected and verified and stays listed; it just
 leaves checkout. The status text must reflect `offerable`, or it claims "live at
 checkout" for an account the merchant just removed.
 
+## The LaunchBuck badge in the footer
+
+The public landing-page footer (`app/page.js`, `<footer className="site-footer">`)
+carries the LaunchBuck recognition badge: a link to
+`https://launchbuck.com/p/konduyt` wrapping LaunchBuck's supplied image
+`https://launchbuck.com/badges/card-light.png`, at the supplied `alt`,
+`target="_blank" rel="noopener noreferrer"`, width 190 and height 58. Use the
+supplied embed -- do not hand-roll a look-alike, and do not retarget the link or
+swap the image, or recognition is being asserted against nothing.
+
+It sits in its own `.footer-badge` flex cell (`app/globals.css`), so the footer's
+`space-between` layout treats it as one item; on narrow screens it wraps with
+the other cells and gets a small top margin. `scripts/test-footer-badge.mjs`
+(`npm run test:footer-badge`, wired into `npm test`) pins the exact href, image
+src, alt, dimensions, `rel`, link-wrapping and the CSS rule, so a later edit
+cannot quietly drop or rewrite it.
 ## The directory browser tab: a listing is never a capability
 
 `app/dashboard/DirectConnectionsDirectory.js` is the dashboard's "Directory"

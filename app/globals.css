@@ -558,8 +558,11 @@
   .footer-links a{color:#5a5a5a; text-decoration:none; font-size:13.5px; font-weight:500;}
   .footer-links a:hover{color:var(--ink);}
   .footer-copy{font-size:13px; color:#9a9a9a;}
+  .footer-badge{display:flex; align-items:center; line-height:0;}
+  .footer-badge img{display:block;}
   @media (max-width:640px){
     .site-footer{flex-direction:column; align-items:flex-start;}
+    .footer-badge{margin-top:4px;}
   }
 
   /* ---------- CUSTOMER DEMO CHECKOUT ---------- */
