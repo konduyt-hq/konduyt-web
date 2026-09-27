@@ -207,7 +207,11 @@ check('the country detail counts the banks it cleaned',
 // 3. A country WITH a connector is allowed to show the success tick.
 text = await click('Kenya', null, KE_DETAIL);
 check('a country with a connector shows how many can accept a payment',
-  text.includes('1 of 11 listed institutions can accept a payment today'), text);
+  text.includes('and 1 can accept a payment today'), text);
+check('the executable country reports its directory counts, not the registry count',
+  /Konduyt describes 1 mobile-money service and 2 banks/.test(text)
+    && !/describes 11\b/.test(text),
+  text);
 
 // 4. An uncatalogued country must not be described as having no banks.
 text = await click('Vatican City', null, VA_DETAIL);
@@ -241,11 +245,36 @@ function fixtureFetch(url) {
   if (/\/search/.test(url)) {
     payload = /M-Pesa/.test(decodeURIComponent(url))
       ? FIXTURE.search_mpesa : FIXTURE.search_equity;
-  } else if (/\/countries\/KE$/.test(url)) payload = FIXTURE.countries_KE;
-  else if (/\/countries\/NG$/.test(url)) payload = FIXTURE.countries_NG;
-  else if (/\/countries\/VA$/.test(url)) payload = FIXTURE.countries_VA;
-  else payload = FIXTURE.countries;
+  } else {
+    const m = url.match(/\/countries\/([A-Z]{2})$/);
+    payload = m && FIXTURE[`countries_${m[1]}`] ? FIXTURE[`countries_${m[1]}`]
+      : FIXTURE.countries;
+  }
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload) });
+}
+
+// Render and return the live DOM container (not just text), so a test can count
+// the country buttons actually mounted.
+async function renderRealDom({ query = null } = {}) {
+  dom.window.fetch = fixtureFetch;
+  global.fetch = dom.window.fetch;
+  const container = dom.window.document.createElement('div');
+  dom.window.document.body.appendChild(container);
+  const root = createRoot(container);
+  await React.act(async () => { root.render(React.createElement(Component, {})); });
+  await React.act(async () => {});
+  if (query) {
+    const input = container.querySelector('input[type="search"]');
+    const setter = Object.getOwnPropertyDescriptor(
+      dom.window.HTMLInputElement.prototype, 'value').set;
+    await React.act(async () => {
+      setter.call(input, query);
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    await React.act(async () => { await new Promise((r) => setTimeout(r, 320)); });
+    await React.act(async () => {});
+  }
+  return { container, root };
 }
 
 async function renderReal({ query = null, clickName = null } = {}) {
@@ -306,9 +335,12 @@ check('the real not-catalogued count is 8', nondiscovered.length === 8,
 const ke = FIXTURE.countries_KE;
 rtext = await renderReal({ clickName: 'Kenya' });
 check('Kenya shows the EXECUTABLE count from the API',
-  rtext.includes(`${ke.execution.executable} of ${ke.execution.listed} listed`
-    + ' institutions can accept a payment today'),
-  rtext.slice(0, 200));
+  rtext.includes(`and ${ke.execution.executable} can accept a payment today`),
+  rtext.slice(0, 240));
+check('Kenya lines up the executable count with its directory rows',
+  rtext.includes(`Konduyt describes ${ke.mobile_money.length} mobile-money services `
+    + `and ${ke.banks.length} banks`),
+  rtext.slice(0, 240));
 check('Kenya lists its real M-Pesa mobile money',
   ke.mobile_money.some((m) => rtext.includes(m.name)), rtext.slice(0, 200));
 
@@ -335,6 +367,103 @@ check('search finds a real bank the developer already owns',
   FIXTURE.search_equity.banks.slice(0, 3).map((b) => b.name).join(', '));
 check('a real search hit is labelled a description, not a capability',
   rtext.includes('not a capability'), rtext.slice(0, 200));
+
+// ---------------------------------------------------------------------------
+// Completeness: every country the API returns must be reachable in the UI.
+//
+// This is the acceptance criterion. The API returning 197 is necessary but not
+// sufficient -- a hard-coded subset, a `.slice(N)`, or a filter that drops
+// undiscovered countries would each pass the API check and still hide countries
+// from the user. So assert on the mounted DOM, not on the payload.
+// ---------------------------------------------------------------------------
+let rdom = await renderRealDom();
+let countryButtons = [...rdom.container.querySelectorAll(
+  '.dc-dir-browse .dc-dir-country .dc-name')].map((n) => n.textContent);
+check('the browse list mounts one button per API country',
+  countryButtons.length === FIXTURE.countries.total,
+  `rendered ${countryButtons.length} of ${FIXTURE.countries.total}`);
+check('every country name from the API is present in the DOM',
+  FIXTURE.countries.countries.every((c) => countryButtons.includes(c.name)),
+  FIXTURE.countries.countries.map((c) => c.name)
+    .filter((n) => !countryButtons.includes(n)).join(', ') || 'none missing');
+check('no country is duplicated by the grouping',
+  new Set(countryButtons).size === countryButtons.length,
+  `unique ${new Set(countryButtons).size} of ${countryButtons.length}`);
+check('the list is not truncated to the first N countries',
+  countryButtons.length > 150,
+  `only ${countryButtons.length} rendered`);
+check('the undiscovered countries are in the mounted DOM, not filtered out',
+  FIXTURE.countries.countries
+    .filter((c) => c.discovery_state !== 'discovered')
+    .every((c) => countryButtons.includes(c.name)));
+await React.act(async () => { rdom.root.unmount(); });
+rdom.container.remove();
+
+// The source itself must not carry a hard-coded country subset or a cap. The
+// rendered count above is the positive proof; this is the guard against a
+// future edit reintroducing one.
+const DIR_SRC = readFileSync(
+  join(ROOT, 'app/dashboard/DirectConnectionsDirectory.js'), 'utf8');
+check('the directory does not slice or cap the country list',
+  !/\.slice\(\s*[0-9]/.test(DIR_SRC) && !/\bcountries\s*\.slice\([^)]*,[^)]*\)/.test(DIR_SRC),
+  'a numeric slice on the country list was found');
+check('the directory does not hard-code a country total or country list',
+  !/total\s*[:=]\s*197/.test(DIR_SRC) && !/\[\s*['"]KE['"]\s*,/.test(DIR_SRC));
+
+// Selecting a country must render the directory data the API provides for it,
+// in whichever sections it provides. These are the user's own regions: Kenya
+// and Nigeria (Africa), India (Asia), Brazil and the US (Americas), Germany
+// and Kosovo (Europe), Japan and Australia (Oceania), plus uncatalogued
+// Vatican City and Taiwan.
+for (const code of ['KE', 'NG', 'IN', 'BR', 'US', 'DE', 'JP', 'AU', 'XK', 'TW']) {
+  const d = FIXTURE[`countries_${code}`];
+  const { container: cc, root: cr } = await renderRealDom();
+  const btn = [...cc.querySelectorAll('.dc-dir-browse .dc-dir-country')]
+    .find((b) => b.querySelector('.dc-name')?.textContent === d.name);
+  check(`${d.name}: is selectable in the browse list`, !!btn, 'button not found');
+  if (btn) {
+    await React.act(async () => {
+      btn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    });
+    await React.act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+    const heads = [...cc.querySelectorAll('.dc-dir-detail .routing-section-h')]
+      .map((h) => h.textContent);
+    const renderedBanks = cc.querySelectorAll(
+      '.dc-dir-detail .dc-dir-bank').length;
+    const renderedMm = cc.querySelectorAll('.dc-dir-detail .dc-row').length;
+    const detailText = cc.querySelector('.dc-dir-detail')?.textContent || '';
+    check(`${d.name}: renders ${d.banks.length} bank rows the API provided`,
+      renderedBanks === d.banks.length,
+      `rendered ${renderedBanks}, API ${d.banks.length}`);
+    check(`${d.name}: renders its mobile-money section when the API provides it`,
+      d.mobile_money.length === 0
+        ? !heads.includes('Mobile money')
+        : heads.includes('Mobile money') && renderedMm > 0,
+      `sections=${JSON.stringify(heads)} mm=${renderedMm} api_mm=${d.mobile_money.length}`);
+    check(`${d.name}: its summary sentence agrees with the panel below it`,
+      !/describes 0 (mobile-money|bank)/.test(detailText),
+      detailText.slice(0, 200));
+  }
+  await React.act(async () => { cr.unmount(); });
+  cc.remove();
+}
+
+// An uncatalogued country is still selectable and still says "not catalogued".
+{
+  const d = FIXTURE.countries_VA;
+  const { container: cc, root: cr } = await renderRealDom();
+  const btn = [...cc.querySelectorAll('.dc-dir-browse .dc-dir-country')]
+    .find((b) => b.querySelector('.dc-name')?.textContent === d.name);
+  await React.act(async () => {
+    btn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+  });
+  await React.act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+  const t = cc.querySelector('.dc-dir-detail')?.textContent || '';
+  check('an uncatalogued country is still selectable and says so',
+    t.includes('Not catalogued yet') && t.includes('gap in our data'), t);
+  await React.act(async () => { cr.unmount(); });
+  cc.remove();
+}
 
 // ---------------------------------------------------------------------------
 // Wiring: the directory must actually be reachable inside Direct Connections.

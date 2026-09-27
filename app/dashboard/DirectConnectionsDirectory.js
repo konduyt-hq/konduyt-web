@@ -38,19 +38,43 @@ function DiscoveryPill({ state }) {
 }
 
 // One honest sentence about a country's state, from the API's own facts.
+//
+// Two different counts live in the payload and they are NOT
+// interchangeable:
+//   * `detail.banks` / `detail.mobile_money` are the sourced directory rows
+//     the panel below actually lists;
+//   * `execution.listed` is the count of institutions in the connector
+//     registry, which is empty for most countries. A connector that is wired
+//     up implies a registry entry, so `listed` may exceed the directory rows,
+//     but for the sourced world it is usually far smaller.
+// Saying "describes {execution.listed} institutions here" therefore prints
+// "0 institutions" directly above a panel listing 40 banks. Report what the
+// directory actually contains, and, when a connector registry exists, report
+// its own number separately.
 function countryLine(country) {
   const ex = country.execution || {};
+  const mm = (country.mobile_money || []).length;
+  const banks = (country.banks || []).length;
   if (country.discovery_state !== 'discovered') {
     return 'Konduyt has not catalogued any institutions here yet. That is a gap '
       + 'in our data, not a claim that none exist.';
   }
+  const described = [
+    mm ? `${mm} mobile-money service${mm === 1 ? '' : 's'}` : null,
+    banks ? `${banks} bank${banks === 1 ? '' : 's'}` : null,
+  ].filter(Boolean).join(' and ');
+  const listed = ex.listed || 0;
+  const registryLine = listed > 0
+    ? ` ${listed} institution${listed === 1 ? '' : 's'} here ${listed === 1 ? 'is' : 'are'}`
+      + ' in the connector registry; an entry there is not capability either.'
+    : '';
   if ((ex.executable || 0) > 0) {
-    return `${ex.executable} of ${ex.listed} listed institutions can accept a `
-      + 'payment today.';
+    return `Konduyt describes ${described}, and ${ex.executable} can accept a `
+      + `payment today.${registryLine}`;
   }
-  return `Konduyt describes ${ex.listed} institutions here, but none can accept `
-    + 'a payment yet — no implemented connector. Being listed is not a claim '
-    + 'Konduyt can execute a payment to it.';
+  return `Konduyt describes ${described}, but none can accept a payment yet — `
+    + 'no implemented connector. Being listed is not a claim Konduyt can '
+    + `execute a payment to it.${registryLine}`;
 }
 
 export default function DirectConnectionsDirectory({ active }) {
