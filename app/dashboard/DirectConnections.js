@@ -144,6 +144,27 @@ export default function DirectConnections({ active, onNotice }) {
     }
   };
 
+  const setOffering = async (inst, connection, offerable) => {
+    setBusyId(inst.institution_id);
+    try {
+      const r = await fetch(
+        `${API_BASE}/direct-connections/projects/${projectId}/connections/${connection.id}/offering`,
+        { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offerable }) });
+      const d = await r.json();
+      if (!r.ok) {
+        onNotice?.(d.message || 'Could not change whether this account is offered.');
+        return;
+      }
+      await load();
+      onNotice?.(offerable
+        ? `${inst.name} ${connection.display_account} can be offered to customers again.`
+        : `${inst.name} ${connection.display_account} is no longer offered at checkout. It stays connected and verified.`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const disconnect = async (inst, connection) => {
     if (!window.confirm(
       `Disconnect ${inst.name} ${connection.display_account}? ` +
@@ -257,7 +278,9 @@ export default function DirectConnections({ active, onNotice }) {
                           )}
                           <span className="dc-account-state">
                             {conn.state === 'EXECUTABLE'
-                              ? 'Verified · live at checkout'
+                              ? (conn.offerable
+                                ? 'Verified · live at checkout'
+                                : 'Verified · not offered to customers')
                               : conn.state === 'VERIFIED'
                                 ? 'Verified · not executable yet'
                                 : 'Connected · not verified yet'}
@@ -304,6 +327,18 @@ export default function DirectConnections({ active, onNotice }) {
                               disabled={busy}
                               onClick={() => openConnect(i, conn)}>
                               Verify
+                            </button>
+                          )}
+                          {/* Offering is a switch, separate from connecting: a
+                              verified account can be taken out of checkout
+                              without disconnecting it. Only shown when the
+                              backend says the connection is executable, so the
+                              button never offers a capability the rail lacks. */}
+                          {conn.state === 'EXECUTABLE' && (
+                            <button type="button" className="dc-btn"
+                              disabled={busy}
+                              onClick={() => setOffering(i, conn, !conn.offerable)}>
+                              {conn.offerable ? 'Stop offering' : 'Offer at checkout'}
                             </button>
                           )}
                           <button type="button" className="dc-btn"
