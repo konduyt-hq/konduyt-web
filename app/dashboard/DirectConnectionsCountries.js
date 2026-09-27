@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 // Direct Connections — the global landscape: what exists, where.
 //
@@ -17,10 +17,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 //     "no banks" — absence of discovery is not evidence of absence;
 //   * a country with institutions but no connector says plainly that none can
 //     accept a payment;
-//   * per-service status comes from the API's own execution_capability, and is
-//     never inferred from the size of the list;
+//   * per-service status comes from the API's own `execution_capability` on the
+//     row itself, and is never inferred from the size of the list, from the
+//     name matching, or from a second lookup;
 //   * there is no Connect button anywhere here. Connecting happens on the
 //     connect surface, against a real project, and only for executable services.
+//
+// Three facts stay distinct and are rendered separately:
+//   "this exists"            -> the row is listed
+//   "Konduyt can execute it" -> execution_capability === EXECUTABLE
+//   "Konduyt can connect it" -> the connect surface, against a real project
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -59,10 +65,6 @@ export function flagEmoji(code) {
     ...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
 }
 
-function normalizeName(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
 function DataPill({ state }) {
   const known = state === 'discovered';
   return (
@@ -72,9 +74,9 @@ function DataPill({ state }) {
   );
 }
 
-// A per-service state, from the API's own execution_capability. Absence from
-// the connector list means no connector, which is NOT_SUPPORTED — never a
-// fabricated Connect affordance.
+// A per-service state, from the API's own `execution_capability` on the row.
+// The value travels WITH the service, so it can never be lost to a name mismatch
+// or a second lookup, and it is never inferred from the service existing.
 function CapabilityPill({ capability }) {
   if (!capability) return null;
   const executable = capability === 'EXECUTABLE';
@@ -122,9 +124,13 @@ export default function DirectConnectionsCountries({ active }) {
   const [results, setResults] = useState(null);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [registry, setRegistry] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Guards against a stale response: a fast A -> B -> C switch can let A's
+  // slower fetch resolve after C's and overwrite C. Each open takes a ticket;
+  // only the latest ticket may write state. `selected` alone is not enough,
+  // because the losing response still arrives and would otherwise be applied.
+  const openSeq = useRef(0);
 
   const loadCountries = useCallback(async () => {
     setLoading(true);
@@ -164,30 +170,21 @@ export default function DirectConnectionsCountries({ active }) {
   }, [query]);
 
   const openCountry = useCallback(async (code) => {
+    const ticket = ++openSeq.current;
     setSelected(code);
     setDetail(null);
-    setRegistry(null);
     setLoading(true);
     try {
-      const [dr, ir] = await Promise.all([
-        fetch(`${API_BASE}/direct-connections/countries/${code}`,
-          { headers: authHeaders() }),
-        fetch(`${API_BASE}/direct-connections/institutions?country=${code}`,
-          { headers: authHeaders() }),
-      ]);
-      if (dr.ok) setDetail(await dr.json());
-      if (ir.ok) {
-        const d = await ir.json();
-        const by = new Map();
-        for (const i of d.institutions || []) {
-          by.set(normalizeName(i.name), i.execution_capability);
-        }
-        setRegistry(by);
-      }
+      const r = await fetch(`${API_BASE}/direct-connections/countries/${code}`,
+        { headers: authHeaders() });
+      const d = r.ok ? await r.json() : null;
+      // Ignore a response that a newer selection has superseded.
+      if (ticket !== openSeq.current) return;
+      setDetail(d);
     } catch (e) {
-      setDetail(null);
+      if (ticket === openSeq.current) setDetail(null);
     } finally {
-      setLoading(false);
+      if (ticket === openSeq.current) setLoading(false);
     }
   }, []);
 
@@ -201,11 +198,6 @@ export default function DirectConnectionsCountries({ active }) {
     for (const r of Object.keys(by)) by[r].sort((a, b) => a.name.localeCompare(b.name));
     return by;
   }, [countries]);
-
-  const capabilityFor = (name) => {
-    if (!registry) return null;
-    return registry.get(normalizeName(name)) || 'NOT_SUPPORTED';
-  };
 
   const regionCountries = grouped[region] || [];
   const searching = Boolean(query.trim());
@@ -269,7 +261,9 @@ export default function DirectConnectionsCountries({ active }) {
       {searching && results && (
         <div className="dc-dir-results">
           <p className="dc-footnote">
-            Searching every country and service, regardless of region.
+            Searching every country and service, regardless of region. A
+            result carries the same capability the country page shows —
+            finding a service here does not make it connectable.
           </p>
 
           {results.countries.length > 0 && (
@@ -294,6 +288,7 @@ export default function DirectConnectionsCountries({ active }) {
                         </span>
                         {m.name}
                       </span>
+                      <CapabilityPill capability={m.execution_capability} />
                       <span className="dc-operator">{m.country}</span>
                     </div>
                     {m.operator && <div className="dc-operator">{m.operator}</div>}
@@ -326,6 +321,7 @@ export default function DirectConnectionsCountries({ active }) {
                         </span>
                         {b.name}
                       </span>
+                      <CapabilityPill capability={b.execution_capability} />
                       <span className="dc-operator">{b.country}</span>
                     </div>
                     {b.source_url && (
@@ -359,7 +355,7 @@ export default function DirectConnectionsCountries({ active }) {
         <div className="dc-dir-detail">
           <div className="dc-dir-detail-head">
             <button type="button" className="dc-btn"
-              onClick={() => { setSelected(null); setDetail(null); setRegistry(null); }}>
+              onClick={() => { setSelected(null); setDetail(null); }}>
               ← {region}
             </button>
           </div>
@@ -396,7 +392,7 @@ export default function DirectConnectionsCountries({ active }) {
                       <div className="dc-row-main">
                         <div className="dc-row-title">
                           <span className="dc-name">{m.name}</span>
-                          <CapabilityPill capability={capabilityFor(m.name)} />
+                          <CapabilityPill capability={m.execution_capability} />
                         </div>
                         {m.operator && <div className="dc-operator">{m.operator}</div>}
                         {m.source_url && (
@@ -425,8 +421,9 @@ export default function DirectConnectionsCountries({ active }) {
                   </p>
                   <div className="dc-dir-grid">
                     {detail.banks.map((b, idx) => (
-                      <div className="dc-dir-bank" key={`db-${idx}`} title={b}>
-                        {b}
+                      <div className="dc-dir-bank" key={`db-${idx}`} title={b.name}>
+                        <span className="dc-dir-bank-name">{b.name}</span>
+                        <CapabilityPill capability={b.execution_capability} />
                       </div>
                     ))}
                   </div>
@@ -455,11 +452,13 @@ export default function DirectConnectionsCountries({ active }) {
           <div className="coverage-banner coverage-neutral">
             <span className="coverage-banner-icon">ℹ</span>
             <span>
-              Konduyt knows {countries.total} countries
+              Konduyt knows {countries.total} countries across Africa, Asia,
+              Europe, North America, South America and Oceania
               {typeof countries.discovered === 'number'
-                ? ` and has institution data for ${countries.discovered} of them`
-                : ''}. Seeing a service here does not mean Konduyt can connect to
-              it — only services with a live connector can accept a payment.
+                ? `, and has institution data for ${countries.discovered} of them`
+                : ''}. Browse by region, then open a country to see its services.
+              Seeing a service here does not mean Konduyt can connect to it —
+              only services with a live connector can accept a payment.
               {projectCountry ? ` Your project is set to ${projectCountry}.` : ''}
             </span>
           </div>

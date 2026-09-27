@@ -4,16 +4,21 @@
 // easiest to break: a listing is never presented as a capability.
 //
 // What this guards:
-//   1. Every 197th country is reachable and no country list is hard-coded.
+//   1. Every country in the canonical list is reachable and no country list is
+//      hard-coded; all six product regions are represented.
 //   2. A country WITH data reports the rows it shows (`banks` / `mobile_money`),
 //      never the connector-registry `execution.listed` count.
-//   3. Each service's state comes from the API's own execution_capability. An
-//      EXECUTABLE service reads "Can accept a payment"; anything else reads
-//      "Not connectable yet".
+//   3. Each service's state comes from the API's own execution_capability ON THE
+//      ROW -- the component performs no second lookup and no name matching, so a
+//      listing can never be promoted to a capability by the frontend.
 //   4. NOWHERE on this surface is there a Connect affordance. Connecting lives
 //      on the connect half; a listing page must not invent a flow.
 //   5. A country with no data says it is a gap in our data -- never that no
 //      services exist.
+//   6. Switching country A -> B -> C -> A never leaves a previous country's
+//      services on screen because of stale state or a late response.
+//   7. Search preserves capability semantics: a hit carries the same state the
+//      country page shows and is never made connectable by being found.
 //
 // No new dependency: JSX is compiled with the Babel inside Next and run against
 // a real (jsdom) DOM with fetch stubbed at the network boundary.
@@ -214,33 +219,128 @@ check('selecting Asia hides African countries',
 
 await r.unmount();
 
-// A country with rows: selects the country, loads detail + registry, and shows
-// the API's own per-service capability. NO Connect affordance anywhere.
+// The catalogue must span the globe, not just Africa. Exercise one country from
+// each of the six product regions using the real captured fixture, so the test
+// cannot pass on invented data.
+console.log('\nDirect Connections global coverage: one representative country per region');
+console.log('--------------------------------------------------------------------------------');
+const REGION_SAMPLE = [
+  ['Africa', 'KE', 'Kenya'],
+  ['Asia', 'IN', 'India'],
+  ['Europe', 'DE', 'Germany'],
+  ['North America', 'US', 'United States'],
+  ['South America', 'BR', 'Brazil'],
+  ['Oceania', 'AU', 'Australia'],
+];
+for (const [region, code, name] of REGION_SAMPLE) {
+  const payload = realFixture[`countries_${code}`];
+  const member = realFixture.countries.countries.find((c) => c.code === code);
+  check(`${name} is filed under ${region} in the fixture`,
+    member && regionOf(member) === region, JSON.stringify(member));
+  const rr = await render({
+    [`/direct-connections/countries/${code}`]: payload,
+    '/direct-connections/countries': realFixture.countries,
+  });
+  // Select the country from its own region tab. Match on the ISO code shown on
+  // the row, so a name collision (India vs British Indian Ocean Territory) can
+  // never open the wrong country.
+  await rr.click((b) => b.textContent.trim() === region);
+  await rr.click((b) => b.className.includes('dc-dir-country')
+    && (b.textContent.trim().endsWith(code)
+      || b.textContent.includes(`${code} \u00b7`)));
+  const mm = payload.mobile_money.length;
+  const banks = payload.banks.length;
+  check(`${name} renders its services and banks`,
+    (banks === 0 || rr.text.includes(payload.banks[0].name))
+    && (mm === 0 || rr.text.includes(payload.mobile_money[0].name)), rr.text);
+  check(`${name}: service names are the API's canonical names`,
+    payload.mobile_money.every((m) => !m.name || m.name === m.name.trim()));
+  check(`${name}: no Connect affordance anywhere`,
+    !rr.html.includes('dc-btn-primary')
+    && !/\bConnect\b/.test(rr.text.replace(/Direct Connections/g, '')));
+  check(`${name}: a false EXECUTABLE never appears when the API says zero`,
+    payload.execution.executable > 0 || !rr.text.includes('Can accept a payment'),
+    `${name} exec=${payload.execution.executable}`);
+  await rr.unmount();
+}
+
+// Country switching: A -> B -> C -> A must not leave a prior country's services
+// on screen, and a late response for a superseded country must be discarded.
+console.log('\nDirect Connections country switching: no stale survivors');
+console.log('--------------------------------------------------------------------------------');
+{
+  const A = { code: 'KE', name: 'Kenya', discovery_state: 'discovered',
+    mobile_money: [{ name: 'M-Pesa', execution_capability: 'EXECUTABLE' }],
+    banks: [{ name: 'KCB Bank Kenya Limited', execution_capability: 'NOT_SUPPORTED' }],
+    execution: { listed: 9, executable: 1 }, note: 'KE note.' };
+  const B = { code: 'DE', name: 'Germany', discovery_state: 'discovered',
+    mobile_money: [], banks: [{ name: 'Deutsche Bank AG', execution_capability: 'NOT_SUPPORTED' }],
+    execution: { listed: 111, executable: 0 }, note: 'DE note.' };
+  const C = { code: 'JP', name: 'Japan', discovery_state: 'discovered',
+    mobile_money: [{ name: 'PayPay', execution_capability: 'NOT_SUPPORTED' }],
+    banks: [{ name: 'MUFG Bank', execution_capability: 'NOT_SUPPORTED' }],
+    execution: { listed: 92, executable: 0 }, note: 'JP note.' };
+  const all = { total: 197, discovered: 189, countries: [
+    { code: 'KE', name: 'Kenya', region: 'Africa', subregion: 'Eastern Africa', discovery_state: 'discovered' },
+    { code: 'DE', name: 'Germany', region: 'Europe', subregion: 'Western Europe', discovery_state: 'discovered' },
+    { code: 'JP', name: 'Japan', region: 'Asia', subregion: 'Eastern Asia', discovery_state: 'discovered' },
+  ]};
+  const rr = await render({
+    '/direct-connections/countries/KE': A,
+    '/direct-connections/countries/DE': B,
+    '/direct-connections/countries/JP': C,
+    '/direct-connections/countries': all,
+  });
+  const openIn = async (region, code) => {
+    await rr.click((b) => b.textContent.trim() === region);
+    await rr.click((b) => b.className.includes('dc-dir-country')
+      && b.textContent.trim().endsWith(code));
+  };
+  await openIn('Africa', 'KE');
+  let t = rr.text;
+  check('country A shows only A services', t.includes('M-Pesa') && !t.includes('Deutsche Bank'), t);
+  await rr.click((b) => b.textContent.includes('←'));
+  await openIn('Europe', 'DE');
+  t = rr.text;
+  check('country B shows only B services', t.includes('Deutsche Bank') && !t.includes('M-Pesa'), t);
+  await rr.click((b) => b.textContent.includes('←'));
+  await openIn('Asia', 'JP');
+  t = rr.text;
+  check('country C shows only C services', t.includes('MUFG Bank') && !t.includes('Deutsche Bank'), t);
+  await rr.click((b) => b.textContent.includes('←'));
+  await openIn('Africa', 'KE');
+  t = rr.text;
+  check('returning to country A shows A again, not a cached B or C',
+    t.includes('M-Pesa') && !t.includes('Deutsche Bank') && !t.includes('MUFG Bank'), t);
+  await rr.unmount();
+}
+
+await r.unmount();
+
+// A country with rows: selects the country, loads its detail, and shows the
+// API's own per-service capability carried on each row. NO Connect affordance
+// anywhere -- and no second capability lookup exists to perform.
 r = await render({
   '/direct-connections/countries/KE': {
     code: 'KE', name: 'Kenya', discovery_state: 'discovered',
     mobile_money: [
-      { name: 'M-Pesa', operator: 'Safaricom', source_url: 'https://en.wikipedia.org/wiki/M-Pesa' },
-      { name: 'Airtel Money', operator: 'Airtel', source_url: 'https://en.wikipedia.org/wiki/Airtel_Africa' },
-      { name: 'T-Kash', operator: 'Telkom Kenya', source_url: 'https://telkom.co.ke/t-kash' },
+      { name: 'M-Pesa', operator: 'Safaricom', execution_capability: 'EXECUTABLE', source_url: 'https://en.wikipedia.org/wiki/M-Pesa' },
+      { name: 'Airtel Money', operator: 'Airtel', execution_capability: 'NOT_SUPPORTED', source_url: 'https://en.wikipedia.org/wiki/Airtel_Africa' },
+      { name: 'T-Kash', operator: 'Telkom Kenya', execution_capability: 'NOT_SUPPORTED', source_url: 'https://telkom.co.ke/t-kash' },
     ],
-    banks: ['KCB Bank Kenya Limited', 'Equity Bank Kenya Limited'],
+    banks: [
+      { name: 'KCB Bank Kenya Limited', execution_capability: 'NOT_SUPPORTED' },
+      { name: 'Equity Bank Kenya Limited', execution_capability: 'NOT_SUPPORTED' },
+    ],
     bank_source_url: 'https://en.wikipedia.org/wiki/List_of_banks_in_Kenya',
     stats: { banks_raw: 40, banks_served: 2 },
     execution: { listed: 9, executable: 1 },
     note: 'This directory describes accounts that exist. It is not a statement that Konduyt can execute a payment into any of them.',
   },
-  '/direct-connections/institutions': {
-    country: 'KE', summary: { total: 3, executable: 1 },
-    institutions: [
-      { name: 'M-Pesa', execution_capability: 'EXECUTABLE' },
-      { name: 'Airtel Money', execution_capability: 'NOT_SUPPORTED' },
-      { name: 'T-Kash', execution_capability: 'NOT_SUPPORTED' },
-    ],
-  },
   '/direct-connections/countries': countriesPayload(),
 });
-r = await r.click((b) => b.textContent.includes('Kenya'));
+r = await r.click((b) => b.className.includes('dc-dir-country')
+  && b.textContent.trim().endsWith('KE'));
 check('opening a country shows its mobile-money services',
   r.text.includes('M-Pesa') && r.text.includes('Airtel Money')
   && r.text.includes('T-Kash'), r.text);
@@ -267,10 +367,10 @@ r = await render({
     mobile_money: [], banks: [], execution: { listed: 0, executable: 0 },
     note: 'No institution data yet.',
   },
-  '/direct-connections/institutions': { country: 'NG', summary: { total: 0 }, institutions: [] },
   '/direct-connections/countries': countriesPayload(),
 });
-r = await r.click((b) => b.textContent.includes('Nigeria'));
+r = await r.click((b) => b.className.includes('dc-dir-country')
+  && b.textContent.includes('NG'));
 check('a no-data country reads as a gap in our data',
   r.text.includes('gap in our data'), r.text);
 check('a no-data country is labelled "Not yet in our data"',
@@ -280,12 +380,14 @@ check('a no-data country never claims there are zero services',
 
 await r.unmount();
 
-// Search: global, and a bank hit can be opened as its country.
+// Search: global, capability-preserving, and a bank hit can be opened as its
+// country. A hit carries the same `execution_capability` the country page shows
+// and is never made connectable by the act of being found.
 r = await render({
   '/direct-connections/search': {
     countries: [{ code: 'IN', name: 'India', region: 'Asia', subregion: 'Southern Asia', discovery_state: 'discovered' }],
-    mobile_money: [{ country: 'KE', name: 'T-Kash', operator: 'Telkom Kenya', source_url: 'https://telkom.co.ke/t-kash' }],
-    banks: [{ country: 'IN', name: 'HDFC Bank Limited', source_url: 'https://en.wikipedia.org/wiki/HDFC_Bank' }],
+    mobile_money: [{ country: 'KE', name: 'T-Kash', operator: 'Telkom Kenya', execution_capability: 'NOT_SUPPORTED', source_url: 'https://telkom.co.ke/t-kash' }],
+    banks: [{ country: 'IN', name: 'HDFC Bank Limited', execution_capability: 'NOT_SUPPORTED', source_url: 'https://en.wikipedia.org/wiki/HDFC_Bank' }],
   },
   '/direct-connections/countries': countriesPayload(),
 });
@@ -294,6 +396,30 @@ check('search renders a bank hit with its country', r.text.includes('HDFC Bank L
 check('search renders a mobile-money hit', r.text.includes('T-Kash'));
 check('search is global: it says it ignores the region', r.text.includes('regardless of region'), r.text);
 check('a search result offers to open its country', r.text.includes('View IN'));
+check('a non-executable search hit reads "Not connectable yet", not a capability',
+  r.text.includes('Not connectable yet') && !r.text.includes('Can accept a payment'), r.text);
+check('a search hit is never given a Connect affordance',
+  !r.html.includes('dc-btn-primary')
+  && !/\bConnect\b/.test(r.text.replace(/Direct Connections/g, '')), r.text);
+check('search states that being found does not make a service connectable',
+  r.text.includes('does not make it connectable'), r.text);
+await r.unmount();
+
+// A search hit that IS executable must show the capability, so the frontend does
+// not hide a real action's precondition (the inverse of the honesty rule).
+r = await render({
+  '/direct-connections/search': {
+    countries: [],
+    mobile_money: [{ country: 'KE', name: 'M-Pesa', operator: 'Safaricom', execution_capability: 'EXECUTABLE' }],
+    banks: [],
+  },
+  '/direct-connections/countries': countriesPayload(),
+});
+r = await r.type('M-Pesa');
+check('an executable search hit reads "Can accept a payment"',
+  r.text.includes('M-Pesa') && r.text.includes('Can accept a payment'), r.text);
+await r.unmount();
+
 check('an empty result explains absence is a data gap, not proof',
   (await (async () => {
     const rr = await render({
@@ -304,7 +430,6 @@ check('an empty result explains absence is a data gap, not proof',
     await rr.unmount();
     return t;
   })()).includes('gap in our data'));
-await r.unmount();
 
 // --- Real API payloads ------------------------------------------------------
 console.log('\nDirect Connections region browser vs the real captured fixture');
@@ -325,15 +450,30 @@ check('the captured registry still holds T-Kash as NOT_SUPPORTED (listing != cap
     (i) => i.name === 'T-Kash' && i.execution_capability === 'NOT_SUPPORTED'),
   JSON.stringify(realFixture.institutions_KE.institutions.map(
     (i) => [i.name, i.execution_capability])));
+check('every fixture directory row carries a capability (derived, not bare)',
+  ['KE', 'IN', 'DE', 'US', 'BR', 'AU', 'JP', 'NG'].every((code) => {
+    const p = realFixture[`countries_${code}`];
+    return p.mobile_money.every((m) => m.execution_capability)
+      && p.banks.every((b) => b && b.name && b.execution_capability);
+  }));
+check('every fixture search hit carries a capability too',
+  ['equity', 'mpesa', 'tkash', 'hdfc'].every((k) =>
+    realFixture[`search_${k}`].mobile_money.every((m) => m.execution_capability)
+    && realFixture[`search_${k}`].banks.every((b) => b.execution_capability)));
+check('the fixture covers all six product regions',
+  ['Africa', 'Asia', 'Europe', 'North America', 'South America', 'Oceania']
+    .every((reg) => realFixture.countries.countries.some(
+      (c) => regionOf(c) === reg)),
+  JSON.stringify([...new Set(realFixture.countries.countries.map(regionOf))]));
 
 // Render the real Kenya payload end-to-end: the headline must report the
 // directory rows, not the registry count the API also ships.
 r = await render({
   '/direct-connections/countries/KE': realFixture.countries_KE,
-  '/direct-connections/institutions': realFixture.institutions_KE,
   '/direct-connections/countries': realFixture.countries,
 });
-r = await r.click((b) => b.textContent.includes('Kenya'));
+r = await r.click((b) => b.className.includes('dc-dir-country')
+  && b.textContent.trim().endsWith('KE'));
 const realMm = realFixture.countries_KE.mobile_money.length;
 const realBanks = realFixture.countries_KE.banks.length;
 check(`Kenya headline reports its ${realMm} mobile-money rows and ${realBanks} banks`,
@@ -361,6 +501,19 @@ check('DirectConnections renders the country browser inside itself',
 check('the old separate directory component is deleted',
   (() => { try { readFileSync(join(ROOT, 'app/dashboard/DirectConnectionsDirectory.js')); return false; }
     catch { return true; } })());
+
+// The frontend must RENDER the API's capability, not infer it. These two checks
+// fail if a name-matching join or a second capability lookup is ever reintroduced
+// -- the exact inference ("the name matched, so it must be executable") that the
+// API-side join removed.
+const countriesSrc = readFileSync(
+  join(ROOT, 'app/dashboard/DirectConnectionsCountries.js'), 'utf8');
+check('the country browser performs no name-matching capability join',
+  !/normalizeName/.test(countriesSrc) && !/capabilityFor/.test(countriesSrc));
+check('the country browser makes no second /institutions capability lookup',
+  !/\/direct-connections\/institutions/.test(countriesSrc));
+check('the country browser reads execution_capability off the row',
+  /execution_capability/.test(countriesSrc));
 
 rmSync(TMP, { force: true });
 

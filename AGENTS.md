@@ -379,11 +379,13 @@ panel listing 40 banks for 188 of 197 countries -- a false statement on the
 honesty-critical surface. The registry count is still reported, separately, when
 non-zero. The render suite pins this.
 
-Regenerate `scripts/fixtures/direct-connections.sample.json` from the live API
-whenever the payload shape or directory data changes; the fixture covers the
-browse list plus all eleven inspected countries and four searches. Kenya's rows
-in the fixture come from `app/direct_connections/directory_data.py` because the
-`/countries/{code}` endpoint is DB-backed and cannot run without Postgres.
+Regenerate `scripts/fixtures/direct-connections.sample.json` **from the API
+modules, not a live server**, with
+`PYTHONPATH=/path/to/konduyt-api python3 scripts/regenerate-direct-connections-fixture.py`.
+Every payload in it is a pure function of `app/direct_connections`, so the
+fixture no longer needs a running Postgres and can never silently pin stale
+data: the script rebuilds it from the same source of truth the API serves. It
+covers the browse list, eleven inspected countries and four searches.
 
 ## Direct Connections: one destination, no separate Directory tab
 
@@ -396,9 +398,35 @@ inside the Direct Connections destination as
 landscape is the information that powers the connect surface, so splitting them
 made the user cross a boundary that does not exist in the data model.
 
-The component reads three public endpoints: `/direct-connections/countries`,
-`/countries/{code}` and `/search?q=`. It is the surface where "listed" is most
-likely to be misread as "payable", so these claims are forbidden and pinned by
+### Data flow: the frontend renders capability, it never infers it
+
+```
+API source                        transform / derive                component / CTA
+--------------------------------  --------------------------------  ----------------------------
+institutions.py: all_institutions  _execution_path() derives         (the one authority for
+  curated KE + the global dir        EXECUTABLE | NOT_SUPPORTED        executability)
+directory.py: country_directory   joins the above by               /countries/{code}
+  (what exists, discovery_state)    (country, category, name) ->      mobile_money[].execution_capability
+                                    every row carries                 banks[].execution_capability
+                                    execution_capability
+directory.py: search              same join on every hit            /search
+services.py:                      merges catalogue + this           /projects/{id}/catalogue
+  catalogue_for_project             merchant's connections;           row.status, row.action
+                                    derives status + action           -> Connect button iff action=CONNECT
+```
+
+The country browser reads three public endpoints -- `/countries`,
+`/countries/{code}` and `/search?q=` -- and **none of them is `/institutions`**.
+Per-service capability travels on the row itself, joined server-side from the
+single registry. The component must not name-match a service to a capability:
+an earlier version fetched `/institutions` and did a loose lower-case match with
+a `|| 'NOT_SUPPORTED'` default, which is exactly the "the name matched, so it
+must be executable" inference this feature forbids. The render suite fails if a
+join (`normalizeName`, `capabilityFor`) or a second `/institutions` lookup is
+reintroduced.
+
+It is the surface where "listed" is most likely to be misread as "payable", so
+these claims are forbidden and pinned by
 `scripts/test-direct-connections-countries-render.mjs` (wired into `npm test` as
 `test:direct-connections-countries`):
 
@@ -409,14 +437,38 @@ likely to be misread as "payable", so these claims are forbidden and pinned by
   `discovery_state === 'not_discovered'` renders "Not yet in our data" and the
   gap sentence. Silence (or a bare empty list) would read as a claim of absence,
   which is a different and false thing.
-* **Per-service state comes from the API's own `execution_capability`.**
-  `EXECUTABLE` reads "Can accept a payment"; anything else reads "Not
+* **Per-service state comes from the API's own `execution_capability` on the
+  row.** `EXECUTABLE` reads "Can accept a payment"; anything else reads "Not
   connectable yet". The component never invents a status from the list size.
+* **Search preserves capability integrity.** A hit carries the same
+  `execution_capability` the country page shows and is never made connectable by
+  being found; search is discovery, not authorization.
 * **There is no Connect affordance here.** The test asserts no
   `dc-btn-primary` exists on this surface; connecting happens on the connect
   half, against a real project, and only for executable services.
 
-The component derives nothing: every number comes from the payload. It also
+Three facts stay distinct and are rendered separately: **this exists** (the row
+is listed), **Konduyt can execute it** (`execution_capability === EXECUTABLE`),
+and **Konduyt can connect it** (the connect surface, against a real project).
+
+### Global coverage, region derivation and country switching
+
+The six region chips (Africa, Asia, Europe, North America, South America,
+Oceania) are a reading aid over the canonical list, not a filter and not a
+subset. The API groups the western hemisphere under one `Americas` region with a
+`subregion`, so `regionOf()` maps `South America` to its own chip and puts
+`North America` / `Central America` / `Caribbean` under North America, keeping
+North + South at 35. The suite drives one representative country from each of
+the six regions with the real fixture (KE, IN, DE, US, BR, AU) and asserts the
+fixture itself covers all six, so the browser cannot pass by being Africa-only.
+
+Country switching is guarded against stale state and a late response: a fast
+A -> B -> C switch can let A's slower fetch resolve after C's, so `openCountry`
+takes a monotonic ticket and only the latest ticket may write `detail`. The
+suite switches KE -> DE -> JP -> KE and asserts no previous country's services
+survive on screen.
+
+The component derives nothing else: every number comes from the payload. It also
 follows the repo's layout-variant rule -- every class in its JSX has a rule in
 `globals.css` (the `dc-dir-*` / `dc-region*` / `dc-flag` block) or reuses a
 `dc-*` / `coverage-*` one, and `.coverage-neutral` was added for the neutral
@@ -426,11 +478,10 @@ follows the repo's layout-variant rule -- every class in its JSX has a rule in
 
 The test has two halves. The first uses hand-shaped stubs to exercise the
 forbidden claims. The second drives the same component with
-`scripts/fixtures/direct-connections.sample.json`, payloads captured from the
-running `konduyt-api` (`/countries`, `/countries/{KE,NG,IN,BR,US,DE,JP,AU,XK,VA,TW}`,
-`/institutions?country=KE`, four searches). That half asserts the component
-reproduces the API's own 197/discovered numbers and lists the real banks, so the
-honesty claims hold against the real world and not only against stubs.
+`scripts/fixtures/direct-connections.sample.json`, regenerated from the API
+modules (see above). That half asserts the component reproduces the API's own
+197/discovered numbers and lists the real banks, so the honesty claims hold
+against the real world and not only against stubs.
 **Regenerate the fixture whenever the API payload shape or the directory data
 changes**, or this half will pin stale expectations.
 
@@ -440,6 +491,9 @@ imports `DirectConnectionsCountries` and renders `<DirectConnectionsCountries>`,
 and that `page.js` no longer imports `DirectConnectionsDirectory`, no longer
 registers the `['directory', 'Directory']` tab, and no longer carries a
 `directory:` entry in `TAB_TITLES` -- and that the old component file is gone.
+The built bundle is checked separately (`grep` for `DirectConnectionsDirectory`
+under `.next/static` and `.next/server` must return nothing; stale hits under
+`.next/cache` are webpack's own cache and are not shipped).
 
 ### Kenya names T-Kash, and listing is still not capability
 

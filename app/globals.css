@@ -2920,6 +2920,8 @@
   .dc-dir-country .dc-name{font-size:13px;}
   .dc-dir-country .dc-operator{margin-top:0;}
   .dc-dir-bank{font-size:12.5px; color:var(--body); border:1px solid var(--border);
-    border-radius:8px; padding:7px 10px; background:#fff; overflow:hidden;
-    text-overflow:ellipsis; white-space:nowrap;}
+    border-radius:8px; padding:7px 10px; background:#fff;
+    display:flex; flex-direction:column; align-items:flex-start; gap:4px;}
+  .dc-dir-bank-name{overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+  .dc-dir-bank .dc-pill{font-size:10.5px; padding:1px 7px;}
   .dc-dir-browse{margin-top:4px;}
