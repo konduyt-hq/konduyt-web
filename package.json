@@ -15,9 +15,10 @@
     "test:dashboard-snippets": "node scripts/extract-dashboard-snippets.mjs && node scripts/test-dashboard-snippets.mjs",
     "sync:intelligence-methods": "node scripts/sync-intelligence-methods.mjs",
     "check:generated": "node scripts/sync-intelligence-methods.mjs --check && python3 scripts/build-checkout-page.py --check",
-    "test": "npm run test:intelligence-sdk && npm run test:production-sdk && npm run test:checkout && npm run test:dashboard-snippets && npm run test:snippets && npm run test:billing-gate && npm run test:direct-connections-render && npm run test:footer-badge && npm run check:generated",
+    "test": "npm run test:intelligence-sdk && npm run test:production-sdk && npm run test:checkout && npm run test:dashboard-snippets && npm run test:snippets && npm run test:billing-gate && npm run test:direct-connections-render && npm run test:direct-connections-directory && npm run test:footer-badge && npm run check:generated",
     "test:billing-gate": "node scripts/test-billing-gate.mjs",
     "test:direct-connections-render": "node scripts/test-direct-connections-render.mjs",
+    "test:direct-connections-directory": "node scripts/test-direct-connections-directory-render.mjs",
     "test:footer-badge": "node scripts/test-footer-badge.mjs"
   },
   "dependencies": {

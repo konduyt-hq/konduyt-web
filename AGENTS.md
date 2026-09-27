@@ -346,3 +346,55 @@ the other cells and gets a small top margin. `scripts/test-footer-badge.mjs`
 (`npm run test:footer-badge`, wired into `npm test`) pins the exact href, image
 src, alt, dimensions, `rel`, link-wrapping and the CSS rule, so a later edit
 cannot quietly drop or rewrite it.
+## The directory browser tab: a listing is never a capability
+
+`app/dashboard/DirectConnectionsDirectory.js` is the dashboard's "Directory"
+tab (registered in `page.js` as `['directory', 'Directory']`). It is the
+"what exists where" surface, deliberately split from `DirectConnections.js`
+("connect an account I own"), and it reads only three public API endpoints:
+`/direct-connections/countries`, `/countries/{code}` and `/search?q=`.
+
+This is the surface where "listed" is most likely to be misread as "payable",
+so three claims are forbidden and pinned by
+`scripts/test-direct-connections-directory-render.mjs` (wired into `npm test`
+as `test:direct-connections-directory`):
+
+* **A zero-connector country must say none can accept a payment.** Its banner
+  text and the `✓` icon are gated on `execution.executable > 0` from the API;
+  the icon is an `ℹ`, never a green tick, when the count is zero.
+* **An uncatalogued country must say "a gap in our data", not "no banks".**
+  `discovery_state === 'not_discovered'` renders "Not catalogued yet" and the
+  gap sentence. Silence (or a bare empty list) would read as a claim of
+  absence, which is a different and false thing.
+* **Search never implies capability.** Bank and mobile-money hits show their
+  country and source link and repeat the API's "not a capability" note.
+
+The component derives nothing: every number comes from the payload. It also
+follows the repo's layout-variant rule -- every class in its JSX has a rule in
+`globals.css` (the `dc-dir-*` block) or reuses a `dc-*` / `coverage-*` one, and
+`.coverage-neutral` was added for the neutral (not success, not warning)
+banner used on the browse list.
+
+### Real-data pass and the wiring guard
+
+The test has two halves. The first uses hand-shaped stubs to exercise the
+forbidden claims. The second, `Direct Connections directory vs the real API
+payloads`, drives the same component with
+`scripts/fixtures/direct-connections.sample.json` -- payloads captured from the
+running `konduyt-api` (`/countries`, `/countries/KE|NG|VA`, `/search`). That
+half asserts the component reproduces the API's own 197/discovered/executable
+numbers and lists the real banks, so the honesty claims hold against the real
+world and not only against stubs. **Regenerate the fixture from `konduyt-api`
+whenever the API payload shape or the directory data changes**, or this half
+will pin stale expectations.
+
+The test also guards the *wiring*, because a component that renders correctly
+but is never mounted is not delivered: it asserts `page.js` imports
+`DirectConnectionsDirectory`, registers the `['directory', 'Directory']` tab,
+and mounts `<DirectConnectionsDirectory>` under `tab === 'directory'`, and that
+the Directory view and the "connect an account" view stay separate tabs.
+
+The 197 here is a composition, not a bare number: 193 UN members + 2 observers
+(VA, PS) + Taiwan = 196, + Kosovo = 197. `banks_unique` (API-side) counts
+distinct normalized names, not legal entities; the directory never restates it
+as an entity count.

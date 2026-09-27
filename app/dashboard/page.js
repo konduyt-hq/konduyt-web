@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import CheckoutModal from './CheckoutModal';
 import DirectConnections from './DirectConnections';
+import DirectConnectionsDirectory from './DirectConnectionsDirectory';
 import LogoMark from '../LogoMark';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
@@ -129,6 +130,7 @@ export default function Dashboard() {
       money: 'Konduyt Payments',
       connections: 'Konduyt Payment Providers',
       direct: 'Konduyt Direct Connections',
+      directory: 'Konduyt Direct Connections Directory',
       quickstart: 'Konduyt Code Samples',
       messages: 'Konduyt Messages',
       settings: 'Konduyt Settings',
@@ -1624,6 +1626,7 @@ export default function Dashboard() {
           ['quickstart', 'Code Samples'],
           ['connections', 'Payment Providers'],
           ['direct', 'Direct Connections'],
+          ['directory', 'Directory'],
           ['money', 'Payments'],
           ['settings', 'Settings'],
         ].map(([id, label]) => (
@@ -2773,6 +2776,10 @@ export default function Dashboard() {
             {tab === 'direct' && (
               <DirectConnections active={active}
                 onNotice={(text) => setAccountNotice({ kind: 'ok', text })} />
+            )}
+
+            {tab === 'directory' && (
+              <DirectConnectionsDirectory active={active} />
             )}
 
             {tab === 'money' && !taxDetailOpen && (

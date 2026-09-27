@@ -1,0 +1,2004 @@
+{
+ "_source": "Captured from the running konduyt-api via FastAPI TestClient; see scripts/test-direct-connections-directory-render.mjs header for the command.",
+ "countries": {
+  "countries": [
+   {
+    "code": "AF",
+    "name": "Afghanistan",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "AFN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AL",
+    "name": "Albania",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "ALL",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "DZ",
+    "name": "Algeria",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "currency": "DZD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AD",
+    "name": "Andorra",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AO",
+    "name": "Angola",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "AOA",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AG",
+    "name": "Antigua and Barbuda",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "XCD",
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "AR",
+    "name": "Argentina",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "ARS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AM",
+    "name": "Armenia",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "AMD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AU",
+    "name": "Australia",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "currency": "AUD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AT",
+    "name": "Austria",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AZ",
+    "name": "Azerbaijan",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "AZN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BS",
+    "name": "Bahamas",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "BSD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BH",
+    "name": "Bahrain",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "BHD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BD",
+    "name": "Bangladesh",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "BDT",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BB",
+    "name": "Barbados",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "BBD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BY",
+    "name": "Belarus",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "currency": "BYN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BE",
+    "name": "Belgium",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BZ",
+    "name": "Belize",
+    "region": "Americas",
+    "subregion": "Central America",
+    "currency": "BZD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BJ",
+    "name": "Benin",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BT",
+    "name": "Bhutan",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "BTN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BO",
+    "name": "Bolivia",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "BOB",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BA",
+    "name": "Bosnia and Herzegovina",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "BAM",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BW",
+    "name": "Botswana",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "currency": "BWP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BR",
+    "name": "Brazil",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "BRL",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BN",
+    "name": "Brunei",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "BND",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BG",
+    "name": "Bulgaria",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BF",
+    "name": "Burkina Faso",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "BI",
+    "name": "Burundi",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "BIF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CV",
+    "name": "Cabo Verde",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "CVE",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KH",
+    "name": "Cambodia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "KHR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CM",
+    "name": "Cameroon",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "XAF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CA",
+    "name": "Canada",
+    "region": "Americas",
+    "subregion": "North America",
+    "currency": "CAD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CF",
+    "name": "Central African Republic",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "XAF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TD",
+    "name": "Chad",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "XAF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CL",
+    "name": "Chile",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "CLP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CN",
+    "name": "China",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "currency": "CNY",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CO",
+    "name": "Colombia",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "COP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KM",
+    "name": "Comoros",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "KMF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CR",
+    "name": "Costa Rica",
+    "region": "Americas",
+    "subregion": "Central America",
+    "currency": "CRC",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "HR",
+    "name": "Croatia",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CU",
+    "name": "Cuba",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "CUC",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CY",
+    "name": "Cyprus",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CZ",
+    "name": "Czechia",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "currency": "CZK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CI",
+    "name": "Côte d'Ivoire",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CD",
+    "name": "Democratic Republic of the Congo",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "CDF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "DK",
+    "name": "Denmark",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "DKK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "DJ",
+    "name": "Djibouti",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "DJF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "DM",
+    "name": "Dominica",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "XCD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "DO",
+    "name": "Dominican Republic",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "DOP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "EC",
+    "name": "Ecuador",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "USD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "EG",
+    "name": "Egypt",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "currency": "EGP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SV",
+    "name": "El Salvador",
+    "region": "Americas",
+    "subregion": "Central America",
+    "currency": "USD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GQ",
+    "name": "Equatorial Guinea",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "XAF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ER",
+    "name": "Eritrea",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "ERN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "EE",
+    "name": "Estonia",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SZ",
+    "name": "Eswatini",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "currency": "SZL",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ET",
+    "name": "Ethiopia",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "ETB",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "FJ",
+    "name": "Fiji",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "currency": "FJD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "FI",
+    "name": "Finland",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "FR",
+    "name": "France",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GA",
+    "name": "Gabon",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "XAF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GM",
+    "name": "Gambia",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "GMD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GE",
+    "name": "Georgia",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "GEL",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "DE",
+    "name": "Germany",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GH",
+    "name": "Ghana",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "GHS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GR",
+    "name": "Greece",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GD",
+    "name": "Grenada",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "XCD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GT",
+    "name": "Guatemala",
+    "region": "Americas",
+    "subregion": "Central America",
+    "currency": "GTQ",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GN",
+    "name": "Guinea",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "GNF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GW",
+    "name": "Guinea-Bissau",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GY",
+    "name": "Guyana",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "GYD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "HT",
+    "name": "Haiti",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "HTG",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "HN",
+    "name": "Honduras",
+    "region": "Americas",
+    "subregion": "Central America",
+    "currency": "HNL",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "HU",
+    "name": "Hungary",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "currency": "HUF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "IS",
+    "name": "Iceland",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "ISK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "IN",
+    "name": "India",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "INR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ID",
+    "name": "Indonesia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "IDR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "IR",
+    "name": "Iran",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "IRR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "IQ",
+    "name": "Iraq",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "IQD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "IE",
+    "name": "Ireland",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "IL",
+    "name": "Israel",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "ILS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "IT",
+    "name": "Italy",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "JM",
+    "name": "Jamaica",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "JMD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "JP",
+    "name": "Japan",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "currency": "JPY",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "JO",
+    "name": "Jordan",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "JOD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KZ",
+    "name": "Kazakhstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "currency": "KZT",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KE",
+    "name": "Kenya",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "KES",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KI",
+    "name": "Kiribati",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "currency": "AUD",
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "XK",
+    "name": "Kosovo",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KW",
+    "name": "Kuwait",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "KWD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KG",
+    "name": "Kyrgyzstan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "currency": "KGS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LA",
+    "name": "Laos",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "LAK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LV",
+    "name": "Latvia",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LB",
+    "name": "Lebanon",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "LBP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LS",
+    "name": "Lesotho",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "currency": "LSL",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LR",
+    "name": "Liberia",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "LRD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LY",
+    "name": "Libya",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "currency": "LYD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LI",
+    "name": "Liechtenstein",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "CHF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LT",
+    "name": "Lithuania",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LU",
+    "name": "Luxembourg",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MG",
+    "name": "Madagascar",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "MGA",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MW",
+    "name": "Malawi",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "MWK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MY",
+    "name": "Malaysia",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "MYR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MV",
+    "name": "Maldives",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "MVR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ML",
+    "name": "Mali",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MT",
+    "name": "Malta",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MH",
+    "name": "Marshall Islands",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "currency": "USD",
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "MR",
+    "name": "Mauritania",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "MRU",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MU",
+    "name": "Mauritius",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "MUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MX",
+    "name": "Mexico",
+    "region": "Americas",
+    "subregion": "North America",
+    "currency": "MXN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "FM",
+    "name": "Micronesia",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "currency": null,
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "MD",
+    "name": "Moldova",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "currency": "MDL",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MC",
+    "name": "Monaco",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MN",
+    "name": "Mongolia",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "currency": "MNT",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ME",
+    "name": "Montenegro",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MA",
+    "name": "Morocco",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "currency": "MAD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MZ",
+    "name": "Mozambique",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "MZN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MM",
+    "name": "Myanmar",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "MMK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NA",
+    "name": "Namibia",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "currency": "NAD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NR",
+    "name": "Nauru",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "currency": "AUD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NP",
+    "name": "Nepal",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "NPR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NL",
+    "name": "Netherlands",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NZ",
+    "name": "New Zealand",
+    "region": "Oceania",
+    "subregion": "Australia and New Zealand",
+    "currency": "NZD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NI",
+    "name": "Nicaragua",
+    "region": "Americas",
+    "subregion": "Central America",
+    "currency": "NIO",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NE",
+    "name": "Niger",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NG",
+    "name": "Nigeria",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "NGN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KP",
+    "name": "North Korea",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "currency": "KPW",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "MK",
+    "name": "North Macedonia",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "MKD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "NO",
+    "name": "Norway",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "NOK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "OM",
+    "name": "Oman",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "OMR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PK",
+    "name": "Pakistan",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "PKR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PW",
+    "name": "Palau",
+    "region": "Oceania",
+    "subregion": "Micronesia",
+    "currency": "USD",
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "PS",
+    "name": "Palestine",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "EGP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PA",
+    "name": "Panama",
+    "region": "Americas",
+    "subregion": "Central America",
+    "currency": "PAB",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PG",
+    "name": "Papua New Guinea",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "currency": "PGK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PY",
+    "name": "Paraguay",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "PYG",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PE",
+    "name": "Peru",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "PEN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PH",
+    "name": "Philippines",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "PHP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PL",
+    "name": "Poland",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "currency": "PLN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "PT",
+    "name": "Portugal",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "QA",
+    "name": "Qatar",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "QAR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CG",
+    "name": "Republic of the Congo",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "XAF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "RO",
+    "name": "Romania",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "RON",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "RU",
+    "name": "Russia",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "currency": "RUB",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "RW",
+    "name": "Rwanda",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "RWF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KN",
+    "name": "Saint Kitts and Nevis",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "XCD",
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "LC",
+    "name": "Saint Lucia",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "XCD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "VC",
+    "name": "Saint Vincent and the Grenadines",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "XCD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "WS",
+    "name": "Samoa",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "currency": "WST",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SM",
+    "name": "San Marino",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SA",
+    "name": "Saudi Arabia",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "SAR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SN",
+    "name": "Senegal",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "RS",
+    "name": "Serbia",
+    "region": "Europe",
+    "subregion": "Southeast Europe",
+    "currency": "RSD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SC",
+    "name": "Seychelles",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "SCR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SL",
+    "name": "Sierra Leone",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "SLE",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SG",
+    "name": "Singapore",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "SGD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SK",
+    "name": "Slovakia",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SI",
+    "name": "Slovenia",
+    "region": "Europe",
+    "subregion": "Central Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SB",
+    "name": "Solomon Islands",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "currency": "SBD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SO",
+    "name": "Somalia",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "SOS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ZA",
+    "name": "South Africa",
+    "region": "Africa",
+    "subregion": "Southern Africa",
+    "currency": "ZAR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "KR",
+    "name": "South Korea",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "currency": "KRW",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SS",
+    "name": "South Sudan",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "SSP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ES",
+    "name": "Spain",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "LK",
+    "name": "Sri Lanka",
+    "region": "Asia",
+    "subregion": "Southern Asia",
+    "currency": "LKR",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SD",
+    "name": "Sudan",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "currency": "SDG",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SR",
+    "name": "Suriname",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "SRD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SE",
+    "name": "Sweden",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "SEK",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "CH",
+    "name": "Switzerland",
+    "region": "Europe",
+    "subregion": "Western Europe",
+    "currency": "CHF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "SY",
+    "name": "Syria",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "SYP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ST",
+    "name": "São Tomé and Príncipe",
+    "region": "Africa",
+    "subregion": "Middle Africa",
+    "currency": "STN",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TW",
+    "name": "Taiwan",
+    "region": "Asia",
+    "subregion": "Eastern Asia",
+    "currency": "TWD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TJ",
+    "name": "Tajikistan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "currency": "TJS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TZ",
+    "name": "Tanzania",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "TZS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TH",
+    "name": "Thailand",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "THB",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TL",
+    "name": "Timor-Leste",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "USD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TG",
+    "name": "Togo",
+    "region": "Africa",
+    "subregion": "Western Africa",
+    "currency": "XOF",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TO",
+    "name": "Tonga",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "currency": "TOP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TT",
+    "name": "Trinidad and Tobago",
+    "region": "Americas",
+    "subregion": "Caribbean",
+    "currency": "TTD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TN",
+    "name": "Tunisia",
+    "region": "Africa",
+    "subregion": "Northern Africa",
+    "currency": "TND",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TM",
+    "name": "Turkmenistan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "currency": "TMT",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "TV",
+    "name": "Tuvalu",
+    "region": "Oceania",
+    "subregion": "Polynesia",
+    "currency": "AUD",
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "TR",
+    "name": "Türkiye",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "TRY",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "UG",
+    "name": "Uganda",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "UGX",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "UA",
+    "name": "Ukraine",
+    "region": "Europe",
+    "subregion": "Eastern Europe",
+    "currency": "UAH",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "AE",
+    "name": "United Arab Emirates",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "AED",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "GB",
+    "name": "United Kingdom",
+    "region": "Europe",
+    "subregion": "Northern Europe",
+    "currency": "GBP",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "US",
+    "name": "United States",
+    "region": "Americas",
+    "subregion": "North America",
+    "currency": "USD",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "UY",
+    "name": "Uruguay",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "UYU",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "UZ",
+    "name": "Uzbekistan",
+    "region": "Asia",
+    "subregion": "Central Asia",
+    "currency": "UZS",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "VU",
+    "name": "Vanuatu",
+    "region": "Oceania",
+    "subregion": "Melanesia",
+    "currency": "VUV",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "VA",
+    "name": "Vatican City",
+    "region": "Europe",
+    "subregion": "Southern Europe",
+    "currency": "EUR",
+    "discovery_state": "not_discovered"
+   },
+   {
+    "code": "VE",
+    "name": "Venezuela",
+    "region": "Americas",
+    "subregion": "South America",
+    "currency": "VES",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "VN",
+    "name": "Vietnam",
+    "region": "Asia",
+    "subregion": "South-Eastern Asia",
+    "currency": "VND",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "YE",
+    "name": "Yemen",
+    "region": "Asia",
+    "subregion": "Western Asia",
+    "currency": "YER",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ZM",
+    "name": "Zambia",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "ZMW",
+    "discovery_state": "discovered"
+   },
+   {
+    "code": "ZW",
+    "name": "Zimbabwe",
+    "region": "Africa",
+    "subregion": "Eastern Africa",
+    "currency": "BWP",
+    "discovery_state": "discovered"
+   }
+  ],
+  "total": 197,
+  "discovered": 189,
+  "note": "A country being listed, or having banks listed, is not a statement that Konduyt can execute a payment there."
+ },
+ "countries_KE": {
+  "code": "KE",
+  "name": "Kenya",
+  "region": "Africa",
+  "subregion": "Eastern Africa",
+  "currency": "KES",
+  "un_member": true,
+  "aliases": [
+   "Jamhuri ya Kenya",
+   "Keenia",
+   "Kenia",
+   "Kenija",
+   "Keňa",
+   "Quénia",
+   "Republic of Kenya",
+   "Кения",
+   "كينيا",
+   "کنیا",
+   "کینیا"
+  ],
+  "discovery_state": "discovered",
+  "mobile_money": [
+   {
+    "name": "M-Pesa",
+    "operator": "Safaricom",
+    "source": "Wikipedia: mobile banking se",
+    "source_url": "https://en.wikipedia.org/wiki/M-Pesa"
+   },
+   {
+    "name": "Airtel Money",
+    "operator": "Airtel",
+    "source": "Wikipedia: Airtel Africa",
+    "source_url": "https://en.wikipedia.org/wiki/Airtel_Africa"
+   }
+  ],
+  "banks": [
+   "KCB Bank Kenya Limited",
+   "Equity Bank Kenya Limited",
+   "Co-operative Bank of Kenya Ltd",
+   "NCBA Bank Kenya PLC",
+   "Absa Bank Kenya PLC",
+   "Stanbic Bank Kenya Ltd",
+   "I&M Bank Ltd",
+   "Diamond Trust Bank Kenya Ltd",
+   "Standard Chartered Bank Kenya Ltd",
+   "Prime Bank Ltd",
+   "Bank of Baroda (Kenya) Ltd",
+   "Family Bank Ltd",
+   "Bank of India",
+   "National Bank of Kenya Ltd",
+   "SBM Bank Kenya Ltd",
+   "Sidian Bank Ltd",
+   "Ecobank Kenya Ltd",
+   "Victoria Commercial Bank PLC",
+   "Gulf African Bank Ltd",
+   "Bank of Africa Kenya Ltd",
+   "Guaranty Trust Bank (Kenya) Ltd",
+   "Kingdom Bank Ltd",
+   "Habib Bank AG Zurich",
+   "DIB Bank Kenya Ltd",
+   "Premier Bank Kenya Ltd",
+   "Commercial International Bank Kenya Ltd",
+   "Credit Bank PLC",
+   "Middle East Bank (Kenya) Ltd",
+   "Guardian Bank Ltd",
+   "Paramount Bank Ltd",
+   "M Oriental Bank Ltd",
+   "United Bank for Africa Kenya Ltd",
+   "Access Bank (Kenya) PLC",
+   "Consolidated Bank of Kenya Ltd",
+   "Spire Bank Ltd",
+   "Kenya Post Office Savings Bank",
+   "Kenya: CBK Cancels Licence for Indian Bank's Kenya Office"
+  ],
+  "bank_source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_Kenya",
+  "source": null,
+  "stats": {
+   "banks_raw": 39,
+   "banks_served": 37,
+   "banks_removed_nonbank": 2,
+   "banks_removed_prose": 0,
+   "banks_removed_duplicate": 0,
+   "mobile_money_served": 2,
+   "banks_also_listed_elsewhere": 6
+  },
+  "note": "This directory describes accounts that exist. It is not a statement that Konduyt can execute a payment into any of them.",
+  "execution": {
+   "listed": 9,
+   "executable": 1,
+   "note": "Executable count is derived from the connector registry. Listing is not capability."
+  }
+ },
+ "countries_NG": {
+  "code": "NG",
+  "name": "Nigeria",
+  "region": "Africa",
+  "subregion": "Western Africa",
+  "currency": "NGN",
+  "un_member": true,
+  "aliases": [
+   "Federal Republic of Nigeria",
+   "Naíjíríà",
+   "Nigeeria",
+   "Nigerija",
+   "Nigéria",
+   "Nigérie",
+   "Nijeriya",
+   "Nijerya",
+   "Нигерия",
+   "نائجیریا",
+   "نيجيريا",
+   "نیجریه"
+  ],
+  "discovery_state": "discovered",
+  "mobile_money": [
+   {
+    "name": "PalmPay",
+    "operator": null,
+    "source": "Wikipedia: Nigerian mobile banking company",
+    "source_url": "https://en.wikipedia.org/wiki/PalmPay"
+   },
+   {
+    "name": "Opay",
+    "operator": null,
+    "source": "Wikipedia: Pan-African mobile banking company",
+    "source_url": "https://en.wikipedia.org/wiki/Opay"
+   },
+   {
+    "name": "Moniepoint Inc",
+    "operator": null,
+    "source": "Wikipedia: Nigerian Mobile Banking company",
+    "source_url": "https://en.wikipedia.org/wiki/Moniepoint_Inc."
+   }
+  ],
+  "banks": [
+   "Access Bank plc",
+   "Alpha Morgan Bank",
+   "Ecobank Nigeria Plc",
+   "Fidelity Bank Plc",
+   "First Bank Nigeria Ltd",
+   "First City Monument Bank Plc",
+   "Globus Bank Ltd",
+   "Guaranty Trust Bank Plc",
+   "Keystone Bank Ltd",
+   "Nova Commercial Bank Ltd",
+   "Optimus Bank",
+   "Parallex Bank Ltd",
+   "Polaris Bank Plc",
+   "Premium Trust Bank",
+   "Providus Bank Ltd",
+   "Signature Bank Ltd",
+   "Stanbic IBTC Bank Plc",
+   "Standard Chartered Bank Nigeria Ltd",
+   "Sterling Bank Plc",
+   "Summit Bank",
+   "SunTrust Bank Nigeria Ltd",
+   "Tatum Bank",
+   "The Alternative Bank Ltd",
+   "Titan Trust Bank Ltd",
+   "Union Bank of Nigeria Plc",
+   "United Bank For Africa Plc",
+   "Unity Bank Plc",
+   "Wema Bank Plc",
+   "Zenith Bank Plc",
+   "Bank of Agriculture",
+   "Bank of Industry",
+   "Nigerian Export-Import Bank",
+   "The Infrastructure Bank",
+   "Jaiz Bank Plc",
+   "Lotus Bank Ltd",
+   "pecan trust mf bank",
+   "Sparkle Bank",
+   "Kuda Bank",
+   "Rubies Bank",
+   "Raven Bank"
+  ],
+  "bank_source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_Nigeria",
+  "source": null,
+  "stats": {
+   "banks_raw": 44,
+   "banks_served": 40,
+   "banks_removed_nonbank": 3,
+   "banks_removed_prose": 0,
+   "banks_removed_duplicate": 1,
+   "mobile_money_served": 3,
+   "banks_also_listed_elsewhere": 8
+  },
+  "note": "This directory describes accounts that exist. It is not a statement that Konduyt can execute a payment into any of them.",
+  "execution": {
+   "listed": 47,
+   "executable": 0,
+   "note": "Executable count is derived from the connector registry. Listing is not capability."
+  }
+ },
+ "countries_VA": {
+  "code": "VA",
+  "name": "Vatican City",
+  "region": "Europe",
+  "subregion": "Southern Europe",
+  "currency": "EUR",
+  "un_member": false,
+  "aliases": [
+   "Cidade do Vaticano",
+   "Città del Vaticano",
+   "Cité du Vatican",
+   "Ciudad del Vaticano",
+   "Holy See (Vatican City State)",
+   "Stato della Città del Vaticano",
+   "Vaticaanstad",
+   "Vatican",
+   "Vatican City State",
+   "Vatikaani",
+   "Vatikan",
+   "Vatikanstadt",
+   "Vatikanstaten",
+   "Vatikán",
+   "Watykan",
+   "Ватикан",
+   "مدينة الفاتيكان",
+   "واتیکان",
+   "ویٹیکن سٹی"
+  ],
+  "discovery_state": "not_discovered",
+  "mobile_money": [],
+  "banks": [],
+  "bank_source_url": null,
+  "source": null,
+  "stats": {
+   "banks_raw": 0,
+   "banks_served": 0,
+   "banks_removed_nonbank": 0,
+   "banks_removed_prose": 0,
+   "banks_removed_duplicate": 0,
+   "mobile_money_served": 0,
+   "banks_also_listed_elsewhere": 0
+  },
+  "note": "This directory describes accounts that exist. It is not a statement that Konduyt can execute a payment into any of them.",
+  "execution": {
+   "listed": 0,
+   "executable": 0,
+   "note": "Executable count is derived from the connector registry. Listing is not capability."
+  }
+ },
+ "search_equity": {
+  "query": "Equity Bank",
+  "countries": [],
+  "mobile_money": [],
+  "banks": [
+   {
+    "country": "CA",
+    "name": "HomeEquity Bank",
+    "source_url": "https://en.wikipedia.org/wiki/List_of_banks_and_credit_unions_in_Canada"
+   },
+   {
+    "country": "IE",
+    "name": "Equity Bank",
+    "source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_the_Republic_of_Ireland"
+   },
+   {
+    "country": "KE",
+    "name": "Equity Bank Kenya Limited",
+    "source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_Kenya"
+   },
+   {
+    "country": "RW",
+    "name": "Equity Bank Rwanda Plc",
+    "source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_Rwanda"
+   },
+   {
+    "country": "SS",
+    "name": "Equity Bank South Sudan Limited",
+    "source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_South_Sudan"
+   },
+   {
+    "country": "TZ",
+    "name": "Equity Bank Tanzania Ltd",
+    "source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_Tanzania"
+   },
+   {
+    "country": "UG",
+    "name": "Equity Bank Uganda Limited",
+    "source_url": "https://en.wikipedia.org/wiki/List_of_banks_in_Uganda"
+   }
+  ],
+  "note": "A match here is a description, not a capability. Only institutions with a derived EXECUTABLE state can receive a live payment request."
+ },
+ "search_mpesa": {
+  "query": "M-Pesa",
+  "countries": [],
+  "mobile_money": [
+   {
+    "country": "KE",
+    "name": "M-Pesa",
+    "operator": "Safaricom",
+    "source": "Wikipedia: mobile banking se",
+    "source_url": "https://en.wikipedia.org/wiki/M-Pesa"
+   }
+  ],
+  "banks": [],
+  "note": "A match here is a description, not a capability. Only institutions with a derived EXECUTABLE state can receive a live payment request."
+ },
+ "coverage": {
+  "countries_total": 197,
+  "countries_phase1_target": 196,
+  "countries_discovered": 189,
+  "countries_not_discovered": 8,
+  "countries_not_discovered_codes": [
+   "AG",
+   "FM",
+   "KI",
+   "KN",
+   "MH",
+   "PW",
+   "TV",
+   "VA"
+  ],
+  "banks_raw": 6389,
+  "banks_served": 6213,
+  "banks_removed_nonbank": 41,
+  "banks_removed_prose": 68,
+  "banks_removed_duplicate": 67,
+  "mobile_money_served": 48,
+  "banks_unique": 5223,
+  "banks_unique_definition": "distinct normalized institution names -- NOT a legal-entity count",
+  "repeat_listings": 990
+ },
+ "uniqueness": {
+  "banks_unique": 5223,
+  "banks_unique_definition": "distinct normalized institution names; the normalization lower-cases, drops legal-form tokens (Ltd/PLC/SA/AG/NV/Inc/Co), a leading 'The', a trailing Group/Holdings, and 'bank of', then strips punctuation and spaces",
+  "is_legal_entity_count": false,
+  "name_variant_groups": 162,
+  "name_variant_examples": [
+   {
+    "normalized": "megainternationalcommercialbank",
+    "spellings": [
+     "Mega International Commercial Bank",
+     "Mega International Commercial Bank Co",
+     "Mega International Commercial Bank Co. LTD",
+     "Mega International Commercial Bank Co., Ltd",
+     "The Mega International Commercial Bank"
+    ]
+   },
+   {
+    "normalized": "royalscotland",
+    "spellings": [
+     "Royal Bank of Scotland",
+     "Royal Bank of Scotland PLC, The",
+     "The Royal Bank of Scotland",
+     "The Royal Bank of Scotland Limited"
+    ]
+   },
+   {
+    "normalized": "standardchartered",
+    "spellings": [
+     "Standard Chartered",
+     "Standard Chartered S.A",
+     "Standard Chartered plc"
+    ]
+   },
+   {
+    "normalized": "ingbank",
+    "spellings": [
+     "ING Bank",
+     "ING Bank N.V",
+     "ING Bank NV"
+    ]
+   },
+   {
+    "normalized": "communications",
+    "spellings": [
+     "Bank of Communications",
+     "Bank of Communications Co",
+     "Bank of Communications Co., Ltd"
+    ]
+   },
+   {
+    "normalized": "industrialandcommercialchina",
+    "spellings": [
+     "Industrial and Commercial Bank of China",
+     "Industrial and Commercial Bank of China Limited",
+     "Industrial and Commercial Bank of China Ltd"
+    ]
+   },
+   {
+    "normalized": "mizuhobank",
+    "spellings": [
+     "Mizuho Bank",
+     "Mizuho Bank Limited",
+     "Mizuho Bank, Ltd"
+    ]
+   },
+   {
+    "normalized": "mufgbank",
+    "spellings": [
+     "MUFG BANK",
+     "MUFG Bank",
+     "MUFG Bank, Ltd"
+    ]
+   },
+   {
+    "normalized": "bancodobrasil",
+    "spellings": [
+     "Banco do Brasil",
+     "Banco do Brasil AG",
+     "Banco do Brasil SA"
+    ]
+   },
+   {
+    "normalized": "habibbank",
+    "spellings": [
+     "Habib Bank",
+     "Habib Bank Limited",
+     "Habib Bank Ltd"
+    ]
+   }
+  ],
+  "note": "Institutions listed by several countries share one name and one key, so they are counted once -- a foreign presence, not a local duplicate. Nothing here resolves parent vs subsidiary, historical vs active, or two different banks that share a normalized name; do not read this number as a count of legal entities."
+ }
+}
