@@ -346,6 +346,36 @@ the other cells and gets a small top margin. `scripts/test-footer-badge.mjs`
 (`npm run test:footer-badge`, wired into `npm test`) pins the exact href, image
 src, alt, dimensions, `rel`, link-wrapping and the CSS rule, so a later edit
 cannot quietly drop or rewrite it.
+
+### Completeness, and the two counts that are not interchangeable
+
+The directory renders the whole `countries` array the API returns (197), one
+button per country, grouped by region -- there is no `.slice`, no pagination,
+no lazy loading, no "discovered only" filter, and no hard-coded country list or
+total. The regression suite asserts that on the mounted DOM (one button per API
+country, nothing missing, nothing duplicated), not on the payload, because a
+subset would still pass an API check. It also opens the user-facing countries
+across regions (Kenya, Nigeria, India, Brazil, US, Germany, Japan, Australia,
+Kosovo, Taiwan, Vatican City) and asserts each detail renders the bank and
+mobile-money rows the API supplied.
+
+A country detail carries two different counts and they must never be swapped:
+
+* `detail.banks` / `detail.mobile_money` are the **sourced directory rows** the
+  panel below lists (e.g. Nigeria: 40 banks, 3 mobile-money services);
+* `execution.listed` is the **connector-registry** count in `dc_institutions`,
+  which is empty for most countries.
+
+`countryLine` reports the directory row counts. Saying "describes
+{execution.listed} institutions here" printed "0 institutions" directly above a
+panel listing 40 banks for 188 of 197 countries -- a false statement on the
+honesty-critical surface. The registry count is still reported, separately, when
+non-zero. Check 3 of the render suite pins this.
+
+Regenerate `scripts/fixtures/direct-connections.sample.json` from the live API
+whenever the payload shape or directory data changes; the fixture now covers the
+browse list plus all eleven inspected countries and two searches.
+
 ## The directory browser tab: a listing is never a capability
 
 `app/dashboard/DirectConnectionsDirectory.js` is the dashboard's "Directory"
