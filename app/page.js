@@ -334,6 +334,11 @@ export default function Home() {
             <a href="/terms/">Terms</a>
           </div>
           <span className="footer-copy">© 2026 Konduyt</span>
+          <div className="footer-badge">
+            <a href="https://launchbuck.com/p/konduyt" target="_blank" rel="noopener noreferrer">
+              <img src="https://launchbuck.com/badges/card-light.png" alt="Konduyt — Featured on LaunchBuck" width="190" height="58" />
+            </a>
+          </div>
         </footer>
       </div>
     </>
