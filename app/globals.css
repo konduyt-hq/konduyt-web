@@ -2887,11 +2887,27 @@
   .coverage-neutral .coverage-banner-icon{color:var(--text-secondary);}
 
   /* Direct Connections directory browser
-     (app/dashboard/DirectConnectionsDirectory.js). Every class named there has a
-     rule here, so nothing falls back to full-size body text. */
+     (app/dashboard/DirectConnectionsCountries.js). Every class named there has
+     a rule here, so nothing falls back to full-size body text. */
   .dc-dir{max-width:980px;}
-  .dc-dir-search{display:flex; gap:8px; align-items:center; margin-bottom:18px;}
+  .dc-dir-search{display:flex; gap:8px; align-items:center; margin-bottom:14px;}
   .dc-dir-search-input{max-width:520px;}
+  .dc-regions{display:flex; gap:6px; margin-bottom:18px; overflow-x:auto;
+    scrollbar-width:none; -ms-overflow-style:none; padding-bottom:2px;}
+  .dc-regions::-webkit-scrollbar{display:none;}
+  .dc-region{
+    flex:0 0 auto; font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    border:1px solid var(--border); background:#fff; color:var(--text-secondary);
+    border-radius:999px; padding:6px 14px; white-space:nowrap;
+    transition:background .12s, color .12s, border-color .12s;
+  }
+  .dc-region:hover{color:var(--ink); border-color:var(--accent);}
+  .dc-region-active, .dc-region-active:hover{
+    background:var(--ink); color:#fff; border-color:var(--ink);
+  }
+  .dc-flag{margin-right:6px; font-size:14px; line-height:1;}
+  .dc-detail-title{display:inline-flex; align-items:center;}
+  .dc-detail-divider{border-top:1px solid var(--border); margin:34px 0 26px;}
   .dc-dir-results{margin-top:6px;}
   .dc-dir-detail{margin-top:6px;}
   .dc-dir-detail-head{margin-bottom:12px;}
@@ -2904,6 +2920,8 @@
   .dc-dir-country .dc-name{font-size:13px;}
   .dc-dir-country .dc-operator{margin-top:0;}
   .dc-dir-bank{font-size:12.5px; color:var(--body); border:1px solid var(--border);
-    border-radius:8px; padding:7px 10px; background:#fff; overflow:hidden;
-    text-overflow:ellipsis; white-space:nowrap;}
+    border-radius:8px; padding:7px 10px; background:#fff;
+    display:flex; flex-direction:column; align-items:flex-start; gap:4px;}
+  .dc-dir-bank-name{overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+  .dc-dir-bank .dc-pill{font-size:10.5px; padding:1px 7px;}
   .dc-dir-browse{margin-top:4px;}
