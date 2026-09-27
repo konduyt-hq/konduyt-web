@@ -224,6 +224,141 @@ check('search repeats the not-a-capability note',
 check('search never claims a match can be paid',
   !text.includes('can accept a payment today'), text);
 
+// ---------------------------------------------------------------------------
+// Real-data pass: drive the same component with payloads captured from the
+// running API (scripts/fixtures/direct-connections.sample.json), so the
+// directory is proven against the real 197-country world, not only stubs.
+//
+// Regenerate the fixture from konduyt-api with:
+//   python -c "from fastapi.testclient import TestClient; from app.main import app; ..."
+// (see the API repo's test_direct_connections.py for the exact endpoints).
+// ---------------------------------------------------------------------------
+const FIXTURE = JSON.parse(readFileSync(
+  join(ROOT, 'scripts/fixtures/direct-connections.sample.json'), 'utf8'));
+
+function fixtureFetch(url) {
+  let payload;
+  if (/\/search/.test(url)) {
+    payload = /M-Pesa/.test(decodeURIComponent(url))
+      ? FIXTURE.search_mpesa : FIXTURE.search_equity;
+  } else if (/\/countries\/KE$/.test(url)) payload = FIXTURE.countries_KE;
+  else if (/\/countries\/NG$/.test(url)) payload = FIXTURE.countries_NG;
+  else if (/\/countries\/VA$/.test(url)) payload = FIXTURE.countries_VA;
+  else payload = FIXTURE.countries;
+  return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload) });
+}
+
+async function renderReal({ query = null, clickName = null } = {}) {
+  dom.window.fetch = fixtureFetch;
+  global.fetch = dom.window.fetch;
+  const container = dom.window.document.createElement('div');
+  dom.window.document.body.appendChild(container);
+  const root = createRoot(container);
+  await React.act(async () => { root.render(React.createElement(Component, {})); });
+  await React.act(async () => {});
+  if (clickName) {
+    const btn = Array.from(container.querySelectorAll('button'))
+      .find((b) => b.textContent.includes(clickName));
+    await React.act(async () => {
+      btn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    });
+    await React.act(async () => {});
+  }
+  if (query) {
+    const input = container.querySelector('input[type="search"]');
+    const setter = Object.getOwnPropertyDescriptor(
+      dom.window.HTMLInputElement.prototype, 'value').set;
+    await React.act(async () => {
+      setter.call(input, query);
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    await React.act(async () => { await new Promise((r) => setTimeout(r, 320)); });
+    await React.act(async () => {});
+  }
+  const text = container.textContent;
+  await React.act(async () => { root.unmount(); });
+  container.remove();
+  return text;
+}
+
+console.log('\nDirect Connections directory vs the real API payloads');
+console.log('----------------------------------------------------------------');
+
+const realTotal = FIXTURE.countries.total;
+const nondiscovered = FIXTURE.countries.countries
+  .filter((c) => c.discovery_state !== 'discovered');
+
+let rtext = await renderReal();
+check('the real country total is 197', realTotal === 197, String(realTotal));
+check('the browse line shows the API total, not a hard-coded one',
+  rtext.includes(`${realTotal} countries`), rtext.slice(0, 160));
+check('it shows the API discovered count',
+  rtext.includes(`catalogued institutions in ${FIXTURE.countries.discovered}`),
+  rtext.slice(0, 200));
+check('every real not-catalogued country is shown, labelled, not hidden',
+  nondiscovered.every((c) => rtext.includes(c.name)), 
+  nondiscovered.map((c) => c.name).join(', '));
+check('the real not-catalogued count is 8', nondiscovered.length === 8,
+  String(nondiscovered.length));
+
+// Kenya: the one country with an executable institution. The rendered sentence
+// must use the API's own numbers.
+const ke = FIXTURE.countries_KE;
+rtext = await renderReal({ clickName: 'Kenya' });
+check('Kenya shows the EXECUTABLE count from the API',
+  rtext.includes(`${ke.execution.executable} of ${ke.execution.listed} listed`
+    + ' institutions can accept a payment today'),
+  rtext.slice(0, 200));
+check('Kenya lists its real M-Pesa mobile money',
+  ke.mobile_money.some((m) => rtext.includes(m.name)), rtext.slice(0, 200));
+
+// Nigeria: real banks, zero connectors. This is the case most at risk of
+// reading as capability.
+const ng = FIXTURE.countries_NG;
+rtext = await renderReal({ clickName: 'Nigeria' });
+check('Nigeria (0 executable) says none can accept a payment yet',
+  rtext.includes('none can accept'), rtext.slice(0, 240));
+check('Nigeria shows no green success tick', !rtext.includes('✓'), rtext.slice(0, 240));
+check('Nigeria still lists real sourced banks',
+  ng.banks.some((b) => rtext.includes(b)), ng.banks.slice(0, 3).join(', '));
+
+// An uncatalogued country: a gap, never "no banks".
+rtext = await renderReal({ clickName: 'Vatican City' });
+check('Vatican City says it is a gap in our data',
+  rtext.includes('gap in our data'), rtext.slice(0, 240));
+check('Vatican City shows no green success tick', !rtext.includes('✓'));
+
+// Search against the real API result set.
+rtext = await renderReal({ query: 'Equity Bank' });
+check('search finds a real bank the developer already owns',
+  FIXTURE.search_equity.banks.some((b) => rtext.includes(b.name)),
+  FIXTURE.search_equity.banks.slice(0, 3).map((b) => b.name).join(', '));
+check('a real search hit is labelled a description, not a capability',
+  rtext.includes('not a capability'), rtext.slice(0, 200));
+
+// ---------------------------------------------------------------------------
+// Wiring: the directory must actually be reachable inside Direct Connections.
+// A component that renders correctly but is never mounted is not delivered.
+// ---------------------------------------------------------------------------
+const PAGE = readFileSync(join(ROOT, 'app/dashboard/page.js'), 'utf8');
+const WIRE = readFileSync(join(ROOT, 'app/dashboard/DirectConnections.js'), 'utf8');
+check('the dashboard imports the directory component',
+  /import\s+DirectConnectionsDirectory\s+from\s+['"]\.\/DirectConnectionsDirectory['"]/
+    .test(PAGE), 'no import found');
+check('the Directory tab is in the tab bar',
+  /\[\s*['"]directory['"]\s*,\s*['"][^'"]+['"]\s*\]/.test(PAGE),
+  'no directory tab entry');
+check('the Directory tab mounts the directory component',
+  /\{\s*tab\s*===\s*['"]directory['"]\s*&&\s*\(\s*<DirectConnectionsDirectory\b/
+    .test(PAGE), 'not mounted');
+check('the Directory component is live code, not a placeholder',
+  /export\s+default\s+function\s+DirectConnectionsDirectory/.test(
+    readFileSync(join(ROOT, 'app/dashboard/DirectConnectionsDirectory.js'), 'utf8')));
+// The directory view is a "what exists" tab; it must not be conflated with the
+// "connect your account" tab. They are two tabs on purpose.
+check('Direct Connections (connect) and Directory are separate tabs',
+  /DirectConnections\b/.test(WIRE) && /DirectConnectionsDirectory/.test(PAGE));
+
 rmSync(TMP, { force: true });
 
 console.log('----------------------------------------------------------------');

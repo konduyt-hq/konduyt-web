@@ -358,3 +358,27 @@ follows the repo's layout-variant rule -- every class in its JSX has a rule in
 `globals.css` (the `dc-dir-*` block) or reuses a `dc-*` / `coverage-*` one, and
 `.coverage-neutral` was added for the neutral (not success, not warning)
 banner used on the browse list.
+
+### Real-data pass and the wiring guard
+
+The test has two halves. The first uses hand-shaped stubs to exercise the
+forbidden claims. The second, `Direct Connections directory vs the real API
+payloads`, drives the same component with
+`scripts/fixtures/direct-connections.sample.json` -- payloads captured from the
+running `konduyt-api` (`/countries`, `/countries/KE|NG|VA`, `/search`). That
+half asserts the component reproduces the API's own 197/discovered/executable
+numbers and lists the real banks, so the honesty claims hold against the real
+world and not only against stubs. **Regenerate the fixture from `konduyt-api`
+whenever the API payload shape or the directory data changes**, or this half
+will pin stale expectations.
+
+The test also guards the *wiring*, because a component that renders correctly
+but is never mounted is not delivered: it asserts `page.js` imports
+`DirectConnectionsDirectory`, registers the `['directory', 'Directory']` tab,
+and mounts `<DirectConnectionsDirectory>` under `tab === 'directory'`, and that
+the Directory view and the "connect an account" view stay separate tabs.
+
+The 197 here is a composition, not a bare number: 193 UN members + 2 observers
+(VA, PS) + Taiwan = 196, + Kosovo = 197. `banks_unique` (API-side) counts
+distinct normalized names, not legal entities; the directory never restates it
+as an entity count.
