@@ -293,12 +293,12 @@
     if (opts.allowedMethods && opts.allowedMethods.length) {
       var allowed = {};
       opts.allowedMethods.forEach(function (m) { allowed[m] = true; });
-      result = result.filter(function (m) { return allowed[m.id]; });
+      result = result.filter(function (m) { return allowed[prefKey(m)]; });
     }
     if (opts.hiddenMethods && opts.hiddenMethods.length) {
       var hidden = {};
       opts.hiddenMethods.forEach(function (m) { hidden[m] = true; });
-      result = result.filter(function (m) { return !hidden[m.id]; });
+      result = result.filter(function (m) { return !hidden[prefKey(m)]; });
     }
 
     // Ordering. preferredMethods (a full ordered list) is the general form;
@@ -320,9 +320,9 @@
       orderList.forEach(function (id, i) { rank[id] = i; });
       var ranked = [], unranked = [];
       result.forEach(function (m) {
-        if (rank.hasOwnProperty(m.id)) ranked.push(m); else unranked.push(m);
+        if (rank.hasOwnProperty(prefKey(m))) ranked.push(m); else unranked.push(m);
       });
-      ranked.sort(function (a, b) { return rank[a.id] - rank[b.id]; });
+      ranked.sort(function (a, b) { return rank[prefKey(a)] - rank[prefKey(b)]; });
       result = ranked.concat(unranked);
     } else if (opts.smartOrdering === false) {
       // SMART ORDERING explicitly turned off, and no merchant order given
@@ -346,6 +346,10 @@
   // NEVER turned into 0, because unknown is not free.
   function feeLabel(m) {
     if (!m) return "Fee unavailable";
+    // A Direct option carries no fee from the API (Konduyt takes none for
+    // Direct). The renderer cannot tell "no fee" from "not priced", so it says
+    // the honest thing: unavailable. Never 0, never an invented figure. Where
+    // the money goes is stated in the route slot instead.
     var cur = m.fee_currency || m._currency;
     if (m.fee_minor_low != null && m.fee_minor_high != null) {
       return fmt(m.fee_minor_low, cur) + "\u2013" + fmt(m.fee_minor_high, cur) + " \u00b7 estimated";
@@ -460,6 +464,35 @@
               "gcash", "maya", "bkash", "jazzcash", "momo"].indexOf(id) > -1;
     }
 
+    // A Direct Connection option (the merchant's OWN account, not a routed
+    // method) arrives with `direct: true` and a `method_id` naming the
+    // canonical capability it is paid as. Method-specific rendering -- the
+    // phone requirement and the next-step text -- must key on that capability,
+    // exactly as a routed method keys on its `id`, so a Direct M-Pesa asks for
+    // a phone number and reads like M-Pesa instead of growing a parallel set of
+    // rules here.
+    function methodKey(m) {
+      if (!m) return "";
+      return m.direct ? (m.method_id || m.id || "") : (m.id || "");
+    }
+
+    // The key a merchant preference (allowedMethods/hiddenMethods/
+    // preferredMethods) is matched against. A Direct M-Pesa is named "mpesa" by
+    // the API, so it honours the same preference a routed M-Pesa would.
+    function prefKey(m) { return methodKey(m); }
+
+    function directNextStep(m) {
+      var dest = m.display_account ? " (" + m.display_account + ")" : "";
+      // The money goes to the merchant's own account; Konduyt only observes it.
+      // Which of the two is true depends on the rail, so it is read from the
+      // API's confirmation_mode rather than asserted here.
+      var tail = (m.confirmation_mode === "AUTOMATIC")
+        ? "Konduyt watches the rail to confirm it \u2014 it never holds or moves the money."
+        : "The merchant confirms it \u2014 Konduyt never holds or moves the money.";
+      return "Pay the merchant's " + m.name + " account" + dest +
+             " directly. " + tail;
+    }
+
     function digitsOnly(v) { return (v || "").replace(/\D/g, ""); }
 
     // Validate the customer's phone against the requirements the API supplied
@@ -503,6 +536,13 @@
       // to it. See applyMerchantPreferences for why this is safe by
       // construction, not just by convention.
       var methods = applyMerchantPreferences(rawMethods, opts);
+      // The merchant's OWN Direct Connections are offered beside the routed
+      // methods, not through a second renderer: a Direct option carries the same
+      // {id, name, via} contract, so it joins the same list, the same selection
+      // and the same pay path below. They are appended AFTER the routed methods
+      // so a merchant's own account never displaces the provider ordering.
+      var directOptions = data.direct_options || [];
+      if (directOptions.length) methods = methods.concat(directOptions);
       modal._phoneRules = data.phone_rules || null;
       modal._customerCountry = data.customer_country || null;
       modal.innerHTML = "";
@@ -583,9 +623,12 @@
       modal.appendChild(el("div", "kdu-lbl", "Choose how to pay"));
       var list = el("div", "kdu-list");
       var selected = null;
+      var selectedMethod = null;
       var payBtn;
       var phoneInput, phoneErr;
-      var phoneRequired = methods.some(function (m) { return methodNeedsPhone(m.id); });
+      // A phone field appears when any offered method needs one; methodKey lets
+      // a Direct option contribute its capability to that check too.
+      var phoneRequired = methods.some(function (m) { return methodNeedsPhone(methodKey(m)); });
 
       // Best value: the cheapest genuinely PRICED eligible method. An unknown
       // fee is never labelled best value -- that would be a claim the API did
@@ -599,6 +642,9 @@
       for (var bi = 0; bi < methods.length; bi++) {
         var f = methods[bi].fee_minor;
         if (f == null) continue;
+        // A Direct option carries no fee (Konduyt takes none for Direct), so it
+        // is never a priced candidate and never wins Best value.
+        if (methods[bi].direct) continue;
         // Only compare like with like. A local method's fee is denominated in
         // ITS country's currency, and ranking a USD figure against a KES one
         // would put "Best value" on the numerically smaller number regardless
@@ -622,8 +668,10 @@
         }
         t.appendChild(nameRow);
         // The provider route, then the REAL fee from the API. Never computed
-        // here; a null fee renders as "Fee unavailable", never as 0.
-        if (m.via) t.appendChild(el("span", "kdu-mtd-v", "via " + m.via));
+        // here; a null fee renders as "Fee unavailable", never as 0. A Direct
+        // option says where the money goes instead of naming a provider route.
+        if (m.direct) t.appendChild(el("span", "kdu-mtd-v", "Direct to merchant"));
+        else if (m.via) t.appendChild(el("span", "kdu-mtd-v", "via " + m.via));
         var fee = el("span", "kdu-mtd-fee" + (m.fee_minor == null && m.fee_minor_low == null ? " unknown" : ""));
         fee.textContent = feeLabel(m);
         t.appendChild(fee);
@@ -633,6 +681,7 @@
         b._method = m;
         b.addEventListener("click", function () {
           selected = m.id;
+          selectedMethod = m;
           Array.prototype.forEach.call(list.children, function (c) {
             c.className = "kdu-mtd";
             var r = c.querySelector(".kdu-rd"); if (r) r.className = "kdu-rd";
@@ -713,7 +762,7 @@
       payBtn.disabled = true;
       payBtn.addEventListener("click", function () {
         var phone = phoneInput ? digitsOnly(phoneInput.value) : null;
-        pay(selected, phone);
+        pay(selected, phone, selectedMethod);
       });
       modal.appendChild(payBtn);
       updatePayState();
@@ -733,6 +782,10 @@
         // rail), so both keys are marked -- otherwise a LIVE method is
         // rendered a second time underneath as "not on Konduyt yet".
         if (m.capability_id) payable[m.capability_id] = true;
+        // A Direct option is named by its canonical capability (method_id), so
+        // the coverage row for that same rail is recognised as already offered
+        // rather than repeated below as "not on Konduyt yet".
+        if (m.direct && m.method_id) payable[m.method_id] = true;
       });
       var extras = coverage.filter(function (c) {
         if (!NOT_AVAILABLE_STATES[c.konduyt_state]) return false;
@@ -774,7 +827,7 @@
       modal.appendChild(footer());
     }
 
-    function result(methodId, ok, msg, phone) {
+    function result(methodId, ok, msg, phone, method) {
       modal.innerHTML = "";
       var x = el("button", "kdu-x", "\u2715"); x.addEventListener("click", close); modal.appendChild(x);
       modal.appendChild(header());
@@ -783,6 +836,15 @@
       if (modal._customerCountry) info.country = modal._customerCountry;
       if (modal._amount != null) info.amount = modal._amount;
       if (modal._currency) info.currency = modal._currency;
+      // A Direct option's identity is the connection, not a method id: the
+      // merchant's server needs `connection_id` to create the payment request
+      // against the right own-account. The canonical capability it is paid as
+      // is carried separately so the merchant can join on either.
+      if (method && method.direct) {
+        info.direct = true;
+        info.connection_id = method.connection_id;
+        info.method_id = method.method_id;
+      }
       var wrap = el("div", "kdu-nx");
       wrap.appendChild(el("div", "kdu-nx-i" + (ok ? "" : " err"), ok ? "\u2192" : "!"));
       wrap.appendChild(el("div", "kdu-nx-t", ok ? "Next step" : "Couldn't start payment"));
@@ -795,7 +857,7 @@
       if (ok && typeof opts.onSuccess === "function") opts.onSuccess(info);
     }
 
-    function pay(methodId, phone) {
+    function pay(methodId, phone, method) {
       if (!methodId) return;
       processing();
       // The drop-in signals the merchant's page to create the charge
@@ -803,7 +865,14 @@
       // here -- what the customer must actually do to complete this specific
       // method. No timer implies the payment succeeded: the merchant's server
       // (or a real status check) is what knows that.
-      result(methodId, true, nextStep(methodId), phone);
+      //
+      // A Direct option is not a routed method, so it gets the instruction
+      // that is actually true: the customer pays the merchant's own account.
+      // The additional `connection_id` tells the merchant's server WHICH Direct
+      // connection to create the request against -- the SDK never creates it
+      // itself.
+      var msg = (method && method.direct) ? directNextStep(method) : nextStep(methodId);
+      result(methodId, true, msg, phone, method);
     }
 
     // The customer's country, explicit and never derived from the viewer's IP

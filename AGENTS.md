@@ -289,3 +289,43 @@ and the popup rendered `KES 0.00 · Market fee`, which reads as "accepting this
 costs the merchant nothing". The fallback now treats a 0 market reference as
 "not found" and reports no fee. Pinned by
 `app/demo_popup_fees_tests.py::test_a_free_consumer_tier_is_never_a_market_fee`.
+
+## Direct Connections on the checkout: same list, not a second renderer
+
+A merchant's Direct account (their OWN M-Pesa till/bank) arrives on the SAME
+checkout payload as routed methods, as `direct_options` (shaped by the API; see
+`konduyt-api`'s `AGENTS.md`). `public/konduyt.js` appends them to the method
+list in `render()` **after** the routed methods, so a Direct option flows
+through the same selection, phone validation and Pay path rather than a
+parallel Direct-only UI. It is a client of `applyMerchantPreferences` too: a
+Direct M-Pesa is named `method_id: "mpesa"`, so `allowedMethods` /
+`hiddenMethods` / `preferredMethods` key on the same name a routed M-Pesa
+would. `methodKey()` is the one place that decides routed (`id`) vs Direct
+(`method_id`); `prefKey` aliases it.
+
+What the renderer must NOT do with a Direct option:
+
+* **Never invent a fee.** The API returns none for Direct, so it renders
+  "Fee unavailable" (unknown is not free) -- never `0`, never a computed
+  figure. The route slot says `Direct to merchant`, which is where the money
+  goes, so the two facts don't need to be packed into one slot.
+* **Never label it Best value.** Best value is the cheapest genuinely *priced*
+  method; Direct is skipped from that comparison entirely.
+* **Never claim the payment succeeded.** `pay()` uses `directNextStep()`, which
+  reads `confirmation_mode` from the API -- AUTOMATIC says Konduyt watches the
+  rail to confirm, everything else says the merchant confirms -- and always
+  ends "never holds or moves the money". No timer implies success.
+* **Never re-list it.** `appendCoverageExtras()` marks a Direct option's
+  `method_id` as payable, so the coverage row for the same rail isn't repeated
+  underneath as "Not on Konduyt yet".
+
+`onSuccess` (and the info object) carries `direct: true`, `connection_id` and
+`method_id` for a Direct selection: the merchant's OWN server creates the
+payment request against `connection_id`; the SDK never creates one itself.
+
+The dashboard's offering switch (`Stop offering` / `Offer at checkout`) posts to
+`/direct-connections/projects/{id}/connections/{cid}/offering` and is only shown
+when the backend reports the connection `EXECUTABLE`. Disabling is not a
+disconnect -- the row stays connected and verified and stays listed; it just
+leaves checkout. The status text must reflect `offerable`, or it claims "live at
+checkout" for an account the merchant just removed.

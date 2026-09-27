@@ -2838,3 +2838,45 @@
   .pay-icon-error{background:#fdecea; color:#a23b2f;}
   .pay-message{font-size:15px; color:var(--ink); line-height:1.6;}
   .pay-footer{margin-top:32px; font-size:12px; color:var(--text-secondary); font-weight:600;}
+
+  /* Direct Connections tab. Classes used by app/dashboard/DirectConnections.js
+     — every one named in the JSX has a rule here, so nothing renders as
+     full-size body text (see AGENTS.md on layout-variant classes). */
+  .dc-muted{font-size:13px; color:var(--text-secondary);}
+  .dc-row{display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+    padding:14px 0; border-top:1px solid var(--border); flex-wrap:wrap;}
+  .dc-row:first-of-type{border-top:none; padding-top:0;}
+  .dc-row-main{flex:1; min-width:220px;}
+  .dc-row-title{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .dc-name{font-size:14px; font-weight:600; color:var(--ink);}
+  .dc-operator{font-size:12px; color:var(--text-secondary); margin-top:2px;}
+  .dc-pill{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    border-radius:999px; padding:3px 9px; white-space:nowrap;}
+  .dc-pill-connected{background:var(--green-soft); color:var(--green-ink); border:1px solid var(--green-border);}
+  .dc-pill-connect{background:var(--link-blue-soft); color:var(--link-blue); border:1px solid #cfe0fb;}
+  .dc-pill-unsupported{background:#f2f2f2; color:var(--text-secondary); border:1px solid var(--border);}
+  .dc-account{font-size:13px; color:var(--body); margin-top:7px; line-height:1.5;}
+  .dc-account-num{font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .dc-account-name{color:var(--text-secondary);}
+  .dc-account-state{display:block; font-size:12px; color:var(--text-secondary); margin-top:3px;}
+  .dc-unsupported-reason{color:var(--text-secondary); max-width:620px;}
+  .dc-unsupported-reason a{color:var(--link-blue); text-decoration:underline;}
+  .dc-meta{font-size:12px; color:var(--text-secondary); margin-top:6px; line-height:1.5; max-width:620px;}
+  .dc-row-actions{display:flex; gap:8px; align-items:center; flex-shrink:0;}
+  .dc-btn{font:inherit; font-size:13px; font-weight:600; border-radius:8px; padding:8px 14px;
+    border:1px solid var(--border); background:#fff; color:var(--ink); cursor:pointer;}
+  .dc-btn:hover:not(:disabled){background:var(--panel);}
+  .dc-btn:disabled{opacity:.55; cursor:not-allowed;}
+  .dc-btn-primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .dc-btn-primary:hover:not(:disabled){background:#000;}
+  .dc-form{flex-basis:100%; margin-top:14px; border:1px solid var(--border); border-radius:10px;
+    padding:14px 16px; background:#fff;}
+  .dc-form-title{font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:8px;}
+  .dc-field{margin-top:10px;}
+  .dc-label{display:block; font-size:12.5px; font-weight:600; color:var(--ink); margin-bottom:5px;}
+  .dc-input{width:100%; max-width:420px; font:inherit; font-size:13px; padding:8px 10px;
+    border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--ink);}
+  .dc-input:focus{outline:none; border-color:var(--accent);}
+  .dc-hint{font-size:11.5px; color:var(--text-secondary); margin-top:5px; line-height:1.5; max-width:520px;}
+  .dc-form-actions{display:flex; gap:8px; margin-top:14px;}
+  .dc-footnote{font-size:12px; color:var(--text-secondary); line-height:1.55; max-width:680px;}
