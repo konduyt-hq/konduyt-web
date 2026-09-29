@@ -413,16 +413,15 @@ console.log('\n=== direct-to-merchant trust message ===');
   check('direct-to-merchant message is present', /directly to the merchant/i.test(footer), footer);
 }
 
-console.log('\n=== a merchant\'s OWN Direct account is offered beside routed methods ===');
+console.log('\n=== Direct Connections is paused: the SDK never renders direct_options ===');
 {
-  // The API puts direct_options on the same checkout payload. A Direct option
-  // is the merchant's own account, reached through the SAME list/selection/pay
-  // path -- not a separate Direct-only renderer.
+  // Direct Connections is PAUSED. The API no longer attaches direct_options to
+  // checkout, and the SDK must not resurrect the render path on its own. A
+  // payload that still carries direct_options (an old deploy, a stale cache)
+  // must NOT add a row to the method list -- only routed methods are offered.
   const resp = {
     merchant: 'Demo Store', customer_country: 'KE', customer_country_source: 'explicit',
-    reference_amount: 500000, reference_currency: 'KES', phone_rules: {
-      country: 'KE', dial: '254', required_digits: 9, max_digits: 15, has_numbering_data: true,
-    },
+    reference_amount: 500000, reference_currency: 'KES', phone_rules: null,
     methods: [
       { id: 'card', name: 'Cards', via: 'Paystack', fee_minor: 14500, fee_percent: 2.9,
         fee_source: 'konduyt', konduyt_state: 'LIVE' },
@@ -433,118 +432,22 @@ console.log('\n=== a merchant\'s OWN Direct account is offered beside routed met
         id: 'direct:dcn_abc', method_id: 'mpesa', name: 'M-Pesa', via: 'Direct Connection',
         direct: true },
     ],
-    coverage: [
-      { id: 'ke_mpesa', name: 'M-Pesa', fee_minor: 7500, konduyt_state: 'LIVE', on_konduyt: true },
-    ],
-    coverage_representative: false, coverage_has_unroutable_pricing: false,
+    coverage: [], coverage_representative: false, coverage_has_unroutable_pricing: false,
   };
   const { window, document } = loadSdk(resp);
   window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'KE' });
   await flush(); await flush();
   const rows = [...document.querySelectorAll('.kdu-mtd')];
   const all = rows.map((r) => text(r));
-  check('the Direct account is rendered as a selectable method',
-    rows.some((r) => text(r).includes('M-Pesa') && !r.disabled), JSON.stringify(all));
-  check('it says the money goes direct to the merchant',
-    all.some((t) => t.includes('Direct to merchant')), JSON.stringify(all));
-  check('no fee is invented for it (never a fake number)',
-    all.some((t) => t.includes('M-Pesa') && t.includes('Fee unavailable') && !t.includes('0.00')),
-    JSON.stringify(all));
-  check('the Direct option never claims a zero fee',
-    !all.some((t) => t.includes('M-Pesa') && /KSh 0/.test(t)), JSON.stringify(all));
-  check('a Direct option is never labelled "Best value"',
-    all.some((t) => t.includes('M-Pesa') && t.includes('Best value')) === false, JSON.stringify(all));
-  check('the Direct M-Pesa is not repeated as "Not on Konduyt yet"',
-    !all.some((t) => t.includes('M-Pesa') && t.includes('Not on Konduyt yet')), JSON.stringify(all));
-
-  // A Direct M-Pesa needs a phone number, exactly as a routed M-Pesa does.
-  const input = document.getElementById('kdu-phone-input');
-  check('a Direct mobile-money option asks for a phone number', !!input);
-
-  // Selecting it and paying must name the connection the merchant's server
-  // creates the request against, and must not claim the payment succeeded.
-  const directRow = rows.find((r) => text(r).includes('M-Pesa'));
-  directRow.dispatchEvent(new window.Event('click'));
-  // Pay stays disabled until the phone is valid -- the Direct M-Pesa asks for a
-  // phone number, so it cannot be started without one.
-  const pay = document.querySelector('.kdu-pay');
-  check('Pay is disabled with no phone number for a Direct mobile-money method',
-    pay.disabled === true, 'Pay was enabled with no phone');
-  input.value = '0722123456';
-  input.dispatchEvent(new window.Event('input'));
-  input.dispatchEvent(new window.Event('input'));
-  check('Pay enables once the Direct method has a valid phone',
-    pay.disabled === false, 'Pay stayed disabled');
-  pay.dispatchEvent(new window.Event('click'));
-  await flush();
-  const msg = text(document.querySelector('.kdu-nx-m'));
-  check('the next step tells the customer to pay the merchant directly',
-    /Pay the merchant's M-Pesa account/i.test(msg) && /never holds or moves the money/i.test(msg), msg);
-  check('it names the merchant\'s masked account, not a provider route',
-    msg.includes('****5678') && !/via /.test(msg), msg);
-  let successInfo = null;
-  const { window: w2, document: d2 } = loadSdk(resp);
-  w2.Konduyt.checkout({
-    publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'KE',
-    onSuccess: (info) => { successInfo = info; },
-  });
-  await flush(); await flush();
-  const rows2 = [...d2.querySelectorAll('.kdu-mtd')];
-  rows2.find((r) => text(r).includes('M-Pesa')).dispatchEvent(new w2.Event('click'));
-  const p2 = d2.getElementById('kdu-phone-input');
-  p2.value = '0722123456';
-  p2.dispatchEvent(new w2.Event('input'));
-  d2.querySelector('.kdu-pay').dispatchEvent(new w2.Event('click'));
-  await flush();
-  check('onSuccess carries the connection_id, not a bare method id',
-    successInfo && successInfo.connection_id === 'dcn_abc' && successInfo.direct === true
-    && successInfo.method_id === 'mpesa',
-    JSON.stringify(successInfo));
-}
-
-console.log('\n=== a routed method with no Direct account is unaffected ===');
-{
-  const { window, document } = loadSdk(KE_RESPONSE);
-  window.Konduyt.checkout({ publishableKey: 'pk_test_x', amount: 500000, currency: 'KES', customerCountry: 'KE' });
-  await flush(); await flush();
-  const all = [...document.querySelectorAll('.kdu-mtd')].map((r) => text(r));
-  check('no Direct row appears when the API sends none',
-    !all.some((t) => t.includes('Direct to merchant')), JSON.stringify(all));
-  check('the routed M-Pesa still renders its real fee',
-    all.some((t) => t.includes('M-Pesa') && t.includes('56.00')), JSON.stringify(all));
-  check('the routed M-Pesa still shows its provider route',
-    all.some((t) => t.includes('M-Pesa') && t.includes('via Daraja')), JSON.stringify(all));
-}
-
-console.log('\n=== session mode surfaces the merchant\'s Direct account too ===');
-{
-  // /checkout/session/{id} is the other entry point; the API returns
-  // direct_options there as well. The renderer must read it from the session
-  // payload, not only from publication-key config.
-  const resp = {
-    merchant: 'Demo Store', amount: 500000, currency: 'KES', reference: 'ord_9',
-    methods: [
-      { id: 'card', name: 'Cards', via: 'Paystack', fee_minor: 14500, fee_source: 'konduyt',
-        konduyt_state: 'LIVE' },
-    ],
-    direct_options: [
-      { connection_id: 'dcn_sess', institution_id: 'KE_MPESA', display_account: '****1111',
-        confirmation_mode: 'MANUAL', id: 'direct:dcn_sess', method_id: 'mpesa',
-        name: 'M-Pesa', via: 'Direct Connection', direct: true },
-    ],
-    phone_rules: null, is_demo_key: false,
-  };
-  const { window, document } = loadSdk(resp);
-  window.Konduyt.checkout({ sessionId: 'kdu_sess_1' });
-  await flush(); await flush();
-  const all = [...document.querySelectorAll('.kdu-mtd')].map((r) => text(r));
-  check('session mode renders the Direct account',
-    all.some((t) => t.includes('M-Pesa') && t.includes('Direct to merchant')), JSON.stringify(all));
-  const srows = [...document.querySelectorAll('.kdu-mtd')];
-  srows.find((r) => text(r).includes('M-Pesa')).dispatchEvent(new window.Event('click'));
-  check('session mode keeps the server-set amount',
-    /KSh 5,000\.00/.test(text(document.querySelector('.kdu-pay'))),
-    text(document.querySelector('.kdu-pay')));
+  check('a direct_options payload does not add a row to the method list',
+    rows.length === 1, JSON.stringify(all));
+  check('no Direct row is rendered', !all.some((t) => t.includes('Direct to merchant')), JSON.stringify(all));
+  check('no Direct account is rendered as a method',
+    !all.some((t) => t.includes('M-Pesa')), JSON.stringify(all));
+  const src = readFileSync(new URL('../public/konduyt.js', import.meta.url), 'utf8');
+  check('the SDK no longer reads direct_options', !/direct_options/.test(src));
+  check('the SDK no longer branches on a direct option', !/\.direct\b/.test(src));
+  check('the SDK has no Direct next-step renderer', !/directNextStep/.test(src));
 }
 
 console.log('\n' + '-'.repeat(60));

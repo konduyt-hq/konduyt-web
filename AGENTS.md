@@ -292,6 +292,15 @@ costs the merchant nothing". The fallback now treats a 0 market reference as
 
 ## Direct Connections on the checkout: same list, not a second renderer
 
+> **PAUSED (see `paused/direct-connections/README.md`).** Direct Connections is
+> paused, not deleted. `public/konduyt.js` no longer reads `direct_options` and
+> renders only routed methods; the dashboard no longer imports
+> `DirectConnections`; and the DC components/tests/fixture live under
+> `paused/direct-connections/`. `scripts/test-direct-connections-paused.mjs`
+> (wired into `npm test` as `test:direct-connections-paused`) fails if a Direct
+> surface returns. The paragraphs below describe the pre-pause design and are
+> kept for when the feature is un-paused.
+
 A merchant's Direct account (their OWN M-Pesa till/bank) arrives on the SAME
 checkout payload as routed methods, as `direct_options` (shaped by the API; see
 `konduyt-api`'s `AGENTS.md`). `public/konduyt.js` appends them to the method
@@ -388,6 +397,12 @@ data: the script rebuilds it from the same source of truth the API serves. It
 covers the browse list, eleven inspected countries and four searches.
 
 ## Direct Connections: one destination, no separate Directory tab
+
+> **PAUSED.** The whole Direct Connections destination -- including the country
+> browser that exposed the global directory -- is paused and kept under
+> `paused/direct-connections/`. No production UI surfaces the global
+> bank/mobile-money directory any more. The design notes below are kept for
+> when the feature is un-paused.
 
 The global landscape ("what exists where") is **not** a separate tab. It lives
 inside the Direct Connections destination as
