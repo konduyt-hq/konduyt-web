@@ -732,6 +732,9 @@ function ProspectDrawer({ detail, onClose, onStatus }) {
           <div><b>Status</b><div>{p.status}</div></div>
           <div><b>Fit</b><div><span className={levelClass(p.fit)}>{p.fit || '—'}</span></div></div>
           <div><b>Intent</b><div><span className={levelClass(p.intent)}>{p.intent || '—'}</span></div></div>
+          <div><b>Evidence strength</b><div><span className={levelClass(p.evidence_strength)}>{p.evidence_strength || '—'}{p.evidence_score != null ? ` (${p.evidence_score})` : ''}</span></div></div>
+          <div><b>Ranking</b><div>{p.ranking_score != null ? p.ranking_score : '—'}</div></div>
+          <div><b>Ownership</b><div>{fmt(p.ownership)}</div></div>
           <div><b>Confidence</b><div>{fmt(p.confidence)}</div></div>
           <div><b>Email</b><div>{fmt(p.email)}</div></div>
           <div><b>Website</b><div>{p.website ? <a href={p.website} target="_blank" rel="noreferrer">{p.website}</a> : '—'}</div></div>
@@ -740,6 +743,34 @@ function ProspectDrawer({ detail, onClose, onStatus }) {
           <div><b>Reddit</b><div>{fmt(p.reddit_username)}</div></div>
           <div><b>Source</b><div>{fmt(p.first_touch_source)}</div></div>
         </div>
+
+        {p.why_this_prospect && (
+          <div className="an-section">
+            <h3 className="an-section-h">Why this prospect</h3>
+            <p className="con-sub">{p.why_this_prospect}</p>
+            {(p.ranking_reasons || []).length > 0 && (
+              <div className="growth-dims">
+                {(p.ranking_reasons || []).map((r, i) => (
+                  <div key={i} className="growth-dim">
+                    <span className="growth-dim-name">{(r.factor || '').replace(/_/g, ' ')}</span>
+                    <span className="growth-dim-reason">{r.reason}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(p.pain_signals || []).length > 0 && (
+          <div className="an-section">
+            <h3 className="an-section-h">Pain signals</h3>
+            <div className="growth-toolbar">
+              {(p.pain_signals || []).map((s, i) => (
+                <span key={i} className="con-sub">{s.category} · {s.severity}</span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {p.qualification_reason && (
           <div className="an-section">
