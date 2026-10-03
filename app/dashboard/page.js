@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import CheckoutModal from './CheckoutModal';
+import GrowthTab from './GrowthTab';
 import LogoMark from '../LogoMark';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
@@ -3474,6 +3475,15 @@ export default function Dashboard() {
                     <p className="con-sub">Real, aggregate developer activity — internal, admin only.</p>
                   </div>
                 </div>
+
+                {/* Growth Agents -- discovery, qualification, outreach and
+                    measurement. Its logic lives entirely in the backend at
+                    /growth/*; this surface only displays and controls. */}
+                <div className="an-section">
+                  <GrowthTab apiBase={API_BASE} authHeaders={authHeaders}
+                    onError={(m) => setBillingNotice(m || '')} />
+                </div>
+
 
                 {/* Tax & fee source monitoring -- runs automatically every 6h
                     (Render Cron), but this button lets you check on demand
