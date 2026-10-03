@@ -12,9 +12,10 @@
 // Approval queue. Everything the agents propose that would touch a human lands
 // in Approvals with its why + evidence, and nothing is sent without a decision.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const VIEWS = [
+  ['live', 'Command center'],
   ['overview', 'Overview'],
   ['prospects', 'Prospects'],
   ['agents', 'Agents'],
@@ -39,10 +40,11 @@ function levelClass(level) {
 }
 
 export default function GrowthTab({ apiBase, authHeaders, onError }) {
-  const [view, setView] = useState('overview');
+  const [view, setView] = useState('live');
   const [overview, setOverview] = useState(null);
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
+  const [engine, setEngine] = useState(null);
 
   const api = useCallback(async (path, opts = {}) => {
     const r = await fetch(`${apiBase}/growth${path}`, {
@@ -63,7 +65,14 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
     catch (e) { onError && onError(e.message); }
   }, [api, onError]);
 
-  useEffect(() => { loadOverview(); }, [loadOverview]);
+  const loadEngine = useCallback(async () => {
+    try {
+      const s = await api('/live');
+      setEngine(s.engine);
+    } catch (e) { /* the live view reports its own errors */ }
+  }, [api]);
+
+  useEffect(() => { loadOverview(); loadEngine(); }, [loadOverview, loadEngine]);
 
   async function runAgents(agents) {
     setBusy('run'); setNotice('');
@@ -74,11 +83,29 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
         body: JSON.stringify(agents ? { agents } : {}),
       });
       const ran = (res.ran || []).join(', ') || 'none';
-      setNotice(`Ran: ${ran}. Refresh to see the new prospects and drafts.`);
-      await loadOverview();
+      setNotice(`Ran now: ${ran}. The live stream will show what happened.`);
+      await loadOverview(); await loadEngine();
     } catch (e) { onError && onError(e.message); }
     setBusy('');
   }
+
+  async function toggleEngine(paused) {
+    setBusy('engine');
+    try {
+      const res = await api(paused ? '/engine/pause' : '/engine/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paused ? { reason: 'Paused from dashboard' } : {}),
+      });
+      setEngine(res);
+      setNotice(paused
+        ? 'Growth Engine paused. Scheduled runs are stopped; Run now still works.'
+        : 'Growth Engine resumed. Scheduled runs will continue automatically.');
+    } catch (e) { onError && onError(e.message); }
+    setBusy('');
+  }
+
+  const running = engine ? engine.running : null;
 
   return (
     <div className="growth-root">
@@ -86,14 +113,19 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
         <div>
           <h1 className="con-h1">Growth</h1>
           <p className="con-sub">
-            Find developers and businesses with a real payment-integration problem,
-            start legitimate conversations, and measure what converts.
+            A continuous acquisition engine: it finds developers and businesses with a real
+            payment-integration problem, identifies the right person, starts legitimate
+            conversations, and measures what converts.
           </p>
         </div>
-        <button className="preview-checkout-btn" type="button" disabled={busy === 'run'}
-          onClick={() => runAgents(null)}>
-          {busy === 'run' ? 'Running…' : '▶ Run agents'}
-        </button>
+        <div className="growth-head-actions">
+          <EngineBadge engine={engine} busy={busy === 'engine'}
+            onToggle={toggleEngine} />
+          <button className="preview-checkout-btn" type="button" disabled={busy === 'run'}
+            onClick={() => runAgents(null)} title="Run one cycle immediately; not needed for normal operation">
+            {busy === 'run' ? 'Running…' : '▶ Run now'}
+          </button>
+        </div>
       </div>
 
       <nav className="con-tabs" style={{ marginBottom: 16 }}>
@@ -106,11 +138,319 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
 
       {notice && <p className="con-sub" style={{ marginBottom: 12 }}>{notice}</p>}
 
+      {view === 'live' && <CommandCenter api={api} apiBase={apiBase} authHeaders={authHeaders}
+        onError={onError} onEngine={setEngine} running={running}
+        onRunNow={() => runAgents(null)} busy={busy === 'run'} />}
       {view === 'overview' && <Overview api={api} overview={overview} onRefresh={loadOverview} onRun={runAgents} busy={busy} />}
       {view === 'prospects' && <Prospects api={api} onError={onError} />}
       {view === 'agents' && <Agents api={api} onError={onError} />}
       {view === 'approvals' && <Approvals api={api} onError={onError} onChanged={loadOverview} />}
-      {view === 'settings' && <Settings api={api} onError={onError} />}
+      {view === 'settings' && <Settings api={api} onError={onError} onEngine={setEngine} />}
+    </div>
+  );
+}
+
+function EngineBadge({ engine, busy, onToggle }) {
+  if (!engine) return <span className="growth-engine-badge growth-engine-idle">Growth Engine: …</span>;
+  const on = engine.running;
+  const label = engine.enabled
+    ? (engine.paused ? 'Growth Engine: PAUSED' : 'Growth Engine: ON')
+    : 'Growth Engine: OFF';
+  return (
+    <button type="button" disabled={busy}
+      className={`growth-engine-badge ${on ? 'on' : 'off'}`}
+      onClick={() => onToggle(on)}
+      title={engine.pause_reason ? `Paused: ${engine.pause_reason}` : 'Click to toggle continuous operation'}>
+      <span className={`growth-engine-dot ${on ? 'on' : 'off'}`} />
+      {label}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Command center -- continuous operation
+//
+// One live view of the running engine. Data arrives over Server-Sent Events
+// (the primary transport) with an automatic polling fallback, so the stream
+// keeps growing in place without a page refresh. Every number and event is a
+// real row from the backend; when nothing has happened, it says so.
+// ---------------------------------------------------------------------------
+const EVENT_LABEL = {
+  signal_found: 'Signal found',
+  prospect_created: 'Prospect created',
+  qualified: 'Qualified',
+  nurtured: 'Nurture',
+  rejected: 'Rejected',
+  evidence_collected: 'Evidence',
+  contact_found: 'Contact found',
+  conversation_detected: 'Conversation',
+  email_queued: 'Email queued',
+  email_sent: 'Email sent',
+  followup_due: 'Follow-up due',
+  reply_received: 'Reply',
+  signup: 'Signup',
+  provider_connected: 'Provider connected',
+  activated: 'Activated',
+  source_unavailable: 'Source unavailable',
+  error: 'Error',
+  agent_started: 'Agent started',
+  agent_finished: 'Agent finished',
+};
+
+// Human wording for each agent's live state.
+const STATUS_LABEL = {
+  RUNNING: 'Running',
+  IDLE: 'Idle',
+  WAITING: 'Watching',
+  PAUSED: 'Paused',
+  ERROR: 'Error',
+  RATE_LIMITED: 'Rate limited',
+  SOURCE_UNAVAILABLE: 'Source down',
+};
+
+function ago(v) {
+  if (!v) return '—';
+  const t = new Date(v).getTime();
+  if (Number.isNaN(t)) return '—';
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function CounterRow({ label, value, baseline, ceiling }) {
+  return (
+    <div className="growth-live-counter">
+      <div className="growth-live-counter-v">{value ?? 0}</div>
+      <div className="growth-live-counter-l">{label}</div>
+      {baseline != null && (
+        <div className="growth-live-counter-b">
+          baseline {baseline}
+          {ceiling ? ` · ceiling ${ceiling}` : ''}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgentLiveRow({ a, work }) {
+  const status = a.status || 'IDLE';
+  const cls = status.toLowerCase();
+  return (
+    <div className="growth-live-agent">
+      <div className="growth-live-agent-top">
+        <span className="growth-live-agent-name">{a.agent.replace(/_/g, ' ')}</span>
+        <span className={`growth-agent-status ${cls}`}>
+          {STATUS_LABEL[status] || status}{a.stale ? ' · stale' : ''}
+        </span>
+      </div>
+      <div className="growth-live-agent-task">
+        {work?.task || '—'}
+        {work?.prospect ? ` — ${work.prospect}` : ''}
+      </div>
+      <div className="growth-live-agent-meta">
+        {work?.source ? `source: ${work.source} · ` : ''}
+        {work?.items_processed != null ? `${work.items_processed} processed · ` : ''}
+        {a.last_heartbeat_at ? `heartbeat ${ago(a.last_heartbeat_at)}` : 'no heartbeat yet'}
+      </div>
+    </div>
+  );
+}
+
+function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running, onRunNow, busy }) {
+  const [snap, setSnap] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [transport, setTransport] = useState('connecting');
+  const [error, setError] = useState('');
+  const cursor = useRef(null);
+  const esRef = useRef(null);
+
+  const applySnapshot = useCallback((s) => {
+    setSnap(s);
+    if (onEngine && s.engine) onEngine(s.engine);
+    setEvents((s.activity || []).slice());
+    const first = (s.activity || [])[0];
+    if (first) cursor.current = { after_created_at: first.created_at, after_id: first.id };
+  }, [onEngine]);
+
+  const applyUpdate = useCallback((u) => {
+    setSnap((prev) => ({ ...prev, ...u, activity: prev?.activity }));
+    if (onEngine && u.engine) onEngine(u.engine);
+    if (u.events && u.events.length) {
+      // Oldest-first from the server. SSE and the polling fallback can both
+      // deliver the same event, so dedupe by id before prepending.
+      setEvents((prev) => {
+        const seen = new Set(prev.map((e) => e.id));
+        const fresh = u.events.filter((e) => !seen.has(e.id)).reverse();
+        return [...fresh, ...prev].slice(0, 200);
+      });
+      if (u.cursor) cursor.current = u.cursor;
+    }
+  }, [onEngine]);
+
+  // Primary transport: SSE. On failure, fall back to polling.
+  useEffect(() => {
+    let closed = false;
+    const token = (authHeaders && (authHeaders().Authorization || '').replace('Bearer ', '')) || '';
+    const url = `${apiBase}/growth/live/stream${token ? `?access_token=${encodeURIComponent(token)}` : ''}`;
+    let es = null;
+    try {
+      es = new EventSource(url, { withCredentials: true });
+      esRef.current = es;
+      es.addEventListener('snapshot', (e) => { setTransport('live'); applySnapshot(JSON.parse(e.data)); });
+      es.addEventListener('update', (e) => { applyUpdate(JSON.parse(e.data)); });
+      es.addEventListener('error', () => {
+        // EventSource auto-reconnects; mark degraded so the user knows.
+        if (!closed) setTransport('reconnecting');
+      });
+      es.addEventListener('open', () => setTransport('live'));
+    } catch (e) {
+      setTransport('polling');
+    }
+    return () => { closed = true; try { es && es.close(); } catch (e) {} };
+  }, [apiBase, authHeaders, applySnapshot, applyUpdate]);
+
+  // Fallback / safety net: poll for new events. Runs quietly alongside SSE so
+  // the view still updates if a proxy drops the stream.
+  useEffect(() => {
+    let alive = true;
+    let timer = null;
+    async function tick() {
+      try {
+        const q = cursor.current
+          ? `?after_created_at=${encodeURIComponent(cursor.current.after_created_at)}&after_id=${encodeURIComponent(cursor.current.after_id)}`
+          : '';
+        const u = await api(`/live/poll${q}`);
+        if (!alive) return;
+        applyUpdate(u);
+        if (transport !== 'live') setTransport('polling');
+      } catch (e) { if (alive) setError(e.message); }
+      if (alive) timer = setTimeout(tick, 5000);
+    }
+    tick();
+    return () => { alive = false; if (timer) clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
+
+  // Refresh relative timestamps without refetching.
+  const [, force] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => force((n) => n + 1), 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!snap) return <p className="con-sub">Connecting to the Growth Engine…</p>;
+
+  const c = snap.counters || {};
+  const today = c.today || {};
+  const allTime = c.all_time || {};
+  const queues = c.queues || {};
+  const base = snap.baselines || {};
+  const tp = snap.throughput || {};
+  const work = {};
+  (snap.current_work || []).forEach((w) => { work[w.agent] = w; });
+
+  const signalBase = base.hunter_signals_per_day || {};
+
+  return (
+    <div>
+      <div className="growth-live-status">
+        <span className={`growth-live-transport ${transport}`}>
+          {transport === 'live' ? '● Live' : transport === 'polling' ? '◐ Polling' : '○ Reconnecting'}
+        </span>
+        <span className="con-sub">
+          {running
+            ? 'The engine runs continuously on each agent’s schedule. Run now is for an immediate cycle only.'
+            : 'The engine is paused. Scheduled runs are stopped; use Run now for a manual cycle.'}
+        </span>
+        <span className="con-sub" style={{ marginLeft: 'auto' }}>
+          Last activity: {ago(snap.engine?.last_activity_at)}
+        </span>
+      </div>
+
+      {error && <p className="con-sub" style={{ color: '#b91c1c' }}>{error}</p>}
+
+      <div className="an-section">
+        <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+          <h2 className="an-section-h" style={{ marginBottom: 0 }}>Engine activity</h2>
+          <span className="con-sub">
+            Baselines are minimum targets, not quotas — the engine keeps going past them.
+          </span>
+        </div>
+        <div className="growth-live-counters">
+          <CounterRow label="Signals found today" value={today.signals}
+            baseline={signalBase.baseline} ceiling={signalBase.ceiling} />
+          <CounterRow label="Prospects created today" value={today.prospects} />
+          <CounterRow label="Qualified today" value={today.qualified} />
+          <CounterRow label="Nurtured today" value={today.nurture} />
+          <CounterRow label="Rejected today" value={today.rejected} />
+          <CounterRow label="Evidence collected today" value={today.evidence} />
+          <CounterRow label="Developers today" value={today.developers} />
+          <CounterRow label="Businesses today" value={today.businesses} />
+          <CounterRow label="Ready for outreach" value={today.ready_for_outreach} />
+          <CounterRow label="Emails sent today" value={today.emails_sent} />
+          <CounterRow label="Follow-ups today" value={today.followups} />
+          <CounterRow label="Replies today" value={today.replies} />
+          <CounterRow label="Signups" value={allTime.signups} />
+          <CounterRow label="Provider connected" value={allTime.provider_connected} />
+          <CounterRow label="Activated" value={allTime.activated} />
+        </div>
+        <p className="con-sub" style={{ marginTop: 8 }}>
+          Queue: {queues.new_prospects || 0} awaiting review · {queues.nurture || 0} nurture ·{' '}
+          {queues.followups_due || 0} follow-ups due · {queues.approvals_pending || 0} awaiting your approval.
+        </p>
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Throughput (last {tp.window_minutes || 60} min)</h2>
+        <div className="growth-live-throughput">
+          <span>{tp.raw?.signals || 0} signals</span>
+          <span>{tp.raw?.prospects || 0} prospects</span>
+          <span>{tp.raw?.evidence || 0} evidence</span>
+          <span>{((tp.qualification_rate || 0) * 100).toFixed(0)}% qualification rate</span>
+          <span>queue {tp.queue_size || 0}</span>
+          <span>{tp.jobs_completed || 0} jobs completed</span>
+          <span>{tp.jobs_failed || 0} failed</span>
+          {(tp.sources_unavailable || []).length > 0
+            ? <span className="warn">unavailable: {(tp.sources_unavailable || []).join(', ')}</span>
+            : <span>all sources available</span>}
+        </div>
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Agents — live</h2>
+        <div className="growth-live-agents">
+          {(snap.live_agents || []).map((a) => (
+            <AgentLiveRow key={a.agent} a={a} work={work[a.agent]} />
+          ))}
+        </div>
+      </div>
+
+      <div className="an-section">
+        <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+          <h2 className="an-section-h" style={{ marginBottom: 0 }}>Live activity</h2>
+          <span className="con-sub">{events.length} events in view</span>
+        </div>
+        {events.length === 0
+          ? <p className="con-sub">No activity yet. When the engine finds, qualifies, or contacts someone, it appears here as it happens.</p>
+          : (
+            <div className="growth-live-feed">
+              {events.slice(0, 60).map((e) => (
+                <div key={e.id} className="growth-live-event">
+                  <span className={`growth-live-event-tag t-${e.event_type}`}>
+                    {EVENT_LABEL[e.event_type] || e.event_type}
+                  </span>
+                  <span className="growth-live-event-agent">{e.agent}</span>
+                  <span className="growth-live-event-msg">{e.message}</span>
+                  <span className="growth-live-event-time">{ago(e.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
     </div>
   );
 }
@@ -299,7 +639,7 @@ function Prospects({ api, onError }) {
           value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} />
         <select className="growth-input" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
           <option value="">All statuses</option>
-          {['NEW', 'RESEARCHING', 'QUALIFIED', 'READY_FOR_OUTREACH', 'CONTACTED', 'FOLLOW_UP', 'REPLIED', 'INTERESTED', 'DEMO_REQUESTED', 'SIGNED_UP', 'PROVIDER_CONNECTED', 'ACTIVATED', 'CONVERTED', 'NOT_INTERESTED', 'REJECTED', 'DO_NOT_CONTACT'].map((s) => <option key={s} value={s}>{s}</option>)}
+          {['NEW', 'RESEARCHING', 'NURTURE', 'QUALIFIED', 'READY_FOR_OUTREACH', 'CONTACTED', 'FOLLOW_UP', 'REPLIED', 'INTERESTED', 'DEMO_REQUESTED', 'SIGNED_UP', 'PROVIDER_CONNECTED', 'ACTIVATED', 'CONVERTED', 'NOT_INTERESTED', 'REJECTED', 'DO_NOT_CONTACT'].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <select className="growth-input" value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })}>
           <option value="">All types</option><option value="DEVELOPER">Developer</option><option value="BUSINESS">Business</option>
@@ -667,16 +1007,22 @@ function Approvals({ api, onError, onChanged }) {
 // ---------------------------------------------------------------------------
 // Settings -- limits, schedules, email, keywords, sources
 // ---------------------------------------------------------------------------
-function Settings({ api, onError }) {
+function Settings({ api, onError, onEngine }) {
   const [settings, setSettings] = useState(null);
   const [keywords, setKeywords] = useState([]);
   const [sources, setSources] = useState([]);
   const [saved, setSaved] = useState('');
+  const [emailStatus, setEmailStatus] = useState(null);
+  const [testTo, setTestTo] = useState('');
+  const [testResult, setTestResult] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const [s, k, src] = await Promise.all([api('/settings'), api('/keywords'), api('/sources')]);
+      const [s, k, src, es] = await Promise.all([
+        api('/settings'), api('/keywords'), api('/sources'), api('/email/status'),
+      ]);
       setSettings(s); setKeywords(k.keywords || []); setSources(src.sources || []);
+      setEmailStatus(es);
     } catch (e) { onError && onError(e.message); }
   }, [api, onError]);
   useEffect(() => { load(); }, [load]);
@@ -693,19 +1039,78 @@ function Settings({ api, onError }) {
     try { await api(`/sources/${s.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [field]: !s[field] }) }); load(); }
     catch (e) { onError && onError(e.message); }
   }
+  async function connectEmail() {
+    try {
+      await api('/email/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_email: email.from_email, from_name: email.from_name,
+          transport: email.transport === 'none' ? 'gmail' : email.transport }) });
+      load();
+    } catch (e) { onError && onError(e.message); }
+  }
+  async function disconnectEmail() {
+    try { await api('/email/disconnect', { method: 'POST' }); load(); }
+    catch (e) { onError && onError(e.message); }
+  }
+  async function sendTest() {
+    setTestResult(null);
+    try { setTestResult(await api('/email/test', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: testTo }) })); }
+    catch (e) { onError && onError(e.message); }
+  }
 
   if (!settings) return <p className="con-sub">Loading…</p>;
   const limits = settings.limits || {};
+  const baselines = settings.baselines || {};
   const schedules = settings.schedules || {};
-  const email = settings.email || {};
+  const email = (emailStatus && emailStatus.email) || settings.email || {};
+  const engine = settings.engine || { enabled: true, paused: false };
 
   return (
     <div>
       {saved && <p className="con-sub">Saved {saved}.</p>}
 
       <div className="an-section">
-        <h2 className="an-section-h">Daily limits</h2>
-        <p className="con-sub">How much the system may do per day. Conservative by default.</p>
+        <h2 className="an-section-h">Continuous operation</h2>
+        <p className="con-sub">
+          Growth Engine is ON in normal production: agents run continuously on their own
+          schedules. Pausing stops scheduled runs — Run now still works for a manual cycle.
+        </p>
+        <div className="growth-setting-row">
+          <label>growth engine enabled</label>
+          <input type="checkbox" checked={!!engine.enabled}
+            onChange={(e) => { save('engine', { ...engine, enabled: e.target.checked }); onEngine && onEngine({ ...engine, enabled: e.target.checked, running: e.target.checked && !engine.paused }); }} />
+        </div>
+        <div className="growth-setting-row">
+          <label>paused</label>
+          <input type="checkbox" checked={!!engine.paused}
+            onChange={(e) => { save('engine', { ...engine, paused: e.target.checked }); onEngine && onEngine({ ...engine, paused: e.target.checked, running: engine.enabled && !e.target.checked }); }} />
+        </div>
+        {engine.paused && engine.pause_reason && (
+          <p className="con-sub">Paused by {engine.paused_by || 'operator'}: {engine.pause_reason}</p>
+        )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Daily baselines (minimum targets, not quotas)</h2>
+        <p className="con-sub">
+          The engine keeps going past a baseline and never lowers qualification quality to
+          reach one. The hard safety ceiling is shown separately and is deliberately far above.
+        </p>
+        {Object.entries(baselines).filter(([, v]) => typeof v === 'number').map(([k, v]) => (
+          <div key={k} className="growth-setting-row">
+            <label>{k.replace(/_/g, ' ')}</label>
+            <input className="growth-input" type="number" defaultValue={v}
+              onBlur={(e) => save('baselines', { ...baselines, [k]: parseInt(e.target.value, 10) || 0 })} />
+          </div>
+        ))}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Hard safety ceilings</h2>
+        <p className="con-sub">
+          These exist only to stop a runaway loop from becoming a search bill or a platform
+          problem. 0 means no ceiling. They are not quality gates.
+        </p>
         {Object.entries(limits).filter(([, v]) => typeof v === 'number').map(([k, v]) => (
           <div key={k} className="growth-setting-row">
             <label>{k.replace(/_/g, ' ')}</label>
@@ -729,13 +1134,13 @@ function Settings({ api, onError }) {
       <div className="an-section">
         <h2 className="an-section-h">Email sending</h2>
         <p className="con-sub">
-          Sending is OFF until a transport is configured and enabled. Until then every
-          message is queued as a draft for approval.
+          Connecting the account and enabling sending are two separate steps. Until both are
+          done (and a transport is configured), every message is queued as a draft for approval.
         </p>
         <div className="growth-setting-row">
-          <label>sending enabled</label>
-          <input type="checkbox" checked={!!email.sending_enabled}
-            onChange={(e) => save('email', { ...email, sending_enabled: e.target.checked })} />
+          <label>outbound address</label>
+          <input className="growth-input" defaultValue={email.from_email || ''}
+            onBlur={(e) => save('email', { ...email, from_email: e.target.value })} />
         </div>
         <div className="growth-setting-row">
           <label>from name</label>
@@ -743,10 +1148,34 @@ function Settings({ api, onError }) {
             onBlur={(e) => save('email', { ...email, from_name: e.target.value })} />
         </div>
         <div className="growth-setting-row">
-          <label>from email</label>
-          <input className="growth-input" defaultValue={email.from_email || ''}
-            onBlur={(e) => save('email', { ...email, from_email: e.target.value })} />
+          <label>connection status</label>
+          <span className="con-sub">
+            {email.connection_status || 'not_connected'}
+            {email.connected_account ? ` (${email.connected_account})` : ''}
+          </span>
+          {email.connection_status === 'connected'
+            ? <button className="preview-checkout-btn" type="button" onClick={disconnectEmail}>Disconnect</button>
+            : <button className="preview-checkout-btn" type="button" onClick={connectEmail}>Connect account</button>}
         </div>
+        <div className="growth-setting-row">
+          <label>sending enabled</label>
+          <input type="checkbox" checked={!!email.sending_enabled}
+            onChange={(e) => save('email', { ...email, sending_enabled: e.target.checked })} />
+          <span className="con-sub">
+            {emailStatus && emailStatus.can_send ? 'Ready to send.' : 'Will queue drafts until connected + enabled.'}
+          </span>
+        </div>
+        <div className="growth-setting-row">
+          <label>send a test message to</label>
+          <input className="growth-input" placeholder="you@example.com" value={testTo}
+            onChange={(e) => setTestTo(e.target.value)} />
+          <button className="preview-checkout-btn" type="button" onClick={sendTest}>Send test</button>
+        </div>
+        {testResult && (
+          <p className="con-sub">
+            {testResult.sent ? 'Sent.' : `Not sent: ${testResult.reason || 'unknown'}`}
+          </p>
+        )}
       </div>
 
       <div className="an-section">
