@@ -1044,19 +1044,35 @@ function Settings({ api, onError, onEngine }) {
   const [sources, setSources] = useState([]);
   const [saved, setSaved] = useState('');
   const [emailStatus, setEmailStatus] = useState(null);
+  const [channels, setChannels] = useState([]);
+  const [channelsMeta, setChannelsMeta] = useState({ oauth_configured: false });
+  const [oauthNotice, setOauthNotice] = useState('');
   const [testTo, setTestTo] = useState('');
   const [testResult, setTestResult] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const [s, k, src, es] = await Promise.all([
+      const [s, k, src, es, ch] = await Promise.all([
         api('/settings'), api('/keywords'), api('/sources'), api('/email/status'),
+        api('/channels'),
       ]);
       setSettings(s); setKeywords(k.keywords || []); setSources(src.sources || []);
-      setEmailStatus(es);
+      setEmailStatus(es); setChannels(ch.channels || []);
+      setChannelsMeta({ oauth_configured: !!ch.oauth_configured });
     } catch (e) { onError && onError(e.message); }
   }, [api, onError]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // Surface the result of the Gmail OAuth redirect back from the API.
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('gmail');
+      if (p === 'connected') setOauthNotice('Gmail connected. Sending stays off until you enable it below.');
+      else if (p === 'error') {
+        const reason = new URLSearchParams(window.location.search).get('reason') || 'unknown';
+        setOauthNotice(`Gmail connection failed: ${reason}`);
+      }
+    }
+    load();
+  }, [load]);
 
   async function save(key, value) {
     try { await api(`/settings/${key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) }); setSaved(key); setTimeout(() => setSaved(''), 1500); }
@@ -1071,15 +1087,30 @@ function Settings({ api, onError, onEngine }) {
     catch (e) { onError && onError(e.message); }
   }
   async function connectEmail() {
+    // Real Gmail OAuth: ask the API for the consent URL, then navigate to it.
+    // The refresh token is stored encrypted server-side; nothing lands here.
     try {
-      await api('/email/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from_email: email.from_email, from_name: email.from_name,
-          transport: email.transport === 'none' ? 'gmail' : email.transport }) });
-      load();
+      const r = await api('/email/oauth/start');
+      if (r && r.authorize_url) {
+        if (typeof window !== 'undefined') window.location.href = r.authorize_url;
+      } else {
+        onError && onError('No authorize URL returned');
+      }
     } catch (e) { onError && onError(e.message); }
   }
   async function disconnectEmail() {
-    try { await api('/email/disconnect', { method: 'POST' }); load(); }
+    try { await api('/email/disconnect', { method: 'POST' }); await api('/channels/email/disconnect', { method: 'POST' }); load(); }
+    catch (e) { onError && onError(e.message); }
+  }
+  async function connectChannel(channel, identity) {
+    try {
+      await api(`/channels/${channel}/connect`, { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identity }) });
+      load();
+    } catch (e) { onError && onError(e.message); }
+  }
+  async function disconnectChannel(channel) {
+    try { await api(`/channels/${channel}/disconnect`, { method: 'POST' }); load(); }
     catch (e) { onError && onError(e.message); }
   }
   async function sendTest() {
@@ -1165,9 +1196,12 @@ function Settings({ api, onError, onEngine }) {
       <div className="an-section">
         <h2 className="an-section-h">Email sending</h2>
         <p className="con-sub">
-          Connecting the account and enabling sending are two separate steps. Until both are
-          done (and a transport is configured), every message is queued as a draft for approval.
+          Connecting the account and enabling sending are two separate steps. Connect uses
+          Google OAuth and stores the refresh token encrypted; the credential never leaves
+          the server. Until both are done (and a transport is configured), every message is
+          queued as a draft for approval.
         </p>
+        {oauthNotice && <p className="con-sub">{oauthNotice}</p>}
         <div className="growth-setting-row">
           <label>outbound address</label>
           <input className="growth-input" defaultValue={email.from_email || ''}
@@ -1186,7 +1220,10 @@ function Settings({ api, onError, onEngine }) {
           </span>
           {email.connection_status === 'connected'
             ? <button className="preview-checkout-btn" type="button" onClick={disconnectEmail}>Disconnect</button>
-            : <button className="preview-checkout-btn" type="button" onClick={connectEmail}>Connect account</button>}
+            : <button className="preview-checkout-btn" type="button" onClick={connectEmail}
+                disabled={!channelsMeta.oauth_configured}
+                title={channelsMeta.oauth_configured ? '' : 'Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET on the API'}>
+                {channelsMeta.oauth_configured ? 'Connect Gmail' : 'Gmail OAuth not configured'}</button>}
         </div>
         <div className="growth-setting-row">
           <label>sending enabled</label>
@@ -1207,6 +1244,41 @@ function Settings({ api, onError, onEngine }) {
             {testResult.sent ? 'Sent.' : `Not sent: ${testResult.reason || 'unknown'}`}
           </p>
         )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Outreach channels</h2>
+        <p className="con-sub">
+          Email is sent automatically once connected and enabled. The platform channels are
+          where the Closer queues a human-reviewed reply — automated posting is not permitted
+          by the platforms' own rules. A channel is only used once it is connected here.
+        </p>
+        <div className="growth-table-wrap">
+          <table className="growth-table">
+            <thead><tr><th>Channel</th><th>Status</th><th>Identity</th><th>Sent today</th><th></th></tr></thead>
+            <tbody>
+              {['x', 'reddit', 'github', 'hackernews'].map((name) => {
+                const c = channels.find((x) => x.channel === name) || {};
+                const connected = c.status === 'connected';
+                return (
+                  <tr key={name}>
+                    <td>{name}</td>
+                    <td>{c.status || 'not_connected'}</td>
+                    <td>{c.identity || '—'}</td>
+                    <td>{(c.usage_today && c.usage_today.sends) || 0}</td>
+                    <td>
+                      {connected
+                        ? <button className="preview-checkout-btn" type="button" onClick={() => disconnectChannel(name)}>Disconnect</button>
+                        : <button className="preview-checkout-btn" type="button"
+                            onClick={() => { const id = (typeof window !== 'undefined') ? window.prompt(`Handle for ${name}`) : null; if (id) connectChannel(name, id); }}>
+                            Connect</button>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="an-section">
