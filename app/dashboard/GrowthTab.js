@@ -18,6 +18,7 @@ const VIEWS = [
   ['live', 'Command center'],
   ['overview', 'Overview'],
   ['prospects', 'Prospects'],
+  ['contacts', 'Contacts'],
   ['agents', 'Agents'],
   ['approvals', 'Approvals'],
   ['settings', 'Settings'],
@@ -143,6 +144,7 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
         onRunNow={() => runAgents(null)} busy={busy === 'run'} />}
       {view === 'overview' && <Overview api={api} overview={overview} onRefresh={loadOverview} onRun={runAgents} busy={busy} />}
       {view === 'prospects' && <Prospects api={api} onError={onError} />}
+      {view === 'contacts' && <Contacts api={api} onError={onError} />}
       {view === 'agents' && <Agents api={api} onError={onError} />}
       {view === 'approvals' && <Approvals api={api} onError={onError} onChanged={loadOverview} />}
       {view === 'settings' && <Settings api={api} onError={onError} onEngine={setEngine} />}
@@ -350,6 +352,8 @@ function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running, 
   const queues = c.queues || {};
   const base = snap.baselines || {};
   const tp = snap.throughput || {};
+  const worker = snap.worker || {};
+  const pipeline = snap.contact_pipeline || {};
   const work = {};
   (snap.current_work || []).forEach((w) => { work[w.agent] = w; });
 
@@ -367,7 +371,10 @@ function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running, 
             : 'The engine is paused. Scheduled runs are stopped; use Run now for a manual cycle.'}
         </span>
         <span className="con-sub" style={{ marginLeft: 'auto' }}>
-          Last activity: {ago(snap.engine?.last_activity_at)}
+          {worker?.thread_alive
+            ? `Backend worker alive${worker.leader ? ' · leader' : ' · standby'} · last pass ${ago(worker.last_pass_at)}`
+            : (running ? 'Backend worker NOT running' : 'Backend worker stopped (engine paused)')}
+          {' · '}Last activity: {ago(snap.engine?.last_activity_at)}
         </span>
       </div>
 
@@ -402,6 +409,36 @@ function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running, 
           Queue: {queues.new_prospects || 0} awaiting review · {queues.nurture || 0} nurture ·{' '}
           {queues.followups_due || 0} follow-ups due · {queues.approvals_pending || 0} awaiting your approval.
         </p>
+      </div>
+
+      <div className="an-section">
+        <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+          <h2 className="an-section-h" style={{ marginBottom: 0 }}>Contact pipeline</h2>
+          <span className="con-sub">Every number is a real database count. Click a stage to open the records behind it.</span>
+        </div>
+        <div className="growth-live-counters">
+          <CounterRow label="Signals" value={pipeline.signals} />
+          <CounterRow label="Prospects" value={pipeline.prospects} />
+          <CounterRow label="Qualified" value={pipeline.qualified} />
+          <CounterRow label="Nurtured" value={pipeline.nurtured} />
+          <CounterRow label="Rejected" value={pipeline.rejected} />
+          <CounterRow label="Identity verified" value={pipeline.identity_verified} />
+          <CounterRow label="Contactable" value={pipeline.contactable} />
+          <CounterRow label="No contact found" value={pipeline.no_contact_found} />
+          <CounterRow label="Email" value={pipeline.email} />
+          <CounterRow label="GitHub" value={pipeline.github} />
+          <CounterRow label="X" value={pipeline.x} />
+          <CounterRow label="Reddit" value={pipeline.reddit} />
+          <CounterRow label="Hacker News" value={pipeline.hackernews} />
+          <CounterRow label="Company contact" value={pipeline.company_contact} />
+          <CounterRow label="Ready for outreach" value={pipeline.ready_for_outreach} />
+          <CounterRow label="Contacted" value={pipeline.contacted} />
+          <CounterRow label="Replies" value={pipeline.replies} />
+          <CounterRow label="Interested" value={pipeline.interested} />
+          <CounterRow label="Signups" value={pipeline.signups} />
+          <CounterRow label="Provider connected" value={pipeline.provider_connected} />
+          <CounterRow label="Activated" value={pipeline.activated} />
+        </div>
       </div>
 
       <div className="an-section">
@@ -701,6 +738,152 @@ function Prospects({ api, onError }) {
       {detail && <ProspectDrawer detail={detail} onClose={() => setDetail(null)} onStatus={setStatus} />}
       {showImport && <ImportModal api={api} onClose={() => { setShowImport(false); load(); }} onError={onError} />}
       {showAdd && <AddModal api={api} onClose={() => { setShowAdd(false); load(); }} onError={onError} />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Contacts -- the actual people behind the pipeline
+//
+// Where Prospects is the full working spreadsheet, Contacts is the
+// outreach-ready view the product asked for: the real person (or company), the
+// evidence that qualifies them, their identity confidence, how we can
+// legitimately reach them, and where their outreach stands. Every column is a
+// stored fact; an unknown field renders as an em dash, never a guess.
+// ---------------------------------------------------------------------------
+function Contacts({ api, onError }) {
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pipeline, setPipeline] = useState(null);
+  const [filters, setFilters] = useState({ search: '', channel: '', type: '', identity_verified: '' });
+  const [loading, setLoading] = useState(false);
+  const [detail, setDetail] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const q = new URLSearchParams({ limit: '100' });
+    Object.entries(filters).forEach(([k, v]) => { if (v) q.set(k, v); });
+    try {
+      const [res, pipe] = await Promise.all([
+        api(`/contacts?${q.toString()}`),
+        api('/contacts/pipeline'),
+      ]);
+      setRows(res.rows || []); setTotal(res.total || 0); setPipeline(pipe || {});
+    } catch (e) { onError && onError(e.message); }
+    setLoading(false);
+  }, [api, filters, onError]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function openDetail(id) {
+    try { setDetail(await api(`/prospects/${id}`)); }
+    catch (e) { onError && onError(e.message); }
+  }
+
+  function quickChannel(ch) {
+    setFilters({ ...filters, channel: ch, identity_verified: '' });
+  }
+
+  const chips = pipeline ? [
+    ['Qualified', pipeline.qualified, null],
+    ['Identity verified', pipeline.identity_verified, 'identity'],
+    ['Contactable', pipeline.contactable, 'contactable'],
+    ['No contact found', pipeline.no_contact_found, 'none'],
+    ['Email', pipeline.email, 'email'],
+    ['GitHub', pipeline.github, 'github'],
+    ['X', pipeline.x, 'x'],
+    ['Reddit', pipeline.reddit, 'reddit'],
+    ['Hacker News', pipeline.hackernews, 'hackernews'],
+    ['Company contact', pipeline.company_contact, 'none'],
+  ] : [];
+
+  return (
+    <div>
+      {pipeline && (
+        <div className="growth-live-counters" style={{ marginBottom: 12 }}>
+          {chips.map(([label, value, key]) => (
+            <button key={label} type="button" className="growth-live-counter"
+              style={{ cursor: key ? 'pointer' : 'default', textAlign: 'left' }}
+              onClick={() => {
+                if (!key) return;
+                if (key === 'identity') setFilters({ ...filters, identity_verified: 'true', channel: '' });
+                else quickChannel(key);
+              }}>
+              <div className="growth-live-counter-v">{value ?? 0}</div>
+              <div className="growth-live-counter-l">{label}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="growth-toolbar">
+        <input className="growth-input" placeholder="Search person, company, handle…"
+          value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} />
+        <select className="growth-input" value={filters.channel}
+          onChange={(e) => setFilters({ ...filters, channel: e.target.value })}>
+          <option value="">Any channel</option>
+          <option value="email">Email</option>
+          <option value="github">GitHub</option>
+          <option value="x">X</option>
+          <option value="reddit">Reddit</option>
+          <option value="hackernews">Hacker News</option>
+          <option value="none">No contact found</option>
+        </select>
+        <select className="growth-input" value={filters.type}
+          onChange={(e) => setFilters({ ...filters, type: e.target.value })}>
+          <option value="">All types</option>
+          <option value="DEVELOPER">Developer</option>
+          <option value="BUSINESS">Business</option>
+        </select>
+        <label className="con-sub" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={filters.identity_verified === 'true'}
+            onChange={(e) => setFilters({ ...filters, identity_verified: e.target.checked ? 'true' : '' })} />
+          identity verified only
+        </label>
+      </div>
+
+      <p className="con-sub">{total} contact{total === 1 ? '' : 's'}{loading ? ' · loading…' : ''}</p>
+
+      <div className="growth-table-wrap">
+        <table className="growth-table">
+          <thead>
+            <tr>
+              <th>Person</th><th>Role</th><th>Company</th><th>Country</th>
+              <th>Payment problem / evidence</th><th>Source</th>
+              <th>Identity</th><th>Contact</th><th>Confidence</th><th>Outreach</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p) => (
+              <tr key={p.id} className="growth-row" onClick={() => openDetail(p.id)}>
+                <td>{fmt(p.display_name)}</td>
+                <td>{fmt(p.contact_role || p.role)}</td>
+                <td>{fmt(p.company)}</td>
+                <td>{fmt(p.country_code)}</td>
+                <td style={{ maxWidth: 320 }}>
+                  {fmt((p.payment_providers || []).join(', '))}
+                  {p.pain_signals && p.pain_signals.length
+                    ? ` · ${p.pain_signals.map((x) => x.category || x).join(', ')}` : ''}
+                  {p.evidence_summary ? <div className="con-sub">{p.evidence_summary}</div> : null}
+                </td>
+                <td>{fmt(p.first_touch_source)}{p.source_url ? <div className="con-sub">{p.source_url}</div> : null}</td>
+                <td><span className={levelClass(p.ownership === 'OWNER' ? 'HIGH' : (p.ownership || 'UNKNOWN'))}>{p.ownership === 'OWNER' ? 'VERIFIED' : fmt(p.ownership)}</span></td>
+                <td>{p.contact_channel ? `${p.contact_channel}: ${p.contact_handle || ''}` : '—'}</td>
+                <td>{fmt(p.contact_confidence)}</td>
+                <td>{fmt(p.status)}{p.next_action ? ` · ${p.next_action}` : ''}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && !loading && (
+              <tr><td colSpan="10" className="con-sub" style={{ padding: 16 }}>
+                No contacts yet. When the Qualifier promotes a prospect, it appears here with its
+                evidence and its legitimate channel.
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {detail && <ProspectDrawer detail={detail} onClose={() => setDetail(null)} onStatus={() => {}} />}
     </div>
   );
 }
@@ -1221,9 +1404,8 @@ function Settings({ api, onError, onEngine }) {
           {email.connection_status === 'connected'
             ? <button className="preview-checkout-btn" type="button" onClick={disconnectEmail}>Disconnect</button>
             : <button className="preview-checkout-btn" type="button" onClick={connectEmail}
-                disabled={!channelsMeta.oauth_configured}
-                title={channelsMeta.oauth_configured ? '' : 'Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET on the API'}>
-                {channelsMeta.oauth_configured ? 'Connect Gmail' : 'Gmail OAuth not configured'}</button>}
+                title={channelsMeta.oauth_configured ? 'Start the real Google OAuth flow' : 'Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET on the API first'}>
+                Connect Gmail</button>}
         </div>
         <div className="growth-setting-row">
           <label>sending enabled</label>
