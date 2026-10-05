@@ -93,6 +93,25 @@ for the `carrier` block.
   country actually returns representative data. Filter on `.rail-example` and
   assert each caption over its own group.
 
+## The Growth tab is a view, not a route — deep links select it
+
+`/dashboard` is a single page; the Growth tab renders inside it (Analytics ->
+Growth) and its views (Command center, Settings, ...) are internal state, not
+URLs. So any external link back into Growth must use query parameters:
+
+```
+/dashboard?tab=analytics&growth=settings
+```
+
+`app/dashboard/page.js` reads `?tab` and `GrowthTab` reads `?growth` (both
+validated against the known tabs/views) when they mount. The Gmail OAuth
+callback in konduyt-api returns exactly that URL; before this wiring it pointed
+at `/dashboard/growth/settings`, which is not a route and 404'd, so a successful
+connect looked like a failure. `scripts/test-gmail-connect.mjs` guards the
+contract: the deep links, that Connect Gmail is always rendered and clickable
+(`oauth_configured` changes only the tooltip), and that `connectEmail` hits the
+real `/growth/email/oauth/start` endpoint. It runs as part of `npm test`.
+
 ## Landing-page code snippets
 
 - `app/DevPanel.js` holds the 11 language tabs (JS, cURL, Python, PHP, Go,
