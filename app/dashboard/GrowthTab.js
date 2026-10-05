@@ -41,7 +41,13 @@ function levelClass(level) {
 }
 
 export default function GrowthTab({ apiBase, authHeaders, onError }) {
-  const [view, setView] = useState('live');
+  const [view, setView] = useState(() => {
+    // Deep link support: the Gmail OAuth callback returns the browser to
+    // /dashboard?tab=analytics&growth=settings, so open on the requested view.
+    if (typeof window === 'undefined') return 'live';
+    const v = new URLSearchParams(window.location.search).get('growth');
+    return VIEWS.some(([id]) => id === v) ? v : 'live';
+  });
   const [overview, setOverview] = useState(null);
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');

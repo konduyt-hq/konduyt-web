@@ -122,7 +122,15 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(null);
   const [keys, setKeys] = useState(null);
   const [latestPayment, setLatestPayment] = useState(null);
-  const [tab, setTab] = useState('quickstart'); // money | connections | quickstart | messages | settings | analytics
+  const [tab, setTab] = useState(() => {
+    // Deep link support: the Gmail OAuth callback returns to
+    // /dashboard?tab=analytics&growth=settings. Honour ?tab so the Growth tab
+    // (and its Settings view) is open when the browser lands back here.
+    if (typeof window === 'undefined') return 'quickstart';
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics'].includes(t)
+      ? t : 'quickstart';
+  });
   // Direct Connections is PAUSED (see AGENTS.md "Direct Connections is paused"):
   // the tab is no longer registered, so no surface can select it.
 
