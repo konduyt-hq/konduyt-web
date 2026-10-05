@@ -16,6 +16,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const VIEWS = [
   ['live', 'Command center'],
+  ['cohort', 'Cohort'],
+  ['strategy', 'Strategy health'],
+  ['experiment', 'Experiment'],
   ['overview', 'Overview'],
   ['prospects', 'Prospects'],
   ['contacts', 'Contacts'],
@@ -81,21 +84,6 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
 
   useEffect(() => { loadOverview(); loadEngine(); }, [loadOverview, loadEngine]);
 
-  async function runAgents(agents) {
-    setBusy('run'); setNotice('');
-    try {
-      const res = await api('/agents/run-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(agents ? { agents } : {}),
-      });
-      const ran = (res.ran || []).join(', ') || 'none';
-      setNotice(`Ran now: ${ran}. The live stream will show what happened.`);
-      await loadOverview(); await loadEngine();
-    } catch (e) { onError && onError(e.message); }
-    setBusy('');
-  }
-
   async function toggleEngine(paused) {
     setBusy('engine');
     try {
@@ -106,8 +94,8 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
       });
       setEngine(res);
       setNotice(paused
-        ? 'Growth Engine paused. Scheduled runs are stopped; Run now still works.'
-        : 'Growth Engine resumed. Scheduled runs will continue automatically.');
+        ? 'Growth Engine paused. No agent work runs while paused; resume to continue.'
+        : 'Growth Engine resumed. Agents will continue on their own schedules.');
     } catch (e) { onError && onError(e.message); }
     setBusy('');
   }
@@ -128,10 +116,6 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
         <div className="growth-head-actions">
           <EngineBadge engine={engine} busy={busy === 'engine'}
             onToggle={toggleEngine} />
-          <button className="preview-checkout-btn" type="button" disabled={busy === 'run'}
-            onClick={() => runAgents(null)} title="Run one cycle immediately; not needed for normal operation">
-            {busy === 'run' ? 'Running…' : '▶ Run now'}
-          </button>
         </div>
       </div>
 
@@ -146,9 +130,11 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
       {notice && <p className="con-sub" style={{ marginBottom: 12 }}>{notice}</p>}
 
       {view === 'live' && <CommandCenter api={api} apiBase={apiBase} authHeaders={authHeaders}
-        onError={onError} onEngine={setEngine} running={running}
-        onRunNow={() => runAgents(null)} busy={busy === 'run'} />}
-      {view === 'overview' && <Overview api={api} overview={overview} onRefresh={loadOverview} onRun={runAgents} busy={busy} />}
+        onError={onError} onEngine={setEngine} running={running} />}
+      {view === 'cohort' && <CohortView api={api} onError={onError} />}
+      {view === 'strategy' && <StrategyHealth api={api} onError={onError} />}
+      {view === 'experiment' && <Experiment api={api} onError={onError} />}
+      {view === 'overview' && <Overview api={api} overview={overview} onRefresh={loadOverview} />}
       {view === 'prospects' && <Prospects api={api} onError={onError} />}
       {view === 'contacts' && <Contacts api={api} onError={onError} />}
       {view === 'agents' && <Agents api={api} onError={onError} />}
@@ -203,6 +189,7 @@ const EVENT_LABEL = {
   error: 'Error',
   agent_started: 'Agent started',
   agent_finished: 'Agent finished',
+  cohort_selected: 'Cohort selected',
 };
 
 // Human wording for each agent's live state.
@@ -268,7 +255,7 @@ function AgentLiveRow({ a, work }) {
   );
 }
 
-function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running, onRunNow, busy }) {
+function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running }) {
   const [snap, setSnap] = useState(null);
   const [events, setEvents] = useState([]);
   const [transport, setTransport] = useState('connecting');
@@ -373,8 +360,8 @@ function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running, 
         </span>
         <span className="con-sub">
           {running
-            ? 'The engine runs continuously on each agent’s schedule. Run now is for an immediate cycle only.'
-            : 'The engine is paused. Scheduled runs are stopped; use Run now for a manual cycle.'}
+            ? 'The engine runs continuously on each agent’s schedule. There is no manual run; work appears here as it happens.'
+            : 'The engine is paused. No agent work runs until you resume it.'}
         </span>
         <span className="con-sub" style={{ marginLeft: 'auto' }}>
           {worker?.thread_alive
@@ -511,7 +498,7 @@ function Stat({ label, value, hint }) {
   );
 }
 
-function Overview({ api, overview, onRefresh, onRun, busy }) {
+function Overview({ api, overview, onRefresh }) {
   const [series, setSeries] = useState(null);
   useEffect(() => {
     api('/metrics/daily?days=30').then(setSeries).catch(() => {});
@@ -564,8 +551,7 @@ function Overview({ api, overview, onRefresh, onRun, busy }) {
       <div className="an-section">
         <div className="con-home-head-row" style={{ alignItems: 'center' }}>
           <h2 className="an-section-h" style={{ marginBottom: 0 }}>Agents</h2>
-          <button className="preview-checkout-btn" type="button" disabled={busy === 'run'}
-            onClick={() => onRun(null)}>{busy === 'run' ? 'Running…' : '▶ Run now'}</button>
+          <span className="con-sub">Agents run on their own schedules; there is no manual run.</span>
         </div>
         <div className="growth-agents">
           {(overview.agents || []).map((a) => (
@@ -592,7 +578,7 @@ function Overview({ api, overview, onRefresh, onRun, busy }) {
 
       <div className="an-section">
         <h2 className="an-section-h">Recent activity</h2>
-        {(overview.activity || []).length === 0 && <p className="con-sub">No activity yet. Run the agents to start discovering.</p>}
+        {(overview.activity || []).length === 0 && <p className="con-sub">No activity yet. The engine will show discovery here as it runs.</p>}
         <div className="growth-activity">
           {(overview.activity || []).slice(0, 20).map((it) => (
             <div key={it.id} className="growth-activity-row">
@@ -734,7 +720,7 @@ function Prospects({ api, onError }) {
             ))}
             {rows.length === 0 && !loading && (
               <tr><td colSpan="11" className="con-sub" style={{ padding: 16 }}>
-                No prospects match. Run the agents from Overview, add one manually, or import a CSV.
+                No prospects match. Add one manually, import a CSV, or wait for discovery.
               </td></tr>
             )}
           </tbody>
@@ -1225,6 +1211,424 @@ function Approvals({ api, onError, onChanged }) {
 }
 
 // ---------------------------------------------------------------------------
+// Cohort -- the controlled experiment's reviewed, bounded set
+// ---------------------------------------------------------------------------
+function pct(v) {
+  if (v === null || v === undefined) return '—';
+  return `${(Number(v) * 100).toFixed(1)}%`;
+}
+
+function CohortView({ api, onError }) {
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState('');
+  const [preview, setPreview] = useState(null);
+  const [notice, setNotice] = useState('');
+  const [open, setOpen] = useState(null);
+
+  const load = useCallback(async () => {
+    try { setData(await api('/cohort')); }
+    catch (e) { onError && onError(e.message); }
+  }, [api, onError]);
+  useEffect(() => { load(); }, [load]);
+
+  async function post(path, body, label) {
+    setBusy(label); setNotice('');
+    try {
+      const res = await api(path, { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}) });
+      if (label === 'preview') setPreview(res);
+      else {
+        setNotice(`${label === 'select' ? 'Selected' : 'Topped up'} ${res.selected ?? res.added ?? 0} `
+          + `into ${res.cohort_id || 'the active cohort'}. Nothing was sent.`);
+        setPreview(null);
+      }
+      await load();
+    } catch (e) { onError && onError(e.message); }
+    setBusy('');
+  }
+
+  if (!data) return <p className="con-sub">Loading cohort…</p>;
+  const active = data.active;
+  const members = data.members || [];
+  const pool = data.pool || {};
+  const cohorts = data.cohorts || [];
+
+  return (
+    <div>
+      <div className="an-section">
+        <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+          <div>
+            <h2 className="an-section-h" style={{ marginBottom: 0 }}>Controlled cohort</h2>
+            <p className="con-sub">
+              The strongest qualified prospects, selected by score. Selecting a cohort never
+              sends anything: it marks them ready for the email path. The rest stay qualified
+              while discovery continues.
+            </p>
+          </div>
+          <div className="growth-head-actions">
+            <button className="preview-checkout-btn" type="button" disabled={!!busy}
+              onClick={() => post('/cohort/select', { dry_run: true }, 'preview')}>
+              {busy === 'preview' ? 'Checking…' : 'Preview selection'}
+            </button>
+            <button className="preview-checkout-btn" type="button" disabled={!!busy}
+              onClick={() => post('/cohort/select', {}, 'select')}>
+              {busy === 'select' ? 'Selecting…' : 'Select cohort'}
+            </button>
+            <button className="preview-checkout-btn" type="button" disabled={!!busy}
+              onClick={() => post('/cohort/ensure', {}, 'ensure')}>
+              {busy === 'ensure' ? 'Topping up…' : 'Top up active'}
+            </button>
+          </div>
+        </div>
+        <div className="growth-live-throughput">
+          <span>qualified pool {pool.pool_size ?? 0}</span>
+          <span>with contact {pool.qualified_with_contact ?? 0}</span>
+          <span>scored {pool.qualified_scored ?? 0}</span>
+          <span>min score {pool.min_score ?? 0}</span>
+          <span>{pool.require_contactable ? 'contactable only' : 'contact optional'}</span>
+        </div>
+        {notice && <p className="con-sub" style={{ marginTop: 8 }}>{notice}</p>}
+        {preview && (
+          <p className="con-sub" style={{ marginTop: 8 }}>
+            Dry run: would select {preview.selected ?? 0} of {preview.pool_size ?? 0} (min score{' '}
+            {preview.min_score ?? 0}). Nothing was written.
+          </p>
+        )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">
+          {active ? `Active cohort — ${active.name}` : 'No active cohort'}
+        </h2>
+        {active ? (
+          <>
+            <div className="growth-live-throughput">
+              <span>{active.selected_count ?? members.length} selected</span>
+              <span>size {active.cohort_size}</span>
+              <span>min score {active.min_score ?? '—'}</span>
+              <span>status {active.status}</span>
+              <span>created {fmtDate(active.created_at)}</span>
+            </div>
+            <div className="growth-table-wrap" style={{ marginTop: 10 }}>
+              <table className="growth-table">
+                <thead><tr>
+                  <th>#</th><th>Prospect</th><th>Score</th><th>Band</th><th>Source</th>
+                  <th>Status</th><th>Why</th><th></th>
+                </tr></thead>
+                <tbody>
+                  {members.map((m) => (
+                    <tr key={m.id} className="growth-row" onClick={() => setOpen(open === m.id ? null : m.id)}>
+                      <td>{m.rank}</td>
+                      <td>{m.display_name || m.company || '—'}</td>
+                      <td>{m.qualification_score != null ? Number(m.qualification_score).toFixed(1) : '—'}</td>
+                      <td><span className={levelClass(bandFor(m.qualification_score))}>
+                        {bandFor(m.qualification_score) || '—'}</span></td>
+                      <td>{m.first_touch_source || '—'}</td>
+                      <td>{m.member_status || m.status}</td>
+                      <td className="growth-activity-body">{m.qualification_reason || '—'}</td>
+                      <td>{open === m.id ? '▾' : '▸'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {members.filter((m) => m.id === open).map((m) => (
+              <CohortMemberDetail key={m.id} m={m} />
+            ))}
+          </>
+        ) : (
+          <p className="con-sub">
+            No cohort yet. Select one from the ranked pool above — selection writes a cohort
+            and marks its members ready for outreach, but never emails anyone.
+          </p>
+        )}
+      </div>
+
+      {cohorts.length > 0 && (
+        <div className="an-section">
+          <h2 className="an-section-h">Cohorts ({cohorts.length})</h2>
+          <div className="growth-table-wrap">
+            <table className="growth-table">
+              <thead><tr><th>Name</th><th>Status</th><th>Size</th><th>Selected</th><th>Min score</th><th>Created</th></tr></thead>
+              <tbody>
+                {cohorts.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.name}</td><td>{c.status}</td><td>{c.cohort_size}</td>
+                    <td>{c.selected_count}</td><td>{c.min_score ?? '—'}</td>
+                    <td>{fmtDate(c.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function bandFor(score) {
+  if (score == null) return '';
+  const s = Number(score);
+  if (s >= 70) return 'HIGH';
+  if (s >= 45) return 'MEDIUM';
+  if (s >= 20) return 'LOW';
+  return 'UNQUALIFIED';
+}
+
+function CohortMemberDetail({ m }) {
+  const factors = m.qualification_factors || {};
+  const list = Array.isArray(factors.factors) ? factors.factors : [];
+  return (
+    <div className="growth-evidence" style={{ marginTop: 10 }}>
+      <div className="con-home-head-row">
+        <b>{m.display_name || m.company || m.id}</b>
+        <span className={levelClass(bandFor(m.qualification_score))}>
+          {m.qualification_score != null ? Number(m.qualification_score).toFixed(1) : '—'}
+        </span>
+      </div>
+      <p className="con-sub">{factors.reasons || m.qualification_reason || 'No reason recorded.'}</p>
+      <div className="growth-drawer-grid">
+        <div><div className="con-sub">Source</div><div>{m.first_touch_source || '—'}</div></div>
+        <div><div className="con-sub">Contact channel</div><div>{m.contact_channel || '—'}</div></div>
+        <div><div className="con-sub">Evidence strength</div><div>{m.evidence_strength || '—'}</div></div>
+        <div><div className="con-sub">Ownership</div><div>{m.ownership || '—'}</div></div>
+        <div><div className="con-sub">Providers</div><div>{(m.payment_providers || []).join(', ') || '—'}</div></div>
+        <div><div className="con-sub">Version</div><div>{m.qualification_version || '—'}</div></div>
+      </div>
+      {list.length > 0 && (
+        <div className="growth-dims">
+          {list.map((f) => (
+            <div key={f.factor || f.name} className="growth-dim">
+              <span className="growth-dim-name">{(f.factor || f.name || '').replace(/_/g, ' ')}</span>
+              <span>{Number(f.contribution || 0).toFixed(1)}</span>
+              <span className="growth-dim-reason">{f.reason}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {(m.recommended_subject || m.recommended_body) && (
+        <div className="growth-draft" style={{ marginTop: 10 }}>
+          <div className="con-sub">Recommended message (reviewed before any send)</div>
+          <b>{m.recommended_subject}</b>
+          <pre className="growth-draft-body">{m.recommended_body}</pre>
+          {m.recommended_version && <div className="con-sub">version {m.recommended_version}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Strategy health -- learn where good prospects come from
+// ---------------------------------------------------------------------------
+const HEALTH_CLASS = {
+  HEALTHY: 'growth-pill-high',
+  WATCH: 'growth-pill-med',
+  UNDERPERFORMING: 'growth-pill-low',
+  PAUSED: 'growth-pill-unknown',
+};
+
+function StrategyHealth({ api, onError }) {
+  const [rows, setRows] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const load = useCallback(async () => {
+    try { const r = await api('/strategy/health'); setRows(r.sources || []); }
+    catch (e) { onError && onError(e.message); }
+  }, [api, onError]);
+  useEffect(() => { load(); }, [load]);
+
+  async function evaluate() {
+    setBusy(true); setNotice('');
+    try {
+      const r = await api('/strategy/evaluate', { method: 'POST' });
+      setRows(r.sources || []);
+      setNotice(`Re-evaluated ${(r.sources || []).length} sources from real outcomes.`);
+    } catch (e) { onError && onError(e.message); }
+    setBusy(false);
+  }
+
+  if (!rows) return <p className="con-sub">Loading strategy health…</p>;
+
+  return (
+    <div>
+      <div className="an-section">
+        <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+          <div>
+            <h2 className="an-section-h" style={{ marginBottom: 0 }}>Strategy health by source</h2>
+            <p className="con-sub">
+              A source is judged only on real outcomes: how many of its prospects qualify,
+              reply, sign up, or turn out to be duplicates or false positives. A weak source
+              is throttled (lower allocation weight) and eventually paused; it is never
+              silently deleted, so it can recover.
+            </p>
+          </div>
+          <button className="preview-checkout-btn" type="button" disabled={busy} onClick={evaluate}>
+            {busy ? 'Evaluating…' : 'Re-evaluate now'}
+          </button>
+        </div>
+        {notice && <p className="con-sub">{notice}</p>}
+        {rows.length === 0
+          ? <p className="con-sub">No source has produced a signal yet.</p>
+          : (
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr>
+                  <th>Source</th><th>Health</th><th>Weight</th><th>Reviewed</th>
+                  <th>Qualified</th><th>Qual. rate</th><th>Pos. reply</th>
+                  <th>Signup</th><th>Activation</th><th>Dup rate</th><th>False pos.</th><th>Reason</th>
+                </tr></thead>
+                <tbody>
+                  {rows.map((s) => (
+                    <tr key={s.source}>
+                      <td>{s.source}{s.paused ? ' · paused' : ''}</td>
+                      <td><span className={`growth-pill ${HEALTH_CLASS[s.health_state] || 'growth-pill-unknown'}`}>
+                        {s.health_state || '—'}</span></td>
+                      <td>{s.allocation_weight != null ? Number(s.allocation_weight).toFixed(2) : '—'}</td>
+                      <td>{s.reviewed ?? 0}</td>
+                      <td>{s.qualified_prospects ?? 0}</td>
+                      <td>{pct(s.qualification_rate)}</td>
+                      <td>{pct(s.positive_reply_rate)}</td>
+                      <td>{pct(s.signup_rate)}</td>
+                      <td>{pct(s.activation_rate)}</td>
+                      <td>{pct(s.duplicate_rate)}</td>
+                      <td>{pct(s.false_positive_rate)}</td>
+                      <td className="growth-activity-body">{s.health_reason || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Experiment -- the funnel and where it breaks
+// ---------------------------------------------------------------------------
+function Experiment({ api, onError }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    api('/strategy/report').then(setData).catch((e) => onError && onError(e.message));
+  }, [api, onError]);
+
+  if (!data) return <p className="con-sub">Loading experiment…</p>;
+  const funnel = data.funnel || [];
+  const max = Math.max(1, ...funnel.map((s) => s.count || 0));
+
+  return (
+    <div>
+      <div className="growth-stats">
+        <Stat label="Qualified" value={data.qualified} />
+        <Stat label="Selected (cohort)" value={data.selected} />
+        <Stat label="Emails sent" value={data.emails_sent} />
+        <Stat label="Prospects contacted" value={data.prospects_contacted} />
+        <Stat label="Delivery failures" value={data.delivery_failures} />
+        <Stat label="Replies" value={data.replies} hint={`${data.positive_replies || 0} positive · ${data.negative_replies || 0} negative`} />
+        <Stat label="Signups" value={data.signups} />
+        <Stat label="Activated" value={data.activated} />
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Funnel — where it breaks</h2>
+        <p className="con-sub">Qualified → Contacted → Replied → Signed up → Activated, with the drop between each stage.</p>
+        <div className="growth-funnel">
+          {funnel.map((s) => (
+            <div key={s.stage} className="growth-funnel-row">
+              <span className="growth-funnel-l">{s.stage}</span>
+              <span className="growth-funnel-bar" style={{ width: `${Math.round(((s.count || 0) / max) * 100)}%` }} />
+              <span className="growth-funnel-n">{s.count || 0}</span>
+            </div>
+          ))}
+        </div>
+        <div className="growth-live-throughput" style={{ marginTop: 8 }}>
+          {funnel.filter((s) => s.drop_from_previous != null).map((s) => (
+            <span key={s.stage}>{s.stage}: −{s.drop_from_previous} ({pct(s.drop_rate)})</span>
+          ))}
+        </div>
+        <p className="con-sub" style={{ marginTop: 8 }}>
+          Reply rate {pct(data.reply_rate)} · positive reply rate {pct(data.positive_reply_rate)} ·
+          signup rate {pct(data.signup_rate)} · activation rate {pct(data.activation_rate)} ·{' '}
+          median time to reply {data.median_time_to_reply_hours != null
+            ? `${data.median_time_to_reply_hours}h` : 'no replies yet'}.
+        </p>
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">By source</h2>
+        {(data.by_source || []).length === 0
+          ? <p className="con-sub">No qualified prospects yet.</p>
+          : (
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>Source</th><th>Qualified</th><th>Contacted</th><th>Replied</th><th>Signups</th><th>Activated</th><th>Mean score</th><th>Reply rate</th><th>Signup rate</th></tr></thead>
+                <tbody>
+                  {(data.by_source || []).map((r) => (
+                    <tr key={r.source}>
+                      <td>{r.source}</td><td>{r.qualified}</td><td>{r.contacted}</td>
+                      <td>{r.replied}</td><td>{r.signups}</td><td>{r.activated}</td>
+                      <td>{Number(r.mean_score || 0).toFixed(1)}</td>
+                      <td>{pct(r.reply_rate)}</td><td>{pct(r.signup_rate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">By score band — does the score predict replies?</h2>
+        {(data.by_score_band || []).length === 0
+          ? <p className="con-sub">No scored prospects yet.</p>
+          : (
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>Band</th><th>Prospects</th><th>Contacted</th><th>Replied</th><th>Signups</th><th>Activated</th><th>Reply rate</th><th>Signup rate</th></tr></thead>
+                <tbody>
+                  {(data.by_score_band || []).map((r) => (
+                    <tr key={r.band}>
+                      <td>{r.band}</td><td>{r.prospects}</td><td>{r.contacted}</td>
+                      <td>{r.replied}</td><td>{r.signups}</td><td>{r.activated}</td>
+                      <td>{pct(r.reply_rate)}</td><td>{pct(r.signup_rate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">By message version</h2>
+        {(data.by_message_version || []).length === 0
+          ? <p className="con-sub">No emails sent yet.</p>
+          : (
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>Message version</th><th>Sends</th><th>Prospects</th></tr></thead>
+                <tbody>
+                  {(data.by_message_version || []).map((r) => (
+                    <tr key={r.message_version}>
+                      <td>{r.message_version}</td><td>{r.sends}</td><td>{r.prospects}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Settings -- limits, schedules, email, keywords, sources
 // ---------------------------------------------------------------------------
 function Settings({ api, onError, onEngine }) {
@@ -1324,7 +1728,7 @@ function Settings({ api, onError, onEngine }) {
         <h2 className="an-section-h">Continuous operation</h2>
         <p className="con-sub">
           Growth Engine is ON in normal production: agents run continuously on their own
-          schedules. Pausing stops scheduled runs — Run now still works for a manual cycle.
+          schedules. Pausing stops all agent work; resume to continue.
         </p>
         <div className="growth-setting-row">
           <label>growth engine enabled</label>

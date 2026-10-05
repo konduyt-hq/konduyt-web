@@ -15,11 +15,12 @@
     "test:dashboard-snippets": "node scripts/extract-dashboard-snippets.mjs && node scripts/test-dashboard-snippets.mjs",
     "sync:intelligence-methods": "node scripts/sync-intelligence-methods.mjs",
     "check:generated": "node scripts/sync-intelligence-methods.mjs --check && python3 scripts/build-checkout-page.py --check",
-    "test": "npm run test:intelligence-sdk && npm run test:production-sdk && npm run test:checkout && npm run test:dashboard-snippets && npm run test:snippets && npm run test:billing-gate && npm run test:direct-connections-paused && npm run test:footer-badge && npm run test:gmail-connect && npm run check:generated",
+    "test": "npm run test:intelligence-sdk && npm run test:production-sdk && npm run test:checkout && npm run test:dashboard-snippets && npm run test:snippets && npm run test:billing-gate && npm run test:direct-connections-paused && npm run test:footer-badge && npm run test:gmail-connect && npm run test:growth-quality && npm run check:generated",
     "test:billing-gate": "node scripts/test-billing-gate.mjs",
     "test:direct-connections-paused": "node scripts/test-direct-connections-paused.mjs",
     "test:footer-badge": "node scripts/test-footer-badge.mjs",
-    "test:gmail-connect": "node scripts/test-gmail-connect.mjs"
+    "test:gmail-connect": "node scripts/test-gmail-connect.mjs",
+    "test:growth-quality": "node scripts/test-growth-quality.mjs"
   },
   "dependencies": {
     "next": "14.2.5",
