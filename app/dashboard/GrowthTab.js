@@ -265,6 +265,7 @@ function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running }
 
   const applySnapshot = useCallback((s) => {
     setSnap(s);
+    setError('');
     if (onEngine && s.engine) onEngine(s.engine);
     setEvents((s.activity || []).slice());
     const first = (s.activity || [])[0];
@@ -337,7 +338,27 @@ function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running }
     return () => clearInterval(t);
   }, []);
 
-  if (!snap) return <p className="con-sub">Connecting to the Growth Engine…</p>;
+  // While there is no snapshot yet, never show a silent "Connecting…": if the
+  // stream and the polling fallback have both failed, the operator must see WHY
+  // rather than a spinner that looks like it is still trying. The error state
+  // used to be rendered only after a snapshot existed, so a rejected stream or
+  // an unauthorized poll left this text on screen forever.
+  if (!snap) {
+    return (
+      <div>
+        <div className="growth-live-status">
+          <span className={`growth-live-transport ${transport}`}>
+            {transport === 'live' ? '● Live' : transport === 'polling' ? '◐ Polling' : '○ Connecting'}
+          </span>
+        </div>
+        {error
+          ? <p className="con-sub" style={{ color: '#b91c1c' }}>
+              Could not reach the Growth Engine: {error}
+            </p>
+          : <p className="con-sub">Connecting to the Growth Engine…</p>}
+      </div>
+    );
+  }
 
   const c = snap.counters || {};
   const today = c.today || {};
