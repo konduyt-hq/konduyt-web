@@ -1534,9 +1534,11 @@ function StrategyHealth({ api, onError }) {
 // ---------------------------------------------------------------------------
 function Experiment({ api, onError }) {
   const [data, setData] = useState(null);
+  const [xp, setXp] = useState(null);
 
   useEffect(() => {
     api('/strategy/report').then(setData).catch((e) => onError && onError(e.message));
+    api('/experiment').then(setXp).catch(() => {});
   }, [api, onError]);
 
   if (!data) return <p className="con-sub">Loading experiment…</p>;
@@ -1545,6 +1547,55 @@ function Experiment({ api, onError }) {
 
   return (
     <div>
+      {xp && (
+        <div className="an-section">
+          <h2 className="an-section-h">Adaptive decision — keep going, increase, adjust, or stop?</h2>
+          <p className="con-sub">
+            The first 100 prospects are a baseline, not a ceiling. The engine starts small, measures
+            the response, and decides the next batch from the result.
+          </p>
+          <div className="growth-stats">
+            <Stat label="Verdict" value={xp.state}
+              hint={`Last outcome: ${(xp.recent_decisions?.[0]?.outcome) || '—'}`} />
+            <Stat label="Current batch" value={`#${xp.current_batch} · ${xp.current_batch_size}`}
+              hint={`Next planned: ${xp.next_batch_size}`} />
+            <Stat label="Sending rate" value={`${xp.current_daily_rate}/day`}
+              hint={`Ceiling scales with performance`} />
+            <Stat label="Remaining qualified" value={xp.remaining_qualified}
+              hint="Pipeline headroom, not a quota" />
+            <Stat label="Positive reply rate" value={pct(xp.totals?.positive_reply_rate)}
+              hint={`${xp.totals?.positive_replies || 0} of ${xp.totals?.contacted || 0} contacted`} />
+            <Stat label="Signup rate" value={pct(xp.totals?.signup_rate)}
+              hint={`${xp.totals?.signups || 0} signups · ${xp.totals?.activated || 0} activated`} />
+          </div>
+          <p className="con-sub" style={{ marginTop: 8 }}>
+            <strong>Why:</strong> {xp.decision_reason || 'No decision recorded yet.'}
+          </p>
+          <p className="con-sub">
+            Best source {xp.best_source ? `${xp.best_source.source} (${pct(xp.best_source.positive_reply_rate)} positive)` : '—'} ·
+            weakest source {xp.worst_source ? `${xp.worst_source.source} (${pct(xp.worst_source.positive_reply_rate)} positive)` : '—'} ·
+            best message {xp.best_message ? xp.best_message.message_version : '—'}
+          </p>
+          {(xp.batches || []).length > 0 && (
+            <div className="growth-table-wrap" style={{ marginTop: 8 }}>
+              <table className="growth-table">
+                <thead><tr><th>Batch</th><th>Planned</th><th>Accepted</th><th>Replies</th><th>Positive</th><th>Signups</th><th>Outcome</th><th>Why</th></tr></thead>
+                <tbody>
+                  {(xp.batches || []).map((b) => (
+                    <tr key={b.batch_number}>
+                      <td>#{b.batch_number}</td><td>{b.planned_size}</td><td>{b.accepted}</td>
+                      <td>{b.replies ?? '—'}</td><td>{b.positive_replies ?? '—'}</td>
+                      <td>{b.signups ?? '—'}</td><td>{b.outcome || 'open'}</td>
+                      <td>{b.decision_reason || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="growth-stats">
         <Stat label="Qualified" value={data.qualified} />
         <Stat label="Selected (cohort)" value={data.selected} />

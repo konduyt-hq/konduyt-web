@@ -107,6 +107,15 @@ export default function Dashboard() {
   // yet) is never reported as owing money.
   const [billingLiveProjects, setBillingLiveProjects] = useState(0);
   const [billingMonthlyCharge, setBillingMonthlyCharge] = useState(0);
+  // The full billing picture (GET /billing/overview): entitlement breakdown,
+  // plan/subscription state, the orchestration-fee ledger, and invoice history.
+  // The dashboard RENDERS this and never recomputes a charge or entitlement
+  // itself -- there is one implementation (app/billing_entitlement.py) and the
+  // UI obeys its answer.
+  const [billingOverview, setBillingOverview] = useState(null);
+  const [billingOverviewLoading, setBillingOverviewLoading] = useState(false);
+  const [billingActionMsg, setBillingActionMsg] = useState('');
+  const [billingBusy, setBillingBusy] = useState(false);
   // Told to the developer at the moment a project takes them past the free
   // allowance, while billing is not yet enforced. Succeeding silently would
   // hide a future charge.
@@ -128,7 +137,7 @@ export default function Dashboard() {
     // (and its Settings view) is open when the browser lands back here.
     if (typeof window === 'undefined') return 'quickstart';
     const t = new URLSearchParams(window.location.search).get('tab');
-    return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics'].includes(t)
+    return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics', 'billing'].includes(t)
       ? t : 'quickstart';
   });
   // Direct Connections is PAUSED (see AGENTS.md "Direct Connections is paused"):
@@ -140,6 +149,7 @@ export default function Dashboard() {
       connections: 'Konduyt Payment Providers',
       quickstart: 'Konduyt Code Samples',
       messages: 'Konduyt Messages',
+      billing: 'Konduyt Billing',
       settings: 'Konduyt Settings',
       analytics: 'Konduyt Analytics',
     };
@@ -337,6 +347,93 @@ export default function Dashboard() {
   }
 
   useEffect(() => { if (user) loadBillingState(); }, [user]);
+
+  // Load the full billing overview when its tab opens (and after any billing
+  // action), so the page shows authoritative server state rather than a local
+  // guess. A failed read leaves the previous value rather than inventing one.
+  async function loadBillingOverview() {
+    setBillingOverviewLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/billing/overview`, { headers: authHeaders() });
+      if (r.ok) setBillingOverview(await r.json());
+    } catch (e) {}
+    setBillingOverviewLoading(false);
+  }
+  useEffect(() => {
+    if (tab === 'billing') loadBillingOverview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  // Return from the billing provider's hosted approval. The provider sends the
+  // browser back with the subscription id; the server verifies it before
+  // granting anything, so a tampered return URL cannot grant entitlement.
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return;
+    const p = new URLSearchParams(window.location.search);
+    const provider = p.get('billing_provider');
+    const subId = p.get('subscription_id');
+    if (provider && subId) {
+      setTab('billing');
+      verifySubscription(provider, subId);
+      window.history.replaceState(null, '', window.location.pathname + '?tab=billing');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Start a subscription through the configured billing provider. Entitlement
+  // is NOT granted here -- the server verifies the subscription before granting
+  // anything. We only follow the hosted approval URL it returns.
+  async function startSubscription() {
+    setBillingBusy(true); setBillingActionMsg('');
+    try {
+      const r = await fetch(`${API_BASE}/billing/subscribe`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ redirect_url: `${window.location.origin}/dashboard?tab=billing` }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.checkout_url) {
+        window.location.href = d.checkout_url;
+        return;
+      }
+      setBillingActionMsg(d.message || 'Billing isn\u2019t set up yet, so no charge was attempted.');
+    } catch (e) {
+      setBillingActionMsg('Could not reach billing. Please try again.');
+    }
+    setBillingBusy(false);
+  }
+
+  async function cancelSubscription() {
+    setBillingBusy(true); setBillingActionMsg('');
+    try {
+      const r = await fetch(`${API_BASE}/billing/cancel`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ reason: 'Cancelled from dashboard' }),
+      });
+      const d = await r.json().catch(() => ({}));
+      setBillingActionMsg(r.ok ? 'Subscription cancelled. You keep access until the period ends.'
+                               : (d.message || 'Could not cancel. Please try again.'));
+      await loadBillingOverview();
+      await loadBillingState();
+    } catch (e) {
+      setBillingActionMsg('Could not reach billing. Please try again.');
+    }
+    setBillingBusy(false);
+  }
+
+  // A server-side verification after the provider's hosted approval. Never
+  // trust the frontend callback: the server re-checks the subscription is
+  // genuinely ACTIVE before granting entitlement.
+  async function verifySubscription(provider, providerSubscriptionId) {
+    if (!provider || !providerSubscriptionId) return;
+    try {
+      await fetch(`${API_BASE}/billing/verify`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ provider, provider_subscription_id: providerSubscriptionId }),
+      });
+      await loadBillingOverview();
+      await loadBillingState();
+    } catch (e) {}
+  }
 
   function linkProvider(provider) {
     window.location.href = `${API_BASE}/auth/${provider}?link=1`;
@@ -1633,6 +1730,7 @@ export default function Dashboard() {
           ['quickstart', 'Code Samples'],
           ['connections', 'Payment Providers'],
           ['money', 'Payments'],
+          ['billing', 'Billing'],
           ['settings', 'Settings'],
         ].map(([id, label]) => (
           <button
@@ -3472,6 +3570,156 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {tab === 'billing' && (
+              <div className="mpesa-page">
+                <div className="con-home-head con-home-head-row">
+                  <div>
+                    <h2 className="con-h1">Billing</h2>
+                    <p className="con-sub">
+                      Your plan, what you owe, and the history behind it. Every figure here comes
+                      from the server — the dashboard never recomputes a charge.
+                    </p>
+                  </div>
+                  <button className="settings-link-btn" type="button"
+                    onClick={loadBillingOverview} disabled={billingOverviewLoading}>
+                    {billingOverviewLoading ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                </div>
+
+                {billingActionMsg && (
+                  <div className="con-notice con-notice-info"><span>{billingActionMsg}</span></div>
+                )}
+
+                {(() => {
+                  const ov = billingOverview;
+                  const active = num(ov?.active_production_projects, billingLiveProjects, 0);
+                  const included = num(ov?.included_projects, billingFreeAllowance, 3);
+                  const billable = num(ov?.billable_projects, 0);
+                  const monthly = num(ov?.monthly_charge_usd, billingMonthlyCharge, 0);
+                  const price = num(ov?.price_per_project_usd, billingPricePerProject, 10);
+                  const accountStatus = ov?.account_status || 'inactive';
+                  const plan = ov?.current_plan || 'free';
+                  const sub = ov?.subscription;
+                  const subEntitled = ov?.subscription_entitled === true;
+                  const providerConfigured = ov?.billing_provider_configured === true;
+                  const providerName = ov?.billing_provider
+                    ? ov.billing_provider.charAt(0).toUpperCase() + ov.billing_provider.slice(1)
+                    : 'a billing provider';
+                  const fees = ov?.fee_ledger || {};
+                  const feeTotals = fees.totals_minor || {};
+                  const invoices = ov?.invoices || [];
+                  const periodEnd = sub?.renews_at || sub?.ends_at || null;
+
+                  return (
+                    <>
+                      {/* Current plan + charge */}
+                      <section className="settings-card">
+                        <div className="settings-card-h">Current plan</div>
+                        <div className="ov-stat" style={{ marginBottom: 12 }}>
+                          <div className="ov-stat-value">{monthly > 0 ? `$${monthly}` : '$0'}</div>
+                          <div className="ov-stat-label">per month beyond the {included} free live projects</div>
+                        </div>
+                        <div className="settings-row">
+                          <div>
+                            <div className="settings-row-k">Active production projects</div>
+                            <div className="settings-row-d">
+                              {active} live · {included} included free · {billable} billable at ${price}/mo
+                            </div>
+                          </div>
+                          <span className={`con-tab${subEntitled ? ' active' : ''}`}>
+                            {plan === 'paid' ? 'Paid' : 'Free'}
+                          </span>
+                        </div>
+                        <div className="settings-row">
+                          <div>
+                            <div className="settings-row-k">Account status</div>
+                            <div className="settings-row-d">
+                              {accountStatus === 'active' ? 'Active'
+                                : accountStatus === 'past_due' ? 'Past due — within the grace period'
+                                : accountStatus === 'grace_period' ? 'Grace period'
+                                : accountStatus === 'suspended' ? 'Suspended'
+                                : accountStatus === 'cancelled' ? 'Cancelled'
+                                : 'No subscription yet'}
+                              {subEntitled && periodEnd ? ` · renews ${String(periodEnd).slice(0, 10)}` : ''}
+                            </div>
+                          </div>
+                          <span className="settings-row-d">{sub?.provider || providerName}</span>
+                        </div>
+                        <div className="settings-row">
+                          <div>
+                            <div className="settings-row-k">Manage</div>
+                            <div className="settings-row-d">
+                              {providerConfigured
+                                ? 'Start a subscription through the billing provider. You are charged only after it confirms your subscription.'
+                                : 'Konduyt billing isn\u2019t set up on this deployment yet, so no charge is possible.'}
+                            </div>
+                          </div>
+                          {sub && (accountStatus === 'active' || subEntitled) ? (
+                            <button className="settings-link-btn" type="button"
+                              onClick={cancelSubscription} disabled={billingBusy}>
+                              {billingBusy ? 'Working…' : 'Cancel subscription'}
+                            </button>
+                          ) : (
+                            <button className="settings-link-btn" type="button"
+                              onClick={startSubscription}
+                              disabled={billingBusy || !providerConfigured || monthly <= 0}>
+                              {billingBusy ? 'Working…' : monthly > 0 ? 'Subscribe' : 'Nothing owed'}
+                            </button>
+                          )}
+                        </div>
+                      </section>
+
+                      {/* Orchestration fee ledger */}
+                      <section className="settings-card">
+                        <div className="settings-card-h">Orchestration fees (0.25%)</div>
+                        <p className="settings-row-d" style={{ marginBottom: 8 }}>
+                          Konduyt&apos;s fee is a separate receivable — it is never deducted from a
+                          merchant&apos;s payment. &quot;Calculated&quot; is what we computed; &quot;collected&quot;
+                          is money that actually reached Konduyt; &quot;settled&quot; is reconciled to our books.
+                        </p>
+                        {[
+                          ['Calculated', fees.counts?.calculated, feeTotals.calculated],
+                          ['Collected', fees.counts?.collected, feeTotals.collected],
+                          ['Settled', fees.counts?.settled, feeTotals.settled],
+                          ['Refunded', fees.counts?.refunded, feeTotals.refunded],
+                          ['Uncollectible (invoice separately)', fees.counts?.uncollectible, feeTotals.uncollectible],
+                        ].map(([label, count, total]) => (
+                          <div className="fee-intel-row" key={label}>
+                            <span className="fee-intel-row-label">{label}</span>
+                            <span className="fee-intel-row-value">
+                              {num(count, 0)} · {(num(total, 0) / 100).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </section>
+
+                      {/* Invoice history */}
+                      <section className="settings-card">
+                        <div className="settings-card-h">Invoice history</div>
+                        {invoices.length === 0 ? (
+                          <div className="route-empty">No invoices yet.</div>
+                        ) : (
+                          invoices.map((inv, i) => (
+                            <div className="settings-row" key={i}>
+                              <div>
+                                <div className="settings-row-k">{inv.period} · {inv.description || 'Subscription'}</div>
+                                <div className="settings-row-d">
+                                  {inv.status}{inv.paid_at ? ` · paid ${String(inv.paid_at).slice(0, 10)}` : ''}
+                                </div>
+                              </div>
+                              <span className="settings-row-d">
+                                {(num(inv.amount, 0) / 100).toFixed(2)} {inv.currency || 'USD'}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </section>
+                    </>
+                  );
+                })()}
               </div>
             )}
 

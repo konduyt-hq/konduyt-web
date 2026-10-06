@@ -52,7 +52,9 @@ check('page.js reads the ?tab= deep link',
 check('page.js validates the requested tab',
   /includes\(t\)[\s\S]{0,20}\? t : 'quickstart'/.test(page));
 check('the analytics tab is a valid deep-link target',
-  /'analytics'\]\.includes\(t\)/.test(page));
+  /'analytics'[^\]]*\]\.includes\(t\)/.test(page));
+check('the billing tab is a valid deep-link target',
+  /'billing'[^\]]*\]\.includes\(t\)/.test(page));
 
 // The old broken redirect target must not come back.
 check('no redirect to the nonexistent /dashboard/growth/settings route',
