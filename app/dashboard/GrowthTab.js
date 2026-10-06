@@ -1706,6 +1706,11 @@ function Settings({ api, onError, onEngine }) {
     try { await api(`/channels/${channel}/disconnect`, { method: 'POST' }); load(); }
     catch (e) { onError && onError(e.message); }
   }
+  async function setTransport(transport) {
+    try { await api('/email/transport', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transport }) }); load(); }
+    catch (e) { onError && onError(e.message); }
+  }
   async function sendTest() {
     setTestResult(null);
     try { setTestResult(await api('/email/test', { method: 'POST',
@@ -1795,6 +1800,22 @@ function Settings({ api, onError, onEngine }) {
           queued as a draft for approval.
         </p>
         {oauthNotice && <p className="con-sub">{oauthNotice}</p>}
+        <div className="growth-setting-row">
+          <label>transport</label>
+          <select className="growth-input" value={email.transport || 'none'}
+            onChange={(e) => setTransport(e.target.value)}>
+            {Object.entries((emailStatus && emailStatus.transports) || { none: { available: true } })
+              .map(([name, meta]) => (
+                <option key={name} value={name} disabled={!meta.available}>
+                  {name}{meta.available ? '' : ' (unavailable)'}
+                </option>
+              ))}
+          </select>
+          <span className="con-sub">
+            {(emailStatus && emailStatus.transports && emailStatus.transports[email.transport || 'none']
+              && emailStatus.transports[email.transport || 'none'].note) || ''}
+          </span>
+        </div>
         <div className="growth-setting-row">
           <label>outbound address</label>
           <input className="growth-input" defaultValue={email.from_email || ''}
