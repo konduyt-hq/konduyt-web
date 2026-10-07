@@ -545,3 +545,46 @@ The 197 here is a composition, not a bare number: 193 UN members + 2 observers
 (VA, PS) + Taiwan = 196, + Kosovo = 197. `banks_unique` (API-side) counts
 distinct normalized names, not legal entities; the landscape never restates it
 as an entity count.
+
+## Connected providers: local rails vs a global method
+
+The "cannot receive money yet" notices were built on one fact — *no connected
+provider has verified capability for this country* — and rendered it as "no
+connected provider covers Kenya". With PayPal connected that reads as a lie:
+PayPal IS connected. The missing distinction is **reach**:
+
+- **LOCAL** — the provider is catalogued for the country and carries its local
+  rails (Flutterwave/Paystack in Kenya: cards, M-Pesa, bank transfer).
+- **GLOBAL** — a worldwide method with no country-specific rails behind it
+  (PayPal, a wallet: the same account, catalogued `Global`).
+
+Both are real; they are not the same, and a global method does not fill a
+local-method gap. `app/dashboard/providerreach.js` classifies from data the
+dashboard already holds — the catalog entry's `countries` and its capability
+`category` — never from a hardcoded provider list, so a new global provider
+classifies itself. A provider catalogued only for other countries with no
+global method is `null` (absent), never invented as local or global.
+
+Where the distinction is rendered, and why:
+
+- **Payment Providers coverage banner** (`homeCoverage.methods.length === 0`):
+  now says the market's *local* methods are uncovered, names the connected
+  global provider(s) (`joinNames(connectedGlobalNames)`), and says plainly that
+  a global method is not a local rail.
+- **Code Samples tab notice**: branches on `projectStatus` — `!has_connection`
+  → connect a provider; `has_connection && !has_enabled_method` → the connected
+  provider(s) are named and the user is told to ENABLE a method (this is the
+  case that used to be misread as "no provider connected"); otherwise → the
+  method is only on a test-mode account, switch to live. `no_provider_connected`
+  is only ever named in the `!has_connection` branch, where the code path
+  actually produces it.
+- **Provider card**: a connected provider whose reach is `GLOBAL` gets an
+  `.acct-global-note` labelling it a global method, not a local rail.
+- **Locality preview note** (Code Samples): classifies against
+  `previewShopperCountry` (any shopper country, not just the merchant's own) and
+  names the connected global provider(s) (`previewGlobalNames`).
+
+`scripts/test-connected-reach-messaging.mjs` (`npm run test:connected-reach`,
+wired into `npm test`) exercises the classifier for real on the exact catalog
+shapes the API returns and guards the four message sites at the source level.
+

@@ -16,6 +16,7 @@ import { INTELLIGENCE_TESTING_SDK } from './intelligencesdk';
 import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './frontendfiles';
 import { FRONTEND_OPTIONS } from './frontendoptions';
 import { MERCHANT_COUNTRIES } from './countries';
+import { GLOBAL_REACH, connectedReach, joinNames } from './providerreach';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -311,6 +312,22 @@ export default function Dashboard() {
   const [projectDeleteError, setProjectDeleteError] = useState('');
 
   const active = projects.find((p) => p.id === activeId) || null;
+
+  // Connected providers, classified by how they reach the project's own market:
+  // LOCAL rails (catalogued for the country) vs a GLOBAL method (PayPal-style
+  // wallet, catalogued "Global"). Derived from the connector catalog the
+  // dashboard already fetched — see providerreach.js. Keeps the "cannot receive
+  // money yet" notices honest: a connected global provider is named, not erased,
+  // and never presented as if it filled the local-method gap.
+  const activeCountry = active?.merchant_country || null;
+  const connectedProviderReach = connectedReach(accounts, providers, activeCountry);
+  const connectedLocalNames = connectedProviderReach.local.map((p) => p.name);
+  const connectedGlobalNames = connectedProviderReach.globalReach.map((p) => p.name);
+  const connectedProviderNames = accounts.map((a) => a.name || a.provider_id);
+  // The locality preview can target any shopper country, not just the
+  // merchant's own, so classify connected providers against the previewed one.
+  const previewConnectedReach = connectedReach(accounts, providers, previewShopperCountry);
+  const previewGlobalNames = previewConnectedReach.globalReach.map((p) => p.name);
 
   useEffect(() => {
     if (!user) return;
@@ -1779,9 +1796,19 @@ export default function Dashboard() {
                     <span className="coverage-banner-icon">⚠</span>
                     <span>
                       No connected provider has verified capability for{' '}
-                      {MERCHANT_COUNTRIES.find((c) => c.code === active.merchant_country)?.name || active.merchant_country}{' '}
-                      yet — customers there won&apos;t see any payment methods. Connect a provider below that covers
-                      this market.
+                      {MERCHANT_COUNTRIES.find((c) => c.code === active.merchant_country)?.name || active.merchant_country}
+                      &apos;s <strong>local</strong> payment methods yet — customers there won&apos;t see a local
+                      method (M-Pesa, a bank transfer, a local card).{' '}
+                      {connectedGlobalNames.length > 0 ? (
+                        <>
+                          You have {joinNames(connectedGlobalNames)} connected — a global method that works
+                          worldwide, but it doesn&apos;t cover this market&apos;s local rails. To unlock local
+                          methods, connect a provider below that is catalogued for{' '}
+                          {MERCHANT_COUNTRIES.find((c) => c.code === active.merchant_country)?.name || active.merchant_country}.
+                        </>
+                      ) : (
+                        <>Connect a provider below that covers this market.</>
+                      )}
                     </span>
                   </div>
                 )}
@@ -1963,6 +1990,12 @@ export default function Dashboard() {
                       : p.regions.length === 3 ? `${p.regions[0]} + Global`
                       : p.regions.join(' + ');
                     const realBreakdown = connectedProviderMethods[p.id];
+                    // LOCAL = catalogued for this project's own country and
+                    // carries its local rails; GLOBAL = a worldwide method
+                    // (PayPal-style wallet) that is not a local rail for it.
+                    // Shown only when connected, so the card states plainly
+                    // whether it can fill this market's local-method gap.
+                    const reach = connected ? connectedProviderReach.byId[p.id] : null;
                     return (
                       <div className={`provider-card ${connected ? 'connected' : ''}`} key={p.id}>
                         <div className="provider-card-head">
@@ -2014,6 +2047,15 @@ export default function Dashboard() {
                           <p className="provider-card-countries-line">
                             {p.countries.map((c) => c.name).join(', ')}
                           </p>
+                        )}
+
+                        {connected && reach === GLOBAL_REACH && (
+                          <div className="acct-global-note">
+                            This is a <strong>global method</strong>, not a local rail for{' '}
+                            {activeCountry ? (MERCHANT_COUNTRIES.find((c) => c.code === activeCountry)?.name || activeCountry) : 'this market'}.
+                            It works for international customers, but to accept this market&apos;s local methods
+                            (M-Pesa, bank transfer, a local card) connect a provider catalogued for it.
+                          </div>
                         )}
 
                         {connected && account?.mode === 'test' && (
@@ -2314,17 +2356,43 @@ export default function Dashboard() {
                       Keep your secret key server-side. Never ship it to a browser or commit it.
                     </p>
 
-                    {/* You cannot receive money without connecting a provider */}
+                    {/* You cannot receive money without connecting a provider
+                        AND enabling a method on a live account. projectStatus
+                        distinguishes the three real states, so the notice
+                        never claims a provider is missing when one is
+                        connected, and never claims a method is missing when
+                        one is enabled. */}
                     <div className={`keys-connect-note ${projectStatus && projectStatus.live ? 'ok' : ''}`}>
                       {projectStatus && projectStatus.live ? (
                         <span>✓ This project can receive money — a provider is connected and a method is enabled.</span>
-                      ) : (
+                      ) : projectStatus && !projectStatus.has_connection ? (
                         <span>
                           <strong>You cannot receive money yet.</strong> Your keys work, but a payment needs
                           somewhere to go. Go to <button className="link-inline" type="button"
                             onClick={() => setTab('connections')}>Payment Providers</button>, connect a
                           provider account and enable a payment method — until then, payment attempts will
                           fail with <code className="inline-code">no_provider_connected</code>.
+                        </span>
+                      ) : projectStatus && !projectStatus.has_enabled_method ? (
+                        <span>
+                          <strong>Your keys work, but this project cannot receive money yet.</strong>{' '}
+                          {joinNames(connectedProviderNames)} {connectedProviderNames.length === 1 ? 'is' : 'are'}{' '}
+                          connected, but no payment method has been enabled against{' '}
+                          {connectedProviderNames.length === 1 ? 'it' : 'them'} yet — so payment attempts still
+                          fail with <code className="inline-code">no_provider_connected</code>. Go to{' '}
+                          <button className="link-inline" type="button"
+                            onClick={() => setTab('connections')}>Payment Providers</button>{' '}
+                          and enable a method (the provider&apos;s capabilities are listed on its card), then try
+                          again.
+                        </span>
+                      ) : (
+                        <span>
+                          <strong>Your keys work, but this project cannot receive real money yet.</strong>{' '}
+                          A payment method is enabled, but only on a test-mode account. Switch{' '}
+                          {joinNames(connectedProviderNames)} to a live account in{' '}
+                          <button className="link-inline" type="button"
+                            onClick={() => setTab('connections')}>Payment Providers</button>{' '}
+                          to accept real payments.
                         </span>
                       )}
                     </div>
@@ -4195,7 +4263,9 @@ export default function Dashboard() {
                     {previewEligibilityLoading ? 'Checking eligible methods for this locality…'
                       : payable.length > 0
                         ? `Konduyt found ${payable.length} real, verified payment method${payable.length !== 1 ? 's' : ''} for a shopper in ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} — each traced to a connected, capability-verified provider below. Change the country to see it adapt.`
-                        : `No connected provider has verified capability for ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} yet — connect a provider that covers this market to unlock methods here.`}
+                        : previewGlobalNames.length > 0
+                          ? `No connected provider has verified capability for ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry}'s local methods yet. ${joinNames(previewGlobalNames)} ${previewGlobalNames.length === 1 ? 'is' : 'are'} connected — a global method, not a local rail for this market — so a shopper there would see no local method. Connect a provider catalogued for this market to unlock methods here.`
+                          : `No connected provider has verified capability for ${MERCHANT_COUNTRIES.find((c) => c.code === previewShopperCountry)?.name || previewShopperCountry} yet — connect a provider that covers this market to unlock methods here.`}
                   </p>
                   {payable.filter((m) => m.estimated).map((m) => {
                     const key = `${m.provider}:${m.method_id}`;
