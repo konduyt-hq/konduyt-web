@@ -52,52 +52,64 @@ export default function Pricing() {
     if (!token) { window.location.href = '/signup/'; return; }
     setSubBusy(true); setSubMsg('');
     try {
-      // The real amount is computed server-side from the developer's ACTUAL
-      // projects (billing.calculate(), fixed a real bug where this returned
-      // $0 for everyone) -- not from the exploratory "live projects" number
-      // above, which is just a what-if calculator for visitors who aren't
-      // signed in yet and have no real projects to count.
-      const r = await fetch(`${API_BASE}/billing/checkout_session`, {
+      // Start the subscription through the CONFIGURED billing provider (PayPal
+      // in production). The server computes the real amount from the account's
+      // ACTUAL active-production projects and returns a hosted approval URL;
+      // entitlement is granted only after it re-verifies server-side. This is
+      // the same flow the dashboard uses.
+      //
+      // The previous call here was POST /billing/checkout_session, which needs
+      // Konduyt's own Direct receiving account (KONDUYT_OWN_PROJECT_ID) and
+      // answered 503 "Billing isn't set up yet" whenever that was unset -- so
+      // Subscribe could never reach PayPal even with PayPal fully configured.
+      const r = await fetch(`${API_BASE}/billing/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ purpose: 'subscription' }),
+        body: JSON.stringify({ redirect_url: `${window.location.origin}/pricing/` }),
       });
-      const d = await r.json();
-      if (!r.ok) {
-        if (d.detail && d.detail.error === 'nothing_owed') {
-          setSubMsg("Your free allowance covers your current projects — nothing to charge yet.");
-        } else if (r.status === 503) {
-          setSubMsg('Billing isn\u2019t set up yet. Please try again shortly.');
-        } else {
-          setSubMsg((d.detail && (d.detail.message || d.detail)) || 'Could not start checkout. Please try again.');
-        }
-        setSubBusy(false);
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.checkout_url) {
+        // Real PayPal hosted approval; the browser returns here with
+        // billing_provider + subscription_id, handled below.
+        window.location.href = d.checkout_url;
         return;
       }
-      // Real dogfooded checkout -- Konduyt's own SDK, Konduyt's own session,
-      // not a separate bespoke redirect flow.
-      await loadKonduytSdk();
-      window.Konduyt.checkout({
-        sessionId: d.session_id,
-        onSuccess: function () { setSubMsg('Subscribed! You can close this and return to your dashboard.'); setSubBusy(false); },
-        onClose: function () { setSubBusy(false); },
-      });
+      if (d.reason === 'nothing_owed' || (d.detail && d.detail.error === 'nothing_owed')) {
+        setSubMsg('Your free allowance covers your current projects — nothing to charge yet.');
+      } else if (r.status === 503 || d.reason === 'billing_provider_not_configured') {
+        setSubMsg('Billing isn\u2019t set up yet. Please try again shortly.');
+      } else {
+        setSubMsg(d.message || (d.detail && (d.detail.message || d.detail)) || 'Could not start checkout. Please try again.');
+      }
     } catch (e) {
       setSubMsg('Could not reach billing. Please try again.');
-      setSubBusy(false);
     }
+    setSubBusy(false);
   }
 
-  function loadKonduytSdk() {
-    if (typeof window !== 'undefined' && window.Konduyt) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://konduyt.dev/konduyt.js';
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
+  // Return from the provider's hosted approval: the provider sends the browser
+  // back with the subscription id, and the server verifies it before granting
+  // anything -- a tampered return URL grants nothing.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const p = new URLSearchParams(window.location.search);
+    const provider = p.get('billing_provider');
+    const subId = p.get('subscription_id');
+    if (!provider || !subId) return;
+    const token = localStorage.getItem('kdu_token');
+    if (!token) return;
+    (async () => {
+      try {
+        await fetch(`${API_BASE}/billing/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ provider, provider_subscription_id: subId }),
+        });
+        setSubMsg('Subscription confirmed.');
+      } catch (e) {}
+      window.history.replaceState(null, '', window.location.pathname);
+    })();
+  }, []);
 
   return (
     <div className="pricing-root">
