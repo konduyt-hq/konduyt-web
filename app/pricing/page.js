@@ -95,18 +95,32 @@ export default function Pricing() {
     const p = new URLSearchParams(window.location.search);
     const provider = p.get('billing_provider');
     const subId = p.get('subscription_id');
-    if (!provider || !subId) return;
+    if (!subId) return;
     const token = localStorage.getItem('kdu_token');
     if (!token) return;
     (async () => {
-      try {
-        await fetch(`${API_BASE}/billing/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ provider, provider_subscription_id: subId }),
-        });
-        setSubMsg('Subscription confirmed.');
-      } catch (e) {}
+      // The server tags the return URL with the provider; if it is missing,
+      // ask which provider is configured rather than silently skipping
+      // verification of a real payment.
+      let prov = provider;
+      if (!prov) {
+        try {
+          const pr = await fetch(`${API_BASE}/billing/provider`, { headers: { Authorization: `Bearer ${token}` } });
+          const pd = await pr.json().catch(() => ({}));
+          const configured = (pd.providers || []).find((x) => x.configured);
+          prov = configured && configured.provider;
+        } catch (e) {}
+      }
+      if (prov) {
+        try {
+          await fetch(`${API_BASE}/billing/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ provider: prov, provider_subscription_id: subId }),
+          });
+          setSubMsg('Subscription confirmed.');
+        } catch (e) {}
+      }
       window.history.replaceState(null, '', window.location.pathname);
     })();
   }, []);
