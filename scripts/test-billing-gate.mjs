@@ -1,12 +1,15 @@
-// While billing enforcement is OFF (app/billing.py ENFORCEMENT_ENABLED = False,
-// surfaced by GET /billing as enforcement_enabled), creating a project must
-// never redirect the developer to /pricing/ and must never be blocked by the
-// free-allowance limit. Regression test for the shipped bug where the
-// dashboard hardcoded `projects.length > 3 -> /pricing/`, so a 4th project
-// bounced to a page that then reported "Billing isn't set up yet."
+// Creating a project is NEVER gated on billing. Enforcement gates ACTIVATING a
+// production project (app/billing_entitlement.py `can_activate_production`),
+// not creating one. Regression test for the shipped bug where the dashboard
+// redirected to /pricing/ on `projects.length > 3` -- a project-count rule that
+// counted sandbox projects the server never bills and disagreed with the
+// authoritative server-side rule. That redirect is gone for good: not
+// conditional, not behind the enforcement flag.
 //
 // It must ALSO not create the project silently: a project that will be
-// billable once billing is switched on has to be disclosed at creation time.
+// billable once billing is switched on has to be disclosed at creation time,
+// and the entitlement the server actually enforces must be read from
+// GET /billing/overview.
 //
 // Checked at the source level (the exact expressions) and in the built chunk
 // (what actually gets served), so a passing source grep cannot mask a stale
@@ -28,18 +31,22 @@ const check = (name, ok, detail = '') => {
 
 const src = readFileSync(DASH_SRC, 'utf8');
 
-// 1. The redirect is conditioned on the server-reported enforcement flag.
+// 1. No project-count redirect to /pricing/ survives -- gated or not. The
+//    authoritative rule is activation entitlement, never the length of the
+//    project list.
 check(
-  'project-create redirect is gated on the enforcement flag',
-  /if\s*\(\s*billingEnforced\s*&&\s*newProjects\.length\s*>\s*3\s*\)/.test(src),
-  'expected `if (billingEnforced && newProjects.length > 3)` in app/dashboard/page.js'
+  'no length->/pricing/ redirect remains, gated or unconditional',
+  !/(?:newP|p|project|projects|s|t)[A-Za-z]*\.length\s*>\s*3[\s\S]{0,40}?location\.href\s*=\s*['"]\/pricing\//.test(src)
+    && !/location\.href\s*=\s*['"]\/pricing\//.test(
+      src.slice(src.indexOf('async function createProject'), src.indexOf('async function saveRename'))),
+  'a project-count redirect to /pricing/ is still present in createProject'
 );
 
-// 2. No bare, unconditional `length > 3` redirect survives anywhere.
+// 2. Creating a project must never early-return on a billing condition.
 check(
-  'no unconditional length->/pricing/ redirect remains',
-  !/if\s*\(\s*(?:newP|p|project|projects|s|t)[A-Za-z]*\.length\s*>\s*3\s*\)\s*\{?\s*(?:window\.)?location\.href\s*=\s*['"]\/pricing\//.test(src),
-  'an ungated `length > 3` redirect to /pricing/ is still present'
+  'createProject never bails out on a billing condition',
+  !/if\s*\(\s*billingEnforced[\s\S]{0,60}?return;/.test(src),
+  'createProject still returns early when billingEnforced'
 );
 
 // 3. Enforcement is read from the API, not assumed, and defaults to false.
@@ -50,11 +57,19 @@ check(
 );
 check(
   'enforcement defaults to false (a failed read cannot gate a user)',
-  /useState\(\s*false\s*\)/.test(src.slice(src.indexOf('billingEnforced'))) || src.includes('const [billingEnforced, setBillingEnforced] = useState(false)'),
+  src.includes('const [billingEnforced, setBillingEnforced] = useState(false)'),
   'billingEnforced should default to false'
 );
 
-// 4. Creating a project while unenforced is disclosed, not silent. The notice
+// 4. Entitlement is surfaced from the authoritative server endpoint, not
+//    recomputed from the project list.
+check(
+  'entitlement is surfaced from GET /billing/overview',
+  src.includes('`${API_BASE}/billing/overview`') && src.includes('subscription_entitled'),
+  'expected GET /billing/overview to supply subscription_entitled'
+);
+
+// 5. Creating a project while unenforced is disclosed, not silent. The notice
 //    must be produced on the not-enforced path and must say nothing is charged
 //    today while stating the future charge.
 check(
@@ -83,16 +98,16 @@ check(
   'setProjectCreateNotice without rendering it would still be silent'
 );
 
-// 5. The served build carries the same gate -- source and artifact agree.
+// 6. The served build carries the same rule -- source and artifact agree.
 const outDir = join(ROOT, 'out/_next/static/chunks/app/dashboard');
 if (existsSync(outDir)) {
   const { readdirSync } = await import('fs');
   const chunks = readdirSync(outDir).filter((f) => f.startsWith('page-') && f.endsWith('.js'));
   const bundled = chunks.map((f) => readFileSync(join(outDir, f), 'utf8')).join('\n');
   check(
-    'built chunk gates the redirect on the enforcement flag',
-    /if\s*\([A-Za-z_$]+&&[A-Za-z_$]+\.length>3\)\s*\{\s*(?:window\.)?location\.href\s*=\s*"\/pricing\/"/.test(bundled),
-    'the served dashboard chunk still redirects on project count alone'
+    'built chunk carries no project-count redirect',
+    !/location\.href\s*=\s*"\/pricing\/"/.test(bundled),
+    'the served dashboard chunk still redirects on project count'
   );
   check(
     'built chunk contains the forward-looking creation notice',
