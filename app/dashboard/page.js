@@ -1416,27 +1416,20 @@ export default function Dashboard() {
       const data = await rl.json();
       const newProjects = data.projects || [];
 
-      // Pricing is REPRESENTED but not ENFORCED while Konduyt Billing is not
-      // operational (app/billing.py ENFORCEMENT_ENABLED = False, read above as
-      // billingEnforced). While it is off, creating a project must always
-      // succeed and must never bounce the developer to /pricing/ -- the page
-      // that then cannot take a payment. Only when the server says billing is
-      // actually enforced does the free-allowance limit apply.
-      if (billingEnforced && newProjects.length > 3) {
-        window.location.href = '/pricing/';
-        return;
-      }
-
-      // Not enforced yet is not the same as free forever. Creating a project
-      // must not be silent about the charge that follows, so say plainly what
-      // it costs later and what costs nothing now.
+      // Creating a project is NEVER gated on billing. Billing gates
+      // ACTIVATING a production project (app/billing_entitlement.py's
+      // can_activate_production), not creating one -- the two are different
+      // facts and the authoritative rule lives on the server. The dashboard
+      // previously redirected to /pricing/ when `billingEnforced &&
+      // newProjects.length > 3`, which counted sandbox projects the server
+      // never bills and disagreed with the real rule. That redirect is gone:
+      // creation always succeeds, and the future charge (if any) is disclosed
+      // instead of blocked.
       //
-      // Only ACTIVE PRODUCTION (live) projects are billable (app/billing.py:
-      // billable = max(0, active_production - free_allowance)); a project that
-      // has merely been created is not live and owes nothing. So this notice
-      // is driven by the server's live count, never by the length of the
-      // project list, which would overstate the future charge for anyone with
-      // unused sandbox projects.
+      // The charge that follows is driven ONLY by the server's live count of
+      // ACTIVE PRODUCTION projects -- a project that has merely been created is
+      // not live and owes nothing, so `newProjects.length` must never be used
+      // to compute a price.
       setProjects(newProjects);
       setActiveId(p.id);
       setProjectMenuOpen(false);
