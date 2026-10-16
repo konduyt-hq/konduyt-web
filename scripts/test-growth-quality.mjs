@@ -74,6 +74,20 @@ check('engine copy no longer mentions a manual run',
 check('the cohort copy states selecting sends nothing',
   /never sends anything|never emails anyone|Nothing was sent/.test(growth));
 
+// Clean reset and archive: the UI drives the real endpoints and states that an
+// archive preserves consent/sending history rather than deleting it.
+check('the audit reads GET /archive/audit', /api\('\/archive\/audit'\)/.test(growth));
+check('the archive plan reads GET /archive/plan', /api\('\/archive\/plan'\)/.test(growth));
+check('the archive posts to /archive with a dry-run option',
+  /api\('\/archive', \{ method: 'POST'/.test(growth) && /dry_run/.test(growth));
+check('the reset preview reads GET /reset/preview', /api\('\/reset\/preview'\)/.test(growth));
+check('the reset posts to /reset', /api\('\/reset', \{ method: 'POST' \}\)/.test(growth));
+check('the archive copy states history is preserved, not deleted',
+  /never deletes a prospect/.test(growth)
+  && /sending history are preserved|sending history preserved/.test(growth));
+check('the reset copy states the transport/templates/switch are kept',
+  /transport, templates and engine switch/.test(growth));
+
 console.log('---------------------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
 process.exit(failures ? 1 : 0);

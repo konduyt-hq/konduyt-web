@@ -1714,6 +1714,10 @@ function Settings({ api, onError, onEngine }) {
   const [oauthNotice, setOauthNotice] = useState('');
   const [testTo, setTestTo] = useState('');
   const [testResult, setTestResult] = useState(null);
+  const [audit, setAudit] = useState(null);
+  const [archivePlan, setArchivePlan] = useState(null);
+  const [archiveResult, setArchiveResult] = useState(null);
+  const [resetPreview, setResetPreview] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -1787,6 +1791,36 @@ function Settings({ api, onError, onEngine }) {
     setTestResult(null);
     try { setTestResult(await api('/email/test', { method: 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: testTo }) })); }
+    catch (e) { onError && onError(e.message); }
+  }
+  async function loadAudit() {
+    try { setAudit(await api('/archive/audit')); }
+    catch (e) { onError && onError(e.message); }
+  }
+  async function loadArchivePlan() {
+    try { setArchivePlan(await api('/archive/plan')); }
+    catch (e) { onError && onError(e.message); }
+  }
+  async function runArchive(dryRun) {
+    setArchiveResult(null);
+    try {
+      const r = await api('/archive', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dry_run: !!dryRun }) });
+      setArchiveResult(r);
+      if (!dryRun) { loadArchivePlan(); loadAudit(); }
+    } catch (e) { onError && onError(e.message); }
+  }
+  async function loadResetPreview() {
+    try { setResetPreview(await api('/reset/preview')); }
+    catch (e) { onError && onError(e.message); }
+  }
+  async function runReset() {
+    if (typeof window !== 'undefined' && !window.confirm(
+      'Clear the contact pipeline so the funnel can be watched from a fresh start? '
+      + 'Suppression lists, opt-outs, bounces and sending history are preserved; '
+      + 'the email transport, templates and engine switch are kept.')) return;
+    setResetPreview(null);
+    try { await api('/reset', { method: 'POST' }); load(); }
     catch (e) { onError && onError(e.message); }
   }
 
@@ -1996,6 +2030,57 @@ function Settings({ api, onError, onEngine }) {
               onClick={() => toggleKeyword(k)}>{k.keyword}</button>
           ))}
         </div>
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Data hygiene — clean reset and archive</h2>
+        <p className="con-sub">
+          Archiving moves stale, unqualified, duplicate or irrelevant prospects OUT of the
+          active pool. It never deletes a prospect: suppression lists, opt-outs, bounces and
+          sending history are preserved, and any prospect carrying them is never a candidate.
+          The reset clears the pipeline so the funnel can be watched from a fresh start while
+          keeping the transport, templates and engine switch.
+        </p>
+        <div className="growth-setting-row">
+          <button className="preview-checkout-btn" type="button" onClick={loadAudit}>Audit the prospect DB</button>
+          <button className="preview-checkout-btn" type="button" onClick={loadArchivePlan}>Show archive plan</button>
+        </div>
+        {audit && (
+          <p className="con-sub">
+            {audit.counts.prospects} prospects ({audit.counts.archived} archived),{' '}
+            {audit.counts.signals} signals, {audit.counts.suppressions} suppressions,{' '}
+            {audit.counts.sending_history} sending records. Would archive{' '}
+            {audit.plan.to_archive}, preserve {audit.plan.preserved}.
+          </p>
+        )}
+        {archivePlan && (
+          <p className="con-sub">
+            Plan: archive {archivePlan.to_archive} of {archivePlan.active_pool} active
+            prospects ({Object.entries(archivePlan.by_reason || {}).map(([r, n]) => `${r}: ${n}`).join(', ') || 'none'});
+            preserve {archivePlan.preserved}.
+          </p>
+        )}
+        <div className="growth-setting-row">
+          <button className="preview-checkout-btn" type="button" onClick={() => runArchive(true)}>Dry run archive</button>
+          <button className="preview-checkout-btn" type="button" onClick={() => runArchive(false)}>Archive out of the pool</button>
+        </div>
+        {archiveResult && (
+          <p className="con-sub">
+            {archiveResult.dry_run ? 'Dry run: would archive ' : 'Archived '}
+            {archiveResult.archived} prospect(s). Suppression lists, opt-outs, bounces and
+            sending history preserved.
+          </p>
+        )}
+        <div className="growth-setting-row">
+          <button className="preview-checkout-btn" type="button" onClick={loadResetPreview}>Preview reset</button>
+          <button className="preview-checkout-btn" type="button" onClick={runReset}>Reset the pipeline</button>
+        </div>
+        {resetPreview && (
+          <p className="con-sub">
+            Reset would clear {resetPreview.prospects} prospects and {resetPreview.signals} signals;
+            preserve {resetPreview.suppressions} suppressions and {resetPreview.preserved_interactions} sending records.
+          </p>
+        )}
       </div>
     </div>
   );
