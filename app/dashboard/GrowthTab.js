@@ -1600,8 +1600,11 @@ function Experiment({ api, onError }) {
         <Stat label="Qualified" value={data.qualified} />
         <Stat label="Selected (cohort)" value={data.selected} />
         <Stat label="Emails sent" value={data.emails_sent} />
+        <Stat label="Accepted by provider" value={data.emails_accepted} />
+        <Stat label="Duplicate sends prevented" value={data.duplicate_suppressed} />
         <Stat label="Prospects contacted" value={data.prospects_contacted} />
         <Stat label="Delivery failures" value={data.delivery_failures} />
+        <Stat label="Unresolved sends" value={data.unresolved_sends} />
         <Stat label="Replies" value={data.replies} hint={`${data.positive_replies || 0} positive · ${data.negative_replies || 0} negative`} />
         <Stat label="Signups" value={data.signups} />
         <Stat label="Activated" value={data.activated} />
