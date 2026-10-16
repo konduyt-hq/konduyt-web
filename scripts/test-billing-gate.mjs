@@ -1,5 +1,6 @@
-// While billing enforcement is OFF (app/billing.py ENFORCEMENT_ENABLED = False,
-// surfaced by GET /billing as enforcement_enabled), creating a project must
+// While billing enforcement is OFF (the API reads KONDUYT_BILLING_ENFORCEMENT
+// via app/billing.py enforcement_enabled(), default false, surfaced by
+// GET /billing as enforcement_enabled), creating a project must
 // never redirect the developer to /pricing/ and must never be blocked by the
 // free-allowance limit. Regression test for the shipped bug where the
 // dashboard hardcoded `projects.length > 3 -> /pricing/`, so a 4th project

@@ -91,7 +91,8 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [accountNotice, setAccountNotice] = useState(null);
   // Billing enforcement is a server-side fact (app/billing.py
-  // ENFORCEMENT_ENABLED, surfaced by GET /billing as enforcement_enabled).
+  // enforcement_enabled(), from KONDUYT_BILLING_ENFORCEMENT, surfaced by
+  // GET /billing as enforcement_enabled).
   // The dashboard must not invent its own pricing limit: while enforcement is
   // off, project creation is never gated and no one is sent to /pricing/.
   // Defaults to false so a failed read can never gate a user by accident.
@@ -1417,7 +1418,8 @@ export default function Dashboard() {
       const newProjects = data.projects || [];
 
       // Pricing is REPRESENTED but not ENFORCED while Konduyt Billing is not
-      // operational (app/billing.py ENFORCEMENT_ENABLED = False, read above as
+      // operational (app/billing.py enforcement_enabled() reads
+      // KONDUYT_BILLING_ENFORCEMENT, default false; read above as
       // billingEnforced). While it is off, creating a project must always
       // succeed and must never bounce the developer to /pricing/ -- the page
       // that then cannot take a payment. Only when the server says billing is

@@ -233,8 +233,9 @@ never mixed across the two groups.
 
 ## Billing enforcement is a server-side fact, never a frontend assumption
 
-Billing is REPRESENTED but not ENFORCED at launch. The API's
-`app/billing.ENFORCEMENT_ENABLED` is `False`, and `GET /billing` returns it as
+Billing is REPRESENTED but not ENFORCED at launch. The API reads enforcement
+live from `KONDUYT_BILLING_ENFORCEMENT` (`app/billing.enforcement_enabled()`,
+default false), and `GET /billing` returns it as
 `enforcement_enabled` together with the `notice` to display
 (`app/billing.launch_billing_state()`).
 
