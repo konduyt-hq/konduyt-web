@@ -24,6 +24,7 @@ const VIEWS = [
   ['contacts', 'Contacts'],
   ['agents', 'Agents'],
   ['approvals', 'Approvals'],
+  ['diagnostics', 'Diagnostics'],
   ['settings', 'Settings'],
 ];
 
@@ -139,6 +140,7 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
       {view === 'contacts' && <Contacts api={api} onError={onError} />}
       {view === 'agents' && <Agents api={api} onError={onError} />}
       {view === 'approvals' && <Approvals api={api} onError={onError} onChanged={loadOverview} />}
+      {view === 'diagnostics' && <Diagnostics api={api} onError={onError} />}
       {view === 'settings' && <Settings api={api} onError={onError} onEngine={setEngine} />}
     </div>
   );
@@ -1704,8 +1706,184 @@ function Experiment({ api, onError }) {
 }
 
 // ---------------------------------------------------------------------------
-// Settings -- limits, schedules, email, keywords, sources
+// Diagnostics -- "are eligible emails leaving, and if not, why", read-only,
+// without a Render shell. Mirrors GET /growth/diagnostics.
 // ---------------------------------------------------------------------------
+function Diagnostics({ api, onError }) {
+  const [data, setData] = useState(null);
+  const [loadedAt, setLoadedAt] = useState(null);
+
+  const load = useCallback(() => {
+    api('/diagnostics').then((d) => { setData(d); setLoadedAt(new Date().toLocaleTimeString()); })
+      .catch((e) => onError && onError(e.message));
+  }, [api, onError]);
+  useEffect(() => { load(); }, [load]);
+
+  if (!data) return <p className="con-sub">Loading diagnostics…</p>;
+  const send = data.sending || {};
+  const acc = send.acceptance || {};
+  const exp = data.experiment || {};
+  const q = data.queue || {};
+  const ledger = data.ledger || {};
+  const pool = data.pool || {};
+  const failKinds = Object.entries(acc.failure_kinds || {});
+  const reasons = Object.entries(q.ineligible_email || []);
+
+  return (
+    <div>
+      <div className="growth-toolbar">
+        <button className="preview-checkout-btn" onClick={load}>Refresh</button>
+        <span className="con-sub">
+          Read-only. Answers &ldquo;are eligible emails leaving, and if not, why&rdquo; without a
+          Render shell. Recipients are masked; no secret is returned.
+          {loadedAt ? ` Updated ${loadedAt}.` : ''}
+        </span>
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Can an email leave right now?</h2>
+        <div className="growth-stats">
+          <Stat label="Can send" value={send.can_send ? 'YES' : 'NO'}
+            hint={`transport: ${fmt(send.transport)} · ${fmt(send.connection_status)}`} />
+          <Stat label="Sending enabled" value={send.sending_enabled ? 'on' : 'off'} />
+          <Stat label="Provider key present" value={(send.brevo || {}).api_key_present ? 'yes' : 'no'}
+            hint={fmt((send.brevo || {}).endpoint_host)} />
+          <Stat label="From" value={fmt(send.from_email)} hint={`reply-to: ${fmt(send.reply_to)}`} />
+        </div>
+        {!send.can_send && (
+          <p className="con-sub">
+            The Closer cannot send. The three usual causes, in order: sending is off, the transport
+            is not the HTTP provider, or the provider key is missing from the environment.
+          </p>
+        )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">The sending ceiling — is the experiment holding volume at zero?</h2>
+        <div className="growth-stats">
+          <Stat label="Experiment" value={fmt(exp.state)} hint={exp.enabled ? 'enabled' : 'disabled'} />
+          <Stat label="Daily rate" value={fmt(exp.effective_daily_rate)}
+            hint={exp.paused ? 'PAUSED — ceiling is 0, nothing will send' : 'per day'} />
+          <Stat label="Current batch" value={`#${fmt(exp.current_batch)} · ${fmt(exp.current_batch_size)}`}
+            hint={`next: ${fmt(exp.next_batch_size)}`} />
+          <Stat label="Remaining qualified" value={fmt(exp.remaining_qualified)} />
+        </div>
+        {exp.decision_reason && (
+          <p className="con-sub">Why: {exp.decision_reason}</p>
+        )}
+        {exp.paused && (
+          <p className="con-sub">
+            A paused experiment publishes a rate of 0, so the Closer stops even with a healthy
+            queue. Resume it in Settings, or the next deploy&rsquo;s diagnostic will report the same 0.
+          </p>
+        )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Acceptance — what the provider actually took</h2>
+        <div className="growth-stats">
+          <Stat label="Accepted (all)" value={fmt(acc.accepted_total)} />
+          <Stat label="Accepted 24h" value={fmt(acc.accepted_24h)} />
+          <Stat label="Failed (all)" value={fmt(acc.failed_total)} />
+          <Stat label="Last accepted" value={fmtDate(acc.last_accepted_at)} />
+        </div>
+        {failKinds.length > 0 && (
+          <>
+            <h3 className="an-section-h">Failure kinds</h3>
+            <div className="growth-stats">
+              {failKinds.map(([k, n]) => <Stat key={k} label={k} value={n} />)}
+            </div>
+          </>
+        )}
+        {(acc.recent_failures || []).length > 0 && (
+          <>
+            <h3 className="an-section-h">Recent failures</h3>
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>When</th><th>Kind</th><th>Recipient</th><th>Reason</th></tr></thead>
+                <tbody>
+                  {acc.recent_failures.map((f, i) => (
+                    <tr key={i}>
+                      <td>{fmtDate(f.at)}</td><td>{fmt(f.error_kind)}</td>
+                      <td>{fmt(f.recipient)}</td><td>{fmt(f.reason)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Queue — approvals waiting, and whether they can send</h2>
+        <div className="growth-stats">
+          <Stat label="Pending email" value={fmt(q.pending_email)} />
+          <Stat label="Eligible now" value={(q.eligible_email || []).length} />
+          <Stat label="Approvals backlog" value={fmt(q.backlog)} />
+          <Stat label="Follow-ups due" value={fmt(q.followups_due)} />
+        </div>
+        {reasons.length > 0 && (
+          <>
+            <h3 className="an-section-h">Why the newest drafts are not auto-sending</h3>
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>Approval</th><th>Prospect</th><th>Reason</th></tr></thead>
+                <tbody>
+                  {reasons.map(([, r]) => (
+                    <tr key={r.id}><td>{fmt(r.id)}</td><td>{fmt(r.prospect_id)}</td><td>{fmt(r.reason)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Durable send ledger</h2>
+        <p className="con-sub">
+          The record that prevents a duplicate send. SENT means the provider accepted it.
+        </p>
+        <div className="growth-stats">
+          {Object.entries(ledger.counts || {}).map(([k, n]) => <Stat key={k} label={k} value={n} />)}
+        </div>
+        {(ledger.blocked_or_unresolved || []).length > 0 && (
+          <>
+            <h3 className="an-section-h">Blocked or unresolved attempts</h3>
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>Status</th><th>Kind</th><th>Recipient</th><th>Purpose</th><th>Reason</th></tr></thead>
+                <tbody>
+                  {ledger.blocked_or_unresolved.map((b, i) => (
+                    <tr key={i}>
+                      <td>{fmt(b.status)}</td><td>{fmt(b.error_kind)}</td>
+                      <td>{fmt(b.recipient)}</td><td>{fmt(b.purpose)}</td><td>{fmt(b.reason)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Pipeline &amp; worker</h2>
+        <div className="growth-stats">
+          <Stat label="Qualified pool" value={fmt(pool.pool_size)}
+            hint={`${fmt(pool.qualified_with_contact)} contactable`} />
+          <Stat label="Active cohort" value={data.active_cohort ? `#${data.active_cohort.size}` : '—'}
+            hint={fmt((data.active_cohort || {}).status)} />
+          <Stat label="Worker alive" value={(data.worker || {}).thread_alive ? 'yes' : 'no'}
+            hint={`last pass: ${fmtDate((data.worker || {}).last_pass_at)}`} />
+          <Stat label="Engine" value={(data.engine || {}).paused ? 'paused' : ((data.engine || {}).enabled ? 'running' : 'off')} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Settings({ api, onError, onEngine }) {
   const [settings, setSettings] = useState(null);
   const [keywords, setKeywords] = useState([]);
