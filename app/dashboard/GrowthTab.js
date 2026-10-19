@@ -1813,6 +1813,29 @@ function Diagnostics({ api, onError }) {
             </div>
           </>
         )}
+        {(acc.failure_reasons || []).length > 0 && (
+          <>
+            <h3 className="an-section-h">Why sends failed, grouped</h3>
+            <p className="con-sub">
+              The kind alone cannot tell a real bounce from our own
+              misconfiguration; the reason can. A &ldquo;not_connected&rdquo; here
+              is a settings fault, not a deliverability one.
+            </p>
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>Kind</th><th>Reason</th><th>Count</th><th>Last seen</th></tr></thead>
+                <tbody>
+                  {acc.failure_reasons.map((f, i) => (
+                    <tr key={i}>
+                      <td>{fmt(f.kind)}</td><td>{fmt(f.reason)}</td>
+                      <td>{fmt(f.count)}</td><td>{fmtDate(f.last_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="an-section">
