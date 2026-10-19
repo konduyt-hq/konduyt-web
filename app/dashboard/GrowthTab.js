@@ -1896,6 +1896,8 @@ function Diagnostics({ api, onError }) {
         <div className="growth-stats">
           <Stat label="Qualified pool" value={fmt(pool.pool_size)}
             hint={`${fmt(pool.qualified_with_contact)} contactable`} />
+          <Stat label="Ready to email now" value={fmt((data.queue || {}).ready_to_contact)}
+            hint={`${fmt((data.queue || {}).ready_with_email)} carry an address`} />
           <Stat label="Active cohort" value={data.active_cohort ? `#${data.active_cohort.size}` : '—'}
             hint={fmt((data.active_cohort || {}).status)} />
           <Stat label="Worker alive" value={(data.worker || {}).thread_alive ? 'yes' : 'no'}
