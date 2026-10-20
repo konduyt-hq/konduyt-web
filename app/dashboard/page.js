@@ -259,13 +259,6 @@ export default function Dashboard() {
   // seen before real payments exist. NEVER written to the DB, never sent through
   // the real endpoints. Auto-ignored once real data exists.
   const [demoMode, setDemoMode] = useState(false);
-  // Taxes tab
-  const [taxReceived, setTaxReceived] = useState(null); // countries received-from, for the currently-open provider
-  const [taxExpanded, setTaxExpanded] = useState(null); // which country row is open
-  const [taxSourceInput, setTaxSourceInput] = useState(''); // shared input, keyed to whichever country is open
-  const [taxSourceSubmitting, setTaxSourceSubmitting] = useState(false);
-  const [taxSourceSubmittedFor, setTaxSourceSubmittedFor] = useState(null); // country_code once submitted, for that row's thanks state
-  const [taxDetailOpen, setTaxDetailOpen] = useState(false); // false = money list; true = viewing the per-country tax detail
   const [accounts, setAccounts] = useState([]); // connected accounts (provider-first tab)
   const [testResult, setTestResult] = useState({}); // provider_id -> {ok, message, testing}
   // Continent-grouped provider directory (replaces the old category-drill-down browse)
@@ -825,12 +818,6 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, activeId, selectedMonth]);
 
-  // Tax detail (per-provider, entered from a Money row): fetch when opened.
-  useEffect(() => {
-    if (taxDetailOpen) { loadTaxReceived(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taxDetailOpen]);
-
   // Messages: load the unread badge on mount, and the feed when the tab/filter changes.
   useEffect(() => { loadUnread(); checkAdmin(); /* eslint-disable-next-line */ }, []);
 
@@ -1106,7 +1093,7 @@ export default function Dashboard() {
   }
 
   // Kenya-centric sample data for preview only — obviously illustrative, never
-  // persisted. Used solely to show how Money / Taxes visualizations render.
+  // persisted. Used solely to show how the Money visualizations render.
   const DEMO_MONEY = {
     has_data: true,
     total_completed_volume: 4820000, // KES 48,200.00
@@ -1140,7 +1127,6 @@ export default function Dashboard() {
   // What the tabs actually render: real data, unless demo is on AND there's no
   // real data (demo can never mask real numbers).
   const moneyView = (demoMode && (!moneyData || !moneyData.has_data)) ? DEMO_MONEY : moneyData;
-  const taxReceivedView = taxReceived;
 
   async function loadMoney(period) {
     if (!activeId) return;
@@ -1204,30 +1190,6 @@ export default function Dashboard() {
       setPayOrchestrationMsg('Could not reach billing. Please try again.');
       setPayOrchestrationBusy(false);
     }
-  }
-
-  async function loadTaxReceived(provider) {
-    if (!activeId) return;
-    try {
-      const q = provider ? `?provider=${provider}` : '';
-      const r = await fetch(`${API_BASE}/projects/${activeId}/taxes/received${q}`, { headers: authHeaders() });
-      setTaxReceived(await r.json());
-    } catch (e) { setTaxReceived(null); }
-  }
-
-  async function submitTaxSourceSuggestion(countryCode) {
-    const url = taxSourceInput.trim();
-    if (!url) return;
-    setTaxSourceSubmitting(true);
-    try {
-      await fetch(`${API_BASE}/source-suggestions`, {
-        method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'tax_authority', country_code: countryCode, suggested_url: url }),
-      });
-      setTaxSourceSubmittedFor(countryCode);
-      setTaxSourceInput('');
-    } catch (e) { /* silent -- the input just stays, they can retry */ }
-    setTaxSourceSubmitting(false);
   }
 
   async function submitFeeSourceSuggestion(key, provider, method, countryCode) {
@@ -2646,7 +2608,7 @@ export default function Dashboard() {
                   <div>
                     <h1 className="con-h1">Konduyt Sentinel</h1>
                     <p className="con-sub">
-                      Watches provider pricing and tax-authority pages. Detects material changes,
+                      Watches provider pricing pages. Detects material changes,
                       and waits for your review here — it never changes Konduyt&apos;s logic on its own.
                     </p>
                   </div>
@@ -2671,13 +2633,13 @@ export default function Dashboard() {
 
                 {sentinelTab === 'changes' && (
                   sentinelChanges.length === 0 ? (
-                    <div className="route-empty">No changes detected yet. Sentinel records a change only when a fee or tax value actually moves.</div>
+                    <div className="route-empty">No changes detected yet. Sentinel records a change only when a fee value actually moves.</div>
                   ) : (
                     <div className="sentinel-changes">
                       {sentinelChanges.map((c) => (
                         <div className={`sentinel-change ${c.review_status}`} key={c.id}>
                           <div className="sentinel-change-head">
-                            <span className={`sentinel-type ${c.type}`}>{c.type === 'tax' ? 'TAX' : 'FEE'}</span>
+                            <span className={`sentinel-type ${c.type}`}>FEE</span>
                             <span className="sentinel-change-source">{c.source_name}</span>
                             <span className={`sentinel-review-badge ${c.review_status}`}>{c.review_status}</span>
                           </div>
@@ -2714,11 +2676,10 @@ export default function Dashboard() {
 
                 {sentinelTab === 'sources' && (
                   <div className="sentinel-sources">
-                    {['fee', 'tax'].map((t) => (
-                      <div key={t} className="sentinel-source-group">
-                        <h3 className="sentinel-group-title">{t === 'fee' ? 'Fee pages' : 'Tax authorities'} ({sentinelSources.filter((s) => s.type === t).length})</h3>
-                        {sentinelSources.filter((s) => s.type === t).map((s) => (
-                          <div className="sentinel-source" key={s.id}>
+                    <div className="sentinel-source-group">
+                      <h3 className="sentinel-group-title">Fee pages ({sentinelSources.length})</h3>
+                      {sentinelSources.map((s) => (
+                        <div className="sentinel-source" key={s.id}>
                             <div className="sentinel-source-main">
                               <span className="sentinel-source-name">{s.name}</span>
                               <a href={s.url} target="_blank" rel="noreferrer" className="sentinel-source-url">{s.url}</a>
@@ -2729,9 +2690,8 @@ export default function Dashboard() {
                               <span>{s.last_checked_at ? `checked ${new Date(s.last_checked_at).toLocaleDateString()}` : 'never checked'}</span>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2946,7 +2906,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {tab === 'money' && !taxDetailOpen && (
+            {tab === 'money' && (
               <div className="money-page">
                 <div className="con-home-head con-home-head-row">
                   <div />
@@ -3114,10 +3074,6 @@ export default function Dashboard() {
                                 View account →
                               </a>
                             )}
-                            <button type="button" className="money-row-link money-row-link-btn"
-                              onClick={() => setTaxDetailOpen(true)}>
-                              View taxes →
-                            </button>
                           </div>
                         </div>
                       ))}
@@ -3153,136 +3109,13 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Tax detail: entered by clicking "View taxes" on any row --
-                every row links to the SAME account-wide, per-country view
-                (not scoped to that specific provider/method). Replaces the
-                old standalone Taxes tab, which is gone. */}
-            {tab === 'money' && taxDetailOpen && (
-              <div className="tax-page">
-                <button type="button" className="money-row-link money-row-link-btn" style={{ marginBottom: 16 }}
-                  onClick={() => { setTaxDetailOpen(false); setTaxReceived(null); setTaxExpanded(null); }}>
-                  ← Back to Money
-                </button>
-                <div className="con-home-head">
-                  <h1 className="con-h1">Taxes by country</h1>
-                  <p className="con-sub">Based on where each payment was sent from, across every connected provider.</p>
-                </div>
-
-                <div className="tax-received">
-                  {!taxReceivedView || !taxReceivedView.has_data ? (
-                    <div className="route-empty">No payments received yet.</div>
-                  ) : (
-                    <div className="tax-country-list">
-                      {taxReceivedView.countries.map((row) => {
-                        const open = taxExpanded === row.country_code;
-                        const t = row.tax;
-                        return (
-                          <div className={`tax-country-item ${open ? 'open' : ''}`} key={row.country_code}>
-                            <button className="tax-country-row" type="button"
-                              onClick={() => setTaxExpanded(open ? null : row.country_code)}>
-                              <span className="tax-country-name">{t ? t.country : row.country_code}</span>
-                              <span className="tax-country-vol">{row.currency} {(row.received_volume / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                              <span className="tax-country-count">{row.completed_count} payment{row.completed_count === 1 ? '' : 's'}</span>
-                              <span className="tax-country-chev">{open ? '▲' : '▼'}</span>
-                            </button>
-                            {open && t && (
-                              <div className="tax-country-detail">
-                                <div className="tax-result-head">
-                                  <span className="tax-result-type">{t.tax_type}</span>
-                                  <span className="tax-ref-badge">reference</span>
-                                </div>
-                                {t.computable ? (
-                                  <div className="tax-breakdown">
-                                    <div className="tax-line"><span>Received</span><span>{row.currency} {(row.received_volume/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
-                                    <div className="tax-line"><span>Rate</span><span>{t.rate}%</span></div>
-                                    <div className="tax-line tax-line-total"><span>Reference tax on this</span><span>{row.currency} {(t.tax_minor/100).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
-                                  </div>
-                                ) : (
-                                  <div className="tax-noncomputable">No single national rate for {t.country} — tax isn&apos;t a single number here.</div>
-                                )}
-                                {t.caveats && t.caveats.length > 0 && (
-                                  <ul className="tax-caveats">{t.caveats.map((c, i) => <li key={i}>{c}</li>)}</ul>
-                                )}
-                                {row.how_to_pay && (
-                                  <div className="tax-howto">
-                                    <div className="tax-howto-title">How to account for this tax</div>
-                                    {row.how_to_pay.no_known_source ? (
-                                      <div className="tax-no-source">
-                                        <span className="tax-no-source-badge">unconfirmed</span>
-                                        <p className="tax-no-source-text">
-                                          Konduyt doesn&apos;t have an official tax authority website on file
-                                          for {t ? t.country : 'this country'} yet — the {t?.rate != null ? `${t.rate}%` : ''} rate
-                                          shown above is a general reference figure, not confirmed against
-                                          an authority. Please verify directly before relying on it.
-                                        </p>
-                                        {taxSourceSubmittedFor === row.country_code ? (
-                                          <p className="tax-no-source-thanks">Thanks — this is reviewed before it&apos;s used anywhere.</p>
-                                        ) : (
-                                          <div className="tax-no-source-form">
-                                            <input
-                                              type="url"
-                                              placeholder="Know the official tax authority site? Paste it here"
-                                              className="tax-no-source-input"
-                                              value={taxExpanded === row.country_code ? taxSourceInput : ''}
-                                              onChange={(e) => setTaxSourceInput(e.target.value)}
-                                              onFocus={() => setTaxExpanded(row.country_code)}
-                                            />
-                                            <button type="button" className="tax-no-source-btn"
-                                              disabled={taxSourceSubmitting || !taxSourceInput.trim()}
-                                              onClick={() => submitTaxSourceSuggestion(row.country_code)}>
-                                              {taxSourceSubmitting ? 'Sending…' : 'Send'}
-                                            </button>
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <>
-                                        {row.how_to_pay.filing && (
-                                          <div className={`tax-filing ${row.how_to_pay.filing.frequency === 'varies' ? 'unknown' : ''}`}>
-                                            <span className="tax-filing-badge">
-                                              {row.how_to_pay.filing.frequency === 'varies' ? 'check' : row.how_to_pay.filing.frequency}
-                                            </span>
-                                            <span className="tax-filing-text">
-                                              {row.how_to_pay.filing.frequency !== 'varies'
-                                                ? <>You file <strong>{row.how_to_pay.filing.frequency}</strong>{row.how_to_pay.filing.deadline ? ` — ${row.how_to_pay.filing.deadline}.` : '.'} Account for all {t ? t.country : ''} sales together each period, not per payment.</>
-                                                : <>Filing frequency for {t ? t.country : 'this country'} isn&apos;t confirmed in Konduyt. Missing a deadline can be costly — confirm the cycle directly with {row.how_to_pay.authority}{row.how_to_pay.portal ? <> at <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></> : ''} before you rely on it.</>}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="tax-howto-auth">
-                                          {row.how_to_pay.authority}
-                                          {row.how_to_pay.portal && (
-                                            <> · <a href={row.how_to_pay.portal} target="_blank" rel="noreferrer">{row.how_to_pay.portal}</a></>
-                                          )}
-                                        </div>
-                                        <ol className="tax-howto-steps">
-                                          {row.how_to_pay.steps.map((s, i) => <li key={i}>{s}</li>)}
-                                        </ol>
-                                        {!row.how_to_pay.detailed && (
-                                          <div className="tax-howto-note">Konduyt doesn&apos;t have step-by-step guidance for this country yet — the pointer above is your starting point.</div>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
             {tab === 'messages' && (
               <div className="con-messages">
                 <div className="con-messages-head">
                   <div>
                     <h2 className="con-messages-title">Messages</h2>
                     <p className="con-messages-sub">
-                      Important updates about your providers, payments, taxes and the Konduyt API.
+                      Important updates about your providers, payments and the Konduyt API.
                     </p>
                   </div>
                   {isAdmin && (
@@ -3305,7 +3138,7 @@ export default function Dashboard() {
                     onChange={(e) => setMsgCategory(e.target.value)}
                   >
                     <option value="">All categories</option>
-                    {['Provider', 'API', 'Payments', 'Tax', 'Security', 'Maintenance', 'Feature', 'Deprecation', 'Account'].map((c) => (
+                    {['Provider', 'API', 'Payments', 'Security', 'Maintenance', 'Feature', 'Deprecation', 'Account'].map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
@@ -3811,14 +3644,14 @@ export default function Dashboard() {
                 </div>
 
 
-                {/* Tax & fee source monitoring -- runs automatically every 6h
+                {/* Fee source monitoring -- runs automatically every 6h
                     (Render Cron), but this button lets you check on demand
                     too. Same real check the scheduler runs: fetch each due
                     source, compare against its last snapshot, only surface
                     what actually changed. */}
                 <div className="an-section">
                   <div className="con-home-head-row" style={{ alignItems: 'center' }}>
-                    <h2 className="an-section-h" style={{ marginBottom: 0 }}>Tax & fee monitoring</h2>
+                    <h2 className="an-section-h" style={{ marginBottom: 0 }}>Fee monitoring</h2>
                     <button className="preview-checkout-btn" type="button" disabled={sentinelBusy} onClick={runSentinel}>
                       {sentinelBusy ? 'Checking…' : '↻ Check for changes'}
                     </button>
@@ -3833,7 +3666,7 @@ export default function Dashboard() {
                   )}
                   <p className="con-sub" style={{ marginTop: 8 }}>
                     {sentinelSources.length} monitored source{sentinelSources.length === 1 ? '' : 's'}
-                    {' '}(payment-provider pricing pages + tax-authority pages),{' '}
+                    {' '}(payment-provider pricing pages),{' '}
                     {sentinelChanges.filter((c) => c.review_status === 'pending').length} change
                     {sentinelChanges.filter((c) => c.review_status === 'pending').length === 1 ? '' : 's'} awaiting review.
                     {' '}

@@ -142,7 +142,7 @@ export default function Pricing() {
           <span className="pricing-eyebrow">Konduyt pricing</span>
           <h1 className="pricing-title">Simple to explain. Scales with your business.</h1>
           <p className="pricing-lede">
-            No feature paywalls. Intelligence, routing, tax awareness, reconciliation.
+            No feature paywalls. Intelligence, routing, reconciliation.
             All of it comes with Konduyt. You pay for access, for the volume we move,
             and for more room when you outgrow the basics.
           </p>
@@ -250,7 +250,7 @@ export default function Pricing() {
           </div>
           <p className="pricing-layers-foot">
             You pay more because you use more, not because we hid something behind a wall.
-            Intelligence, routing, tax awareness, reconciliation: always included.
+            Intelligence, routing, reconciliation: always included.
           </p>
         </section>
 

@@ -58,7 +58,7 @@ const DOCS = [
     id: 'architecture',
     group: 'Getting started',
     title: 'Architecture',
-    body: 'The API is a FastAPI (Python 3.12) service deployed on Render, backed by Neon Postgres (EU/Frankfurt). The web app is Next.js on Cloudflare Pages. Authentication is token-based (JWT). Provider secret credentials are encrypted at rest with Fernet (authenticated AES). The transaction ledger is append-only for integrity. Konduyt Sentinel monitors provider fee pages and tax-authority rate pages for changes. Everything is organised around one idea: one integration, every provider, without touching your money.',
+    body: 'The API is a FastAPI (Python 3.12) service deployed on Render, backed by Neon Postgres (EU/Frankfurt). The web app is Next.js on Cloudflare Pages. Authentication is token-based (JWT). Provider secret credentials are encrypted at rest with Fernet (authenticated AES). The transaction ledger is append-only for integrity. Konduyt Sentinel monitors provider fee pages for changes. Everything is organised around one idea: one integration, every provider, without touching your money.',
   },
   {
     id: 'quickstart',
@@ -168,13 +168,7 @@ const DOCS = [
     id: 'sentinel',
     group: 'Intelligence',
     title: 'Konduyt Sentinel',
-    body: 'Sentinel watches provider fee pages and tax-authority rate pages. It fetches, normalizes, hashes and compares; only on a real change does it extract, diff and assess materiality, then alert a human via Telegram for review. It detects and records. It never silently changes the numbers your routing depends on.',
-  },
-  {
-    id: 'taxes',
-    group: 'Intelligence',
-    title: 'Tax awareness',
-    body: 'Konduyt shows reference consumption-tax rates (VAT / GST / sales tax) for 186 countries, following the customer\'s country. It is awareness, not a filing and not tax advice: rates are the standard national rate, clearly flagged where unverified, and shown as N/A where no single national rate exists. Per-payment, you see the countries you received from, the reference tax on each, filing cycles, and how-to-pay guidance.',
+    body: 'Sentinel watches provider fee pages. It fetches, normalizes, hashes and compares; only on a real change does it extract, diff and assess materiality, then alert a human via Telegram for review. It detects and records. It never silently changes the numbers your routing depends on.',
   },
   {
     id: 'money',

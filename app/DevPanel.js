@@ -1874,7 +1874,7 @@ export default function DevPanel() {
                 <li>You connect your own provider (Paystack, M-Pesa, PayPal, etc.) in the dashboard.</li>
                 <li>Konduyt routes the payment to the cheapest option automatically.</li>
                 <li>A webhook confirms the payment; the ledger records it.</li>
-                <li>The Money and Taxes tabs update with the real transaction.</li>
+                <li>The Money tab updates with the real transaction.</li>
               </ul>
               <div className="test-more-note">Test mode — no real charge, nothing stored. This mirrors the live result.</div>
             </div>

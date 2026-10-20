@@ -48,12 +48,6 @@ export default function About() {
           happens if a route fails?
         </p>
 
-        <p>
-          Tax is part of the same problem. Different countries have different
-          rules. Konduyt helps you understand what applies to each sale and
-          what you need to do about it.
-        </p>
-
         <p>Your customers pay the way they already do.</p>
 
         <p>Your money stays in your own accounts.</p>

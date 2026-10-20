@@ -1463,7 +1463,7 @@
 
   /* Integrations tab specifically gets more room than the site-wide 860px
      .con-body cap -- a card grid of ~40 providers needs it; other tabs
-     (Settings, Money, Taxes) are untouched and keep the narrower reading
+     (Settings, Money) are untouched and keep the narrower reading
      width that suits them. */
   .con-body:has(.mpesa-page){ max-width:1400px; }
 
@@ -2041,7 +2041,6 @@
   .sentinel-change-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
   .sentinel-type{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:5px;}
   .sentinel-type.fee{background:#dbeafe;color:#1d4ed8;}
-  .sentinel-type.tax{background:#fce7f3;color:#a21caf;}
   .sentinel-change-source{font-weight:600;color:var(--ink);flex:1;}
   .sentinel-review-badge{font-size:11px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:5px;}
   .sentinel-review-badge.pending{background:#fef3c7;color:#92600a;}
@@ -2237,56 +2236,6 @@
     color:var(--text-secondary);}
   .money-owed-amount{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:16px; color:var(--ink);}
 
-  /* ===== Taxes tab ===== */
-  .tax-overview{margin-top:6px;}
-  .tax-overview-head{margin:18px 0 22px;}
-  .tax-overview-total{font-size:34px; font-weight:800; color:var(--ink); font-family:'JetBrains Mono',monospace;}
-  .tax-overview-total-label{font-size:14px; color:var(--text-secondary); margin-left:10px;}
-  .tax-overview-sub{font-size:13px; color:var(--text-secondary); margin:8px 0 0;}
-  .tax-overview-jurisdictions{display:flex; flex-direction:column; gap:12px; margin-bottom:20px;}
-  .tax-overview-card{border:1px solid var(--border); border-radius:12px; padding:18px 20px;}
-  .tax-overview-card-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;}
-  .tax-overview-card-country{font-size:15px; font-weight:700; color:var(--ink);}
-  .tax-overview-card-total{font-size:16px; font-weight:700; color:var(--ink); font-family:'JetBrains Mono',monospace;}
-  .tax-overview-card-lines{display:flex; flex-direction:column; gap:5px; margin-bottom:10px;}
-  .tax-overview-card-line{display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary);}
-  .tax-overview-card-due{font-size:12px; font-weight:600; color:var(--ink); border-top:1px solid var(--border); padding-top:8px;}
-  .tax-overview-disclaimer{font-size:12px; color:var(--text-secondary); line-height:1.6; margin:0;}
-  .tax-overview-calc-link{background:none; border:none; color:var(--ink); font-weight:700; font-size:12px;
-    cursor:pointer; padding:0; font-family:inherit; text-decoration:underline;}
-  .tax-page{max-width:760px;}
-  .tax-note{font-size:12.5px;line-height:1.55;color:var(--text-secondary);margin-bottom:18px;}
-  .tax-result{border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;}
-  .tax-result-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-  .tax-result-country{font-weight:700;font-size:16px;color:var(--ink);}
-  .tax-result-type{font-size:13px;color:var(--text-secondary);}
-  .tax-ref-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--panel);color:var(--text-secondary);border:1px solid var(--border);padding:2px 8px;border-radius:5px;margin-left:auto;}
-  .tax-breakdown{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;}
-  .tax-line{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;border-bottom:1px solid var(--border);}
-  .tax-line span:last-child{font-family:'JetBrains Mono',monospace;font-weight:600;}
-  .tax-line-total{border-bottom:none;font-weight:700;color:var(--green-ink);border-top:2px solid var(--border);margin-top:4px;padding-top:12px;}
-  .tax-noncomputable{font-size:13.5px;color:var(--text-secondary);padding:10px 0;line-height:1.5;}
-  .tax-caveats{margin:10px 0;padding-left:18px;font-size:12.5px;color:var(--text-secondary);line-height:1.6;}
-  .tax-source{font-size:11.5px;color:var(--text-secondary);margin-top:10px;}
-  .tax-source a{color:var(--text-secondary);}
-
-  /* Taxes: received-countries per-payment view */
-  .tax-country-list{display:flex;flex-direction:column;gap:8px;}
-  .tax-country-item{border:1px solid var(--border);border-radius:11px;overflow:hidden;}
-  .tax-country-item.open{border-color:var(--green-border);}
-  .tax-country-row{width:100%;display:grid;grid-template-columns:1.5fr 1.2fr 1fr 24px;align-items:center;gap:12px;padding:14px 16px;background:var(--elev);border:none;cursor:pointer;font-family:inherit;text-align:left;}
-  .tax-country-row:hover{background:var(--panel);}
-  .tax-country-name{font-weight:600;font-size:14px;color:var(--ink);}
-  .tax-country-vol{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;}
-  .tax-country-count{font-size:12.5px;color:var(--text-secondary);}
-  .tax-country-chev{font-size:9px;color:var(--text-secondary);}
-  .tax-country-detail{padding:16px;border-top:1px solid var(--border);background:var(--panel);}
-  .tax-howto{margin-top:14px;background:var(--elev);border:1px solid var(--border);border-radius:10px;padding:14px;}
-  .tax-howto-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;}
-  .tax-howto-auth{font-size:12.5px;color:var(--text-secondary);margin-bottom:10px;}
-  .tax-howto-auth a{color:var(--green-ink);word-break:break-all;}
-  .tax-howto-steps{margin:0;padding-left:18px;font-size:13px;color:var(--ink);line-height:1.7;}
-  .tax-howto-note{font-size:11.5px;color:var(--text-secondary);margin-top:8px;font-style:italic;}
 
   /* Demo/preview mode toggle + banner */
   .demo-toggle{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);cursor:pointer;margin-top:4px;user-select:none;}
@@ -2295,27 +2244,6 @@
   .demo-banner{background:#fffbeb;border:1px solid #fde68a;border-radius:9px;padding:9px 14px;font-size:12.5px;font-weight:600;color:#92600a;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
   .demo-banner::before{content:'●';color:#f59e0b;font-size:9px;}
 
-  /* Filing cycle */
-  .tax-filing{display:flex;align-items:flex-start;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;margin-bottom:12px;font-size:12.5px;line-height:1.55;color:var(--ink);}
-  /* Only the frequency badge carries the dark, weighty shade — it's the critical bit. */
-  .tax-filing-badge{flex-shrink:0;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:var(--ink);color:#fff;padding:3px 10px;border-radius:5px;}
-  .tax-filing-text{color:var(--text-secondary);}
-  .tax-filing-text strong{font-weight:700;color:var(--ink);}
-  .tax-filing.unknown{background:#fffbeb;border-color:#fde68a;}
-  .tax-filing.unknown .tax-filing-badge{background:#92600a;color:#fff;}
-  .tax-filing.unknown .tax-filing-text{color:#92600a;}
-  .tax-filing.unknown a{color:#92600a;font-weight:700;text-decoration:underline;}
-  .tax-filing a{color:var(--green-ink);font-weight:600;}
-  .tax-no-source{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:13px;}
-  .tax-no-source-badge{display:inline-block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:#92600a;color:#fff;padding:3px 10px;border-radius:5px;margin-bottom:8px;}
-  .tax-no-source-text{font-size:12.5px;line-height:1.6;color:#92600a;margin:0 0 12px;}
-  .tax-no-source-thanks{font-size:12.5px;color:#0a5c30;font-weight:600;margin:0;}
-  .tax-no-source-form{display:flex;gap:8px;}
-  .tax-no-source-input{flex:1;min-width:0;font-size:12.5px;padding:8px 10px;border-radius:7px;border:1px solid #fde68a;background:#fff;color:var(--ink);font-family:inherit;}
-  .tax-no-source-input:focus{outline:none;border-color:#92600a;}
-  .tax-no-source-btn{flex-shrink:0;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:7px;border:1px solid #92600a;background:#92600a;color:#fff;cursor:pointer;font-family:inherit;}
-  .tax-no-source-btn:disabled{opacity:.5;cursor:not-allowed;}
-  .tax-no-source-btn:hover:not(:disabled){background:#7a5008;}
   .fee-no-source{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:13px;margin-top:12px;}
   .fee-no-source-badge{display:inline-block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:#92600a;color:#fff;padding:3px 10px;border-radius:5px;margin-bottom:8px;}
   .fee-no-source-text{font-size:12.5px;line-height:1.6;color:#92600a;margin:0 0 12px;}
@@ -2327,7 +2255,7 @@
   .fee-no-source-btn:disabled{opacity:.5;cursor:not-allowed;}
   .fee-no-source-btn:hover:not(:disabled){background:#7a5008;}
 
-  /* ===== Responsive: new tabs (routing / money / taxes / sentinel) ===== */
+  /* ===== Responsive: new tabs (routing / money / sentinel) ===== */
   @media (max-width: 720px){
     /* Header rows with side controls stack vertically */
     .con-home-head-row{flex-direction:column;align-items:stretch;gap:12px;}
@@ -2345,10 +2273,6 @@
     .route-c-settle{display:none;}
     .route-row-head .route-c-settle{display:none;}
 
-    /* Tax per-payment country row stacks the meta */
-    .tax-country-row{grid-template-columns:1fr auto;grid-auto-rows:auto;gap:4px 10px;}
-    .tax-country-count{grid-column:1 / -1;font-size:11.5px;}
-    .tax-country-chev{grid-row:1;grid-column:2;}
 
     /* Sentinel changes: values + meta wrap */
     .sentinel-change-values{flex-wrap:wrap;gap:10px;}
@@ -2362,7 +2286,6 @@
     .ckt-amount{font-size:28px;}
 
     /* Filing box wraps nicely */
-    .tax-filing{flex-direction:column;gap:8px;}
   }
 
   @media (max-width: 420px){
@@ -2371,7 +2294,7 @@
     .route-c-fee{display:none;}
     .route-row-head .route-c-fee{display:none;}
     .money-total-value{font-size:22px;}
-    .tax-amount,.ckt-amount{font-size:26px;}
+    .ckt-amount{font-size:26px;}
   }
 
   /* ===== Labs page ===== */

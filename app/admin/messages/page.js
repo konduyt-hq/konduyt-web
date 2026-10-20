@@ -11,7 +11,7 @@ function authHeaders() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` };
 }
 
-const CATEGORIES = ['Provider', 'API', 'Payments', 'Tax', 'Security', 'Maintenance', 'Account', 'Feature', 'Deprecation', 'System'];
+const CATEGORIES = ['Provider', 'API', 'Payments', 'Security', 'Maintenance', 'Account', 'Feature', 'Deprecation', 'System'];
 const SEVERITIES = ['info', 'warning', 'critical'];
 const AUDIENCES = [
   ['all', 'Everyone'],

@@ -135,7 +135,6 @@ export default function Home() {
               <p>Konduyt sits in the middle.</p>
               <p>One integration connects you to your providers and payment methods. It handles the routing underneath, choosing where the payment should go when there is more than one option.</p>
               <p>M-Pesa in Kenya. Cards in Europe. PayPal when that&apos;s what they use.</p>
-              <p>Tax works the same way. Different country, different rules. Konduyt figures out what applies to the sale and tells you what to do about it.</p>
               <p>Your customers pay normally.<br />Your money stays in your accounts.<br />We never touch it.</p>
             </div>
             <div className="cta-row">
