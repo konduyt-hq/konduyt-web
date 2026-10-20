@@ -2028,7 +2028,13 @@ function Settings({ api, onError, onEngine }) {
 
   async function save(key, value) {
     try {
-      await api(`/settings/${key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+      // `sending_enabled` is never sent through the generic settings PUT: it has
+      // its own action (setSending). The email object is spread into the body
+      // here, so strip the field rather than relying on the server to ignore it.
+      const body = (key === 'email' && value && typeof value === 'object')
+        ? (() => { const { sending_enabled, ...rest } = value; return rest; })()
+        : value;
+      await api(`/settings/${key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       // Reload so the controlled inputs show what the server stored. Without
       // this the checkbox (and every other field) kept its previously-loaded
       // value and snapped straight back, which read as "the setting will not

@@ -51,6 +51,11 @@ check('the generic settings save reloads state',
 check('the checkbox no longer PUTs the whole email object',
   !/sending_enabled:\s*e\.target\.checked\s*\}\)/.test(growth));
 
+// The From/reply-to editors spread the loaded `email` object into a generic
+// PUT /settings/email. The switch must never ride along on that request.
+check('the generic email save strips sending_enabled from the body',
+  /key === 'email'[\s\S]{0,200}const \{ sending_enabled, \.\.\.rest \} = value/.test(growth));
+
 console.log('');
 console.log(`  ${checks - failures}/${checks} passed`);
 if (failures) {
