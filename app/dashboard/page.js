@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import CheckoutModal from './CheckoutModal';
 import GrowthTab from './GrowthTab';
+import AnalyticsTab from './AnalyticsTab';
 import LogoMark from '../LogoMark';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
@@ -828,25 +829,10 @@ export default function Dashboard() {
     } catch (e) {}
   }
 
-  const [analyticsOverview, setAnalyticsOverview] = useState(null);
-  const [analyticsUsers, setAnalyticsUsers] = useState(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-
-  async function loadAnalytics() {
-    setAnalyticsLoading(true);
-    try {
-      const [ovR, usersR] = await Promise.all([
-        fetch(`${API_BASE}/admin/analytics/overview`, { headers: authHeaders() }),
-        fetch(`${API_BASE}/admin/analytics/users`, { headers: authHeaders() }),
-      ]);
-      if (ovR.ok) setAnalyticsOverview(await ovR.json());
-      if (usersR.ok) setAnalyticsUsers((await usersR.json()).users || []);
-    } catch (e) {}
-    setAnalyticsLoading(false);
-  }
-
   useEffect(() => {
-    if (tab === 'analytics' && isAdmin && !analyticsOverview) loadAnalytics();
+    // The Analytics tab owns its own reads (AnalyticsTab -> GET /growth/analytics).
+    // The fee monitor and the Sentinel fee view that share this tab are still
+    // loaded here, because they predate it and are payment surfaces.
     if (tab === 'analytics' && isAdmin) loadSentinel();
     if (tab === 'analytics' && isAdmin && !feeBandsData) loadFeeBands(feeBandsContinent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3628,12 +3614,11 @@ export default function Dashboard() {
 
             {tab === 'analytics' && isAdmin && (
               <div className="mpesa-page">
-                <div className="con-home-head con-home-head-row">
-                  <div>
-                    <h1 className="con-h1">Analytics</h1>
-                    <p className="con-sub">Real, aggregate developer activity — internal, admin only.</p>
-                  </div>
-                </div>
+                {/* Analytics -- the redesigned surface: growth overview,
+                    agents, sources and outreach ops, blockers first. All logic
+                    and every number come from GET /growth/analytics. */}
+                <AnalyticsTab apiBase={API_BASE} authHeaders={authHeaders}
+                  onError={(m) => setBillingNotice(m || '')} />
 
                 {/* Growth Agents -- discovery, qualification, outreach and
                     measurement. Its logic lives entirely in the backend at

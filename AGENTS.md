@@ -93,6 +93,27 @@ for the `carrier` block.
   country actually returns representative data. Filter on `.rail-example` and
   assert each caption over its own group.
 
+## The Analytics tab is a growth surface, not a route
+
+The dashboard's Analytics tab (admin only) renders `app/dashboard/AnalyticsTab.js`.
+It is a pure view of one backend read, `GET /growth/analytics` — it owns no
+logic and computes nothing itself, so the page and the API cannot disagree about
+a number. The payload is four areas in the order a decision is made (A. Growth
+overview, B. Agents, C. Sources, D. Outreach ops) with `blockers` computed first
+and rendered above the area tabs. Sources are read/write: the component reads
+`GET /growth/sources/audit` and retires/restores through
+`POST /growth/sources/{id}/retire|restore` (a retirement reason is required).
+
+The fee monitor and the Sentinel transaction-fee view still live under the same
+tab and are loaded by `page.js` (`loadSentinel`/`loadFeeBands`) — they are
+payment surfaces, not analytics, and must stay. The old `/admin/analytics/*`
+reads were removed with the redesign; nothing in the tab calls them any more.
+
+`scripts/test-analytics-redesign.mjs` guards this: the one endpoint, blockers
+first, the four areas, the retire/restore actions, that the fee-monitor and
+Sentinel surfaces survive, and that no Taxes tab is reintroduced. It runs as
+part of `npm test`.
+
 ## The Growth tab is a view, not a route — deep links select it
 
 `/dashboard` is a single page; the Growth tab renders inside it (Analytics ->
