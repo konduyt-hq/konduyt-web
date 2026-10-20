@@ -34,6 +34,17 @@ check('the Analytics surface reads GET /growth/analytics',
 check('the removed /admin/analytics endpoints are not called',
   !/admin\/analytics/.test(tab) && !/admin\/analytics/.test(page));
 
+// The redesign deleted the old inline surface's state and loader. The markup
+// that rendered them was left behind once, and because a page.js reference to a
+// variable that no longer exists is only resolved when React renders the tab, it
+// shipped and crashed the Analytics tab with "analyticsLoading is not defined"
+// for every admin. The removal must be complete: no orphaned reference, and no
+// orphaned state, in either direction.
+check('no orphaned reference to the deleted analytics state',
+  !/analyticsLoading|analyticsOverview|analyticsUsers|loadAnalytics/.test(page));
+check('the deleted analytics state is not re-declared',
+  !/(const|let|var)\s+analyticsOverview\b/.test(page));
+
 // Blockers are computed and shown first, before any area.
 check('blockers are rendered before the areas',
   tab.indexOf('an-blockers') > -1 && tab.indexOf('an-blockers') < tab.indexOf('con-tabs'));
