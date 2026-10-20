@@ -2027,8 +2027,30 @@ function Settings({ api, onError, onEngine }) {
   }, [load]);
 
   async function save(key, value) {
-    try { await api(`/settings/${key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) }); setSaved(key); setTimeout(() => setSaved(''), 1500); }
+    try {
+      await api(`/settings/${key}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+      // Reload so the controlled inputs show what the server stored. Without
+      // this the checkbox (and every other field) kept its previously-loaded
+      // value and snapped straight back, which read as "the setting will not
+      // change" even though the write had succeeded.
+      await load();
+      setSaved(key); setTimeout(() => setSaved(''), 1500);
+    }
     catch (e) { onError && onError(e.message); }
+  }
+  // Turning sending on/off is a dedicated action, not a PUT of the whole email
+  // object: the object PUT replaced the stored config, so a stale copy reverted
+  // the setting and the controlled checkbox looked like it would not change.
+  // The endpoint merges the one field; then we reload so the box reflects what
+  // the server actually stored.
+  const [sendingBusy, setSendingBusy] = useState(false);
+  async function setSending(enabled) {
+    setSendingBusy(true);
+    try {
+      await api('/email/sending', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) });
+      await load();
+    } catch (e) { onError && onError(e.message); }
+    finally { setSendingBusy(false); }
   }
   async function toggleKeyword(k) {
     try { await api(`/keywords/${k.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !k.enabled }) }); load(); }
@@ -2248,8 +2270,8 @@ function Settings({ api, onError, onEngine }) {
         </div>
         <div className="growth-setting-row">
           <label>sending enabled</label>
-          <input type="checkbox" checked={!!email.sending_enabled}
-            onChange={(e) => save('email', { ...email, sending_enabled: e.target.checked })} />
+          <input type="checkbox" checked={!!email.sending_enabled} disabled={sendingBusy}
+            onChange={(e) => setSending(e.target.checked)} />
           <span className="con-sub">
             {emailStatus && emailStatus.can_send ? 'Ready to send.' : 'Will queue drafts until connected + enabled.'}
           </span>
