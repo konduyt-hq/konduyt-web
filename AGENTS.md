@@ -133,6 +133,12 @@ contract: the deep links, that Connect Gmail is always rendered and clickable
 (`oauth_configured` changes only the tooltip), and that `connectEmail` hits the
 real `/growth/email/oauth/start` endpoint. It runs as part of `npm test`.
 
+The inbound-reply surface has its own guard, `scripts/test-inbox-replies.mjs`
+(also in `npm test`): the Diagnostics "Inbound replies" section is fed
+`GET /growth/inbox/status`, reports read permission honestly (`can_read`,
+`missing_scopes`), and "Poll inbox now" POSTs to `POST /growth/inbox/poll` then
+re-reads status. Analytics shows the same truth in the Outreach ops area.
+
 ## Landing-page code snippets
 
 - `app/DevPanel.js` holds the 11 language tabs (JS, cURL, Python, PHP, Go,

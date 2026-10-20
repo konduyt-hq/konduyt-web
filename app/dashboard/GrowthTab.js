@@ -1706,6 +1706,81 @@ function Experiment({ api, onError }) {
 }
 
 // ---------------------------------------------------------------------------
+// Inbound replies -- is the inbox actually readable, and are replies being
+// ingested? A send-only Gmail grant cannot see a reply, so this is where an
+// operator sees that the read scope is missing BEFORE a prospect is emailed
+// again after replying. Mirrors GET /growth/inbox/status.
+// ---------------------------------------------------------------------------
+function InboundReplies({ inbox, api, onError }) {
+  const [busy, setBusy] = useState(false);
+  const [local, setLocal] = useState(inbox || {});
+  useEffect(() => { setLocal(inbox || {}); }, [inbox]);
+  if (!inbox) return null;
+  const conn = local.connection || {};
+  const counts = local.counts || {};
+  const pollNow = async () => {
+    setBusy(true);
+    try {
+      await api('/inbox/poll', { method: 'POST' });
+      setLocal(await api('/inbox/status'));
+    } catch (e) { onError && onError(e.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="an-section">
+      <h2 className="an-section-h">Inbound replies — can the engine read the inbox?</h2>
+      <div className="growth-stats">
+        <Stat label="Inbox readable" value={conn.can_read ? 'YES' : 'NO'}
+          hint={conn.connected ? 'connected' : 'not connected'} />
+        <Stat label="Replies processed" value={fmt(counts.processed)} />
+        <Stat label="Unmatched" value={fmt(counts.unmatched)} />
+        <Stat label="Ambiguous" value={fmt(counts.ambiguous)} />
+        <Stat label="Errors" value={fmt(counts.errors)} />
+        <Stat label="Last poll" value={fmtDate(local.last_poll_at)} hint={fmt(local.last_status)} />
+      </div>
+      {!conn.can_read && (
+        <p className="con-sub">
+          {conn.connected
+            ? <>The connected account cannot read its inbox — a send-only grant cannot see a reply.
+                Reconnect Gmail and grant <code>{fmt((conn.missing_scopes || [])[0])}</code>.</>
+            : 'No Gmail account is connected, so no reply can be read.'}
+        </p>
+      )}
+      {local.last_error && <p className="con-sub">Last error: {fmt(local.last_error)}</p>}
+      {(local.recent || []).length > 0 && (
+        <>
+          <h3 className="an-sub-h">Recently seen messages</h3>
+          <div className="growth-table-wrap">
+            <table className="growth-table">
+              <thead><tr><th>When</th><th>From</th><th>Status</th><th>Matched by</th>
+                <th>Sentiment</th><th>Reason</th></tr></thead>
+              <tbody>
+                {local.recent.map((r, i) => (
+                  <tr key={i}>
+                    <td>{fmtDate(r.processed_at)}</td><td>{fmt(r.sender)}</td>
+                    <td>{fmt(r.status)}</td><td>{fmt(r.match_method)}</td>
+                    <td>{fmt(r.sentiment)}</td><td>{fmt(r.reason || r.error)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      <div className="growth-toolbar" style={{ marginTop: 12 }}>
+        <button className="preview-checkout-btn" onClick={pollNow} disabled={busy}>
+          {busy ? 'Polling…' : 'Poll inbox now'}
+        </button>
+        <span className="con-sub">
+          The worker polls on its own interval; this runs one poll by hand. Processing is
+          idempotent — a message is never ingested twice.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Diagnostics -- "are eligible emails leaving, and if not, why", read-only,
 // without a Render shell. Mirrors GET /growth/diagnostics.
 // ---------------------------------------------------------------------------
@@ -1757,6 +1832,8 @@ function Diagnostics({ api, onError }) {
           </p>
         )}
       </div>
+
+      <InboundReplies inbox={data.inbox} api={api} onError={onError} />
 
       <div className="an-section">
         <h2 className="an-section-h">The sending ceiling — is the experiment holding volume at zero?</h2>
@@ -2139,6 +2216,15 @@ function Settings({ api, onError, onEngine }) {
             onBlur={(e) => save('email', { ...email, from_name: e.target.value })} />
         </div>
         <div className="growth-setting-row">
+          <label>reply-to</label>
+          <input className="growth-input" defaultValue={email.reply_to || ''}
+            onBlur={(e) => save('email', { ...email, reply_to: e.target.value })} />
+          <span className="con-sub">
+            Replies are routed here. The engine reads this inbox to detect replies, so it must be
+            the connected Gmail account.
+          </span>
+        </div>
+        <div className="growth-setting-row">
           <label>connection status</label>
           <span className="con-sub">
             {email.connection_status || 'not_connected'}
@@ -2149,6 +2235,16 @@ function Settings({ api, onError, onEngine }) {
             : <button className="preview-checkout-btn" type="button" onClick={connectEmail}
                 title={channelsMeta.oauth_configured ? 'Start the real Google OAuth flow' : 'Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET on the API first'}>
                 Connect Gmail</button>}
+        </div>
+        <div className="growth-setting-row">
+          <label>inbox read access</label>
+          <span className="con-sub">
+            {emailStatus && emailStatus.inbox_read
+              ? (emailStatus.inbox_read.can_read
+                ? 'Granted — replies are detected.'
+                : `Not granted — replies cannot be read. ${emailStatus.inbox_read.action_required || ''}`)
+              : 'unknown'}
+          </span>
         </div>
         <div className="growth-setting-row">
           <label>sending enabled</label>

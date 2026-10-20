@@ -418,6 +418,8 @@ function AreaOutreach({ outreach }) {
   const s = outreach.sending;
   const sup = outreach.suppression;
   const exp = outreach.experiment;
+  const ib = outreach.inbox || {};
+  const ibCounts = ib.counts || {};
   return (
     <div>
       <div className="an-section">
@@ -491,6 +493,27 @@ function AreaOutreach({ outreach }) {
             <div className="an-kv" key={k}><span>{k}</span><b>{fmt(v)}</b></div>
           ))}
         </div>
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Inbound replies</h2>
+        <div className="an-kv-grid">
+          <div className="an-kv"><span>Inbox readable</span>
+            <b>{ib.can_read ? 'YES' : 'NO'}</b></div>
+          <div className="an-kv"><span>Replies processed</span><b>{fmt(ibCounts.processed)}</b></div>
+          <div className="an-kv"><span>Unmatched</span><b>{fmt(ibCounts.unmatched)}</b></div>
+          <div className="an-kv"><span>Ambiguous</span><b>{fmt(ibCounts.ambiguous)}</b></div>
+          <div className="an-kv"><span>Errors</span><b>{fmt(ibCounts.errors)}</b></div>
+          <div className="an-kv"><span>Last poll</span>
+            <b>{ib.last_poll_at ? ago(ib.last_poll_at) : '—'}</b></div>
+        </div>
+        {ib.enabled && !ib.can_read && (
+          <p className="an-note">
+            The connected email account cannot read its inbox, so replies are invisible and a
+            prospect who replied is emailed again. {ib.action_required || ''}
+          </p>
+        )}
+        {ib.last_error && <p className="an-note">Last error: {ib.last_error}</p>}
       </div>
 
       <div className="an-section">
