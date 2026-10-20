@@ -114,6 +114,18 @@ first, the four areas, the retire/restore actions, that the fee-monitor and
 Sentinel surfaces survive, and that no Taxes tab is reintroduced. It runs as
 part of `npm test`.
 
+**A half-done removal here is invisible until an admin opens the tab.** The
+redesign deleted the old inline surface's state (`analyticsLoading`,
+`analyticsOverview`, `analyticsUsers`) and its `loadAnalytics()` loader, but
+left the 95-line block of markup that rendered them behind. A reference to a
+variable that no longer exists is valid syntax, so `next build` passed, CI
+passed, and the tab threw `ReferenceError: analyticsLoading is not defined` at
+render time for every admin. When you remove a surface from `page.js`, delete
+its markup in the same commit — `scripts/test-dashboard-scope.mjs`
+(`npm run test:dashboard-scope`, wired into `npm test`) parses `page.js` and
+fails on any identifier that is not declared in an enclosing scope and is not a
+browser/JS global, which is the check that was missing.
+
 ## The Growth tab is a view, not a route — deep links select it
 
 `/dashboard` is a single page; the Growth tab renders inside it (Analytics ->
