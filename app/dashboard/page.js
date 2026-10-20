@@ -383,10 +383,14 @@ export default function Dashboard() {
     if (!user || typeof window === 'undefined') return;
     const p = new URLSearchParams(window.location.search);
     const provider = p.get('billing_provider');
+    // PayPal returns its subscription id; Paystack returns `?trxref=&reference=`
+    // and never a subscription id. Either shape must be verified server-side
+    // before entitlement is granted, so both are accepted here.
     const subId = p.get('subscription_id');
-    if (provider && subId) {
+    const reference = p.get('trxref') || p.get('reference');
+    if (provider && (subId || reference)) {
       setTab('billing');
-      verifySubscription(provider, subId);
+      verifySubscription(provider, subId, reference);
       window.history.replaceState(null, '', window.location.pathname + '?tab=billing');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -434,14 +438,28 @@ export default function Dashboard() {
 
   // A server-side verification after the provider's hosted approval. Never
   // trust the frontend callback: the server re-checks the subscription is
-  // genuinely ACTIVE before granting entitlement.
-  async function verifySubscription(provider, providerSubscriptionId) {
-    if (!provider || !providerSubscriptionId) return;
+  // genuinely ACTIVE before granting entitlement. PayPal supplies a
+  // subscription id; Paystack supplies only the transaction reference, which
+  // the server resolves to the subscription it created.
+  async function verifySubscription(provider, providerSubscriptionId, reference) {
+    if (!provider || (!providerSubscriptionId && !reference)) return;
     try {
-      await fetch(`${API_BASE}/billing/verify`, {
+      const r = await fetch(`${API_BASE}/billing/verify`, {
         method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ provider, provider_subscription_id: providerSubscriptionId }),
+        body: JSON.stringify({
+          provider,
+          provider_subscription_id: providerSubscriptionId || null,
+          reference: reference || null,
+        }),
       });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setBillingActionMsg('Subscription confirmed — your plan is now active.');
+      } else if (d && d.error === 'no_subscription_on_transaction') {
+        setBillingActionMsg(d.message || 'Payment received. Your subscription is being confirmed — this page will update shortly.');
+      } else if (d && (d.message || d.error)) {
+        setBillingActionMsg(d.message || 'We could not confirm the subscription yet. If you were charged, contact support.');
+      }
       await loadBillingOverview();
       await loadBillingState();
     } catch (e) {}
