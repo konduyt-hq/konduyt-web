@@ -447,6 +447,9 @@ function CommandCenter({ api, apiBase, authHeaders, onError, onEngine, running }
           <CounterRow label="Reddit" value={pipeline.reddit} />
           <CounterRow label="Hacker News" value={pipeline.hackernews} />
           <CounterRow label="Company contact" value={pipeline.company_contact} />
+          <CounterRow label="Enriched" value={pipeline.enriched} />
+          <CounterRow label="Contact verified" value={pipeline.contact_verified} />
+          <CounterRow label="Contact unverified" value={pipeline.contact_unverified} />
           <CounterRow label="Ready for outreach" value={pipeline.ready_for_outreach} />
           <CounterRow label="Contacted" value={pipeline.contacted} />
           <CounterRow label="Replies" value={pipeline.replies} />
@@ -2139,6 +2142,7 @@ function Settings({ api, onError, onEngine }) {
   const limits = settings.limits || {};
   const baselines = settings.baselines || {};
   const schedules = settings.schedules || {};
+  const enrichment = settings.enrichment || {};
   const email = (emailStatus && emailStatus.email) || settings.email || {};
   const engine = settings.engine || { enabled: true, paused: false };
 
@@ -2206,6 +2210,30 @@ function Settings({ api, onError, onEngine }) {
               onBlur={(e) => save('schedules', { ...schedules, [k]: parseInt(e.target.value, 10) || 0 })} />
           </div>
         ))}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Contact enrichment</h2>
+        <p className="con-sub">
+          The Enricher finds a published way to reach qualified prospects that have no
+          contact channel — reading the organization's own website and public developer
+          profiles, recording where each detail came from and how it was verified. It never
+          guesses an address and never sends: enabling it cannot email anyone.
+        </p>
+        <div className="growth-setting-row">
+          <label>enrichment enabled</label>
+          <input type="checkbox" checked={enrichment.enabled !== false}
+            onChange={(e) => save('enrichment', { ...enrichment, enabled: e.target.checked })} />
+        </div>
+        {Object.entries(enrichment)
+          .filter(([k, v]) => typeof v === 'number')
+          .map(([k, v]) => (
+            <div key={k} className="growth-setting-row">
+              <label>{k.replace(/_/g, ' ')}</label>
+              <input className="growth-input" type="number" defaultValue={v}
+                onBlur={(e) => save('enrichment', { ...enrichment, [k]: parseInt(e.target.value, 10) || 0 })} />
+            </div>
+          ))}
       </div>
 
       <div className="an-section">
