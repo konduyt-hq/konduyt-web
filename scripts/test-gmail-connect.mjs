@@ -60,6 +60,18 @@ check('the billing tab is a valid deep-link target',
 check('no redirect to the nonexistent /dashboard/growth/settings route',
   !/dashboard\/growth\/settings/.test(growth));
 
+// Disconnect must refresh the screen even when a call fails. The old body was
+// `await api('/email/disconnect'); await api('/channels/email/disconnect'); load();`
+// -- one throw skipped load(), so the stale "connected" value stayed on screen
+// and Disconnect looked like a no-op.
+check('disconnectEmail refreshes the screen even if a call throws',
+  /async function disconnectEmail\(\)[\s\S]*?load\(\);[\s\S]*?\n  \}/.test(growth)
+  && /catch \(e\) \{ err = err \|\| e; \}/.test(growth));
+check('disconnectEmail no longer chains the two calls in one try',
+  !/try \{ await api\('\/email\/disconnect'[\s\S]{0,60}await api\('\/channels\/email\/disconnect'/.test(growth));
+check('disconnectChannel refreshes in a finally block',
+  /async function disconnectChannel\(channel\)[\s\S]*?finally \{ load\(\); \}/.test(growth));
+
 console.log('---------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
 process.exit(failures ? 1 : 0);

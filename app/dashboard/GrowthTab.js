@@ -2082,8 +2082,17 @@ function Settings({ api, onError, onEngine }) {
     } catch (e) { onError && onError(e.message); }
   }
   async function disconnectEmail() {
-    try { await api('/email/disconnect', { method: 'POST' }); await api('/channels/email/disconnect', { method: 'POST' }); load(); }
-    catch (e) { onError && onError(e.message); }
+    // Both endpoints describe the same connection, and either can fail on its
+    // own. Refresh no matter what: when the old code threw out of the first
+    // failed call, load() never ran and the screen kept showing the old
+    // "connected" value, so Disconnect looked like a no-op.
+    let err = null;
+    try { await api('/email/disconnect', { method: 'POST' }); }
+    catch (e) { err = e; }
+    try { await api('/channels/email/disconnect', { method: 'POST' }); }
+    catch (e) { err = err || e; }
+    load();
+    if (err) onError && onError(err.message);
   }
   async function connectChannel(channel, identity) {
     try {
@@ -2093,8 +2102,9 @@ function Settings({ api, onError, onEngine }) {
     } catch (e) { onError && onError(e.message); }
   }
   async function disconnectChannel(channel) {
-    try { await api(`/channels/${channel}/disconnect`, { method: 'POST' }); load(); }
+    try { await api(`/channels/${channel}/disconnect`, { method: 'POST' }); }
     catch (e) { onError && onError(e.message); }
+    finally { load(); }
   }
   async function setTransport(transport) {
     try { await api('/email/transport', { method: 'POST',
