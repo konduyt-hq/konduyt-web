@@ -43,6 +43,12 @@ check('StrategyHealth is rendered for the strategy tab',
 check('Experiment is rendered for the experiment tab',
   /view === 'experiment' && <Experiment/.test(growth));
 
+// A connected Gmail account must be re-consentable in place: granting a new
+// scope (inbox read) must not require the destructive Disconnect first, or the
+// operator would tear down a working sending connection to fix reading.
+check('a connected Gmail account offers Reconnect without disconnecting',
+  /Reconnect Gmail/.test(growth) && /onClick=\{connectEmail\}/.test(growth));
+
 // Every view reads the backend; none fabricates numbers.
 check('CohortView reads GET /cohort', /api\('\/cohort'\)/.test(growth));
 check('Cohort preview is a dry run', /cohort\/select', \{ dry_run: true \}/.test(growth));

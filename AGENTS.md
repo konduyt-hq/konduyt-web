@@ -628,3 +628,17 @@ Where the distinction is rendered, and why:
 wired into `npm test`) exercises the classifier for real on the exact catalog
 shapes the API returns and guards the four message sites at the source level.
 
+
+### Granting a new Gmail scope does not require Disconnect (2026-10-26)
+
+The Settings connection row previously offered only `Disconnect` once the
+account was connected, so granting `gmail.readonly` (needed for reply
+visibility) forced an operator to tear down a working sending connection first.
+A connected account now also shows **Reconnect Gmail**, wired to the same
+`connectEmail` handler: it re-runs Google consent and the callback replaces the
+stored scopes with what Google actually granted, so read access can be added
+in place. The API preserves the existing refresh token when a re-consent returns
+none (see konduyt-api `channels.connect_oauth`), so the send path survives the
+reconnect. `scripts/test-growth-quality.mjs` guards that Reconnect is offered
+without disconnecting.
+

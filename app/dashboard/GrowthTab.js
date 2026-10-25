@@ -2297,7 +2297,12 @@ function Settings({ api, onError, onEngine }) {
             {email.connected_account ? ` (${email.connected_account})` : ''}
           </span>
           {email.connection_status === 'connected'
-            ? <button className="preview-checkout-btn" type="button" onClick={disconnectEmail}>Disconnect</button>
+            ? <>
+                <button className="preview-checkout-btn" type="button" onClick={connectEmail}
+                  title="Re-run Google consent to grant a new scope (e.g. inbox read) without disconnecting">
+                  Reconnect Gmail</button>
+                <button className="preview-checkout-btn" type="button" onClick={disconnectEmail}>Disconnect</button>
+              </>
             : <button className="preview-checkout-btn" type="button" onClick={connectEmail}
                 title={channelsMeta.oauth_configured ? 'Start the real Google OAuth flow' : 'Set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET on the API first'}>
                 Connect Gmail</button>}
