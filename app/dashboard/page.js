@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import CheckoutModal from './CheckoutModal';
 import GrowthTab from './GrowthTab';
+import SentinelTab from './SentinelTab';
 import AnalyticsTab from './AnalyticsTab';
 import LogoMark from '../LogoMark';
 import Link from 'next/link';
@@ -140,7 +141,7 @@ export default function Dashboard() {
     // (and its Settings view) is open when the browser lands back here.
     if (typeof window === 'undefined') return 'quickstart';
     const t = new URLSearchParams(window.location.search).get('tab');
-    return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics', 'billing'].includes(t)
+    return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics', 'billing', 'sentinel', 'fee-monitor'].includes(t)
       ? t : 'quickstart';
   });
   // Direct Connections is PAUSED (see AGENTS.md "Direct Connections is paused"):
@@ -155,6 +156,7 @@ export default function Dashboard() {
       billing: 'Konduyt Billing',
       settings: 'Konduyt Settings',
       analytics: 'Konduyt Analytics',
+      sentinel: 'Konduyt Sentinel',
     };
     document.title = TAB_TITLES[tab] || 'Konduyt Dashboard';
   }, [tab]);
@@ -826,7 +828,7 @@ export default function Dashboard() {
 
   // Load Sentinel data when its tab opens.
   useEffect(() => {
-    if (tab === 'sentinel') loadSentinel();
+    if (tab === 'fee-monitor') loadSentinel();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -1585,6 +1587,21 @@ export default function Dashboard() {
                 <line x1="18" y1="20" x2="18" y2="10" />
                 <line x1="12" y1="20" x2="12" y2="4" />
                 <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              className={tab === 'sentinel' ? 'con-icon-btn active' : 'con-icon-btn'}
+              onClick={() => setTab('sentinel')}
+              type="button"
+              title="Sentinel — fee intelligence & audit"
+              aria-label="Sentinel"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="M9 12l2 2 4-4" />
               </svg>
             </button>
           )}
@@ -2606,7 +2623,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {tab === 'sentinel' && (
+            {tab === 'fee-monitor' && (
               <div className="sentinel-page">
                 <div className="con-home-head con-home-head-row">
                   <div>
@@ -2698,6 +2715,16 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Sentinel -- the transaction-fee intelligence & audit command
+                centre. All logic and every number come from /sentinel/*; this
+                surface only displays and controls. Read-only by design. */}
+            {tab === 'sentinel' && isAdmin && (
+              <div className="mpesa-page">
+                <SentinelTab apiBase={API_BASE} authHeaders={authHeaders}
+                  onError={(m) => setBillingNotice(m || '')} />
               </div>
             )}
 
@@ -3673,7 +3700,7 @@ export default function Dashboard() {
                     {sentinelChanges.filter((c) => c.review_status === 'pending').length} change
                     {sentinelChanges.filter((c) => c.review_status === 'pending').length === 1 ? '' : 's'} awaiting review.
                     {' '}
-                    <button type="button" className="link-inline" onClick={() => setTab('sentinel')}>
+                    <button type="button" className="link-inline" onClick={() => setTab('fee-monitor')}>
                       View sources & review changes →
                     </button>
                   </p>
