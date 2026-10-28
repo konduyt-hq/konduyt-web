@@ -14,6 +14,8 @@ import { useState, useEffect, useCallback } from 'react';
 
 const VIEWS = [
   ['overview', 'Overview'],
+  ['proposals', 'Fee Proposals'],
+  ['discovery', 'Discovery'],
   ['agents', 'Agents'],
   ['providers', 'Provider Intelligence'],
   ['audits', 'Transaction Audits'],
@@ -49,6 +51,27 @@ function sevClass(sev) {
 function statusClass(st) {
   const s = (st || '').toLowerCase();
   return `growth-agent-status ${s}`;
+}
+// A fee value is stored as JSONB {percentage, fixed_fee, currency}. Render it
+// the way an approver reads a price: "2.5%" or "50.00 KES", never a raw object.
+function fee(v) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v !== 'object') return String(v);
+  const parts = [];
+  if (v.percentage !== null && v.percentage !== undefined) parts.push(`${v.percentage}%`);
+  if (v.fixed_fee !== null && v.fixed_fee !== undefined) {
+    parts.push(`${v.fixed_fee}${v.currency ? ' ' + v.currency : ''}`);
+  }
+  return parts.length ? parts.join(' + ') : '—';
+}
+function propStatusClass(s) {
+  const v = (s || '').toLowerCase();
+  if (v === 'pending') return 'sentinel-pill sentinel-pill-med';
+  if (v === 'approved') return 'sentinel-pill sentinel-pill-healthy';
+  if (v === 'applied') return 'sentinel-pill sentinel-pill-healthy';
+  if (v === 'rejected') return 'sentinel-pill sentinel-pill-critical';
+  if (v === 'failed') return 'sentinel-pill sentinel-pill-critical';
+  return 'sentinel-pill sentinel-pill-info';
 }
 
 export default function SentinelTab({ apiBase, authHeaders, onError }) {
@@ -112,6 +135,8 @@ export default function SentinelTab({ apiBase, authHeaders, onError }) {
       {notice && <p className="con-sub" style={{ marginBottom: 12 }}>{notice}</p>}
 
       {view === 'overview' && <Overview api={api} onError={onError} onRun={runAgent} busy={busy} />}
+      {view === 'proposals' && <Proposals api={api} onError={onError} />}
+      {view === 'discovery' && <Discovery api={api} onError={onError} />}
       {view === 'agents' && <Agents api={api} onError={onError} onRun={runAgent} busy={busy} />}
       {view === 'providers' && <Providers api={api} onError={onError} />}
       {view === 'audits' && <Audits api={api} onError={onError} />}
@@ -213,6 +238,244 @@ function Stat({ label, value, hint }) {
       <div className="sentinel-stat-v">{fmt(value)}</div>
       <div className="sentinel-stat-l">{label}</div>
       {hint && <div className="sentinel-stat-h">{hint}</div>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fee Proposals (discovery -> approval -> publication)
+// ---------------------------------------------------------------------------
+//
+// This is the ONLY view in Sentinel that can change a fee, and only after an
+// explicit human approval. Everything shown comes from the server: the proposal,
+// the evidence, the confidence, the verification status and — critically — the
+// scope statement, which says in plain words whether approving updates
+// provider_fees alone or ALSO stages a separate rp_pricing_rules consequence.
+// The UI never decides that; it renders what the server looked up.
+function Proposals({ api, onError }) {
+  const [status, setStatus] = useState('PENDING');
+  const [d, setD] = useState(null);
+  const [open, setOpen] = useState(null);      // the approval_view payload
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const q = status ? `?status=${encodeURIComponent(status)}` : '';
+      setD(await api('/proposals' + q)); setError('');
+    } catch (e) { setError(e.message); onError && onError(e.message); }
+  }, [api, onError, status]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function openProposal(id) {
+    setNotice('');
+    try { setOpen(await api(`/proposals/${id}/approval-view`)); }
+    catch (e) { onError && onError(e.message); }
+  }
+
+  async function decide(id, decision) {
+    setBusy(id + ':' + decision); setNotice('');
+    try {
+      const res = await api(`/proposals/${id}/decide`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision }),
+      });
+      setNotice(`${decision === 'APPROVED' ? 'Approved' : 'Rejected'} ${id}.`
+        + (decision === 'APPROVED'
+          ? ' Approving did not publish yet — use Publish to apply it.' : ''));
+      setOpen(null);
+      load();
+    } catch (e) { onError && onError(e.message); }
+    setBusy('');
+  }
+
+  async function publish(id) {
+    setBusy(id + ':apply'); setNotice('');
+    try {
+      const res = await api(`/proposals/${id}/apply`, { method: 'POST' });
+      const c = res.result && res.result.consequence_proposal;
+      setNotice(`Published ${id} to provider_fees.`
+        + (c ? ` A separate consequence proposal ${c.id} was staged for rp_pricing_rules — it is NOT applied.` : ''));
+      setOpen(null);
+      load();
+    } catch (e) { onError && onError(e.message); }
+    setBusy('');
+  }
+
+  if (error) return <p className="con-sub" style={{ color: '#b91c1c' }}>{error}</p>;
+
+  const props = (d && d.proposals) || [];
+
+  return (
+    <div className="an-section">
+      <h2 className="an-section-h">Fee proposals</h2>
+      <p className="con-sub">
+        Changes Sentinel discovered and verified, staged for a human decision. A proposal changes
+        nothing until it is approved and then published. Publication writes only provider_fees; a
+        matching routing rule is staged as a separate consequence proposal, never applied as a
+        side effect.
+      </p>
+
+      <div className="sentinel-run-row" style={{ marginBottom: 12 }}>
+        {['PENDING', 'APPROVED', 'APPLIED', 'REJECTED', ''].map((s) => (
+          <button key={s || 'all'} type="button"
+            className={status === s ? 'con-tab active' : 'con-tab'}
+            onClick={() => setStatus(s)}>{s || 'All'}</button>
+        ))}
+      </div>
+
+      {notice && <p className="con-sub" style={{ marginBottom: 12 }}>{notice}</p>}
+      {!d && <p className="con-sub">Loading…</p>}
+      {d && props.length === 0 && <p className="con-sub">No proposals in this state.</p>}
+
+      {props.map((p) => (
+        <div key={p.id} className="sentinel-incident">
+          <div className="sentinel-incident-top">
+            <span className={propStatusClass(p.status)}>{p.status}</span>
+            <span className="sentinel-pill sentinel-pill-info">{p.kind}</span>
+            <span className="sentinel-incident-title">{p.summary}</span>
+            <span className="con-sub" style={{ marginLeft: 'auto' }}>{fmtDate(p.created_at)}</span>
+          </div>
+          <div className="sentinel-incident-grid">
+            <div><span className="con-sub">Provider</span><div>{fmt(p.provider)}</div></div>
+            <div><span className="con-sub">Method</span><div>{fmt(p.payment_method)}</div></div>
+            <div><span className="con-sub">Country</span><div>{fmt(p.country)}</div></div>
+            <div><span className="con-sub">Currency</span><div>{fmt(p.currency)}</div></div>
+            <div><span className="con-sub">Current fee</span><div>{fee(p.old_value)}</div></div>
+            <div><span className="con-sub">Proposed fee</span><div>{fee(p.proposed_value)}</div></div>
+            <div><span className="con-sub">Confidence</span><div>{fmt(p.confidence)}</div></div>
+            <div><span className="con-sub">Verification</span><div>{fmt(p.verification)}</div></div>
+            <div><span className="con-sub">Target</span><div>{fmt(p.target_table)} · {fmt(p.target_record_id)}</div></div>
+          </div>
+          <div className="sentinel-run-row">
+            <button className="link-inline" type="button" onClick={() => openProposal(p.id)}>
+              View evidence &amp; scope
+            </button>
+            {p.status === 'PENDING' && (
+              <>
+                <button className="preview-checkout-btn" type="button"
+                  disabled={busy === p.id + ':APPROVED'} onClick={() => decide(p.id, 'APPROVED')}>
+                  {busy === p.id + ':APPROVED' ? 'Approving…' : 'Approve'}
+                </button>
+                <button className="link-inline" type="button"
+                  disabled={busy === p.id + ':REJECTED'} onClick={() => decide(p.id, 'REJECTED')}>
+                  Reject
+                </button>
+              </>
+            )}
+            {p.status === 'APPROVED' && (
+              <button className="preview-checkout-btn" type="button"
+                disabled={busy === p.id + ':apply'} onClick={() => publish(p.id)}>
+                {busy === p.id + ':apply' ? 'Publishing…' : 'Publish to catalogue'}
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {open && (
+        <div className="sentinel-incident" style={{ borderColor: '#1d4ed8' }}>
+          <div className="sentinel-incident-top">
+            <span className="sentinel-pill sentinel-pill-info">Approval scope</span>
+            <span className="sentinel-incident-title">{open.proposal && open.proposal.id}</span>
+            <button className="link-inline" type="button" style={{ marginLeft: 'auto' }}
+              onClick={() => setOpen(null)}>Close</button>
+          </div>
+          <p className="con-sub" style={{ fontWeight: 600, color: 'var(--ink)' }}>
+            {open.scope_statement}
+          </p>
+          {open.caveat && (
+            <p className="con-sub" style={{ color: '#b45309' }}>{open.caveat}</p>
+          )}
+          <div className="sentinel-incident-grid">
+            <div><span className="con-sub">Changes</span><div>{open.changes && open.changes.table} · {open.changes && open.changes.record_id}</div></div>
+            <div><span className="con-sub">Field</span><div>{fmt(open.changes && open.changes.field)}</div></div>
+            <div><span className="con-sub">Old → new</span><div>{fee(open.changes && open.changes.old)} → {fee(open.changes && open.changes.new)}</div></div>
+            <div><span className="con-sub">Execution engine changed?</span><div>{open.affects_execution_engine ? 'YES — this changes what is charged' : 'No'}</div></div>
+          </div>
+          <p className="con-sub">
+            Consequence: {open.consequence && open.consequence.will_stage
+              ? `a separate rp_pricing_rules proposal will be staged for ${open.consequence.record_id}`
+              : (open.consequence && open.consequence.reason) || 'none'}
+          </p>
+          <p className="con-sub">Source: {open.source_url
+            ? <a href={open.source_url} target="_blank" rel="noreferrer">{open.source_url}</a>
+            : '—'}</p>
+          <p className="con-sub">Evidence: {open.evidence
+            ? <code>{JSON.stringify(open.evidence)}</code> : '—'}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Discovery (the scheduled search sweep)
+// ---------------------------------------------------------------------------
+function Discovery({ api, onError }) {
+  const [d, setD] = useState(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try { setD(await api('/discovery')); setError(''); }
+    catch (e) { setError(e.message); onError && onError(e.message); }
+  }, [api, onError]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function seed() {
+    setBusy(true); setNotice('');
+    try {
+      const res = await api('/discovery/seed', { method: 'POST' });
+      setNotice(`Seeded ${res.inserted} new search queries.`);
+      load();
+    } catch (e) { onError && onError(e.message); }
+    setBusy(false);
+  }
+
+  if (error) return <p className="con-sub" style={{ color: '#b91c1c' }}>{error}</p>;
+  if (!d) return <p className="con-sub">Loading…</p>;
+
+  return (
+    <div className="an-section">
+      <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+        <h2 className="an-section-h" style={{ marginBottom: 0 }}>
+          Scheduled searches ({d.total_queries})
+        </h2>
+        <button className="preview-checkout-btn" type="button" disabled={busy} onClick={seed}>
+          {busy ? 'Seeding…' : 'Seed searches'}
+        </button>
+      </div>
+      <p className="con-sub">
+        The discovery sweep runs on a 15-minute cron; each query runs on its own interval (6 hours
+        by default) and a repeatedly-failing query backs off exponentially. A market-discovery
+        result is an UNVERIFIED lead routed to the catalogue review queue — it is never a
+        catalogue row and never executable.
+      </p>
+      {notice && <p className="con-sub">{notice}</p>}
+      <table className="sentinel-table">
+        <thead><tr>
+          <th>Query</th><th>Kind</th><th>Country</th><th>Every (min)</th>
+          <th>Last run</th><th>Status</th><th>Failures</th>
+        </tr></thead>
+        <tbody>
+          {(d.queries || []).map((q) => (
+            <tr key={q.id}>
+              <td className="sentinel-responsibility">{q.query_text}</td>
+              <td>{q.target_kind}</td>
+              <td>{fmt(q.country)}</td>
+              <td>{q.schedule_minutes}</td>
+              <td>{fmtDate(q.last_run_at)}</td>
+              <td>{fmt(q.last_status)}</td>
+              <td>{q.consecutive_failures}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
