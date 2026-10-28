@@ -5,6 +5,7 @@ import CheckoutModal from './CheckoutModal';
 import GrowthTab from './GrowthTab';
 import SentinelTab from './SentinelTab';
 import AnalyticsTab from './AnalyticsTab';
+import UsersTab from './UsersTab';
 import LogoMark from '../LogoMark';
 import Link from 'next/link';
 import { LANGUAGES } from './snippets';
@@ -141,7 +142,7 @@ export default function Dashboard() {
     // (and its Settings view) is open when the browser lands back here.
     if (typeof window === 'undefined') return 'quickstart';
     const t = new URLSearchParams(window.location.search).get('tab');
-    return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics', 'billing', 'sentinel', 'fee-monitor'].includes(t)
+    return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics', 'billing', 'sentinel', 'fee-monitor', 'users'].includes(t)
       ? t : 'quickstart';
   });
   // Direct Connections is PAUSED (see AGENTS.md "Direct Connections is paused"):
@@ -157,6 +158,7 @@ export default function Dashboard() {
       settings: 'Konduyt Settings',
       analytics: 'Konduyt Analytics',
       sentinel: 'Konduyt Sentinel',
+      users: 'Konduyt Users',
     };
     document.title = TAB_TITLES[tab] || 'Konduyt Dashboard';
   }, [tab]);
@@ -239,14 +241,6 @@ export default function Dashboard() {
   const [sentinelChanges, setSentinelChanges] = useState([]);
   const [sentinelBusy, setSentinelBusy] = useState(false);
   const [sentinelRunResult, setSentinelRunResult] = useState(null); // last run's summary, for Analytics
-  const [feeBandsContinent, setFeeBandsContinent] = useState('africa');
-  const [feeBandsData, setFeeBandsData] = useState(null);
-  const [feeIntelOpen, setFeeIntelOpen] = useState(null); // the one entry whose intelligence popup is open, or null
-  const [feeIntelHistory, setFeeIntelHistory] = useState(null); // fetched only on demand, via "View history"
-  const [feeIntelHistoryLoading, setFeeIntelHistoryLoading] = useState(false);
-  const [feeIntelObserved, setFeeIntelObserved] = useState(null); // fetched only on demand, via "Compare to real transactions"
-  const [feeIntelObservedLoading, setFeeIntelObservedLoading] = useState(false);
-  const [feeBandsLoading, setFeeBandsLoading] = useState(false);
   const [sentinelTab, setSentinelTab] = useState('changes'); // 'changes' | 'sources'
   // Money tab
   const [moneyData, setMoneyData] = useState(null);
@@ -851,10 +845,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     // The Analytics tab owns its own reads (AnalyticsTab -> GET /growth/analytics).
-    // The fee monitor and the Sentinel fee view that share this tab are still
-    // loaded here, because they predate it and are payment surfaces.
+    // The fee monitor that shares this tab is loaded here; the Sentinel
+    // transaction-fee view moved to the Sentinel tab (SentinelTab), which owns
+    // its own reads.
     if (tab === 'analytics' && isAdmin) loadSentinel();
-    if (tab === 'analytics' && isAdmin && !feeBandsData) loadFeeBands(feeBandsContinent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, isAdmin]);
   useEffect(() => {
@@ -1229,48 +1223,6 @@ export default function Dashboard() {
     } catch (e) { /* leave as-is */ }
   }
 
-  // Sentinel -- transaction fees: computed live server-side on every call
-  // (provider gate, max amount, real fee bands -- see app/sentinel/fee_bands.py).
-  // "Update now" just re-calls this; there's no separate cache to go stale.
-  async function loadFeeBands(continent) {
-    setFeeBandsLoading(true);
-    try {
-      const r = await fetch(`${API_BASE}/sentinel/transaction-fees?continent=${continent}`);
-      const d = await r.json();
-      setFeeBandsData(d);
-    } catch (e) {
-      setFeeBandsData(null);
-    }
-    setFeeBandsLoading(false);
-  }
-
-  // Konduyt Intelligence: both fetched only on demand, when the person
-  // actually asks -- never fetched just because the popup opened, per
-  // direct instruction to keep it minimal by default.
-  async function loadFeeIntelHistory(ruleId, schema) {
-    setFeeIntelHistoryLoading(true);
-    try {
-      const r = await fetch(`${API_BASE}/sentinel/intelligence/history?rule_id=${encodeURIComponent(ruleId)}&schema=${schema}`);
-      const d = await r.json();
-      setFeeIntelHistory(d.versions || []);
-    } catch (e) {
-      setFeeIntelHistory([]);
-    }
-    setFeeIntelHistoryLoading(false);
-  }
-
-  async function loadFeeIntelObserved(ruleId, schema) {
-    setFeeIntelObservedLoading(true);
-    try {
-      const r = await fetch(`${API_BASE}/sentinel/intelligence/observed?rule_id=${encodeURIComponent(ruleId)}&schema=${schema}`);
-      const d = await r.json();
-      setFeeIntelObserved(d);
-    } catch (e) {
-      setFeeIntelObserved({ status: 'no_observations' });
-    }
-    setFeeIntelObservedLoading(false);
-  }
-
   async function runSentinel() {
     setSentinelBusy(true);
     try {
@@ -1602,6 +1554,23 @@ export default function Dashboard() {
                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 <path d="M9 12l2 2 4-4" />
+              </svg>
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              className={tab === 'users' ? 'con-icon-btn active' : 'con-icon-btn'}
+              onClick={() => setTab('users')}
+              type="button"
+              title="Users"
+              aria-label="Users"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </button>
           )}
@@ -2728,6 +2697,16 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* Users -- a minimal, admin-only, read-only view of the platform's
+                developers. The API exposes no user-management actions, so this
+                surface offers no controls and says so. */}
+            {tab === 'users' && isAdmin && (
+              <div className="mpesa-page">
+                <UsersTab apiBase={API_BASE} authHeaders={authHeaders}
+                  onError={(m) => setBillingNotice(m || '')} />
+              </div>
+            )}
+
             {tab === 'routing' && (
               <div className="route-page">
                 <div className="con-home-head">
@@ -3705,223 +3684,6 @@ export default function Dashboard() {
                     </button>
                   </p>
                 </div>
-
-                {/* Sentinel -- transaction fees: the four-criteria view
-                    requested directly -- provider gate (no verified
-                    Konduyt provider = discarded, not shown), max amount,
-                    real fee bands per currency, and instant recompute via
-                    "Update now" (just re-fetches; nothing is cached). */}
-                <div className="an-section">
-                  <div className="con-home-head-row" style={{ alignItems: 'center' }}>
-                    <h2 className="an-section-h" style={{ marginBottom: 0 }}>Sentinel — transaction fees</h2>
-                    <button className="preview-checkout-btn" type="button" disabled={feeBandsLoading}
-                      onClick={() => loadFeeBands(feeBandsContinent)}>
-                      {feeBandsLoading ? 'Updating…' : '↻ Update now'}
-                    </button>
-                  </div>
-                  <p className="con-sub" style={{ marginTop: 6, marginBottom: 12 }}>
-                    Only shows methods with a real, verified Konduyt provider — everything else is
-                    discarded rather than shown with a fee nobody could actually route through.
-                    Konduyt continuously checks provider pricing; the dot next to a method shows how
-                    current the number actually is — when we can't verify something, we say so rather
-                    than showing it as if it were confirmed.
-                  </p>
-                  <div className="fee-bands-continent-tabs">
-                    {['africa', 'asia', 'europe', 'north_america', 'south_america', 'oceania'].map((c) => (
-                      <button key={c} type="button"
-                        className={feeBandsContinent === c ? 'fee-bands-tab active' : 'fee-bands-tab'}
-                        onClick={() => { setFeeBandsContinent(c); loadFeeBands(c); }}>
-                        {c === 'north_america' ? 'North America' : c === 'south_america' ? 'South America'
-                          : c[0].toUpperCase() + c.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                  {feeBandsLoading && <p className="con-sub" style={{ marginTop: 12 }}>Computing live from current data…</p>}
-                  {!feeBandsLoading && feeBandsData && (
-                    <>
-                      <p className="con-sub" style={{ marginTop: 10 }}>
-                        {feeBandsData.count} payment method{feeBandsData.count === 1 ? '' : 's'} with a verified provider.
-                      </p>
-                      <div className="fee-bands-table-wrap">
-                        <table className="fee-bands-table">
-                          <thead>
-                            <tr>
-                              <th>Country</th>
-                              <th>Method</th>
-                              <th>Provider</th>
-                              <th>Max</th>
-                              {feeBandsData.bands.map((b) => <th key={b}>{b}</th>)}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {feeBandsData.entries.map((e, i) => (
-                              <tr key={`${e.country}-${e.payment_method}-${e.provider}-${i}`}>
-                                <td>{e.country}</td>
-                                <td>
-                                  {e.payment_method}{e.card_scope ? ` (${e.card_scope})` : ''}
-                                  {e.category && e.category !== e.payment_method && (
-                                    <span className="fee-bands-category"> · {e.category}</span>
-                                  )}
-                                  {e.intelligence && (
-                                    <button
-                                      type="button"
-                                      className={`fee-intel-dot ${e.intelligence.state.toLowerCase()}`}
-                                      title={`${e.intelligence.state} · ${e.intelligence.confidence} confidence`}
-                                      aria-label="Fee freshness and source"
-                                      onClick={() => {
-                                        setFeeIntelOpen(e);
-                                        setFeeIntelHistory(null);
-                                        setFeeIntelObserved(null);
-                                      }}
-                                    />
-                                  )}
-                                </td>
-                                <td>{e.provider}</td>
-                                <td>{e.max_amount != null ? `${e.max_amount.toLocaleString()} ${e.currency}` : '—'}</td>
-                                {e.bands.map((b, j) => (
-                                  <td key={j} title={b.note || ''}>
-                                    {b.known ? `${b.fee} ${e.currency}` : '—'}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
-                  {!feeBandsLoading && feeBandsData && feeBandsData.count === 0 && (
-                    <p className="con-sub" style={{ marginTop: 12 }}>
-                      No payment methods in this continent currently have a verified Konduyt provider.
-                    </p>
-                  )}
-                </div>
-
-                {feeIntelOpen && (() => {
-                  const intel = feeIntelOpen.intelligence;
-                  const d = intel.detail;
-                  const STATE_COPY = {
-                    VERIFIED: 'Verified',
-                    RECENT: 'Verified',
-                    AGING: 'Verified, but ageing',
-                    UNVERIFIED: 'Not yet confirmed against an official source',
-                    STALE: 'Pricing may have changed',
-                    CHANGED: 'Source changed — pending re-check',
-                    UNKNOWN: 'We could not verify a current public fee',
-                  };
-                  const NOTE = {
-                    STALE: 'This is old enough that Konduyt no longer uses it to rank routes by cost.',
-                    CHANGED: 'Konduyt detected the source page changed and is no longer treating this number as reliable until it\u2019s re-checked.',
-                    UNKNOWN: 'No usable number exists yet — never estimated, never assumed.',
-                    UNVERIFIED: 'Found, but not yet confirmed against the provider\u2019s own source.',
-                  }[intel.state];
-                  let sourceHost = d.source;
-                  try { sourceHost = new URL(d.source).hostname.replace('www.', ''); } catch (e) {}
-                  return (
-                    <div className="fee-intel-overlay" onClick={() => setFeeIntelOpen(null)}>
-                      <div className="fee-intel-popup" onClick={(ev) => ev.stopPropagation()}>
-                        <button type="button" className="fee-intel-close"
-                          onClick={() => setFeeIntelOpen(null)} aria-label="Close">✕</button>
-                        <div className="fee-intel-state">
-                          <span className={`fee-intel-state-dot ${intel.state.toLowerCase()}`} />
-                          {STATE_COPY[intel.state] || intel.state}
-                        </div>
-                        <div className="fee-intel-method">
-                          {feeIntelOpen.payment_method} · {feeIntelOpen.country}
-                        </div>
-                        <div className="fee-intel-row">
-                          <span className="fee-intel-row-label">Confidence</span>
-                          <span className="fee-intel-row-value">{intel.confidence}</span>
-                        </div>
-                        {d.source && (
-                          <div className="fee-intel-row">
-                            <span className="fee-intel-row-label">Source</span>
-                            <span className="fee-intel-row-value">
-                              <a href={d.source} target="_blank" rel="noreferrer">{sourceHost}</a>
-                            </span>
-                          </div>
-                        )}
-                        {d.last_checked && (
-                          <div className="fee-intel-row">
-                            <span className="fee-intel-row-label">Last checked</span>
-                            <span className="fee-intel-row-value">{d.last_checked}</span>
-                          </div>
-                        )}
-                        {d.last_source_change && (
-                          <div className="fee-intel-row">
-                            <span className="fee-intel-row-label">Last source change</span>
-                            <span className="fee-intel-row-value">{d.last_source_change}</span>
-                          </div>
-                        )}
-                        {d.next_review && (
-                          <div className="fee-intel-row">
-                            <span className="fee-intel-row-label">Next review</span>
-                            <span className="fee-intel-row-value">{d.next_review}</span>
-                          </div>
-                        )}
-                        {NOTE && <div className="fee-intel-note">{NOTE}</div>}
-
-                        {/* Both below: real data, fetched only on demand
-                            -- never on popup open -- and rendered plainly
-                            inline, not as a second modal on top of this
-                            one. Deliberately the least additional
-                            information that still answers "show me the
-                            real history" / "does this match real
-                            transactions", not everything the API could
-                            return. */}
-                        {intel.rule_id && (
-                          <div className="fee-intel-expand">
-                            {!feeIntelHistory && !feeIntelHistoryLoading && (
-                              <button type="button" className="fee-intel-expand-btn"
-                                onClick={() => loadFeeIntelHistory(intel.rule_id, intel.schema)}>
-                                View history
-                              </button>
-                            )}
-                            {feeIntelHistoryLoading && <p className="fee-intel-expand-loading">Loading history…</p>}
-                            {feeIntelHistory && (
-                              <div className="fee-intel-history">
-                                {feeIntelHistory.length === 0 ? (
-                                  <p className="fee-intel-expand-empty">No version history recorded yet.</p>
-                                ) : feeIntelHistory.map((v, i) => (
-                                  <div key={i} className={`fee-intel-history-row ${v.is_current ? 'current' : ''}`}>
-                                    <span>
-                                      {v.percentage_fee != null ? `${v.percentage_fee}%` : (v.fixed_fee != null ? v.fixed_fee : '—')}
-                                    </span>
-                                    <span className="fee-intel-history-date">
-                                      {v.is_current ? 'Current' : (v.superseded_at || '').slice(0, 10)}
-                                      {v.change_reason === 'sentinel_invalidated' && ' · source change detected'}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {intel.rule_id && (
-                          <div className="fee-intel-expand">
-                            {!feeIntelObserved && !feeIntelObservedLoading && (
-                              <button type="button" className="fee-intel-expand-btn"
-                                onClick={() => loadFeeIntelObserved(intel.rule_id, intel.schema)}>
-                                Compare to real transactions
-                              </button>
-                            )}
-                            {feeIntelObservedLoading && <p className="fee-intel-expand-loading">Checking…</p>}
-                            {feeIntelObserved && (
-                              <p className="fee-intel-expand-empty">
-                                {feeIntelObserved.status === 'no_observations'
-                                  ? 'No real Konduyt transactions for this provider yet to compare against.'
-                                  : feeIntelObserved.status === 'match'
-                                    ? `Matches what Konduyt's own transactions actually show (${feeIntelObserved.sample_size} recent).`
-                                    : `Real transactions show ${feeIntelObserved.difference_pp}pp different from the official rate (${feeIntelObserved.sample_size} recent) — worth a re-check.`}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             )}
         </>

@@ -10,10 +10,13 @@
 // discrepancies and reports. It never changes a fee and never performs a
 // financial correction -- the UI offers no control that could.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const VIEWS = [
   ['overview', 'Overview'],
+  ['proposals', 'Fee Proposals'],
+  ['discovery', 'Discovery'],
+  ['transaction-fees', 'Transaction fees'],
   ['agents', 'Agents'],
   ['providers', 'Provider Intelligence'],
   ['audits', 'Transaction Audits'],
@@ -31,6 +34,25 @@ function fmt(v) {
 function fmtDate(v) {
   if (!v) return '—';
   try { return new Date(v).toLocaleString(); } catch (e) { return String(v); }
+}
+
+// A discovery result's observed_value is a STRUCTURE ({currency, fixed_fee,
+// percentage_fee, ...}), not a scalar. Rendering it raw would crash React
+// ("objects are not valid as a React child"), so summarise it as a short
+// readable string -- and never invent a number that is not there.
+function observedSummary(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v !== 'object') return String(v);
+  const parts = [];
+  if (v.percentage_fee != null) parts.push(`${v.percentage_fee}%`);
+  if (v.fixed_fee != null) parts.push(`${v.fixed_fee}${v.currency ? ' ' + v.currency : ''}`);
+  if (parts.length === 0) {
+    const keys = Object.keys(v);
+    return keys.length ? keys.map((k) => `${k}: ${v[k]}`).join(', ') : '—';
+  }
+  // Flag an unconfirmed fee type rather than presenting it as exact.
+  if (v.fee_type_confident === false) parts.push('(fee type unconfirmed)');
+  return parts.join(' + ');
 }
 function money(minor, currency) {
   if (minor === null || minor === undefined) return '—';
@@ -50,6 +72,52 @@ function statusClass(st) {
   const s = (st || '').toLowerCase();
   return `growth-agent-status ${s}`;
 }
+// A fee value is stored as JSONB {percentage, fixed_fee, currency}. Render it
+// the way an approver reads a price: "2.5%" or "50.00 KES", never a raw object.
+function fee(v) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v !== 'object') return String(v);
+  const parts = [];
+  if (v.percentage !== null && v.percentage !== undefined) parts.push(`${v.percentage}%`);
+  if (v.fixed_fee !== null && v.fixed_fee !== undefined) {
+    parts.push(`${v.fixed_fee}${v.currency ? ' ' + v.currency : ''}`);
+  }
+  return parts.length ? parts.join(' + ') : '—';
+}
+function propStatusClass(s) {
+  const v = (s || '').toLowerCase();
+  if (v === 'pending') return 'sentinel-pill sentinel-pill-med';
+  if (v === 'approved') return 'sentinel-pill sentinel-pill-healthy';
+  // Applied is distinct from approved on purpose: approved means "a human
+  // said yes, nothing was written"; applied means the fee row was written.
+  if (v === 'applied') return 'sentinel-pill sentinel-pill-applied';
+  if (v === 'rejected') return 'sentinel-pill sentinel-pill-critical';
+  if (v === 'failed') return 'sentinel-pill sentinel-pill-critical';
+  return 'sentinel-pill sentinel-pill-info';
+}
+
+// Turn an error response into something a person can act on. Sentinel's 409s
+// carry an OBJECT detail ({"error": "...", "detail": {...}}), so a naive
+// `new Error(detail)` stringifies to "[object Object]" and hides the server's
+// actual reason -- exactly the misleading message we must not show.
+function apiErrorMessage(body, res) {
+  const d = (body && body.detail !== undefined) ? body.detail : body;
+  if (typeof d === 'string' && d) return d;
+  if (d && typeof d === 'object') {
+    if (typeof d.message === 'string' && d.message) return d.message;
+    if (typeof d.error === 'string' && d.error) {
+      const inner = d.detail;
+      if (typeof inner === 'string' && inner) return `${d.error}: ${inner}`;
+      if (inner && typeof inner === 'object' && typeof inner.reason === 'string') {
+        return `${d.error}: ${inner.reason}`;
+      }
+      return d.error;
+    }
+    if (typeof d.reason === 'string' && d.reason) return d.reason;
+    try { return JSON.stringify(d); } catch (e) { /* fall through */ }
+  }
+  return (res && `${res.status} ${res.statusText}`) || 'Request failed';
+}
 
 export default function SentinelTab({ apiBase, authHeaders, onError }) {
   const [view, setView] = useState(() => {
@@ -66,9 +134,9 @@ export default function SentinelTab({ apiBase, authHeaders, onError }) {
       headers: { ...(authHeaders ? authHeaders() : {}), ...(opts.headers || {}) },
     });
     if (!r.ok) {
-      let detail = '';
-      try { detail = (await r.json()).detail || ''; } catch (e) { /* ignore */ }
-      throw new Error(detail || `${r.status} ${r.statusText}`);
+      let body = null;
+      try { body = await r.json(); } catch (e) { /* non-JSON error body */ }
+      throw new Error(apiErrorMessage(body, r));
     }
     return r.json();
   }, [apiBase, authHeaders]);
@@ -112,6 +180,9 @@ export default function SentinelTab({ apiBase, authHeaders, onError }) {
       {notice && <p className="con-sub" style={{ marginBottom: 12 }}>{notice}</p>}
 
       {view === 'overview' && <Overview api={api} onError={onError} onRun={runAgent} busy={busy} />}
+      {view === 'proposals' && <Proposals api={api} onError={onError} />}
+      {view === 'discovery' && <Discovery api={api} onError={onError} />}
+      {view === 'transaction-fees' && <TransactionFees api={api} onError={onError} />}
       {view === 'agents' && <Agents api={api} onError={onError} onRun={runAgent} busy={busy} />}
       {view === 'providers' && <Providers api={api} onError={onError} />}
       {view === 'audits' && <Audits api={api} onError={onError} />}
@@ -213,6 +284,633 @@ function Stat({ label, value, hint }) {
       <div className="sentinel-stat-v">{fmt(value)}</div>
       <div className="sentinel-stat-l">{label}</div>
       {hint && <div className="sentinel-stat-h">{hint}</div>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fee Proposals (discovery -> approval -> publication)
+// ---------------------------------------------------------------------------
+//
+// This is the ONLY view in Sentinel that can change a fee, and only after an
+// explicit human approval. Everything shown comes from the server: the proposal,
+// the evidence, the confidence, the verification status and — critically — the
+// scope statement, which says in plain words whether approving updates
+// provider_fees alone or ALSO stages a separate rp_pricing_rules consequence.
+// The UI never decides that; it renders what the server looked up.
+function Proposals({ api, onError }) {
+  const [status, setStatus] = useState('PENDING');
+  const [d, setD] = useState(null);
+  const [open, setOpen] = useState(null);      // the approval_view payload
+  const [error, setError] = useState('');      // last LOAD error
+  const [actionError, setActionError] = useState(''); // last approve/reject/publish error
+  const [loadedAt, setLoadedAt] = useState(null);     // when d was last confirmed fresh
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState('');
+  const inflight = useRef(false); // survives re-render; blocks duplicate submits
+
+  const load = useCallback(async () => {
+    try {
+      const q = status ? `?status=${encodeURIComponent(status)}` : '';
+      const res = await api('/proposals' + q);
+      setD(res); setError(''); setLoadedAt(new Date());
+    } catch (e) {
+      // Keep the last good payload but mark it stale. A failed request must
+      // NEVER be rendered as "no proposals" -- that is the exact failure this
+      // guards against. The error is shown, not swallowed.
+      setError(e.message); onError && onError(e.message);
+    }
+  }, [api, onError, status]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function openProposal(id) {
+    setNotice(''); setActionError('');
+    try { setOpen(await api(`/proposals/${id}/approval-view`)); }
+    catch (e) { setActionError(e.message); onError && onError(e.message); }
+  }
+
+  async function decide(id, decision) {
+    if (inflight.current) return;
+    inflight.current = true;
+    setBusy(id + ':' + decision); setNotice(''); setActionError('');
+    try {
+      const res = await api(`/proposals/${id}/decide`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision }),
+      });
+      setNotice(`${decision === 'APPROVED' ? 'Approved' : 'Rejected'} ${id}`
+        + ` (server status: ${res.status || decision}).`
+        + (decision === 'APPROVED'
+          ? ' Approving did NOT publish — use Publish to write the fee.' : ''));
+      setOpen(null);
+      await load();
+    } catch (e) {
+      setActionError(`Could not ${decision === 'APPROVED' ? 'approve' : 'reject'} ${id}: ${e.message}`);
+      onError && onError(e.message);
+    }
+    setBusy(''); inflight.current = false;
+  }
+
+  async function publish(id) {
+    if (inflight.current) return;
+    inflight.current = true;
+    setBusy(id + ':apply'); setNotice(''); setActionError('');
+    try {
+      const res = await api(`/proposals/${id}/apply`, { method: 'POST' });
+      const c = res.result && res.result.consequence_proposal;
+      // The server reports a re-apply as reason:"already_applied" (idempotent
+      // no-op). Say so plainly rather than claiming a second write happened.
+      if (res.reason === 'already_applied') {
+        setNotice(`Already published — no change made. Proposal ${id} was applied earlier; `
+          + 'this request was a no-op, so the fee was not written twice.');
+      } else {
+        setNotice(`Published ${id} to provider_fees.`
+          + (c ? ` A separate consequence proposal ${c.id} was staged for rp_pricing_rules — it is NOT applied.` : ''));
+      }
+      setOpen(null);
+      await load();
+    } catch (e) {
+      setActionError(`Could not publish ${id}: ${e.message}`);
+      onError && onError(e.message);
+    }
+    setBusy(''); inflight.current = false;
+  }
+
+  const props = (d && d.proposals) || [];
+  const stale = !!error && !!d;
+
+  return (
+    <div className="an-section">
+      <h2 className="an-section-h">Fee proposals</h2>
+      <p className="con-sub">
+        Changes Sentinel discovered and verified, staged for a human decision. A proposal changes
+        nothing until it is approved and then published. Publication writes only provider_fees; a
+        matching routing rule is staged as a separate consequence proposal, never applied as a
+        side effect.
+      </p>
+      <p className="con-sub" style={{ marginTop: -6 }}>
+        <strong>Not a catalogue change:</strong> publishing a proposal updates the provider&rsquo;s
+        fee row only. It never changes <code>customer_fees</code> (what a customer is charged) and
+        never changes <code>rp_pricing_rules</code>; if a routing rule is affected it is staged as
+        a separate proposal that needs its own approval.
+      </p>
+
+      <div className="sentinel-run-row" style={{ marginBottom: 12 }}>
+        {['PENDING', 'APPROVED', 'APPLIED', 'REJECTED', ''].map((s) => (
+          <button key={s || 'all'} type="button"
+            className={status === s ? 'con-tab active' : 'con-tab'}
+            onClick={() => setStatus(s)}>{s || 'All'}</button>
+        ))}
+      </div>
+
+      {/* Legend: the four states an operator must never confuse. */}
+      <p className="con-sub sentinel-legend">
+        <span className={propStatusClass('PENDING')}>PENDING</span> verified, waiting for a human —
+        nothing written.&nbsp;
+        <span className={propStatusClass('APPROVED')}>APPROVED</span> a human said yes — still
+        nothing written.&nbsp;
+        <span className={propStatusClass('APPLIED')}>APPLIED</span> the fee row was written.&nbsp;
+        <span className={propStatusClass('REJECTED')}>REJECTED</span> dismissed — never written.
+      </p>
+
+      {notice && <p className="con-sub" style={{ marginBottom: 12, color: '#166534' }}>{notice}</p>}
+      {actionError && (
+        <p className="con-sub" style={{ marginBottom: 12, color: '#b91c1c' }}>{actionError}</p>
+      )}
+
+      {/* Load states, kept strictly separate from "no proposals". */}
+      {!d && !error && <p className="con-sub">Loading proposals…</p>}
+      {error && !d && (
+        <p className="con-sub" style={{ color: '#b91c1c' }}>
+          Could not load proposals: {error}. This is a fetch failure — it does not mean there are
+          no pending proposals. Retry with the state buttons above.
+        </p>
+      )}
+      {stale && (
+        <p className="con-sub" style={{ color: '#b45309' }}>
+          Showing the last successfully loaded list (from {loadedAt ? fmtDate(loadedAt) : 'earlier'})
+          — the latest refresh failed: {error}. The list below may be out of date.
+        </p>
+      )}
+      {d && props.length === 0 && !error && (
+        <p className="con-sub">No proposals in this state.</p>
+      )}
+
+      {props.map((p) => (
+        <div key={p.id} className="sentinel-incident">
+          <div className="sentinel-incident-top">
+            <span className={propStatusClass(p.status)}>{p.status}</span>
+            <span className="sentinel-pill sentinel-pill-info">{p.kind}</span>
+            <span className="sentinel-incident-title">{p.summary}</span>
+            <span className="con-sub" style={{ marginLeft: 'auto' }}>{fmtDate(p.created_at)}</span>
+          </div>
+          <div className="sentinel-incident-grid">
+            <div><span className="con-sub">Provider</span><div>{fmt(p.provider)}</div></div>
+            <div><span className="con-sub">Method</span><div>{fmt(p.payment_method)}</div></div>
+            <div><span className="con-sub">Country</span><div>{fmt(p.country)}</div></div>
+            <div><span className="con-sub">Currency</span><div>{fmt(p.currency)}</div></div>
+            <div><span className="con-sub">Current fee</span><div>{fee(p.old_value)}</div></div>
+            <div><span className="con-sub">Proposed fee</span><div>{fee(p.proposed_value)}</div></div>
+            <div><span className="con-sub">Confidence</span><div>{fmt(p.confidence)}</div></div>
+            <div><span className="con-sub">Verification</span><div>{fmt(p.verification)}</div></div>
+            <div><span className="con-sub">Target</span><div>{fmt(p.target_table)} · {fmt(p.target_record_id)}</div></div>
+          </div>
+          <div className="sentinel-run-row">
+            <button className="link-inline" type="button" onClick={() => openProposal(p.id)}>
+              View evidence &amp; scope
+            </button>
+            {p.status === 'PENDING' && (
+              <>
+                <button className="preview-checkout-btn" type="button"
+                  disabled={!!busy} onClick={() => decide(p.id, 'APPROVED')}>
+                  {busy === p.id + ':APPROVED' ? 'Approving…' : 'Approve'}
+                </button>
+                <button className="link-inline" type="button"
+                  disabled={!!busy} onClick={() => decide(p.id, 'REJECTED')}>
+                  {busy === p.id + ':REJECTED' ? 'Rejecting…' : 'Reject'}
+                </button>
+              </>
+            )}
+            {p.status === 'APPROVED' && (
+              <button className="preview-checkout-btn" type="button"
+                disabled={!!busy} onClick={() => publish(p.id)}>
+                {busy === p.id + ':apply' ? 'Publishing…' : 'Publish to catalogue'}
+              </button>
+            )}
+            {p.status === 'APPLIED' && (
+              <span className="con-sub">Already written to provider_fees — no further action.</span>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {open && (
+        <div className="sentinel-incident" style={{ borderColor: '#1d4ed8' }}>
+          <div className="sentinel-incident-top">
+            <span className="sentinel-pill sentinel-pill-info">Approval scope</span>
+            <span className="sentinel-incident-title">{open.proposal && open.proposal.id}</span>
+            <button className="link-inline" type="button" style={{ marginLeft: 'auto' }}
+              onClick={() => setOpen(null)}>Close</button>
+          </div>
+          <p className="con-sub" style={{ fontWeight: 600, color: 'var(--ink)' }}>
+            {open.scope_statement}
+          </p>
+          {open.caveat && (
+            <p className="con-sub" style={{ color: '#b45309' }}>{open.caveat}</p>
+          )}
+          <div className="sentinel-incident-grid">
+            <div><span className="con-sub">Changes</span><div>{open.changes && open.changes.table} · {open.changes && open.changes.record_id}</div></div>
+            <div><span className="con-sub">Field</span><div>{fmt(open.changes && open.changes.field)}</div></div>
+            <div><span className="con-sub">Old → new</span><div>{fee(open.changes && open.changes.old)} → {fee(open.changes && open.changes.new)}</div></div>
+            <div><span className="con-sub">Execution engine changed?</span><div>{open.affects_execution_engine ? 'YES — this changes what is charged' : 'No'}</div></div>
+          </div>
+          <p className="con-sub">
+            Consequence: {open.consequence && open.consequence.will_stage
+              ? `a separate rp_pricing_rules proposal will be staged for ${open.consequence.record_id}`
+              : (open.consequence && open.consequence.reason) || 'none'}
+          </p>
+          <p className="con-sub">Source: {open.source_url
+            ? <a href={open.source_url} target="_blank" rel="noreferrer">{open.source_url}</a>
+            : '—'}</p>
+          <p className="con-sub">Evidence: {open.evidence
+            ? <code>{JSON.stringify(open.evidence)}</code> : '—'}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Discovery (the scheduled search sweep)
+// ---------------------------------------------------------------------------
+function Discovery({ api, onError }) {
+  const [d, setD] = useState(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [loadedAt, setLoadedAt] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try { const res = await api('/discovery'); setD(res); setError(''); setLoadedAt(new Date()); }
+    catch (e) { setError(e.message); onError && onError(e.message); }
+  }, [api, onError]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function seed() {
+    setBusy(true); setNotice('');
+    try {
+      const res = await api('/discovery/seed', { method: 'POST' });
+      setNotice(`Seeded ${res.inserted} new search queries.`);
+      await load();
+    } catch (e) { setError(`Could not seed searches: ${e.message}`); onError && onError(e.message); }
+    setBusy(false);
+  }
+
+  const queries = (d && d.queries) || [];
+  const results = (d && d.results) || [];
+  const stale = !!error && !!d;
+
+  return (
+    <div className="an-section">
+      <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+        <h2 className="an-section-h" style={{ marginBottom: 0 }}>
+          Scheduled searches ({d ? d.total_queries : '…'})
+        </h2>
+        <button className="preview-checkout-btn" type="button" disabled={busy} onClick={seed}>
+          {busy ? 'Seeding…' : 'Seed searches'}
+        </button>
+      </div>
+      <p className="con-sub">
+        The discovery sweep runs on a 15-minute cron; each query runs on its own interval (6 hours
+        by default) and a repeatedly-failing query backs off exponentially. A market-discovery
+        result is an UNVERIFIED lead routed to the catalogue review queue — it is never a
+        catalogue row and never executable.
+      </p>
+      {notice && <p className="con-sub" style={{ color: '#166534' }}>{notice}</p>}
+
+      {/* Load/error states, kept separate from "no searches". */}
+      {!d && !error && <p className="con-sub">Loading discovery state…</p>}
+      {error && !d && (
+        <p className="con-sub" style={{ color: '#b91c1c' }}>
+          Could not load discovery state: {error}. This is a fetch failure — it does not mean there
+          are no scheduled searches. Use “Seed searches” or reopen the view to retry.
+        </p>
+      )}
+      {stale && (
+        <p className="con-sub" style={{ color: '#b45309' }}>
+          Showing the last successfully loaded state (from {loadedAt ? fmtDate(loadedAt) : 'earlier'})
+          — the latest refresh failed: {error}.
+        </p>
+      )}
+
+      <table className="sentinel-table">
+        <thead><tr>
+          <th>Query</th><th>Kind</th><th>Country</th><th>Every (min)</th>
+          <th>Last run</th><th>Status</th><th>Failures</th>
+        </tr></thead>
+        <tbody>
+          {queries.map((q) => (
+            <tr key={q.id}>
+              <td className="sentinel-responsibility">{q.query_text}</td>
+              <td>
+                {q.target_kind === 'market_discovery'
+                  ? <span className="sentinel-pill sentinel-pill-info" title="Leads only — never a catalogue row">lead</span>
+                  : q.target_kind}
+              </td>
+              <td>{fmt(q.country)}</td>
+              <td>{q.schedule_minutes}</td>
+              <td>{fmtDate(q.last_run_at)}</td>
+              <td>{fmt(q.last_status)}</td>
+              <td>{q.consecutive_failures}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {d && queries.length === 0 && !error && (
+        <p className="con-sub">No scheduled searches yet. Use “Seed searches” to add the defaults.</p>
+      )}
+
+      {/* Recent results: these are LEADS, not proposals. Labelled UNVERIFIED
+          so an operator never reads a search hit as a confirmed fee. */}
+      <h3 className="an-section-h" style={{ marginTop: 22 }}>
+        Recent results ({results.length})
+      </h3>
+      <p className="con-sub">
+        A result is a source Sentinel found, not a confirmed fee. Nothing here is a proposal or a
+        catalogue row until a human reviews the lead and it is verified against an official source.
+      </p>
+      <table className="sentinel-table">
+        <thead><tr>
+          <th>Status</th><th>Result</th><th>Observed</th><th>Source score</th>
+          <th>First seen</th><th>Seen</th>
+        </tr></thead>
+        <tbody>
+          {results.map((r) => (
+            <tr key={r.id}>
+              <td><span className="sentinel-pill sentinel-pill-info">UNVERIFIED lead</span></td>
+              <td className="sentinel-responsibility">
+                {r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.title || r.url}</a> : fmt(r.title)}
+              </td>
+              <td>{observedSummary(r.observed_value)}</td>
+              <td>{fmt(r.source_score)}</td>
+              <td>{fmtDate(r.first_seen_at)}</td>
+              <td>{r.seen_count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {d && results.length === 0 && !error && (
+        <p className="con-sub">No discovery results recorded yet.</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Transaction fees (moved here from the Analytics tab)
+// ---------------------------------------------------------------------------
+// The four-criteria view: provider gate (no verified Konduyt provider =
+// discarded, not shown), max amount, real fee bands per currency, and instant
+// recompute via "Update now" (just re-fetches; nothing is cached). It lived on
+// the Analytics tab; it is a Sentinel fee surface, so it belongs here. The
+// Analytics copy was removed rather than duplicated.
+function TransactionFees({ api, onError }) {
+  const [continent, setContinent] = useState('africa');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [loadedAt, setLoadedAt] = useState(null);
+  const [open, setOpen] = useState(null);              // the entry whose popup is open
+  const [history, setHistory] = useState(null);        // fetched only on demand
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [observed, setObserved] = useState(null);      // fetched only on demand
+  const [observedLoading, setObservedLoading] = useState(false);
+
+  const load = useCallback(async (c) => {
+    setLoading(true);
+    try {
+      const res = await api(`/transaction-fees?continent=${encodeURIComponent(c)}`);
+      setData(res); setError(''); setLoadedAt(new Date());
+    } catch (e) { setError(e.message); onError && onError(e.message); }
+    setLoading(false);
+  }, [api, onError]);
+
+  useEffect(() => { load(continent); }, [load, continent]);
+
+  async function loadHistory(ruleId, schema) {
+    setHistoryLoading(true);
+    try { setHistory((await api(`/intelligence/history?rule_id=${encodeURIComponent(ruleId)}&schema=${schema}`)).versions || []); }
+    catch (e) { setHistory([]); onError && onError(e.message); }
+    setHistoryLoading(false);
+  }
+
+  async function loadObserved(ruleId, schema) {
+    setObservedLoading(true);
+    try { setObserved(await api(`/intelligence/observed?rule_id=${encodeURIComponent(ruleId)}&schema=${schema}`)); }
+    catch (e) { setObserved({ status: 'no_observations' }); onError && onError(e.message); }
+    setObservedLoading(false);
+  }
+
+  const entries = (data && data.entries) || [];
+  const stale = !!error && !!data;
+
+  return (
+    <div className="an-section">
+      <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+        <h2 className="an-section-h" style={{ marginBottom: 0 }}>Sentinel — transaction fees</h2>
+        <button className="preview-checkout-btn" type="button" disabled={loading}
+          onClick={() => load(continent)}>
+          {loading ? 'Updating…' : '↻ Update now'}
+        </button>
+      </div>
+      <p className="con-sub" style={{ marginTop: 6, marginBottom: 12 }}>
+        Only shows methods with a real, verified Konduyt provider — everything else is
+        discarded rather than shown with a fee nobody could actually route through.
+        Konduyt continuously checks provider pricing; the dot next to a method shows how
+        current the number actually is — when we can&rsquo;t verify something, we say so rather
+        than showing it as if it were confirmed.
+      </p>
+      <div className="fee-bands-continent-tabs">
+        {['africa', 'asia', 'europe', 'north_america', 'south_america', 'oceania'].map((c) => (
+          <button key={c} type="button"
+            className={continent === c ? 'fee-bands-tab active' : 'fee-bands-tab'}
+            onClick={() => setContinent(c)}>
+            {c === 'north_america' ? 'North America' : c === 'south_america' ? 'South America'
+              : c[0].toUpperCase() + c.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {loading && <p className="con-sub" style={{ marginTop: 12 }}>Computing live from current data…</p>}
+      {error && !data && (
+        <p className="con-sub" style={{ color: '#b91c1c', marginTop: 12 }}>
+          Could not load transaction fees: {error}. This is a fetch failure — it does not mean there
+          are no fees to show.
+        </p>
+      )}
+      {stale && (
+        <p className="con-sub" style={{ color: '#b45309', marginTop: 12 }}>
+          Showing the last successfully computed table (from {loadedAt ? fmtDate(loadedAt) : 'earlier'})
+          — the latest refresh failed: {error}.
+        </p>
+      )}
+
+      {!loading && data && (
+        <>
+          <p className="con-sub" style={{ marginTop: 10 }}>
+            {data.count} payment method{data.count === 1 ? '' : 's'} with a verified provider.
+          </p>
+          <div className="fee-bands-table-wrap">
+            <table className="fee-bands-table">
+              <thead>
+                <tr>
+                  <th>Country</th>
+                  <th>Method</th>
+                  <th>Provider</th>
+                  <th>Max</th>
+                  {data.bands.map((b) => <th key={b}>{b}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e, i) => (
+                  <tr key={`${e.country}-${e.payment_method}-${e.provider}-${i}`}>
+                    <td>{e.country}</td>
+                    <td>
+                      {e.payment_method}{e.card_scope ? ` (${e.card_scope})` : ''}
+                      {e.category && e.category !== e.payment_method && (
+                        <span className="fee-bands-category"> · {e.category}</span>
+                      )}
+                      {e.intelligence && (
+                        <button
+                          type="button"
+                          className={`fee-intel-dot ${e.intelligence.state.toLowerCase()}`}
+                          title={`${e.intelligence.state} · ${e.intelligence.confidence} confidence`}
+                          aria-label="Fee freshness and source"
+                          onClick={() => { setOpen(e); setHistory(null); setObserved(null); }}
+                        />
+                      )}
+                    </td>
+                    <td>{e.provider}</td>
+                    <td>{e.max_amount != null ? `${e.max_amount.toLocaleString()} ${e.currency}` : '—'}</td>
+                    {e.bands.map((b, j) => (
+                      <td key={j} title={b.note || ''}>
+                        {b.known ? `${b.fee} ${e.currency}` : '—'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {!loading && data && data.count === 0 && !error && (
+        <p className="con-sub" style={{ marginTop: 12 }}>
+          No payment methods in this continent currently have a verified Konduyt provider.
+        </p>
+      )}
+
+      {open && (() => {
+        const intel = open.intelligence;
+        const det = intel.detail;
+        const STATE_COPY = {
+          VERIFIED: 'Verified',
+          RECENT: 'Verified',
+          AGING: 'Verified, but ageing',
+          UNVERIFIED: 'Not yet confirmed against an official source',
+          STALE: 'Pricing may have changed',
+          CHANGED: 'Source changed — pending re-check',
+          UNKNOWN: 'We could not verify a current public fee',
+        };
+        const NOTE = {
+          STALE: 'This is old enough that Konduyt no longer uses it to rank routes by cost.',
+          CHANGED: 'Konduyt detected the source page changed and is no longer treating this number as reliable until it\u2019s re-checked.',
+          UNKNOWN: 'No usable number exists yet — never estimated, never assumed.',
+          UNVERIFIED: 'Found, but not yet confirmed against the provider\u2019s own source.',
+        }[intel.state];
+        let sourceHost = det.source;
+        try { sourceHost = new URL(det.source).hostname.replace('www.', ''); } catch (e) {}
+        return (
+          <div className="fee-intel-overlay" onClick={() => setOpen(null)}>
+            <div className="fee-intel-popup" onClick={(ev) => ev.stopPropagation()}>
+              <button type="button" className="fee-intel-close"
+                onClick={() => setOpen(null)} aria-label="Close">✕</button>
+              <div className="fee-intel-state">
+                <span className={`fee-intel-state-dot ${intel.state.toLowerCase()}`} />
+                {STATE_COPY[intel.state] || intel.state}
+              </div>
+              <div className="fee-intel-method">
+                {open.payment_method} · {open.country}
+              </div>
+              <div className="fee-intel-row">
+                <span className="fee-intel-row-label">Confidence</span>
+                <span className="fee-intel-row-value">{intel.confidence}</span>
+              </div>
+              {det.source && (
+                <div className="fee-intel-row">
+                  <span className="fee-intel-row-label">Source</span>
+                  <span className="fee-intel-row-value">
+                    <a href={det.source} target="_blank" rel="noreferrer">{sourceHost}</a>
+                  </span>
+                </div>
+              )}
+              {det.last_checked && (
+                <div className="fee-intel-row">
+                  <span className="fee-intel-row-label">Last checked</span>
+                  <span className="fee-intel-row-value">{det.last_checked}</span>
+                </div>
+              )}
+              {det.last_source_change && (
+                <div className="fee-intel-row">
+                  <span className="fee-intel-row-label">Last source change</span>
+                  <span className="fee-intel-row-value">{det.last_source_change}</span>
+                </div>
+              )}
+              {det.next_review && (
+                <div className="fee-intel-row">
+                  <span className="fee-intel-row-label">Next review</span>
+                  <span className="fee-intel-row-value">{det.next_review}</span>
+                </div>
+              )}
+              {NOTE && <div className="fee-intel-note">{NOTE}</div>}
+
+              {/* Both below: real data, fetched only on demand -- never on
+                  popup open -- and rendered inline, not as a second modal. */}
+              {intel.rule_id && (
+                <div className="fee-intel-expand">
+                  {!history && !historyLoading && (
+                    <button type="button" className="fee-intel-expand-btn"
+                      onClick={() => loadHistory(intel.rule_id, intel.schema)}>
+                      View history
+                    </button>
+                  )}
+                  {historyLoading && <p className="fee-intel-expand-loading">Loading history…</p>}
+                  {history && (
+                    <div className="fee-intel-history">
+                      {history.length === 0 ? (
+                        <p className="fee-intel-expand-empty">No version history recorded yet.</p>
+                      ) : history.map((v, i) => (
+                        <div key={i} className={`fee-intel-history-row ${v.is_current ? 'current' : ''}`}>
+                          <span>
+                            {v.percentage_fee != null ? `${v.percentage_fee}%` : (v.fixed_fee != null ? v.fixed_fee : '—')}
+                          </span>
+                          <span className="fee-intel-history-date">
+                            {v.is_current ? 'Current' : (v.superseded_at || '').slice(0, 10)}
+                            {v.change_reason === 'sentinel_invalidated' && ' · source change detected'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {intel.rule_id && (
+                <div className="fee-intel-expand">
+                  {!observed && !observedLoading && (
+                    <button type="button" className="fee-intel-expand-btn"
+                      onClick={() => loadObserved(intel.rule_id, intel.schema)}>
+                      Compare to real transactions
+                    </button>
+                  )}
+                  {observedLoading && <p className="fee-intel-expand-loading">Checking…</p>}
+                  {observed && (
+                    <p className="fee-intel-expand-empty">
+                      {observed.status === 'no_observations'
+                        ? 'No real Konduyt transactions for this provider yet to compare against.'
+                        : observed.status === 'match'
+                          ? `Matches what Konduyt's own transactions actually show (${observed.sample_size} recent).`
+                          : `Real transactions show ${observed.difference_pp}pp different from the official rate (${observed.sample_size} recent) — worth a re-check.`}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

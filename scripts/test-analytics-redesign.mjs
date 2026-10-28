@@ -71,7 +71,15 @@ check('page.js renders AnalyticsTab under the admin analytics tab',
 
 // The payment surfaces that share the tab are preserved.
 check('the fee monitor is preserved', /Fee monitoring/.test(page));
-check('the Sentinel transaction-fee view is preserved', /Sentinel — transaction fees/.test(page));
+// The Sentinel transaction-fee view MOVED to the Sentinel tab: it is a fee
+// surface, so it lives with the rest of Sentinel. It must not remain on
+// Analytics (no duplicate section) and must be present in SentinelTab.
+const sentinelTabSrc = read('app/dashboard/SentinelTab.js');
+check('the Sentinel transaction-fee view is gone from Analytics',
+  !/Sentinel — transaction fees/.test(page));
+check('the Sentinel transaction-fee view lives in the Sentinel tab',
+  /Sentinel — transaction fees/.test(sentinelTabSrc)
+  && /'transaction-fees',\s*'Transaction fees'/.test(sentinelTabSrc));
 check('the Growth agents surface is preserved', /<GrowthTab/.test(page));
 
 // No tax surface is reintroduced anywhere in the dashboard.
