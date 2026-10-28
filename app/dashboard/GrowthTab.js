@@ -22,6 +22,7 @@ const VIEWS = [
   ['overview', 'Overview'],
   ['prospects', 'Prospects'],
   ['contacts', 'Contacts'],
+  ['conversations', 'Conversations'],
   ['agents', 'Agents'],
   ['approvals', 'Approvals'],
   ['diagnostics', 'Diagnostics'],
@@ -138,6 +139,7 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
       {view === 'overview' && <Overview api={api} overview={overview} onRefresh={loadOverview} />}
       {view === 'prospects' && <Prospects api={api} onError={onError} />}
       {view === 'contacts' && <Contacts api={api} onError={onError} />}
+      {view === 'conversations' && <Conversations api={api} onError={onError} />}
       {view === 'agents' && <Agents api={api} onError={onError} />}
       {view === 'approvals' && <Approvals api={api} onError={onError} onChanged={loadOverview} />}
       {view === 'diagnostics' && <Diagnostics api={api} onError={onError} />}
@@ -1075,6 +1077,73 @@ function AddModal({ api, onClose, onError }) {
           <button className="preview-checkout-btn" type="button" disabled={!form.display_name} onClick={submit}>Add</button>
           <button className="preview-checkout-btn" type="button" onClick={onClose}>Cancel</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Conversations -- what was actually said, across every prospect
+// ---------------------------------------------------------------------------
+function Conversations({ api, onError }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await api('/conversations?limit=200');
+      setRows(d.conversations || []);
+    } catch (e) { onError && onError(e.message); }
+    setLoading(false);
+  }, [api, onError]);
+  useEffect(() => { load(); }, [load]);
+
+  const shown = filter
+    ? rows.filter((r) => [r.kind, r.channel, r.display_name, r.company]
+        .some((v) => String(v || '').toLowerCase().includes(filter.toLowerCase())))
+    : rows;
+
+  return (
+    <div>
+      <div className="an-section">
+        <h2 className="an-section-h">Conversations</h2>
+        <p className="con-sub">
+          Every two-way exchange, newest first: what was sent, what came back, and who it
+          was with. These are the real interaction rows — nothing here is estimated.
+        </p>
+        <div className="growth-toolbar" style={{ marginBottom: 8 }}>
+          <input className="growth-input" placeholder="Filter by kind, channel, name…"
+            value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <button className="preview-checkout-btn" type="button" onClick={load} disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+        {shown.length === 0 ? (
+          <p className="con-sub">No conversations recorded yet.</p>
+        ) : (
+          <div className="growth-table-wrap">
+            <table className="growth-table">
+              <thead>
+                <tr><th>When</th><th>Kind</th><th>Channel</th><th>Prospect</th>
+                  <th>Status</th><th>Detail</th></tr>
+              </thead>
+              <tbody>
+                {shown.map((r) => (
+                  <tr key={r.id}>
+                    <td>{fmtDate(r.occurred_at)}</td>
+                    <td><span className="growth-activity-kind">{r.kind}</span></td>
+                    <td>{fmt(r.channel)}</td>
+                    <td>{fmt(r.display_name)}{r.company ? ` · ${r.company}` : ''}</td>
+                    <td>{fmt(r.prospect_status)}</td>
+                    <td className="growth-activity-body">{fmt(r.body || r.detail || r.summary)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

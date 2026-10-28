@@ -94,6 +94,14 @@ check('the archive copy states history is preserved, not deleted',
 check('the reset copy states the transport/templates/switch are kept',
   /transport, templates and engine switch/.test(growth));
 
+// Conversations: the two-way exchange surface. Every prospect has a timeline,
+// but there was no single place to read what was actually said across all of
+// them. The view must be registered, rendered, and read the backend endpoint.
+check('Conversations view is registered', /'conversations', 'Conversations'/.test(growth));
+check('Conversations is rendered for its tab',
+  /view === 'conversations' && <Conversations/.test(growth));
+check('Conversations reads GET /conversations', /api\('\/conversations\?limit=/.test(growth));
+
 console.log('---------------------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
 process.exit(failures ? 1 : 0);
