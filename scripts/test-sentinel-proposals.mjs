@@ -82,6 +82,48 @@ check('publishing is a separate action only offered after approval',
 check('a Discovery view is registered', /'discovery',\s*'Discovery'/.test(tab));
 check('the discovery view labels market results UNVERIFIED',
   /UNVERIFIED/.test(tab));
+// ...and shows the results, so a lead is visible as a lead (not a proposal).
+check('the discovery view renders recent results',
+  /Recent results/.test(tab) && /UNVERIFIED lead/.test(tab));
+
+// --- States: a failed request must never read as "nothing pending". ---
+check('the proposals load error is shown, not swallowed',
+  /Could not load proposals/.test(tab));
+check('a failed load is explicitly distinguished from "no proposals"',
+  /it does not mean there are\s*\n?\s*no pending proposals/.test(tab.replace(/\s+/g, ' ')));
+check('a stale (last-good) list is labelled as possibly out of date',
+  /may be out of date/.test(tab) && /latest refresh failed/.test(tab));
+check('a loading state is shown before data arrives',
+  /Loading proposals…/.test(tab));
+check('the discovery view also separates error from empty',
+  /Could not load discovery state/.test(tab));
+
+// --- Publish is gated on approval and cannot double-apply. ---
+check('publish is only offered for an APPROVED proposal',
+  /p\.status === 'APPROVED' &&[\s\S]{0,220}Publish to catalogue/.test(tab));
+check('a duplicate submit is blocked by an in-flight guard',
+  /if \(inflight\.current\) return;/.test(tab));
+check('a re-apply is reported honestly as already published',
+  /already_applied/.test(tab) && /no change made/.test(tab));
+
+// --- Failures show the server's real outcome. ---
+check('approve/reject/publish failures surface the server message',
+  /Could not publish/.test(tab) && /Could not \$\{decision === 'APPROVED'/.test(tab));
+check('the API error extractor unwraps an object detail (no [object Object])',
+  /function apiErrorMessage\(/.test(tab) && /typeof d === 'object'/.test(tab));
+
+// --- The four states are distinguished. ---
+for (const label of ['PENDING', 'APPROVED', 'APPLIED', 'REJECTED']) {
+  check(`the legend names the ${label} state`, tab.includes(`>${label}</span>`));
+}
+check('APPLIED has its own pill, distinct from APPROVED',
+  /sentinel-pill-applied/.test(tab) && /propStatusClass\('APPLIED'\)/.test(tab));
+
+// --- No implication that a fee update also changes customer_fees/rules. ---
+check('the surface states customer_fees is never changed',
+  /never changes <code>customer_fees<\/code>/.test(tab));
+check('the surface states rp_pricing_rules is never changed',
+  /never changes <code>rp_pricing_rules<\/code>/.test(tab));
 
 console.log('-----------------------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
