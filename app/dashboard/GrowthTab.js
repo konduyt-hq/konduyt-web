@@ -20,6 +20,7 @@ const VIEWS = [
   ['strategy', 'Strategy health'],
   ['experiment', 'Experiment'],
   ['overview', 'Overview'],
+  ['sources', 'Sources'],
   ['prospects', 'Prospects'],
   ['contacts', 'Contacts'],
   ['conversations', 'Conversations'],
@@ -137,6 +138,7 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
       {view === 'strategy' && <StrategyHealth api={api} onError={onError} />}
       {view === 'experiment' && <Experiment api={api} onError={onError} />}
       {view === 'overview' && <Overview api={api} overview={overview} onRefresh={loadOverview} />}
+      {view === 'sources' && <Sources api={api} onError={onError} />}
       {view === 'prospects' && <Prospects api={api} onError={onError} />}
       {view === 'contacts' && <Contacts api={api} onError={onError} />}
       {view === 'conversations' && <Conversations api={api} onError={onError} />}
@@ -1525,6 +1527,199 @@ const HEALTH_CLASS = {
   PAUSED: 'growth-pill-unknown',
 };
 
+const RECOMMENDATION_CLASS = {
+  KEEP: 'growth-pill-high',
+  WATCH: 'growth-pill-med',
+  PAUSE: 'growth-pill-low',
+  RETIRE: 'growth-pill-unknown',
+  RETIRED: 'growth-pill-unknown',
+};
+
+// The Sources surface -- a primary tab, not a settings subsection. The
+// requirement puts discovery first: before a prospect can be qualified, the
+// engine has to be pointed at sources that actually produce contactable
+// businesses and developers. This view answers the two questions that matter:
+// which sources are configured and running, and which ones really yield.
+function Sources({ api, onError }) {
+  const [sources, setSources] = useState([]);
+  const [keywords, setKeywords] = useState([]);
+  const [audit, setAudit] = useState(null);
+  const [busy, setBusy] = useState('');
+  const [notice, setNotice] = useState('');
+  const [reason, setReason] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const [src, kw, aud] = await Promise.all([
+        api('/sources'), api('/keywords'), api('/sources/audit'),
+      ]);
+      setSources(src.sources || []);
+      setKeywords(kw.keywords || []);
+      setAudit(aud);
+    } catch (e) { onError && onError(e.message); }
+  }, [api, onError]);
+  useEffect(() => { load(); }, [load]);
+
+  async function toggleSource(s, field) {
+    try {
+      await api(`/sources/${s.id}`, { method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: !s[field] }) });
+      load();
+    } catch (e) { onError && onError(e.message); }
+  }
+
+  async function toggleKeyword(k) {
+    try {
+      await api(`/keywords/${k.id}`, { method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !k.enabled }) });
+      load();
+    } catch (e) { onError && onError(e.message); }
+  }
+
+  // Retiring and restoring are real, recorded decisions, not a toggle: the
+  // reason is stored with an evidence snapshot, so a source is never silently
+  // deleted and the decision can be explained later.
+  async function retire(s) {
+    if (!reason.trim()) { setNotice('Enter a reason before retiring a source.'); return; }
+    setBusy(s.source); setNotice('');
+    try {
+      await api(`/sources/${s.source}/retire`, { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim() }) });
+      setReason('');
+      await load();
+    } catch (e) { onError && onError(e.message); }
+    setBusy('');
+  }
+
+  async function restore(s) {
+    setBusy(s.source); setNotice('');
+    try {
+      await api(`/sources/${s.source}/restore`, { method: 'POST' });
+      await load();
+    } catch (e) { onError && onError(e.message); }
+    setBusy('');
+  }
+
+  const rows = (audit && audit.sources) || [];
+  const summary = (audit && audit.summary) || {};
+
+  return (
+    <div>
+      <div className="an-section">
+        <h2 className="an-section-h">Sources ({sources.length})</h2>
+        <p className="con-sub">
+          Discovery sources the engine searches. A source is a backend connector plus the
+          keywords that run on it; a package registry does not get conversational queries,
+          and a broad business search is not limited to the terms that name a source. Every
+          yield number below is a count of real prospect rows, not an estimate.
+        </p>
+        <div className="growth-table-wrap">
+          <table className="growth-table">
+            <thead><tr>
+              <th>Source</th><th>Category</th><th>Discovery</th><th>Outreach</th>
+              <th>Automation</th><th>Auth</th>
+            </tr></thead>
+            <tbody>
+              {sources.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name}<span className="con-sub"> · {s.id}</span></td>
+                  <td>{s.category}</td>
+                  <td><input type="checkbox" checked={s.discovery}
+                    onChange={() => toggleSource(s, 'discovery')} /></td>
+                  <td><input type="checkbox" checked={s.outreach}
+                    onChange={() => toggleSource(s, 'outreach')} /></td>
+                  <td><input type="checkbox" checked={s.automation_allowed}
+                    onChange={() => toggleSource(s, 'automation_allowed')} /></td>
+                  <td>{s.requires_auth ? (s.auth_env_var || 'required') : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="an-section">
+        <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+          <div>
+            <h2 className="an-section-h" style={{ marginBottom: 0 }}>Source audit</h2>
+            <p className="con-sub">
+              Each source judged on real outcomes: how many of its prospects qualify, are
+              contactable, and convert — with a KEEP / WATCH / PAUSE / RETIRE recommendation.
+              A retired source keeps its row and its history; it is switched off, not deleted.
+            </p>
+          </div>
+        </div>
+        {Object.keys(summary).length > 0 && (
+          <p className="con-sub">
+            {Object.entries(summary).map(([k, v]) => `${v} ${k}`).join(' · ')}
+          </p>
+        )}
+        <div className="growth-setting-row">
+          <input type="text" placeholder="Reason for retiring a source"
+            value={reason} onChange={(e) => setReason(e.target.value)}
+            style={{ minWidth: 280 }} />
+        </div>
+        {notice && <p className="con-sub">{notice}</p>}
+        {rows.length === 0
+          ? <p className="con-sub">No source has produced a signal yet.</p>
+          : (
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr>
+                  <th>Source</th><th>Recommendation</th><th>Discovered</th><th>Reviewed</th>
+                  <th>Qualified</th><th>Contactable</th><th>Signups</th>
+                  <th>OK / Fail</th><th>Reason</th><th />
+                </tr></thead>
+                <tbody>
+                  {rows.map((s) => (
+                    <tr key={s.source}>
+                      <td>{s.name || s.source}</td>
+                      <td><span className={`growth-pill ${RECOMMENDATION_CLASS[s.recommendation] || 'growth-pill-unknown'}`}>
+                        {s.recommendation}</span></td>
+                      <td>{s.metrics.discovered ?? 0}</td>
+                      <td>{s.metrics.reviewed ?? 0}</td>
+                      <td>{s.metrics.qualified ?? 0}</td>
+                      <td>{s.metrics.contactable ?? 0}</td>
+                      <td>{s.metrics.signups ?? 0}</td>
+                      <td>{s.metrics.success_count ?? 0} / {s.metrics.failure_count ?? 0}</td>
+                      <td className="growth-activity-body">{s.reason || '—'}</td>
+                      <td>
+                        {s.retired
+                          ? <button className="preview-checkout-btn" type="button"
+                              disabled={busy === s.source} onClick={() => restore(s)}>
+                              {busy === s.source ? '…' : 'Restore'}</button>
+                          : <button className="preview-checkout-btn" type="button"
+                              disabled={busy === s.source} onClick={() => retire(s)}>
+                              {busy === s.source ? '…' : 'Retire'}</button>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Keywords ({keywords.length})</h2>
+        <p className="con-sub">
+          What the Hunter searches for. Disable a keyword to stop using it without deleting it.
+        </p>
+        <div className="growth-keywords">
+          {keywords.map((k) => (
+            <button key={k.id} type="button"
+              className={`growth-keyword ${k.enabled ? 'on' : 'off'}`}
+              onClick={() => toggleKeyword(k)}>{k.keyword}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StrategyHealth({ api, onError }) {
   const [rows, setRows] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -2060,8 +2255,6 @@ function Diagnostics({ api, onError }) {
 
 function Settings({ api, onError, onEngine }) {
   const [settings, setSettings] = useState(null);
-  const [keywords, setKeywords] = useState([]);
-  const [sources, setSources] = useState([]);
   const [saved, setSaved] = useState('');
   const [emailStatus, setEmailStatus] = useState(null);
   const [channels, setChannels] = useState([]);
@@ -2076,11 +2269,10 @@ function Settings({ api, onError, onEngine }) {
 
   const load = useCallback(async () => {
     try {
-      const [s, k, src, es, ch] = await Promise.all([
-        api('/settings'), api('/keywords'), api('/sources'), api('/email/status'),
-        api('/channels'),
+      const [s, es, ch] = await Promise.all([
+        api('/settings'), api('/email/status'), api('/channels'),
       ]);
-      setSettings(s); setKeywords(k.keywords || []); setSources(src.sources || []);
+      setSettings(s);
       setEmailStatus(es); setChannels(ch.channels || []);
       setChannelsMeta({ oauth_configured: !!ch.oauth_configured });
     } catch (e) { onError && onError(e.message); }
@@ -2129,14 +2321,6 @@ function Settings({ api, onError, onEngine }) {
       await load();
     } catch (e) { onError && onError(e.message); }
     finally { setSendingBusy(false); }
-  }
-  async function toggleKeyword(k) {
-    try { await api(`/keywords/${k.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !k.enabled }) }); load(); }
-    catch (e) { onError && onError(e.message); }
-  }
-  async function toggleSource(s, field) {
-    try { await api(`/sources/${s.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [field]: !s[field] }) }); load(); }
-    catch (e) { onError && onError(e.message); }
   }
   async function connectEmail() {
     // Real Gmail OAuth: ask the API for the consent URL, then navigate to it.
@@ -2443,35 +2627,12 @@ function Settings({ api, onError, onEngine }) {
       </div>
 
       <div className="an-section">
-        <h2 className="an-section-h">Sources ({sources.length})</h2>
-        <div className="growth-table-wrap">
-          <table className="growth-table">
-            <thead><tr><th>Source</th><th>Category</th><th>Discovery</th><th>Outreach</th><th>Automation</th><th>Auth</th></tr></thead>
-            <tbody>
-              {sources.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.name}</td><td>{s.category}</td>
-                  <td><input type="checkbox" checked={s.discovery} onChange={() => toggleSource(s, 'discovery')} /></td>
-                  <td><input type="checkbox" checked={s.outreach} onChange={() => toggleSource(s, 'outreach')} /></td>
-                  <td><input type="checkbox" checked={s.automation_allowed} onChange={() => toggleSource(s, 'automation_allowed')} /></td>
-                  <td>{s.requires_auth ? (s.auth_env_var || 'required') : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="an-section">
-        <h2 className="an-section-h">Keywords ({keywords.length})</h2>
-        <p className="con-sub">What the Hunter searches for. Disable a keyword to stop using it without deleting it.</p>
-        <div className="growth-keywords">
-          {keywords.map((k) => (
-            <button key={k.id} type="button"
-              className={`growth-keyword ${k.enabled ? 'on' : 'off'}`}
-              onClick={() => toggleKeyword(k)}>{k.keyword}</button>
-          ))}
-        </div>
+        <h2 className="an-section-h">Sources and keywords</h2>
+        <p className="con-sub">
+          Source configuration and keyword control now live on the <strong>Sources</strong> tab,
+          alongside the per-source audit, so discovery is configured in one place rather than
+          buried in Settings.
+        </p>
       </div>
 
       <div className="an-section">
