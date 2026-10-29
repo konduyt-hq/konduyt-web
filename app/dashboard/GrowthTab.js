@@ -2407,6 +2407,7 @@ function Settings({ api, onError, onEngine }) {
   const schedules = settings.schedules || {};
   const enrichment = settings.enrichment || {};
   const email = (emailStatus && emailStatus.email) || settings.email || {};
+  const approval = settings.approval || {};
   const engine = settings.engine || { enabled: true, paused: false };
 
   return (
@@ -2576,6 +2577,16 @@ function Settings({ api, onError, onEngine }) {
             onChange={(e) => setSending(e.target.checked)} />
           <span className="con-sub">
             {emailStatus && emailStatus.can_send ? 'Ready to send.' : 'Will queue drafts until connected + enabled.'}
+          </span>
+        </div>
+        <div className="growth-setting-row">
+          <label>human review window (minutes)</label>
+          <input className="growth-input" type="number" min="0" defaultValue={approval.review_window_minutes ?? 30}
+            onBlur={(e) => save('approval', { ...approval, review_window_minutes: parseInt(e.target.value, 10) || 0 })} />
+          <span className="con-sub">
+            A draft that passes every gate is still held this long before the engine may send it,
+            so you have a real chance to review or pull it back. Your own approve/reject is never
+            delayed by this. 0 sends as soon as a draft is eligible.
           </span>
         </div>
         <div className="growth-setting-row">
