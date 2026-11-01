@@ -84,6 +84,60 @@ check('Sources shows attribution ("where prospects come from")',
   /Where prospects come from/.test(growth)
   && /metrics\/attribution/.test(growth));
 
+// --- The Sources load cannot be blanked by one failing read. ----------------
+// The bug: a Promise.all over four reads meant the audit or attribution
+// failing took the keyword list down with it, so the surface looked empty
+// while discovery was actually running. Each read must settle on its own,
+// and a real failure must be shown rather than rendered as "no keywords".
+const sourcesBlock = growth.match(/function Sources\(\{ api[\s\S]*?\n\}/);
+const sourcesBody = sourcesBlock ? sourcesBlock[0] : '';
+check('the Sources loader settles each read independently',
+  /Promise\.allSettled/.test(sourcesBody));
+check('the Sources loader does not fail the whole panel on one read',
+  !/Promise\.all\(/.test(sourcesBody));
+check('a failed keyword read is surfaced, not rendered as empty',
+  /loadError/.test(sourcesBody) && /Could not load keywords/.test(sourcesBody));
+check('an empty keyword list is distinguished from a failed one',
+  /keywords\.length === 0/.test(sourcesBody) && /No keywords yet/.test(sourcesBody));
+check('the keyword list is read from GET /keywords',
+  /api\('\/keywords'\)/.test(sourcesBody));
+
+// Execute the real loader with stubbed reads. The static checks above prove
+// the shape; this proves the behaviour: the audit and attribution failing must
+// not take the keyword list down with them, and a genuine keyword failure must
+// surface as an error rather than as "no keywords".
+const loadBody = sourcesBody.match(/const load = useCallback\(async \(\) => \{([\s\S]*?)\}, \[api\]\);/);
+if (loadBody) {
+  const runLoad = new Function('api', 'setSources', 'setKeywords', 'setAudit',
+    'setAttribution', 'setLoadError', 'return (async () => {' + loadBody[1] + '})();');
+  const runWith = async (api) => {
+    const state = {};
+    await runLoad(api, (v) => { state.sources = v; }, (v) => { state.keywords = v; },
+      (v) => { state.audit = v; }, (v) => { state.attribution = v; },
+      (v) => { state.loadError = v; });
+    return state;
+  };
+
+  const supplementaryFail = await runWith(async (p) => {
+    if (p === '/sources') return { sources: [{ id: 's1' }] };
+    if (p === '/keywords') return { keywords: [{ id: 'k1', keyword: 'payments' }] };
+    throw new Error(`boom ${p}`);
+  });
+  check('the keyword list survives a failing audit and attribution read',
+    supplementaryFail.keywords?.length === 1 && supplementaryFail.loadError === '',
+    JSON.stringify(supplementaryFail));
+
+  const keywordFail = await runWith(async (p) => {
+    if (p === '/keywords') throw new Error('keywords 500');
+    return { sources: [{ id: 's1' }] };
+  });
+  check('a failing keyword read is reported, not swallowed',
+    keywordFail.loadError === 'keywords 500' && (keywordFail.keywords || []).length === 0,
+    JSON.stringify(keywordFail));
+} else {
+  check('the Sources loader is extractable for a behavioural test', false);
+}
+
 // --- page.js makes Growth primary and the snapshot secondary. ---------------
 check('page.js renders GrowthTab under the admin analytics tab',
   /tab === 'analytics' && isAdmin[\s\S]{0,1200}<GrowthTab/.test(page));

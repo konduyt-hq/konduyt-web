@@ -102,6 +102,17 @@ check('Conversations is rendered for its tab',
   /view === 'conversations' && <Conversations/.test(growth));
 check('Conversations reads GET /conversations', /api\('\/conversations\?limit=/.test(growth));
 
+// Keywords are backend-owned. The UI displays and toggles the terms the agents
+// actually search with; it must not carry its own copy, or the two would drift
+// and the operator would be editing a list nothing reads.
+check('the keyword list comes from the backend, not a UI constant',
+  /api\('\/keywords'\)/.test(growth)
+  && !/const\s+(DEFAULT_|FALLBACK_)?KEYWORDS\s*=/.test(growth));
+check('a keyword toggle PATCHes the backend rather than editing local state',
+  /api\(`\/keywords\/\$\{k\.id\}`, \{ method: 'PATCH'/.test(growth));
+check('the agent scope shown on a keyword comes from the row, not the UI',
+  /k\.agent/.test(growth));
+
 console.log('---------------------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
 process.exit(failures ? 1 : 0);

@@ -1786,19 +1786,25 @@ function Sources({ api, onError }) {
   const [notice, setNotice] = useState('');
   const [reason, setReason] = useState('');
   const [newKeyword, setNewKeyword] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
-    try {
-      const [src, kw, aud, att] = await Promise.all([
-        api('/sources'), api('/keywords'), api('/sources/audit'),
-        api('/metrics/attribution?dimension=first_touch_source').catch(() => []),
-      ]);
-      setSources(src.sources || []);
-      setKeywords(kw.keywords || []);
-      setAudit(aud);
-      setAttribution(Array.isArray(att) ? att : []);
-    } catch (e) { onError && onError(e.message); }
-  }, [api, onError]);
+    // Each read settles on its own. A single failing call must not blank the
+    // whole panel: the keyword list is the only place these terms are visible,
+    // so losing it to an unrelated audit failure reads as "empty" while
+    // discovery is running. The audit and attribution are supplementary and
+    // degrade to empty; the two core reads are what gate the surface.
+    const [src, kw, aud, att] = await Promise.allSettled([
+      api('/sources'), api('/keywords'), api('/sources/audit'),
+      api('/metrics/attribution?dimension=first_touch_source'),
+    ]);
+    if (src.status === 'fulfilled') setSources(src.value.sources || []);
+    if (kw.status === 'fulfilled') setKeywords(kw.value.keywords || []);
+    if (aud.status === 'fulfilled') setAudit(aud.value);
+    if (att.status === 'fulfilled') setAttribution(Array.isArray(att.value) ? att.value : []);
+    const failed = [src, kw].find((r) => r.status === 'rejected');
+    setLoadError(failed ? (failed.reason?.message || 'Could not load sources') : '');
+  }, [api]);
   useEffect(() => { load(); }, [load]);
 
   async function toggleSource(s, field) {
@@ -2000,6 +2006,11 @@ function Sources({ api, onError }) {
           What the Hunter searches for. Disable a keyword to stop using it without deleting it,
           or add a new term to widen discovery.
         </p>
+        {loadError && (
+          <p className="con-sub" style={{ color: '#b91c1c' }}>
+            Could not load keywords: {loadError}. Discovery may still be running — retry.
+          </p>
+        )}
         <div className="growth-toolbar">
           <input className="growth-input" placeholder="Add a keyword…"
             value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)}
@@ -2009,13 +2020,19 @@ function Sources({ api, onError }) {
         <div className="growth-keywords">
           {keywords.map((k) => (
             <span key={k.id} className={`growth-keyword ${k.enabled ? 'on' : 'off'}`}>
-              <button type="button" className="growth-keyword-t" title="Toggle"
+              <button type="button" className="growth-keyword-t"
+                title={k.agent && k.agent !== 'shared' ? `Used by ${k.agent}` : 'Shared by all agents'}
                 onClick={() => toggleKeyword(k)}>{k.keyword}</button>
               <button type="button" className="growth-keyword-x" title="Delete"
                 onClick={() => removeKeyword(k)}>×</button>
             </span>
           ))}
         </div>
+        {!loadError && keywords.length === 0 && (
+          <p className="con-sub">
+            No keywords yet. Add a term above to start discovery.
+          </p>
+        )}
       </div>
     </div>
   );
