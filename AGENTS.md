@@ -93,10 +93,10 @@ for the `carrier` block.
   country actually returns representative data. Filter on `.rail-example` and
   assert each caption over its own group.
 
-## The Growth workspace has four primary tabs; everything else is secondary
+## The Growth workspace is exactly four tabs; there is no secondary surface
 
 The product asked for the Growth surface to be organised around exactly four
-primary tabs, in this order:
+tabs, in this order, and for everything else to be **discarded**:
 
 1. **Sources** — manage discovery sources and see where prospects come from
    (`GET /growth/sources`, `/growth/keywords`, `/growth/sources/audit`, plus
@@ -107,14 +107,27 @@ primary tabs, in this order:
    *autonomous* send path only; a human approve/edit/reject is never delayed by
    it, so the buttons stay live.
 4. **Conversations** — sent messages, delivery, replies, follow-ups, objections,
-   opt-outs and conversion progress.
+   opt-outs and conversion progress. This is also where an operator sees whether
+   the connected mailbox can be read and can trigger a manual inbox poll
+   (`POST /growth/inbox/poll`) — the Diagnostics surface that used to hold the
+   poll action is gone.
 
-`app/dashboard/GrowthTab.js` declares `PRIMARY_VIEWS` (those four) and
-`SECONDARY_VIEWS` (Command center, Cohort, Strategy health, Experiment,
-Overview, Contacts, Agents, Diagnostics, Settings). Only `PRIMARY_VIEWS` render
-in the tab row; the secondary views are reached from the "More" menu
-(`con-tab-more-menu`). **Never add a fifth entry to `PRIMARY_VIEWS`, and never
-delete a secondary surface — demote it.** The default view is `sources`.
+`app/dashboard/GrowthTab.js` declares `PRIMARY_VIEWS` (those four) and nothing
+else. The nine surfaces that once sat behind a "More" menu (Command center,
+Cohort, Strategy health, Experiment, Overview, Contacts, Agents, Diagnostics,
+Settings) have been **removed**, not demoted: their components, their render
+branches, the `SECONDARY_VIEWS`/`VIEWS` lists and the `con-tab-more-*` styles are
+all gone. **Never add a fifth entry to `PRIMARY_VIEWS`, and never reintroduce a
+secondary surface or a More menu — not as a menu item and not via a `?growth=`
+deep link.** The default view is `sources`, and the `?growth=` deep link accepts
+only a name in `PRIMARY_VIEWS` (anything else falls back to `sources`).
+
+The Gmail connection that lived in the removed Settings page now lives in the
+Growth **header** as a compact control (`GmailControl`): connect/reconnect via
+Google OAuth, disconnect, the read-access state, and the "sending enabled"
+toggle (still `POST /growth/email/sending`, never a whole-object PUT). The OAuth
+callback returns to `?tab=analytics&gmail=connected|error`, and the control
+reads that `gmail` parameter to show the outcome.
 
 `page.js` renders `GrowthTab` as the primary content of the admin Analytics tab;
 `AnalyticsTab` (the one-read `GET /growth/analytics` snapshot) is secondary,
@@ -157,27 +170,30 @@ browser/JS global, which is the check that was missing.
 ## The Growth tab is a view, not a route — deep links select it
 
 `/dashboard` is a single page; the Growth tab renders inside it (Analytics ->
-Growth) and its views (Command center, Settings, ...) are internal state, not
-URLs. So any external link back into Growth must use query parameters:
+Growth) and its four tabs are internal state, not URLs. So any external link back
+into Growth must use query parameters:
 
 ```
-/dashboard?tab=analytics&growth=settings
+/dashboard?tab=analytics
+/dashboard?tab=analytics&gmail=connected      (or &gmail=error&reason=...)
 ```
 
-`app/dashboard/page.js` reads `?tab` and `GrowthTab` reads `?growth` (both
-validated against the known tabs/views) when they mount. The Gmail OAuth
-callback in konduyt-api returns exactly that URL; before this wiring it pointed
-at `/dashboard/growth/settings`, which is not a route and 404'd, so a successful
+`app/dashboard/page.js` reads `?tab`; `GrowthTab` reads `?growth` (validated
+against `PRIMARY_VIEWS`), and the header's `GmailControl` reads `?gmail` to show
+the OAuth outcome. The Gmail OAuth callback in konduyt-api returns
+`/dashboard?tab=analytics&gmail=...`; before this wiring it pointed at
+`/dashboard/growth/settings`, which is not a route and 404'd, so a successful
 connect looked like a failure. `scripts/test-gmail-connect.mjs` guards the
-contract: the deep links, that Connect Gmail is always rendered and clickable
-(`oauth_configured` changes only the tooltip), and that `connectEmail` hits the
-real `/growth/email/oauth/start` endpoint. It runs as part of `npm test`.
+contract: the deep links, that Connect Gmail is always rendered and clickable,
+and that `connect` hits the real `/growth/email/oauth/start` endpoint. It runs as
+part of `npm test`.
 
 The inbound-reply surface has its own guard, `scripts/test-inbox-replies.mjs`
-(also in `npm test`): the Diagnostics "Inbound replies" section is fed
-`GET /growth/inbox/status`, reports read permission honestly (`can_read`,
-`missing_scopes`), and "Poll inbox now" POSTs to `POST /growth/inbox/poll` then
-re-reads status. Analytics shows the same truth in the Outreach ops area.
+(also in `npm test`): the Conversations tab reports read permission honestly
+(`inbox.can_read`, `missing_scopes`), and "Check for replies" POSTs to
+`POST /growth/inbox/poll` then re-reads. The header's Gmail control shows the
+read capability separately from sending. Analytics shows the same truth in the
+Outreach ops area.
 
 ## Landing-page code snippets
 
@@ -670,3 +686,61 @@ none (see konduyt-api `channels.connect_oauth`), so the send path survives the
 reconnect. `scripts/test-growth-quality.mjs` guards that Reconnect is offered
 without disconnecting.
 
+
+
+### Growth is four primary tabs; the Sources load must not blank itself (2026-11-01)
+
+The Growth surface now has exactly **four primary tabs** -- Sources, Prospects,
+Approvals, Conversations -- declared in `PRIMARY_VIEWS`. The default view is
+Sources. (The nine other surfaces that briefly sat behind a "More" menu were
+later removed outright -- see the entry below.) `scripts/test-growth-four-tabs.mjs`
+guards the tab row and -- by executing the real loader -- that the Sources panel
+cannot be blanked by one failing read.
+
+`Sources` loads four reads (`/sources`, `/keywords`, `/sources/audit`,
+`/metrics/attribution`). It used `Promise.all`, so a failure in the audit or
+attribution took the keyword list down with it and the panel rendered as empty
+while discovery was running. It now uses `Promise.allSettled`: the audit and
+attribution degrade to empty, and a real failure of `/sources` or `/keywords`
+shows an error line rather than being indistinguishable from "no keywords".
+
+Keywords are backend-owned: the UI reads `GET /growth/keywords` and never
+carries its own list, or the two would drift and the operator would be editing
+terms nothing searches. Each row's `agent` scope is shown on hover so the
+developer/business terms the unified store returns are visible.
+
+### The nine secondary Growth surfaces were removed, not demoted (2026-11-01)
+
+The first cut of the four-tab redesign kept the nine other surfaces
+(Command center, Cohort, Strategy health, Experiment, Overview, Contacts,
+Agents, Diagnostics, Settings) reachable from a "More" menu and via
+`?growth=<id>` deep links. The product asked for them to be **discarded
+entirely** -- not demoted -- so this removes them:
+
+- `SECONDARY_VIEWS`, the merged `VIEWS` list, `moreOpen`/`moreRef`, the
+  outside-click/Escape effect, and the `con-tab-more-*` CSS are gone.
+- The nine component definitions are gone (the file shrank from ~3019 to ~1165
+  lines), as are their render branches and the now-orphaned helpers they alone
+  used (`CommandCenter`, `CohortView`, `CohortMemberDetail`, `bandFor`,
+  `StrategyHealth`, `Experiment`, `Diagnostics`, `InboundReplies`, `Settings`,
+  `Overview`, `Contacts`, `Agents`, `MiniSeries`, `AgentLiveRow`, `CounterRow`,
+  `ago`, `pct`, `EVENT_LABEL`, `STATUS_LABEL`, `HEALTH_CLASS`).
+- The `?growth=` deep link now accepts only a name in `PRIMARY_VIEWS`; anything
+  else falls back to `sources`. There is no deep link into a removed surface.
+
+Two capabilities that lived only in removed surfaces were relocated rather than
+lost, because they are the point of the feature:
+
+- **The Gmail connection** (was in Settings) is now a compact `GmailControl` in
+  the Growth header: connect/reconnect via Google OAuth, disconnect, read-access
+  state, and the "sending enabled" toggle. The API's OAuth callback now returns
+  `/dashboard?tab=analytics&gmail=...` (it used to point at
+  `?growth=settings`, which no longer resolves).
+- **The manual inbox poll** (was in Diagnostics) is now "Check for replies" on
+  the Conversations tab, which also reports whether the mailbox is readable.
+
+`scripts/test-growth-four-tabs.mjs` now asserts the removal (no More menu, no
+`SECONDARY_VIEWS`, no removed component, no `view === '<gone>'`) instead of the
+old demotion. `test-growth-quality.mjs`, `test-gmail-connect.mjs`,
+`test-sending-toggle.mjs` and `test-inbox-replies.mjs` were retargeted at the
+surviving tabs and the header control. All run as part of `npm test`.

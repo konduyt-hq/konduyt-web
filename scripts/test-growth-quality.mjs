@@ -1,10 +1,9 @@
 // Guard the "quality first, then controlled outreach" Growth surface.
 //
-// The backend moved to a transparent qualification score, a bounded cohort, a
-// strategy-health loop, and a real funnel report -- and removed the manual
-// "Run now" flow. This test fails loudly if the dashboard regresses: if it
-// re-adds a manual run, re-implements a rule the backend owns, or stops
-// surfacing the new review surfaces.
+// The backend owns qualification, scoring, the cohort, strategy health and the
+// funnel report; the Growth UI is the four tabs and never re-implements a rule.
+// This test fails loudly if the surface regresses: if it re-adds a manual run,
+// carries its own keyword list, or stops surfacing the review gate.
 //
 // Run: node scripts/test-growth-quality.mjs
 import { readFileSync } from 'fs';
@@ -21,8 +20,8 @@ const check = (name, ok, detail = '') => {
   console.log(`  [${ok ? 'PASS' : 'FAIL'}] ${name}` + (ok || !detail ? '' : `\n        ${detail}`));
 };
 
-console.log('Growth quality + controlled cohort');
-console.log('---------------------------------');
+console.log('Growth quality + controlled outreach');
+console.log('------------------------------------');
 
 const growth = read('app/dashboard/GrowthTab.js');
 
@@ -31,77 +30,46 @@ check('no "Run now" button remains', !/Run now/.test(growth));
 check('no call to the removed /agents/run-all endpoint',
   !/agents\/run-all/.test(growth));
 check('no runAgents helper remains', !/function runAgents/.test(growth));
-
-// The three new views exist and are reachable.
-check('Cohort view is registered', /'cohort', 'Cohort'/.test(growth));
-check('Strategy health view is registered', /'strategy', 'Strategy health'/.test(growth));
-check('Experiment view is registered', /'experiment', 'Experiment'/.test(growth));
-check('CohortView is rendered for the cohort tab',
-  /view === 'cohort' && <CohortView/.test(growth));
-check('StrategyHealth is rendered for the strategy tab',
-  /view === 'strategy' && <StrategyHealth/.test(growth));
-check('Experiment is rendered for the experiment tab',
-  /view === 'experiment' && <Experiment/.test(growth));
+check('engine copy no longer mentions a manual run',
+  !/Run now still works|manual cycle/.test(growth));
 
 // A connected Gmail account must be re-consentable in place: granting a new
 // scope (inbox read) must not require the destructive Disconnect first, or the
-// operator would tear down a working sending connection to fix reading.
+// operator would tear down a working sending connection to fix reading. The
+// control lives in the Growth header now, not a Settings page.
 check('a connected Gmail account offers Reconnect without disconnecting',
-  /Reconnect Gmail/.test(growth) && /onClick=\{connectEmail\}/.test(growth));
+  /Reconnect<\/button>/.test(growth) && /onClick=\{connect\}/.test(growth)
+  && !/Disconnect first/.test(growth));
 
-// Every view reads the backend; none fabricates numbers.
-check('CohortView reads GET /cohort', /api\('\/cohort'\)/.test(growth));
-check('Cohort preview is a dry run', /cohort\/select', \{ dry_run: true \}/.test(growth));
-check('Cohort selection hits the real select endpoint',
-  /api\(path, \{ method: 'POST'/.test(growth) && /post\('\/cohort\/select'/.test(growth));
-check('StrategyHealth reads GET /strategy/health', /api\('\/strategy\/health'\)/.test(growth));
-check('StrategyHealth re-evaluates via POST /strategy/evaluate',
-  /api\('\/strategy\/evaluate', \{ method: 'POST' \}\)/.test(growth));
-check('Experiment reads the real report endpoint', /api\('\/strategy\/report'\)/.test(growth));
-
-// The score is shown with its reasons and factors, not just a number.
-check('the cohort table shows the qualification score',
-  /qualification_score/.test(growth));
-check('the cohort detail shows the score factors',
-  /qualification_factors/.test(growth));
-check('the cohort detail shows the recommended message for review',
-  /recommended_body/.test(growth));
-check('the experiment shows the drop between funnel stages',
-  /drop_from_previous/.test(growth));
-
-// Strategy health renders the explicit verdict and its allocation weight.
-check('strategy health shows the health state', /health_state/.test(growth));
-check('strategy health shows the allocation weight', /allocation_weight/.test(growth));
-check('strategy health shows the false-positive rate', /false_positive_rate/.test(growth));
-
-// Copy must not promise a manual cycle.
-check('engine copy no longer mentions a manual run',
-  !/Run now still works|manual cycle/.test(growth));
-check('the cohort copy states selecting sends nothing',
-  /never sends anything|never emails anyone|Nothing was sent/.test(growth));
-
-// Clean reset and archive: the UI drives the real endpoints and states that an
-// archive preserves consent/sending history rather than deleting it.
-check('the audit reads GET /archive/audit', /api\('\/archive\/audit'\)/.test(growth));
-check('the archive plan reads GET /archive/plan', /api\('\/archive\/plan'\)/.test(growth));
-check('the archive posts to /archive with a dry-run option',
-  /api\('\/archive', \{ method: 'POST'/.test(growth) && /dry_run/.test(growth));
-check('the reset preview reads GET /reset/preview', /api\('\/reset\/preview'\)/.test(growth));
-check('the reset posts to /reset', /api\('\/reset', \{ method: 'POST' \}\)/.test(growth));
-check('the archive copy states history is preserved, not deleted',
-  /never deletes a prospect/.test(growth)
-  && /sending history are preserved|sending history preserved/.test(growth));
-check('the reset copy states the transport/templates/switch are kept',
-  /transport, templates and engine switch/.test(growth));
+// Approvals: the human gate. The review window is read from settings and shown,
+// and a human decision is never delayed by it.
+check('Approvals reads the review window from settings',
+  /review_window_minutes/.test(growth));
+check('Approvals surfaces the human review window',
+  /human review window/.test(growth) && /windowMin/.test(growth));
+check('Approvals reads GET /approvals', /api\('\/approvals\?status=PENDING'\)/.test(growth));
+check('Approvals decisions POST to the decision endpoint',
+  /api\(`\/approvals\/\$\{id\}\/decision`/.test(growth));
 
 // Conversations: the two-way exchange surface. Every prospect has a timeline,
-// but there was no single place to read what was actually said across all of
+// but this is the single place to read what was actually said across all of
 // them. The view must be registered, rendered, and read the backend endpoint.
 check('Conversations view is registered', /'conversations', 'Conversations'/.test(growth));
 check('Conversations is rendered for its tab',
   /view === 'conversations' && <Conversations/.test(growth));
 check('Conversations reads GET /conversations', /api\('\/conversations\?limit=/.test(growth));
 
-console.log('---------------------------------');
+// Keywords are backend-owned. The UI displays and toggles the terms the agents
+// actually search with; it must not carry its own copy, or the two would drift
+// and the operator would be editing a list nothing reads.
+check('the keyword list comes from the backend, not a UI constant',
+  /api\('\/keywords'\)/.test(growth)
+  && !/const\s+(DEFAULT_|FALLBACK_)?KEYWORDS\s*=/.test(growth));
+check('a keyword toggle PATCHes the backend rather than editing local state',
+  /api\(`\/keywords\/\$\{k\.id\}`, \{ method: 'PATCH'/.test(growth));
+check('the agent scope shown on a keyword comes from the row, not the UI',
+  /k\.agent/.test(growth));
+
+console.log('------------------------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
 process.exit(failures ? 1 : 0);
