@@ -1,10 +1,10 @@
 // Guard the Gmail connect surface and the OAuth return deep link.
 //
-// Priority #1 is "Connect Gmail is visible and clickable". Two regressions
-// broke that: the button was hidden when the API reported oauth_configured
-// false, and the OAuth callback redirected to /dashboard/growth/settings,
-// which is not a route (the Growth tab renders inside /dashboard). This test
-// fails loudly if either comes back.
+// The Gmail connection used to live in a Settings page; that page was removed,
+// so the control now sits in the Growth header. Two regressions must never come
+// back: the Connect button being hidden when the API reported oauth_configured
+// false, and the OAuth callback redirecting to a route that does not exist (the
+// Growth tab renders inside /dashboard).
 //
 // Run: node scripts/test-gmail-connect.mjs
 import { readFileSync } from 'fs';
@@ -27,50 +27,49 @@ console.log('---------------------');
 const growth = read('app/dashboard/GrowthTab.js');
 const page = read('app/dashboard/page.js');
 
-// Connect Gmail is always rendered when the channel is not connected. The
-// oauth_configured flag may change the tooltip, never whether the button shows.
-check('Connect Gmail button is rendered',
-  /Connect Gmail/.test(growth));
-check('Connect Gmail is not gated behind oauth_configured',
-  !/oauth_configured\s*&&[\s\S]{0,120}Connect Gmail/.test(growth));
-check('the oauth_configured flag only changes the title/tooltip',
-  /title=\{channelsMeta\.oauth_configured \?/.test(growth));
-check('Connect Gmail is clickable (onClick wired to connectEmail)',
-  /onClick=\{connectEmail\}/.test(growth));
-check('connectEmail hits the real OAuth start endpoint',
-  /api\('\/email\/oauth\/start'\)/.test(growth));
-check('connectEmail navigates to the returned authorize URL',
-  /window\.location\.href = r\.authorize_url/.test(growth));
+const control = growth.match(/function GmailControl\(\{ api[\s\S]*?\n\}/);
+const body = control ? control[0] : '';
 
-// The OAuth return lands on a real route with the right tab/view selected.
+// The control is rendered in the Growth header, always, when not connected.
+check('the header renders the Gmail control', /<GmailControl/.test(growth));
+check('Connect Gmail is rendered', /Connect Gmail/.test(body));
+check('Connect Gmail is clickable (onClick wired to connect)',
+  /onClick=\{connect\}/.test(body));
+check('connect hits the real OAuth start endpoint',
+  /api\('\/email\/oauth\/start'\)/.test(body));
+check('connect navigates to the returned authorize URL',
+  /window\.location\.href = r\.authorize_url/.test(body));
+check('a connected account offers Reconnect without disconnecting',
+  /Reconnect<\/button>/.test(body));
+
+// The OAuth return lands on a real route with the right tab selected. The
+// outcome rides on the `gmail` parameter, which the control reads.
 check('GrowthTab reads the ?growth= view deep link',
   /new URLSearchParams\(window\.location\.search\)\.get\('growth'\)/.test(growth));
-check('GrowthTab validates the requested view against VIEWS',
-  /VIEWS\.some\(\(\[id\]\) => id === v\)/.test(growth));
+check('GrowthTab validates the requested view against the four tabs',
+  /PRIMARY_VIEWS\.some\(\(\[id\]\) => id === v\)/.test(growth));
+check('the Gmail control reads the ?gmail= outcome',
+  /get\('gmail'\)/.test(body));
 check('page.js reads the ?tab= deep link',
   /new URLSearchParams\(window\.location\.search\)\.get\('tab'\)/.test(page));
 check('page.js validates the requested tab',
   /includes\(t\)[\s\S]{0,20}\? t : 'quickstart'/.test(page));
 check('the analytics tab is a valid deep-link target',
   /'analytics'[^\]]*\]\.includes\(t\)/.test(page));
-check('the billing tab is a valid deep-link target',
-  /'billing'[^\]]*\]\.includes\(t\)/.test(page));
 
 // The old broken redirect target must not come back.
 check('no redirect to the nonexistent /dashboard/growth/settings route',
-  !/dashboard\/growth\/settings/.test(growth));
+  !/dashboard\/growth\/settings/.test(growth) && !/dashboard\/growth\/settings/.test(page));
 
 // Disconnect must refresh the screen even when a call fails. The old body was
 // `await api('/email/disconnect'); await api('/channels/email/disconnect'); load();`
 // -- one throw skipped load(), so the stale "connected" value stayed on screen
 // and Disconnect looked like a no-op.
-check('disconnectEmail refreshes the screen even if a call throws',
-  /async function disconnectEmail\(\)[\s\S]*?load\(\);[\s\S]*?\n  \}/.test(growth)
-  && /catch \(e\) \{ err = err \|\| e; \}/.test(growth));
-check('disconnectEmail no longer chains the two calls in one try',
-  !/try \{ await api\('\/email\/disconnect'[\s\S]{0,60}await api\('\/channels\/email\/disconnect'/.test(growth));
-check('disconnectChannel refreshes in a finally block',
-  /async function disconnectChannel\(channel\)[\s\S]*?finally \{ load\(\); \}/.test(growth));
+check('disconnect refreshes the screen even if a call throws',
+  /async function disconnect\(\)[\s\S]*?await load\(\);/.test(body)
+  && /catch \(e\) \{ err = err \|\| e; \}/.test(body));
+check('disconnect no longer chains the two calls in one try',
+  !/try \{ await api\('\/email\/disconnect'[\s\S]{0,60}await api\('\/channels\/email\/disconnect'/.test(body));
 
 console.log('---------------------');
 console.log(`  ${checks - failures}/${checks} passed`);

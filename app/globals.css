@@ -3001,16 +3001,7 @@
     font:inherit; font-size:14px; line-height:1; padding:0 6px; border-radius:50%;}
   .growth-keyword-x:hover{color:#b91c1c; background:rgba(239,68,68,0.1);}
 
-  /* --- Primary tabs + secondary "More" menu --- */
-  .con-tab-more-wrap{position:relative; display:inline-flex;}
-  .con-tab-more-menu{position:absolute; top:100%; right:0; z-index:40; min-width:190px;
-    background:var(--panel); border:1px solid var(--border); border-radius:10px;
-    box-shadow:0 12px 32px rgba(15,23,42,0.16); padding:6px; display:flex; flex-direction:column;}
-  .con-tab-more-item{text-align:left; background:none; border:none; font:inherit;
-    font-size:13.5px; color:var(--text-secondary); padding:9px 12px; border-radius:7px;
-    cursor:pointer; white-space:nowrap;}
-  .con-tab-more-item:hover{background:var(--elev); color:var(--ink);}
-  .con-tab-more-item.active{color:var(--ink); font-weight:700; background:var(--elev);}
+  /* --- Primary tabs (the Growth surface has no secondary menu) --- */
 
   /* --- Conversation filter chips --- */
   .growth-filter-chips{display:flex; flex-wrap:wrap; gap:6px;}
@@ -3019,8 +3010,17 @@
   .growth-chip:hover{color:var(--ink);}
   .growth-chip.active{background:var(--ink); color:#fff; border-color:var(--ink); font-weight:700;}
 
-  /* --- Continuous operation: engine badge, command center, live stream --- */
+  /* --- Continuous operation: engine badge, live stream --- */
   .growth-head-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+
+  /* --- Gmail connection: a compact header control --- */
+  .growth-gmail{display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:6px 12px; border:1px solid var(--border); border-radius:10px; background:var(--elev);}
+  .growth-gmail-state{font-size:12.5px; color:var(--text-secondary);}
+  .growth-gmail-state b{color:var(--ink);}
+  .growth-gmail-toggle{display:inline-flex; align-items:center; gap:6px; font-size:12.5px;
+    color:var(--text-secondary); cursor:pointer;}
+  .growth-gmail .preview-checkout-btn{padding:6px 12px; font-size:12.5px;}
   .growth-engine-badge{display:inline-flex; align-items:center; gap:8px; font:inherit;
     font-size:12.5px; font-weight:700; padding:8px 14px; border-radius:10px; cursor:pointer;
     border:1px solid var(--border); background:var(--elev); color:var(--ink);}

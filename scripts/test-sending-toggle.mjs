@@ -1,4 +1,4 @@
-// Guard the Growth -> Settings "Sending enabled" control.
+// Guard the Growth "sending enabled" control.
 //
 // The checkbox could be ticked but not un-ticked. Two causes:
 //   1. it saved the WHOLE email object with PUT /settings/email, which REPLACES
@@ -6,7 +6,8 @@
 //      the auto-enable on the next worker tick;
 //   2. it never reloaded state, so the controlled checkbox showed a stale value.
 // The control now goes through the dedicated POST /growth/email/sending and
-// reloads. This test fails if either regression comes back.
+// reloads. It lives in the Growth header (the Settings page was removed). This
+// test fails if either regression comes back.
 //
 // Run: node scripts/test-sending-toggle.mjs
 import { readFileSync } from 'fs';
@@ -28,33 +29,26 @@ console.log('-----------------------');
 
 const growth = read('app/dashboard/GrowthTab.js');
 
+const control = growth.match(/function GmailControl\(\{ api[\s\S]*?\n\}/);
+const body = control ? control[0] : '';
+
 // The checkbox drives the dedicated endpoint, not a whole-object PUT.
 check('the checkbox calls setSending',
-  /checked=\{!!email\.sending_enabled\}[\s\S]{0,80}onChange=\{\(e\) => setSending\(e\.target\.checked\)\}/.test(growth));
+  /checked=\{!!email\.sending_enabled\}[\s\S]{0,120}onChange=\{\(e\) => setSending\(e\.target\.checked\)\}/.test(body));
 check('setSending posts to /email/sending',
-  /api\('\/email\/sending',\s*\{\s*method:\s*'POST'/.test(growth));
+  /api\('\/email\/sending',\s*\{\s*method:\s*'POST'/.test(body));
 check('setSending sends the enabled flag',
-  /body:\s*JSON\.stringify\(\{\s*enabled\s*\}\)/.test(growth));
+  /body:\s*JSON\.stringify\(\{\s*enabled\s*\}\)/.test(body));
 check('setSending reloads state so the box is not stale',
-  /async function setSending[\s\S]{0,400}await load\(\)/.test(growth));
+  /async function setSending[\s\S]{0,400}await load\(\)/.test(body));
 check('the checkbox is disabled while the change is in flight',
-  /disabled=\{sendingBusy\}/.test(growth));
+  /disabled=\{busy === 'sending'\}/.test(body));
 check('a failed toggle surfaces an error',
-  /async function setSending[\s\S]{0,500}onError && onError\(e\.message\)/.test(growth));
-
-// The generic settings save must also reload, or every controlled field
-// (the checkbox included) snaps back to its previously-loaded value.
-check('the generic settings save reloads state',
-  /async function save\(key, value\)[\s\S]{0,900}await load\(\)/.test(growth));
+  /async function setSending[\s\S]{0,500}onError && onError\(e\.message\)/.test(body));
 
 // The old broken pattern must not come back.
 check('the checkbox no longer PUTs the whole email object',
   !/sending_enabled:\s*e\.target\.checked\s*\}\)/.test(growth));
-
-// The From/reply-to editors spread the loaded `email` object into a generic
-// PUT /settings/email. The switch must never ride along on that request.
-check('the generic email save strips sending_enabled from the body',
-  /key === 'email'[\s\S]{0,200}const \{ sending_enabled, \.\.\.rest \} = value/.test(growth));
 
 console.log('');
 console.log(`  ${checks - failures}/${checks} passed`);

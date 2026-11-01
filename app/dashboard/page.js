@@ -138,8 +138,8 @@ export default function Dashboard() {
   const [latestPayment, setLatestPayment] = useState(null);
   const [tab, setTab] = useState(() => {
     // Deep link support: the Gmail OAuth callback returns to
-    // /dashboard?tab=analytics&growth=settings. Honour ?tab so the Growth tab
-    // (and its Settings view) is open when the browser lands back here.
+    // /dashboard?tab=analytics&gmail=connected. Honour ?tab so the Growth tab
+    // is open when the browser lands back here.
     if (typeof window === 'undefined') return 'quickstart';
     const t = new URLSearchParams(window.location.search).get('tab');
     return ['money', 'connections', 'quickstart', 'messages', 'settings', 'analytics', 'billing', 'sentinel', 'fee-monitor', 'users'].includes(t)
@@ -3643,14 +3643,13 @@ export default function Dashboard() {
 
             {tab === 'analytics' && isAdmin && (
               <div className="mpesa-page">
-                {/* Growth -- the four primary tabs (Sources, Prospects,
-                    Approvals, Conversations). Its logic lives entirely in the
-                    backend at /growth/*; this surface only displays and
-                    controls. Secondary surfaces (Command center, Cohort,
-                    Strategy health, Experiment, Overview, Contacts, Agents,
-                    Diagnostics, Settings) are reachable from the "More" menu
-                    inside the Growth surface, so they never clutter the four
-                    primary tabs. */}
+                {/* Growth -- exactly four tabs (Sources, Prospects, Approvals,
+                    Conversations) and nothing else. Its logic lives entirely in
+                    the backend at /growth/*; this surface only displays and
+                    controls. The secondary surfaces that used to sit behind a
+                    "More" menu (Command center, Cohort, Strategy health,
+                    Experiment, Overview, Contacts, Agents, Diagnostics,
+                    Settings) have been removed, not hidden. */}
                 {analyticsView === 'growth' && (
                   <GrowthTab apiBase={API_BASE} authHeaders={authHeaders}
                     onError={(m) => setBillingNotice(m || '')} />

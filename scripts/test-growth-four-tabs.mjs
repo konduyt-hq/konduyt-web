@@ -1,11 +1,10 @@
-// Guard the Growth surface's four primary tabs.
+// Guard the Growth surface's four tabs.
 //
-// The product asked for exactly four primary tabs -- Sources, Prospects,
-// Approvals, Conversations -- with everything else behind a secondary menu.
-// This test fails loudly if the surface regresses: if a fifth tab appears in
-// the primary row, if a primary tab is dropped, if a secondary surface is
-// deleted rather than demoted, or if the Approvals review window stops being
-// surfaced.
+// The product asked for exactly four tabs -- Sources, Prospects, Approvals,
+// Conversations -- and for the other surfaces to be DISCARDED, not demoted.
+// This test fails loudly if the surface regresses: if a fifth tab appears, if a
+// primary tab is dropped, if a More menu or any secondary surface comes back,
+// or if the Sources load can be blanked by one failing read.
 //
 // Run: node scripts/test-growth-four-tabs.mjs
 import { readFileSync } from 'fs';
@@ -44,27 +43,45 @@ check('the nav renders PRIMARY_VIEWS', /PRIMARY_VIEWS\.map/.test(growth));
 check('the nav does not render the full VIEWS list in the primary row',
   !/\{VIEWS\.map/.test(growth));
 
-// --- The secondary surfaces are demoted, not deleted. -----------------------
-const secondaryBlock = growth.match(/const SECONDARY_VIEWS = \[([\s\S]*?)\];/);
-check('SECONDARY_VIEWS is declared', !!secondaryBlock);
-const secondary = secondaryBlock ? secondaryBlock[1] : '';
-for (const id of ['live', 'cohort', 'strategy', 'experiment', 'overview',
+// --- There is no More menu and no secondary surface. ------------------------
+check('there is no More menu', !/con-tab-more/.test(growth) && !/More/.test(growth));
+check('no SECONDARY_VIEWS list remains', !/SECONDARY_VIEWS/.test(growth));
+check('the nav renders only PRIMARY_VIEWS',
+  /PRIMARY_VIEWS\.map/.test(growth) && !/(?<![A-Z_])VIEWS\.map/.test(growth));
+for (const gone of ['live', 'cohort', 'strategy', 'experiment', 'overview',
   'contacts', 'agents', 'diagnostics', 'settings']) {
-  check(`secondary surface "${id}" is preserved`, new RegExp(`'${id}'`).test(secondary));
+  check(`no "${gone}" surface remains`,
+    !new RegExp(`view === '${gone}'`).test(growth)
+    && !new RegExp(`\\['${gone}',`).test(growth));
 }
-check('the secondary menu is reachable from the primary row',
-  /con-tab-more-menu/.test(growth) && /con-tab-more-item/.test(growth));
+// The components those surfaces rendered are gone, not orphaned.
+for (const dead of ['CommandCenter', 'CohortView', 'CohortMemberDetail',
+  'StrategyHealth', 'Experiment', 'InboundReplies', 'Diagnostics', 'Settings',
+  'function Overview', 'function Contacts', 'function Agents']) {
+  check(`the ${dead} component is removed`,
+    !new RegExp(`(function |<)${dead.replace('function ', '')}[\\s(]`).test(growth));
+}
 
-// --- Each primary tab still renders its real component. ---------------------
+// --- Each of the four tabs still renders its real component. ----------------
 check('Sources renders the Sources component', /view === 'sources'[\s\S]{0,200}<Sources/.test(growth));
 check('Prospects renders the Prospects component', /view === 'prospects'[\s\S]{0,200}<Prospects/.test(growth));
 check('Approvals renders the Approvals component', /view === 'approvals'[\s\S]{0,200}<Approvals/.test(growth));
 check('Conversations renders the Conversations component',
   /view === 'conversations'[\s\S]{0,200}<Conversations/.test(growth));
 
-// --- The default view is a primary tab, not a secondary one. ----------------
-check('the default view is Sources (the first primary tab)',
+// --- The default view is a primary tab. -------------------------------------
+check('the default view is Sources (the first tab)',
   /return 'sources';/.test(growth) && !/return 'live';/.test(growth));
+check('the deep link only accepts a known tab',
+  /PRIMARY_VIEWS\.some\(\(\[id\]\) => id === v\) \? v : 'sources'/.test(growth));
+
+// --- Gmail is preserved as a compact header control, without a Settings page.
+check('the header carries a Gmail control', /<GmailControl/.test(growth));
+check('the Gmail control starts the real OAuth flow', /email\/oauth\/start/.test(growth));
+check('the Gmail control can disconnect', /email\/disconnect/.test(growth));
+check('the Gmail control still gates sending', /email\/sending/.test(growth));
+check('the Gmail OAuth return is still surfaced',
+  /gmail.*connected|connected.*gmail/i.test(growth) && /get\('gmail'\)/.test(growth));
 
 // --- The review window is surfaced on Approvals. ----------------------------
 check('Approvals surfaces the human review window',
