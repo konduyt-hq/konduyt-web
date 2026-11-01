@@ -238,6 +238,11 @@ export default function Dashboard() {
   const [routeLoading, setRouteLoading] = useState(false);
   // Konduyt Sentinel
   const [sentinelSources, setSentinelSources] = useState([]);
+  // The Analytics tab is a Growth surface first. This switch selects the
+  // secondary "Analytics snapshot" (the four-area read of GET /growth/analytics)
+  // so it sits behind a secondary control instead of stacking above the four
+  // primary Growth tabs.
+  const [analyticsView, setAnalyticsView] = useState('growth'); // growth | snapshot
   const [sentinelChanges, setSentinelChanges] = useState([]);
   const [sentinelBusy, setSentinelBusy] = useState(false);
   const [sentinelRunResult, setSentinelRunResult] = useState(null); // last run's summary, for Analytics
@@ -3638,20 +3643,48 @@ export default function Dashboard() {
 
             {tab === 'analytics' && isAdmin && (
               <div className="mpesa-page">
-                {/* Analytics -- the redesigned surface: growth overview,
-                    agents, sources and outreach ops, blockers first. All logic
-                    and every number come from GET /growth/analytics. */}
-                <AnalyticsTab apiBase={API_BASE} authHeaders={authHeaders}
-                  onError={(m) => setBillingNotice(m || '')} />
-
-                {/* Growth Agents -- discovery, qualification, outreach and
-                    measurement. Its logic lives entirely in the backend at
-                    /growth/*; this surface only displays and controls. */}
-                <div className="an-section">
+                {/* Growth -- the four primary tabs (Sources, Prospects,
+                    Approvals, Conversations). Its logic lives entirely in the
+                    backend at /growth/*; this surface only displays and
+                    controls. Secondary surfaces (Command center, Cohort,
+                    Strategy health, Experiment, Overview, Contacts, Agents,
+                    Diagnostics, Settings) are reachable from the "More" menu
+                    inside the Growth surface, so they never clutter the four
+                    primary tabs. */}
+                {analyticsView === 'growth' && (
                   <GrowthTab apiBase={API_BASE} authHeaders={authHeaders}
                     onError={(m) => setBillingNotice(m || '')} />
-                </div>
+                )}
 
+                {/* Analytics snapshot -- the secondary four-area read of
+                    GET /growth/analytics (growth overview, agents, sources,
+                    outreach ops), blockers first. Behind its own control so it
+                    does not stack above the primary Growth tabs. */}
+                {analyticsView === 'snapshot' && (
+                  <AnalyticsTab apiBase={API_BASE} authHeaders={authHeaders}
+                    onError={(m) => setBillingNotice(m || '')} />
+                )}
+
+                {/* A secondary switcher: the primary Growth surface, or the
+                    Analytics snapshot read. Neither is a separate route. */}
+                <div className="an-section" style={{ marginTop: 24 }}>
+                  <div className="con-home-head-row" style={{ alignItems: 'center' }}>
+                    <h2 className="an-section-h" style={{ marginBottom: 0 }}>Secondary analytics</h2>
+                    <div className="growth-toolbar" style={{ margin: 0 }}>
+                      <button type="button"
+                        className={analyticsView === 'growth' ? 'growth-chip active' : 'growth-chip'}
+                        onClick={() => setAnalyticsView('growth')}>Growth workspace</button>
+                      <button type="button"
+                        className={analyticsView === 'snapshot' ? 'growth-chip active' : 'growth-chip'}
+                        onClick={() => setAnalyticsView('snapshot')}>Analytics snapshot</button>
+                    </div>
+                  </div>
+                  <p className="con-sub" style={{ marginTop: 8 }}>
+                    The Growth workspace is the four primary tabs. The Analytics snapshot is a
+                    single read of <code>GET /growth/analytics</code> — growth overview, agents,
+                    sources and outreach ops, blockers first.
+                  </p>
+                </div>
 
                 {/* Fee source monitoring -- runs automatically every 6h
                     (Render Cron), but this button lets you check on demand

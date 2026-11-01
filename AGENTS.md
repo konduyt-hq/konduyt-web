@@ -93,6 +93,34 @@ for the `carrier` block.
   country actually returns representative data. Filter on `.rail-example` and
   assert each caption over its own group.
 
+## The Growth workspace has four primary tabs; everything else is secondary
+
+The product asked for the Growth surface to be organised around exactly four
+primary tabs, in this order:
+
+1. **Sources** — manage discovery sources and see where prospects come from
+   (`GET /growth/sources`, `/growth/keywords`, `/growth/sources/audit`, plus
+   `/growth/metrics/attribution?dimension=first_touch_source`).
+2. **Prospects** — the working spreadsheet of discovered and enriched targets.
+3. **Approvals** — the human gate, with the **30-minute review window** surfaced
+   (`settings.approval.review_window_minutes`, default 30). The window gates the
+   *autonomous* send path only; a human approve/edit/reject is never delayed by
+   it, so the buttons stay live.
+4. **Conversations** — sent messages, delivery, replies, follow-ups, objections,
+   opt-outs and conversion progress.
+
+`app/dashboard/GrowthTab.js` declares `PRIMARY_VIEWS` (those four) and
+`SECONDARY_VIEWS` (Command center, Cohort, Strategy health, Experiment,
+Overview, Contacts, Agents, Diagnostics, Settings). Only `PRIMARY_VIEWS` render
+in the tab row; the secondary views are reached from the "More" menu
+(`con-tab-more-menu`). **Never add a fifth entry to `PRIMARY_VIEWS`, and never
+delete a secondary surface — demote it.** The default view is `sources`.
+
+`page.js` renders `GrowthTab` as the primary content of the admin Analytics tab;
+`AnalyticsTab` (the one-read `GET /growth/analytics` snapshot) is secondary,
+behind the `analyticsView` switcher. `scripts/test-growth-four-tabs.mjs` guards
+all of this and runs as part of `npm test`.
+
 ## The Analytics tab is a growth surface, not a route
 
 The dashboard's Analytics tab (admin only) renders `app/dashboard/AnalyticsTab.js`.

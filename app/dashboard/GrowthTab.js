@@ -14,21 +14,34 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const VIEWS = [
+// Primary navigation: the four tabs the Growth surface is organised around.
+// Sources -> where prospects come from. Prospects -> the working spreadsheet.
+// Approvals -> the human gate. Conversations -> what was said, and what it led
+// to. Everything else lives in the secondary menu so it never clutters this row.
+const PRIMARY_VIEWS = [
+  ['sources', 'Sources'],
+  ['prospects', 'Prospects'],
+  ['approvals', 'Approvals'],
+  ['conversations', 'Conversations'],
+];
+
+// Secondary views: real surfaces, reachable from the "More" menu, not part of
+// the primary navigation. Settings, diagnostics and the secondary analytics
+// (command center, cohort, strategy health, experiment, overview, contacts,
+// agents) live here.
+const SECONDARY_VIEWS = [
   ['live', 'Command center'],
   ['cohort', 'Cohort'],
   ['strategy', 'Strategy health'],
   ['experiment', 'Experiment'],
   ['overview', 'Overview'],
-  ['sources', 'Sources'],
-  ['prospects', 'Prospects'],
   ['contacts', 'Contacts'],
-  ['conversations', 'Conversations'],
   ['agents', 'Agents'],
-  ['approvals', 'Approvals'],
   ['diagnostics', 'Diagnostics'],
   ['settings', 'Settings'],
 ];
+
+const VIEWS = [...PRIMARY_VIEWS, ...SECONDARY_VIEWS];
 
 function fmt(v) {
   if (v === null || v === undefined || v === '') return '—';
@@ -50,14 +63,33 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
   const [view, setView] = useState(() => {
     // Deep link support: the Gmail OAuth callback returns the browser to
     // /dashboard?tab=analytics&growth=settings, so open on the requested view.
-    if (typeof window === 'undefined') return 'live';
+    // The default is the first primary tab (Sources).
+    if (typeof window === 'undefined') return 'sources';
     const v = new URLSearchParams(window.location.search).get('growth');
-    return VIEWS.some(([id]) => id === v) ? v : 'live';
+    return VIEWS.some(([id]) => id === v) ? v : 'sources';
   });
   const [overview, setOverview] = useState(null);
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
   const [engine, setEngine] = useState(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // Close the secondary menu on an outside click or Escape so it never traps
+  // focus or lingers over the surface beneath it.
+  const moreRef = useRef(null);
+  useEffect(() => {
+    if (!moreOpen) return;
+    function onDoc(e) {
+      if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false);
+    }
+    function onKey(e) { if (e.key === 'Escape') setMoreOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [moreOpen]);
 
   const api = useCallback(async (path, opts = {}) => {
     const r = await fetch(`${apiBase}/growth${path}`, {
@@ -123,11 +155,28 @@ export default function GrowthTab({ apiBase, authHeaders, onError }) {
       </div>
 
       <nav className="con-tabs" style={{ marginBottom: 16 }}>
-        {VIEWS.map(([id, label]) => (
+        {PRIMARY_VIEWS.map(([id, label]) => (
           <button key={id} type="button"
             className={view === id ? 'con-tab active' : 'con-tab'}
-            onClick={() => setView(id)}>{label}</button>
+            onClick={() => { setView(id); setMoreOpen(false); }}>{label}</button>
         ))}
+        <div className="con-tab-more-wrap" ref={moreRef}>
+          <button type="button"
+            className={SECONDARY_VIEWS.some(([id]) => id === view) ? 'con-tab active' : 'con-tab'}
+            aria-haspopup="true" aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((o) => !o)}>
+            {SECONDARY_VIEWS.find(([id]) => id === view)?.[1] || 'More'} ▾
+          </button>
+          {moreOpen && (
+            <div className="con-tab-more-menu" role="menu">
+              {SECONDARY_VIEWS.map(([id, label]) => (
+                <button key={id} type="button" role="menuitem"
+                  className={view === id ? 'con-tab-more-item active' : 'con-tab-more-item'}
+                  onClick={() => { setView(id); setMoreOpen(false); }}>{label}</button>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
 
       {notice && <p className="con-sub" style={{ marginBottom: 12 }}>{notice}</p>}
@@ -1085,27 +1134,71 @@ function AddModal({ api, onClose, onError }) {
 }
 
 // ---------------------------------------------------------------------------
-// Conversations -- what was actually said, across every prospect
+// Conversations -- what was sent, what came back, and what it led to
+//
+// The product asked for one place to see sent messages, delivery status,
+// replies, follow-ups, objections, opt-outs and conversion progress. Every row
+// is a real interaction joined to its prospect; the summary counts come from
+// GET /growth/analytics (outreach + queue), so the view and the backend cannot
+// disagree. An unknown value renders as an em dash, never a guess.
 // ---------------------------------------------------------------------------
+const CONVERSATION_FILTERS = [
+  ['all', 'All'],
+  ['EMAIL_SENT', 'Sent'],
+  ['EMAIL_DELIVERED', 'Delivered'],
+  ['EMAIL_REPLY', 'Replies'],
+  ['EMAIL_FAILED', 'Failed'],
+  ['FOLLOW_UP', 'Follow-ups'],
+  ['SUPPRESSION', 'Opt-outs'],
+  ['SOCIAL_ACTION', 'Social'],
+  ['SOCIAL_REPLY', 'Social replies'],
+  ['NOTE', 'Notes'],
+];
+
+const KIND_LABEL = {
+  EMAIL_SENT: 'Sent', EMAIL_DELIVERED: 'Delivered', EMAIL_REPLY: 'Reply',
+  EMAIL_FAILED: 'Failed', EMAIL_QUEUED: 'Queued', FOLLOW_UP: 'Follow-up',
+  SUPPRESSION: 'Opt-out', SOCIAL_ACTION: 'Social', SOCIAL_REPLY: 'Social reply',
+  NOTE: 'Note',
+};
+
 function Conversations({ api, onError }) {
   const [rows, setRows] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [text, setText] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const d = await api('/conversations?limit=200');
+      const [d, an] = await Promise.all([
+        api('/conversations?limit=300'),
+        api('/analytics').catch(() => null),
+      ]);
       setRows(d.conversations || []);
+      setSummary(an);
     } catch (e) { onError && onError(e.message); }
     setLoading(false);
   }, [api, onError]);
   useEffect(() => { load(); }, [load]);
 
-  const shown = filter
-    ? rows.filter((r) => [r.kind, r.channel, r.display_name, r.company]
-        .some((v) => String(v || '').toLowerCase().includes(filter.toLowerCase())))
-    : rows;
+  // A row is shown when it matches the selected kind (or "all") AND the free
+  // text, which searches the prospect and the message body.
+  const shown = rows.filter((r) => {
+    if (filter !== 'all' && r.kind !== filter) return false;
+    if (!text.trim()) return true;
+    const t = text.toLowerCase();
+    return [r.display_name, r.company, r.body, r.detail, r.summary, r.channel]
+      .some((v) => String(v || '').toLowerCase().includes(t));
+  });
+
+  const q = (summary && summary.outreach && summary.outreach.queue) || {};
+  const sending = (summary && summary.outreach && summary.outreach.sending) || {};
+  const supp = (summary && summary.outreach && summary.outreach.suppression) || {};
+  const inbox = (summary && summary.outreach && summary.outreach.inbox) || {};
+  const ledger = sending.ledger || {};
+  const countByKind = (kind) => rows.filter((r) => r.kind === kind).length;
 
   return (
     <div>
@@ -1115,15 +1208,54 @@ function Conversations({ api, onError }) {
           Every two-way exchange, newest first: what was sent, what came back, and who it
           was with. These are the real interaction rows — nothing here is estimated.
         </p>
+
+        {/* Delivery + conversation summary, counted from the same backend read. */}
+        <div className="growth-stats">
+          <Stat label="Sent" value={countByKind('EMAIL_SENT')}
+            hint={`${fmt(ledger.SENT)} accepted by the provider`} />
+          <Stat label="Delivered" value={countByKind('EMAIL_DELIVERED')}
+            hint="provider-confirmed delivery" />
+          <Stat label="Replies" value={countByKind('EMAIL_REPLY')}
+            hint={inbox.can_read ? 'inbox readable' : 'inbox not readable'} />
+          <Stat label="Failed" value={countByKind('EMAIL_FAILED')}
+            hint={`${fmt(ledger.FAILED)} in the send ledger`} />
+          <Stat label="Follow-ups due" value={fmt(q.followups_pending)}
+            hint={`${fmt(q.stuck)} waiting over 24h`} />
+          <Stat label="Opt-outs" value={fmt(supp.optouts)}
+            hint={`${fmt(supp.total)} suppressions total`} />
+          <Stat label="Approvals pending" value={fmt(q.pending_email)} hint="email drafts waiting" />
+          <Stat label="Duplicate sends prevented" value={fmt(ledger.suppressed)}
+            hint="never emailed twice" />
+        </div>
+        {inbox.can_read === false && (
+          <p className="con-sub" style={{ color: '#b45309' }}>
+            The connected mailbox cannot be read, so replies cannot be detected — a zero reply
+            count here is missing data, not evidence. Reconnect Gmail with inbox scope in Settings.
+          </p>
+        )}
+
         <div className="growth-toolbar" style={{ marginBottom: 8 }}>
-          <input className="growth-input" placeholder="Filter by kind, channel, name…"
-            value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <div className="growth-filter-chips">
+            {CONVERSATION_FILTERS.map(([id, label]) => (
+              <button key={id} type="button"
+                className={filter === id ? 'growth-chip active' : 'growth-chip'}
+                onClick={() => setFilter(id)}>
+                {label}
+                {id !== 'all' ? ` (${countByKind(id)})` : ` (${rows.length})`}
+              </button>
+            ))}
+          </div>
+          <input className="growth-input" placeholder="Search prospect or message…"
+            value={text} onChange={(e) => setText(e.target.value)} />
           <button className="preview-checkout-btn" type="button" onClick={load} disabled={loading}>
             {loading ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
+
         {shown.length === 0 ? (
-          <p className="con-sub">No conversations recorded yet.</p>
+          <p className="con-sub">
+            {rows.length === 0 ? 'No conversations recorded yet.' : 'No conversation matches this filter.'}
+          </p>
         ) : (
           <div className="growth-table-wrap">
             <table className="growth-table">
@@ -1135,7 +1267,8 @@ function Conversations({ api, onError }) {
                 {shown.map((r) => (
                   <tr key={r.id}>
                     <td>{fmtDate(r.occurred_at)}</td>
-                    <td><span className="growth-activity-kind">{r.kind}</span></td>
+                    <td><span className={`growth-pill ${r.kind === 'EMAIL_REPLY' ? 'growth-pill-high' : 'growth-pill-unknown'}`}>
+                      {KIND_LABEL[r.kind] || r.kind}</span></td>
                     <td>{fmt(r.channel)}</td>
                     <td>{fmt(r.display_name)}{r.company ? ` · ${r.company}` : ''}</td>
                     <td>{fmt(r.prospect_status)}</td>
@@ -1145,6 +1278,58 @@ function Conversations({ api, onError }) {
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+
+      {/* Conversion progress: the stages after a conversation, as real counts. */}
+      {summary && summary.overview && (
+        <div className="an-section">
+          <h2 className="an-section-h">Conversion progress</h2>
+          <p className="con-sub">Where the people we talked to have got to, counted from real rows.</p>
+          <div className="growth-stats">
+            <Stat label="Contacted" value={fmt(summary.overview.contacted)} />
+            <Stat label="Replies" value={fmt(summary.overview.replies)} />
+            <Stat label="Interested" value={fmt(summary.overview.interested)} />
+            <Stat label="Signups" value={fmt(summary.overview.signups)} />
+            <Stat label="Activated" value={fmt(summary.overview.activated)} />
+          </div>
+        </div>
+      )}
+
+      {/* Objections and opt-outs: what stopped a conversation, and why. */}
+      <div className="an-section">
+        <h2 className="an-section-h">Objections &amp; opt-outs</h2>
+        <p className="con-sub">
+          A reply of any sentiment ends the outreach sequence; a negative reply or an
+          unsubscribe also suppresses the address, so it is never contacted again. These are
+          the recorded reasons, from the suppression list.
+        </p>
+        {Object.keys(supp.by_reason || {}).length === 0
+          ? <p className="con-sub">No suppression recorded yet.</p>
+          : (
+            <div className="growth-stats">
+              {Object.entries(supp.by_reason || {}).map(([reason, n]) => (
+                <Stat key={reason} label={reason} value={n} />
+              ))}
+            </div>
+          )}
+        {(sending.failure_reasons || []).length > 0 && (
+          <>
+            <h3 className="an-sub-h">Why sends failed</h3>
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr><th>Kind</th><th>Reason</th><th>Count</th><th>Last seen</th></tr></thead>
+                <tbody>
+                  {sending.failure_reasons.map((f, i) => (
+                    <tr key={i}>
+                      <td>{fmt(f.kind)}</td><td>{fmt(f.reason)}</td>
+                      <td>{fmt(f.count)}</td><td>{fmtDate(f.last_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -1234,43 +1419,94 @@ function Approvals({ api, onError, onChanged }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [windowMin, setWindowMin] = useState(30);
+  const [ledger, setLedger] = useState(null);
+  const [busy, setBusy] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const res = await api('/approvals?status=PENDING'); setItems(res.rows || []); }
-    catch (e) { onError && onError(e.message); }
+    try {
+      const [res, cfg, led] = await Promise.all([
+        api('/approvals?status=PENDING'),
+        api('/settings').catch(() => null),
+        api('/approvals/ledger').catch(() => null),
+      ]);
+      setItems(res.rows || []);
+      setWindowMin(((cfg && cfg.approval) || {}).review_window_minutes ?? 30);
+      setLedger(led);
+    } catch (e) { onError && onError(e.message); }
     setLoading(false);
   }, [api, onError]);
   useEffect(() => { load(); }, [load]);
 
   async function decide(id, decision, extra = {}) {
+    setBusy(id);
     try {
       await api(`/approvals/${id}/decision`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, ...extra }) });
       setEditing(null); await load(); onChanged && onChanged();
     } catch (e) { onError && onError(e.message); }
+    setBusy('');
   }
   async function execute(id) {
+    setBusy(id);
     try { await api(`/approvals/${id}/execute`, { method: 'POST' }); await load(); onChanged && onChanged(); }
     catch (e) { onError && onError(e.message); }
+    setBusy('');
   }
+
+  // How long an item has waited, and how much of the review window is left.
+  // The window gates the AUTONOMOUS path only: a human decision is never
+  // delayed by it, which is why the buttons stay live below.
+  function windowState(a) {
+    if (!a.created_at || windowMin <= 0) return { label: 'window off', tone: 'growth-pill-unknown', mins: null };
+    const age = (Date.now() - new Date(a.created_at).getTime()) / 60000;
+    if (age >= windowMin) return { label: 'window elapsed — eligible to send', tone: 'growth-pill-high', mins: 0 };
+    return { label: `held — ${Math.ceil(windowMin - age)}m of review left`, tone: 'growth-pill-med', mins: Math.ceil(windowMin - age) };
+  }
+
+  const eligible = items.filter((a) => windowState(a).mins === 0).length;
 
   return (
     <div>
-      <p className="con-sub">
-        Nothing is sent automatically. Every proposed reply or email waits here with its
-        reason and evidence until you approve, edit or reject it.
-      </p>
+      <div className="an-section">
+        <h2 className="an-section-h">Approvals</h2>
+        <p className="con-sub">
+          Every proposed reply or email waits here with its reason and evidence. A draft that
+          passes every gate is still held for a <strong>{windowMin}-minute human review window</strong>
+          {' '}before the engine may send it on its own, so you have a real chance to review or
+          pull it back. Your own approve, edit or reject is never delayed by the window.
+        </p>
+        <div className="growth-stats">
+          <Stat label="Waiting for review" value={items.length} />
+          <Stat label="Review window elapsed" value={eligible}
+            hint="eligible for automatic send" />
+          <Stat label="Sent (ledger)" value={fmt((ledger || {}).SENT)} />
+          <Stat label="Duplicates prevented" value={fmt((ledger || {}).suppressed)}
+            hint="never emailed twice" />
+        </div>
+      </div>
+
       {items.length === 0 && !loading && <p className="con-sub">No approvals waiting.</p>}
-      {items.map((a) => (
+      {items.map((a) => {
+        const ws = windowState(a);
+        return (
         <div key={a.id} className="an-section growth-approval">
           <div className="con-home-head-row">
             <div>
               <b>{a.prospect_name || 'Unknown'}</b>{a.prospect_company ? ` · ${a.prospect_company}` : ''}
               <span className="con-sub"> · {a.channel} · {a.kind}</span>
             </div>
-            <span className={levelClass(a.prospect_fit)}>{a.prospect_fit || '—'}</span>
+            <div className="growth-toolbar" style={{ margin: 0 }}>
+              <span className={`growth-pill ${ws.tone}`}>{ws.label}</span>
+              <span className={levelClass(a.prospect_fit)}>{a.prospect_fit || '—'}</span>
+            </div>
           </div>
           <p className="con-sub">{a.why}</p>
+          <p className="con-sub">
+            Drafted {fmtDate(a.created_at)}
+            {a.prospect_intent ? ` · intent ${a.prospect_intent}` : ''}
+            {a.country_code ? ` · ${a.country_code}` : ''}
+          </p>
           {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="con-sub">{a.url}</a>}
           {(a.evidence || []).slice(0, 3).map((e) => (
             <div key={e.id} className="con-sub">• {e.title || e.url} — {(e.excerpt || '').slice(0, 120)}</div>
@@ -1283,7 +1519,7 @@ function Approvals({ api, onError, onChanged }) {
               <textarea className="growth-input" rows={8} style={{ width: '100%' }} value={a.draft_body || ''}
                 onChange={(e) => setItems(items.map((x) => x.id === a.id ? { ...x, draft_body: e.target.value } : x))} />
               <div className="growth-toolbar">
-                <button className="preview-checkout-btn" type="button" onClick={() => decide(a.id, 'edit', { edited_subject: a.draft_subject, edited_body: a.draft_body })}>Save & approve</button>
+                <button className="preview-checkout-btn" type="button" disabled={busy === a.id} onClick={() => decide(a.id, 'edit', { edited_subject: a.draft_subject, edited_body: a.draft_body })}>Save & approve</button>
                 <button className="preview-checkout-btn" type="button" onClick={() => setEditing(null)}>Cancel</button>
               </div>
             </div>
@@ -1294,15 +1530,16 @@ function Approvals({ api, onError, onChanged }) {
                 <pre className="growth-draft-body">{a.draft_body}</pre>
               </div>
               <div className="growth-toolbar">
-                <button className="preview-checkout-btn" type="button" onClick={() => decide(a.id, 'approve')}>Approve</button>
-                <button className="preview-checkout-btn" type="button" onClick={() => setEditing(a.id)}>Edit</button>
-                <button className="preview-checkout-btn" type="button" onClick={() => decide(a.id, 'reject')}>Reject</button>
-                <button className="preview-checkout-btn" type="button" onClick={() => execute(a.id)}>Execute</button>
+                <button className="preview-checkout-btn" type="button" disabled={busy === a.id} onClick={() => decide(a.id, 'approve')}>Approve</button>
+                <button className="preview-checkout-btn" type="button" disabled={busy === a.id} onClick={() => setEditing(a.id)}>Edit</button>
+                <button className="preview-checkout-btn" type="button" disabled={busy === a.id} onClick={() => decide(a.id, 'reject')}>Reject</button>
+                <button className="preview-checkout-btn" type="button" disabled={busy === a.id} onClick={() => execute(a.id)}>Execute</button>
               </div>
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1544,18 +1781,22 @@ function Sources({ api, onError }) {
   const [sources, setSources] = useState([]);
   const [keywords, setKeywords] = useState([]);
   const [audit, setAudit] = useState(null);
+  const [attribution, setAttribution] = useState([]);
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
   const [reason, setReason] = useState('');
+  const [newKeyword, setNewKeyword] = useState('');
 
   const load = useCallback(async () => {
     try {
-      const [src, kw, aud] = await Promise.all([
+      const [src, kw, aud, att] = await Promise.all([
         api('/sources'), api('/keywords'), api('/sources/audit'),
+        api('/metrics/attribution?dimension=first_touch_source').catch(() => []),
       ]);
       setSources(src.sources || []);
       setKeywords(kw.keywords || []);
       setAudit(aud);
+      setAttribution(Array.isArray(att) ? att : []);
     } catch (e) { onError && onError(e.message); }
   }, [api, onError]);
   useEffect(() => { load(); }, [load]);
@@ -1576,6 +1817,24 @@ function Sources({ api, onError }) {
         body: JSON.stringify({ enabled: !k.enabled }) });
       load();
     } catch (e) { onError && onError(e.message); }
+  }
+
+  async function addKeyword() {
+    const kw = newKeyword.trim();
+    if (!kw) return;
+    try {
+      await api('/keywords', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: kw }) });
+      setNewKeyword('');
+      load();
+    } catch (e) { onError && onError(e.message); }
+  }
+
+  async function removeKeyword(k) {
+    if (typeof window !== 'undefined' && !window.confirm(`Delete the keyword "${k.keyword}"?`)) return;
+    try { await api(`/keywords/${k.id}`, { method: 'DELETE' }); load(); }
+    catch (e) { onError && onError(e.message); }
   }
 
   // Retiring and restoring are real, recorded decisions, not a toggle: the
@@ -1639,6 +1898,38 @@ function Sources({ api, onError }) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="an-section">
+        <h2 className="an-section-h">Where prospects come from</h2>
+        <p className="con-sub">
+          Descriptive attribution by first-touch source: how many prospects each source
+          produced, and how far they got. This is a description of what happened, not a
+          ranking — a source with few prospects may simply be new.
+        </p>
+        {attribution.length === 0
+          ? <p className="con-sub">No attribution recorded yet — nothing has been discovered.</p>
+          : (
+            <div className="growth-table-wrap">
+              <table className="growth-table">
+                <thead><tr>
+                  <th>First-touch source</th><th>Prospects</th><th>Conversations</th>
+                  <th>Signups</th><th>Activated</th>
+                </tr></thead>
+                <tbody>
+                  {attribution.map((r) => (
+                    <tr key={r.k}>
+                      <td>{fmt(r.k)}</td>
+                      <td>{r.prospects ?? 0}</td>
+                      <td>{r.conversations ?? 0}</td>
+                      <td>{r.signups ?? 0}</td>
+                      <td>{r.activated ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
       </div>
 
       <div className="an-section">
@@ -1706,13 +1997,23 @@ function Sources({ api, onError }) {
       <div className="an-section">
         <h2 className="an-section-h">Keywords ({keywords.length})</h2>
         <p className="con-sub">
-          What the Hunter searches for. Disable a keyword to stop using it without deleting it.
+          What the Hunter searches for. Disable a keyword to stop using it without deleting it,
+          or add a new term to widen discovery.
         </p>
+        <div className="growth-toolbar">
+          <input className="growth-input" placeholder="Add a keyword…"
+            value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addKeyword(); }} />
+          <button className="preview-checkout-btn" type="button" onClick={addKeyword}>+ Add keyword</button>
+        </div>
         <div className="growth-keywords">
           {keywords.map((k) => (
-            <button key={k.id} type="button"
-              className={`growth-keyword ${k.enabled ? 'on' : 'off'}`}
-              onClick={() => toggleKeyword(k)}>{k.keyword}</button>
+            <span key={k.id} className={`growth-keyword ${k.enabled ? 'on' : 'off'}`}>
+              <button type="button" className="growth-keyword-t" title="Toggle"
+                onClick={() => toggleKeyword(k)}>{k.keyword}</button>
+              <button type="button" className="growth-keyword-x" title="Delete"
+                onClick={() => removeKeyword(k)}>×</button>
+            </span>
           ))}
         </div>
       </div>

@@ -64,10 +64,17 @@ check('Sources reads the audit endpoint', /\/growth\/sources\/audit/.test(tab));
 check('Sources can retire a source', /act\(s\.source, 'retire'\)/.test(tab));
 check('Sources can restore a source', /act\(s\.source, 'restore'\)/.test(tab));
 
-// page.js wires the component into the admin-only analytics tab.
+// page.js wires the components into the admin-only analytics tab. The Growth
+// workspace (the four primary tabs) is the default; the Analytics snapshot is
+// the secondary read, selected by analyticsView, so both are rendered under
+// the same admin tab rather than stacked.
 check('page.js imports AnalyticsTab', /import AnalyticsTab from '\.\/AnalyticsTab'/.test(page));
+check('page.js renders the Growth workspace under the admin analytics tab',
+  /tab === 'analytics' && isAdmin[\s\S]{0,1200}<GrowthTab/.test(page));
 check('page.js renders AnalyticsTab under the admin analytics tab',
-  /tab === 'analytics' && isAdmin[\s\S]{0,400}<AnalyticsTab/.test(page));
+  /tab === 'analytics' && isAdmin[\s\S]{0,1200}<AnalyticsTab/.test(page));
+check('the Analytics snapshot is secondary, behind analyticsView',
+  /analyticsView === 'snapshot'/.test(page) && /analyticsView === 'growth'/.test(page));
 
 // The payment surfaces that share the tab are preserved.
 check('the fee monitor is preserved', /Fee monitoring/.test(page));
