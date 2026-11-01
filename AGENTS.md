@@ -670,3 +670,27 @@ none (see konduyt-api `channels.connect_oauth`), so the send path survives the
 reconnect. `scripts/test-growth-quality.mjs` guards that Reconnect is offered
 without disconnecting.
 
+
+
+### Growth is four primary tabs; the Sources load must not blank itself (2026-11-01)
+
+The Growth surface now has exactly **four primary tabs** -- Sources, Prospects,
+Approvals, Conversations -- declared in `PRIMARY_VIEWS`; every other surface
+(live, cohort, strategy, experiment, overview, contacts, agents, diagnostics,
+settings) is in `SECONDARY_VIEWS`, reachable from the "More" menu and by
+`?growth=<id>` deep link (the Gmail callback uses `?growth=settings`). The
+default view is Sources. `scripts/test-growth-four-tabs.mjs` guards the tab row,
+the demoted surfaces, and -- by executing the real loader -- that the Sources
+panel cannot be blanked by one failing read.
+
+`Sources` loads four reads (`/sources`, `/keywords`, `/sources/audit`,
+`/metrics/attribution`). It used `Promise.all`, so a failure in the audit or
+attribution took the keyword list down with it and the panel rendered as empty
+while discovery was running. It now uses `Promise.allSettled`: the audit and
+attribution degrade to empty, and a real failure of `/sources` or `/keywords`
+shows an error line rather than being indistinguishable from "no keywords".
+
+Keywords are backend-owned: the UI reads `GET /growth/keywords` and never
+carries its own list, or the two would drift and the operator would be editing
+terms nothing searches. Each row's `agent` scope is shown on hover so the
+developer/business terms the unified store returns are visible.
