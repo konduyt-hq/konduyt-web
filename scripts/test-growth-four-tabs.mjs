@@ -96,7 +96,7 @@ check('the Sources loader settles each read independently',
 check('the Sources loader does not fail the whole panel on one read',
   !/Promise\.all\(/.test(sourcesBody));
 check('a failed keyword read is surfaced, not rendered as empty',
-  /loadError/.test(sourcesBody) && /Could not load keywords/.test(sourcesBody));
+  /loadError/.test(sourcesBody) && /Could not load the Sources data/.test(sourcesBody));
 check('an empty keyword list is distinguished from a failed one',
   /keywords\.length === 0/.test(sourcesBody) && /No keywords yet/.test(sourcesBody));
 check('the keyword list is read from GET /keywords',

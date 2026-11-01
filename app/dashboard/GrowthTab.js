@@ -2008,7 +2008,7 @@ function Sources({ api, onError }) {
         </p>
         {loadError && (
           <p className="con-sub" style={{ color: '#b91c1c' }}>
-            Could not load keywords: {loadError}. Discovery may still be running — retry.
+            Could not load the Sources data: {loadError}. Discovery may still be running — retry.
           </p>
         )}
         <div className="growth-toolbar">
