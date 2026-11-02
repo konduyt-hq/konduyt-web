@@ -133,7 +133,9 @@ reads that `gmail` parameter to show the outcome.
 Analytics tab. The "Analytics snapshot" (`AnalyticsTab.js`, a second read of
 `GET /growth/analytics`) and its `analyticsView` switcher were removed: they were
 a second navigation system stacked over the four Growth tabs. Growth is now the
-tab's only content (plus the fee monitor, below).
+tab's only content (plus the fee monitor, below). The `GET /growth/analytics`
+endpoint itself stays — GrowthTab's Conversations view reads it for its summary
+counts — only the second UI surface is gone.
 `scripts/test-growth-four-tabs.mjs` guards all of this and runs as part of
 `npm test`.
 
