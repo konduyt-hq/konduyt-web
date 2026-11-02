@@ -129,31 +129,33 @@ toggle (still `POST /growth/email/sending`, never a whole-object PUT). The OAuth
 callback returns to `?tab=analytics&gmail=connected|error`, and the control
 reads that `gmail` parameter to show the outcome.
 
-`page.js` renders `GrowthTab` as the primary content of the admin Analytics tab;
-`AnalyticsTab` (the one-read `GET /growth/analytics` snapshot) is secondary,
-behind the `analyticsView` switcher. `scripts/test-growth-four-tabs.mjs` guards
-all of this and runs as part of `npm test`.
+`page.js` renders `GrowthTab` as the direct and only main content of the admin
+Analytics tab. The "Analytics snapshot" (`AnalyticsTab.js`, a second read of
+`GET /growth/analytics`) and its `analyticsView` switcher were removed: they were
+a second navigation system stacked over the four Growth tabs. Growth is now the
+tab's only content (plus the fee monitor, below).
+`scripts/test-growth-four-tabs.mjs` guards all of this and runs as part of
+`npm test`.
 
-## The Analytics tab is a growth surface, not a route
+## The Analytics tab is the Growth surface
 
-The dashboard's Analytics tab (admin only) renders `app/dashboard/AnalyticsTab.js`.
-It is a pure view of one backend read, `GET /growth/analytics` — it owns no
-logic and computes nothing itself, so the page and the API cannot disagree about
-a number. The payload is four areas in the order a decision is made (A. Growth
-overview, B. Agents, C. Sources, D. Outreach ops) with `blockers` computed first
-and rendered above the area tabs. Sources are read/write: the component reads
-`GET /growth/sources/audit` and retires/restores through
-`POST /growth/sources/{id}/retire|restore` (a retirement reason is required).
+The dashboard's Analytics tab (admin only) renders `GrowthTab` directly — the
+four primary tabs (Sources, Prospects, Approvals, Conversations) are the whole
+navigation. The former "Analytics snapshot" component
+(`app/dashboard/AnalyticsTab.js`) has been deleted, along with its `analyticsView`
+state and the "Secondary analytics" switcher that selected it; there is no
+second analytics surface. The old `/admin/analytics/*` reads were removed with
+the earlier redesign and nothing in the tab calls them.
 
-The fee monitor and the Sentinel transaction-fee view still live under the same
-tab and are loaded by `page.js` (`loadSentinel`/`loadFeeBands`) — they are
-payment surfaces, not analytics, and must stay. The old `/admin/analytics/*`
-reads were removed with the redesign; nothing in the tab calls them any more.
+The fee monitor still lives under the same tab and is loaded by `page.js`
+(`loadSentinel`) — it is a payment/Sentinel surface, not analytics, and must
+stay. The Sentinel transaction-fee view lives on the Sentinel tab.
 
-`scripts/test-analytics-redesign.mjs` guards this: the one endpoint, blockers
-first, the four areas, the retire/restore actions, that the fee-monitor and
-Sentinel surfaces survive, and that no Taxes tab is reintroduced. It runs as
-part of `npm test`.
+`scripts/test-analytics-redesign.mjs` guards this: no `AnalyticsTab` file/import/
+render, no `analyticsView`/`setAnalyticsView`, no "Secondary analytics" /
+"Analytics snapshot" / "Growth workspace" strings, Growth rendered directly, the
+fee monitor preserved, and that no Taxes tab is reintroduced. It runs as part of
+`npm test`.
 
 **A half-done removal here is invisible until an admin opens the tab.** The
 redesign deleted the old inline surface's state (`analyticsLoading`,
@@ -744,3 +746,24 @@ lost, because they are the point of the feature:
 old demotion. `test-growth-quality.mjs`, `test-gmail-connect.mjs`,
 `test-sending-toggle.mjs` and `test-inbox-replies.mjs` were retargeted at the
 surviving tabs and the header control. All run as part of `npm test`.
+
+## Verification notes: the four-tab Growth surface (live, 2026-11-01)
+
+Verified against the merged `main` (web 3a69ad13, api 8dc8206f), live at
+konduyt.dev. The four primary tabs (Sources, Prospects, Approvals,
+Conversations) are the whole Growth navigation; the nine secondary surfaces
+are gone from both the source and the production bundle, not merely hidden.
+
+A follow-up removed the last secondary navigation inside the Analytics tab: the
+"Analytics snapshot" (`AnalyticsTab.js`) and its "Secondary analytics" switcher
+(`analyticsView` in `page.js`). Growth is now the direct and only main content of
+the admin Analytics tab; the fee monitor (Sentinel) is kept as a separate
+payment capability. `scripts/test-analytics-redesign.mjs` guards that removal.
+
+Local verification recipe (no production creds needed): run the API on
+127.0.0.1:8099 with `ENVIRONMENT=development` and a local `JWT_SECRET`, mint an
+admin token for an allowlisted email (`KONDUYT_ADMIN_EMAILS`), build the web
+static export with `NEXT_PUBLIC_API_URL` pointing at it and serve `out/` with
+`npx serve`. Admin JWT goes in `localStorage.kdu_token`. The growth surface
+needs the `growth_*` schema (154 tables) in Postgres; production auth is
+OAuth-only, so a local token is the only practical admin session.

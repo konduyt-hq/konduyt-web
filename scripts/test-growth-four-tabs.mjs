@@ -155,11 +155,11 @@ if (loadBody) {
   check('the Sources loader is extractable for a behavioural test', false);
 }
 
-// --- page.js makes Growth primary and the snapshot secondary. ---------------
+// --- page.js makes Growth the direct and only Analytics content. ------------
 check('page.js renders GrowthTab under the admin analytics tab',
-  /tab === 'analytics' && isAdmin[\s\S]{0,1200}<GrowthTab/.test(page));
-check('page.js gates the Analytics snapshot behind a secondary control',
-  /analyticsView === 'snapshot'/.test(page));
+  /tab === 'analytics' && isAdmin[\s\S]{0,1500}<GrowthTab/.test(page));
+check('the Analytics snapshot surface is not rendered',
+  !/analyticsView/.test(page) && !/<AnalyticsTab[\s/>]/.test(page));
 
 console.log('-------------------------');
 console.log(`  ${checks - failures}/${checks} passed`);

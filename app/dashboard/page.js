@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import CheckoutModal from './CheckoutModal';
 import GrowthTab from './GrowthTab';
 import SentinelTab from './SentinelTab';
-import AnalyticsTab from './AnalyticsTab';
 import UsersTab from './UsersTab';
 import LogoMark from '../LogoMark';
 import Link from 'next/link';
@@ -238,11 +237,6 @@ export default function Dashboard() {
   const [routeLoading, setRouteLoading] = useState(false);
   // Konduyt Sentinel
   const [sentinelSources, setSentinelSources] = useState([]);
-  // The Analytics tab is a Growth surface first. This switch selects the
-  // secondary "Analytics snapshot" (the four-area read of GET /growth/analytics)
-  // so it sits behind a secondary control instead of stacking above the four
-  // primary Growth tabs.
-  const [analyticsView, setAnalyticsView] = useState('growth'); // growth | snapshot
   const [sentinelChanges, setSentinelChanges] = useState([]);
   const [sentinelBusy, setSentinelBusy] = useState(false);
   const [sentinelRunResult, setSentinelRunResult] = useState(null); // last run's summary, for Analytics
@@ -849,8 +843,8 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    // The Analytics tab owns its own reads (AnalyticsTab -> GET /growth/analytics).
-    // The fee monitor that shares this tab is loaded here; the Sentinel
+    // Growth (the four primary tabs) owns its own reads at /growth/*. The fee
+    // monitor that shares this tab is loaded here; the Sentinel
     // transaction-fee view moved to the Sentinel tab (SentinelTab), which owns
     // its own reads.
     if (tab === 'analytics' && isAdmin) loadSentinel();
@@ -3643,47 +3637,17 @@ export default function Dashboard() {
 
             {tab === 'analytics' && isAdmin && (
               <div className="mpesa-page">
-                {/* Growth -- exactly four tabs (Sources, Prospects, Approvals,
+                {/* Growth is the direct and only main content of the Analytics
+                    workspace: exactly four tabs (Sources, Prospects, Approvals,
                     Conversations) and nothing else. Its logic lives entirely in
                     the backend at /growth/*; this surface only displays and
-                    controls. The secondary surfaces that used to sit behind a
-                    "More" menu (Command center, Cohort, Strategy health,
-                    Experiment, Overview, Contacts, Agents, Diagnostics,
-                    Settings) have been removed, not hidden. */}
-                {analyticsView === 'growth' && (
-                  <GrowthTab apiBase={API_BASE} authHeaders={authHeaders}
-                    onError={(m) => setBillingNotice(m || '')} />
-                )}
-
-                {/* Analytics snapshot -- the secondary four-area read of
-                    GET /growth/analytics (growth overview, agents, sources,
-                    outreach ops), blockers first. Behind its own control so it
-                    does not stack above the primary Growth tabs. */}
-                {analyticsView === 'snapshot' && (
-                  <AnalyticsTab apiBase={API_BASE} authHeaders={authHeaders}
-                    onError={(m) => setBillingNotice(m || '')} />
-                )}
-
-                {/* A secondary switcher: the primary Growth surface, or the
-                    Analytics snapshot read. Neither is a separate route. */}
-                <div className="an-section" style={{ marginTop: 24 }}>
-                  <div className="con-home-head-row" style={{ alignItems: 'center' }}>
-                    <h2 className="an-section-h" style={{ marginBottom: 0 }}>Secondary analytics</h2>
-                    <div className="growth-toolbar" style={{ margin: 0 }}>
-                      <button type="button"
-                        className={analyticsView === 'growth' ? 'growth-chip active' : 'growth-chip'}
-                        onClick={() => setAnalyticsView('growth')}>Growth workspace</button>
-                      <button type="button"
-                        className={analyticsView === 'snapshot' ? 'growth-chip active' : 'growth-chip'}
-                        onClick={() => setAnalyticsView('snapshot')}>Analytics snapshot</button>
-                    </div>
-                  </div>
-                  <p className="con-sub" style={{ marginTop: 8 }}>
-                    The Growth workspace is the four primary tabs. The Analytics snapshot is a
-                    single read of <code>GET /growth/analytics</code> — growth overview, agents,
-                    sources and outreach ops, blockers first.
-                  </p>
-                </div>
+                    controls. There is no second analytics navigation: the
+                    snapshot read and the "More" menu's secondary surfaces
+                    (Command center, Cohort, Strategy health, Experiment,
+                    Overview, Contacts, Agents, Diagnostics, Settings) are gone,
+                    not hidden. */}
+                <GrowthTab apiBase={API_BASE} authHeaders={authHeaders}
+                  onError={(m) => setBillingNotice(m || '')} />
 
                 {/* Fee source monitoring -- runs automatically every 6h
                     (Render Cron), but this button lets you check on demand
