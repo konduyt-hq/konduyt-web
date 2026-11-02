@@ -1,11 +1,14 @@
-// Guard the redesigned Analytics surface.
+// Guard the Analytics workspace.
 //
-// The old Analytics tab mixed growth agents, user counts, tax sentinels and
-// transaction-price-change panels into one wall of numbers. The redesign is a
-// single read of GET /growth/analytics, blockers first, in four areas: growth
-// overview, agents, sources and outreach ops. This test fails loudly if the
-// dashboard regresses -- if it re-adds a tax surface, reads the removed
-// /admin/analytics endpoints, or drops one of the four areas.
+// The Analytics tab (admin only) has one main content: the Growth surface, with
+// exactly four tabs (Sources, Prospects, Approvals, Conversations). The old
+// "Analytics snapshot" (AnalyticsTab -> GET /growth/analytics) and its
+// "Secondary analytics" switcher were a second navigation system stacked over
+// the four tabs, so they were removed outright. This test fails loudly if that
+// secondary surface or its switcher/state comes back, or if the Growth surface
+// stops being the direct content of the tab.
+//
+// The fee monitor (Konduyt Sentinel) shares the tab and is intentionally kept.
 //
 // Run: node scripts/test-analytics-redesign.mjs
 import { readFileSync } from 'fs';
@@ -22,61 +25,51 @@ const check = (name, ok, detail = '') => {
   console.log(`  [${ok ? 'PASS' : 'FAIL'}] ${name}` + (ok || !detail ? '' : `\n        ${detail}`));
 };
 
-console.log('Analytics redesign');
-console.log('------------------');
+console.log('Analytics workspace');
+console.log('-------------------');
 
-const tab = read('app/dashboard/AnalyticsTab.js');
 const page = read('app/dashboard/page.js');
 
-// The redesign reads the one real snapshot endpoint and nothing cached.
-check('the Analytics surface reads GET /growth/analytics',
-  /`\$\{apiBase\}\/growth\/analytics`/.test(tab));
+// The removed /admin/analytics endpoints must not be called from the dashboard.
 check('the removed /admin/analytics endpoints are not called',
-  !/admin\/analytics/.test(tab) && !/admin\/analytics/.test(page));
+  !/admin\/analytics/.test(page));
 
-// The redesign deleted the old inline surface's state and loader. The markup
-// that rendered them was left behind once, and because a page.js reference to a
-// variable that no longer exists is only resolved when React renders the tab, it
-// shipped and crashed the Analytics tab with "analyticsLoading is not defined"
-// for every admin. The removal must be complete: no orphaned reference, and no
-// orphaned state, in either direction.
+// The old inline analytics surface's state and loader are gone. A page.js
+// reference to a variable that no longer exists is only resolved when React
+// renders the tab, so it once shipped and crashed Analytics with
+// "analyticsLoading is not defined". The removal must stay complete.
 check('no orphaned reference to the deleted analytics state',
   !/analyticsLoading|analyticsOverview|analyticsUsers|loadAnalytics/.test(page));
 check('the deleted analytics state is not re-declared',
   !/(const|let|var)\s+analyticsOverview\b/.test(page));
 
-// Blockers are computed and shown first, before any area.
-check('blockers are rendered before the areas',
-  tab.indexOf('an-blockers') > -1 && tab.indexOf('an-blockers') < tab.indexOf('con-tabs'));
-check('an empty blocker list says so honestly', /No blockers detected/.test(tab));
+// --- The Analytics snapshot surface is gone, not hidden. --------------------
+const hasFile = (rel) => {
+  try { readFileSync(join(ROOT, rel), 'utf8'); return true; } catch { return false; }
+};
+check('the AnalyticsTab component file is removed',
+  !hasFile('app/dashboard/AnalyticsTab.js'));
+check('page.js no longer imports AnalyticsTab',
+  !/import\s+AnalyticsTab\b/.test(page));
+check('page.js no longer renders AnalyticsTab',
+  !/<AnalyticsTab[\s/>]/.test(page));
+check('the analyticsView switcher state is gone',
+  !/analyticsView/.test(page) && !/setAnalyticsView/.test(page));
+check('the "Secondary analytics" switcher is gone',
+  !/Secondary analytics/.test(page));
+check('no Analytics snapshot control remains',
+  !/Analytics snapshot/.test(page));
+check('no Growth workspace switcher chip remains',
+  !/Growth workspace/.test(page));
 
-// The four areas exist and are reachable.
-check('A - Growth overview is registered', /'overview', 'A · Growth overview'/.test(tab));
-check('B - Agents is registered', /'agents', 'B · Agents'/.test(tab));
-check('C - Sources is registered', /'sources', 'C · Sources'/.test(tab));
-check('D - Outreach ops is registered', /'outreach', 'D · Outreach ops'/.test(tab));
-check('each area renders its own component',
-  /AreaOverview/.test(tab) && /AreaAgents/.test(tab) && /AreaSources/.test(tab)
-  && /AreaOutreach/.test(tab));
+// --- Growth is the direct and only main content of the tab. -----------------
+check('page.js renders Growth under the admin analytics tab',
+  /tab === 'analytics' && isAdmin[\s\S]{0,1500}<GrowthTab/.test(page));
+// The Growth render is not gated behind any secondary view switch.
+check('the Growth render is not behind a view switch',
+  !/analyticsView === 'growth'/.test(page));
 
-// Sources area is read/write through the real audit + retire/restore endpoints.
-check('Sources reads the audit endpoint', /\/growth\/sources\/audit/.test(tab));
-check('Sources can retire a source', /act\(s\.source, 'retire'\)/.test(tab));
-check('Sources can restore a source', /act\(s\.source, 'restore'\)/.test(tab));
-
-// page.js wires the components into the admin-only analytics tab. The Growth
-// workspace (the four primary tabs) is the default; the Analytics snapshot is
-// the secondary read, selected by analyticsView, so both are rendered under
-// the same admin tab rather than stacked.
-check('page.js imports AnalyticsTab', /import AnalyticsTab from '\.\/AnalyticsTab'/.test(page));
-check('page.js renders the Growth workspace under the admin analytics tab',
-  /tab === 'analytics' && isAdmin[\s\S]{0,1200}<GrowthTab/.test(page));
-check('page.js renders AnalyticsTab under the admin analytics tab',
-  /tab === 'analytics' && isAdmin[\s\S]{0,1200}<AnalyticsTab/.test(page));
-check('the Analytics snapshot is secondary, behind analyticsView',
-  /analyticsView === 'snapshot'/.test(page) && /analyticsView === 'growth'/.test(page));
-
-// The payment surfaces that share the tab are preserved.
+// --- The payment surface that shares the tab is preserved. ------------------
 check('the fee monitor is preserved', /Fee monitoring/.test(page));
 // The Sentinel transaction-fee view MOVED to the Sentinel tab: it is a fee
 // surface, so it lives with the rest of Sentinel. It must not remain on
@@ -87,11 +80,10 @@ check('the Sentinel transaction-fee view is gone from Analytics',
 check('the Sentinel transaction-fee view lives in the Sentinel tab',
   /Sentinel — transaction fees/.test(sentinelTabSrc)
   && /'transaction-fees',\s*'Transaction fees'/.test(sentinelTabSrc));
-check('the Growth agents surface is preserved', /<GrowthTab/.test(page));
 
 // No tax surface is reintroduced anywhere in the dashboard.
-check('no Taxes tab is reintroduced', !/Taxes/.test(page) && !/Taxes/.test(tab));
+check('no Taxes tab is reintroduced', !/Taxes/.test(page));
 
-console.log('------------------');
+console.log('-------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
 process.exit(failures === 0 ? 0 : 1);

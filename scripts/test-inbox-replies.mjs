@@ -4,8 +4,7 @@
 // make that visible to an operator and must not silently disappear: the Growth
 // surfaces that report whether the inbox is readable, and the manual "poll now"
 // action. Both live on the Conversations tab (the Diagnostics surface that used
-// to hold them was removed), and Analytics reports the same truth. This test
-// fails if any of that is removed.
+// to hold them was removed). This test fails if any of that is removed.
 //
 // Run: node scripts/test-inbox-replies.mjs
 import { readFileSync } from 'fs';
@@ -26,7 +25,6 @@ console.log('Inbound replies surface');
 console.log('------------------------');
 
 const growth = read('app/dashboard/GrowthTab.js');
-const analytics = read('app/dashboard/AnalyticsTab.js');
 
 const conversations = growth.match(/function Conversations\(\{ api[\s\S]*?\n\}/);
 const convBody = conversations ? conversations[0] : '';
@@ -50,14 +48,6 @@ check('the Gmail control surfaces the inbox read capability',
   /inbox_read/.test(growth));
 check('the Gmail control separates read access from sending',
   /replies readable/.test(growth) && /sending/.test(growth));
-
-// Analytics reports the same truth in the Outreach ops area.
-check('analytics renders an inbound replies section',
-  /Inbound replies/.test(analytics));
-check('analytics reads outreach.inbox',
-  /outreach\.inbox/.test(analytics));
-check('analytics reports read permission',
-  /ib\.can_read/.test(analytics));
 
 console.log('------------------------');
 console.log(`  ${checks - failures}/${checks} passed`);
