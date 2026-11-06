@@ -59,6 +59,20 @@ export default function Creators() {
               separately from the payment platform, and this page will become its
               entry point when it is ready.
             </p>
+
+            {/* The first piece of CreatorOS that actually works, so it is
+                offered now rather than waiting for the whole workspace. It
+                audits PUBLIC data only and needs no account connection. */}
+            <div className="creators-feature">
+              <span className="creators-feature-title">Public Creator Audit — available now</span>
+              <p className="creators-feature-body">
+                Audit a creator’s public YouTube, Instagram or TikTok presence and
+                get an evidence-backed assessment of their content and
+                performance. No account connection and no login required.
+              </p>
+              <a href="/creators/audit/" className="link-arrow">Open the Public Creator Audit →</a>
+            </div>
+
             <div className="creators-cta">
               <a
                 href="mailto:teamkonduyt@gmail.com?subject=Konduyt%20for%20Creators%20early%20access"
