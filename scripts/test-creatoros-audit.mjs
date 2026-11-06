@@ -70,6 +70,19 @@ check('it offers all three platforms',
 check('it shows a platform status from capabilities (not three equal buttons)',
   /approval_required|blocked_reason/.test(PAGE),
   'TikTok/Instagram are approval-gated and must be labelled as such');
+// `available` and `configured` are different claims. YouTube with no API key is
+// available (auditable now, no credential) but not configured. Keying the label
+// off `configured` alone showed a fully working platform as "Not configured",
+// which is the same dishonesty as showing a blocked one as ready.
+check('a platform label keys off `available`, not `configured`',
+  /available/.test(PAGE) && /canRun/.test(PAGE),
+  'YouTube is auditable with no key and must not read as unavailable');
+check('it does not label an available platform as "Not configured"',
+  !/'Not configured'/.test(PAGE),
+  'a credential-free platform must never be shown as not configured');
+check('it tells the user when a platform needs no key',
+  /no key needed/.test(PAGE),
+  'the free YouTube path should be visible, not hidden behind a missing key');
 check('it renders the report limitations', /report\.limitations/.test(PAGE));
 check('it renders the report data gaps', /report\.data_gaps/.test(PAGE));
 check('it renders a MISSING/RESTRICTED value distinctly from a number',

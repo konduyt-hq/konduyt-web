@@ -161,6 +161,13 @@ export default function CreatorAudit() {
               {PLATFORMS.map((p) => {
                 const c = capFor(p.id);
                 const isBlocked = c && (c.approval_required || c.blocked_reason);
+                // `available` means auditable right now with no credential;
+                // `configured` only means an optional richer credential is
+                // present. YouTube is available but not configured when no API
+                // key is set, so keying the label off `configured` alone
+                // wrongly reported a fully working platform as "Not
+                // configured". Approval-gated platforms are never available.
+                const canRun = c && c.available && !isBlocked;
                 return (
                   <button
                     key={p.id}
@@ -169,13 +176,15 @@ export default function CreatorAudit() {
                     onClick={() => { setPlatform(p.id); setBlocked(null); }}
                   >
                     <span className="audit-platform-name">{p.label}</span>
-                    {c && !c.configured && (
+                    {c && !canRun && (
                       <span className="audit-platform-note">
-                        {isBlocked ? 'Approval required' : 'Not configured'}
+                        {isBlocked ? 'Approval required' : 'Not available'}
                       </span>
                     )}
-                    {c && c.configured && !isBlocked && (
-                      <span className="audit-platform-ok">Ready</span>
+                    {canRun && (
+                      <span className="audit-platform-ok">
+                        {c.configured ? 'Ready' : 'Ready — no key needed'}
+                      </span>
                     )}
                   </button>
                 );
