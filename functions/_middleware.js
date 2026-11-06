@@ -13,14 +13,25 @@
 // /dashboard/settings/index.html (if that ever becomes a real route), and so
 // on -- without the visitor ever seeing /dashboard in the URL.
 //
+// creators.konduyt.dev is handled the same way, serving the /creators/ product
+// entry point, so the creator product has its own clean hostname. If the
+// creator workspace is later deployed as a separate application on that host,
+// this rewrite simply never runs (the request never reaches this project).
+//
 // Requests to konduyt.dev (the marketing site) pass through untouched.
+
+const HOST_PREFIXES = {
+  'dashboard.konduyt.dev': '/dashboard',
+  'creators.konduyt.dev': '/creators',
+};
 
 export async function onRequest(context) {
   const url = new URL(context.request.url);
 
-  if (url.hostname === 'dashboard.konduyt.dev' && !url.pathname.startsWith('/dashboard')) {
+  const prefix = HOST_PREFIXES[url.hostname];
+  if (prefix && !url.pathname.startsWith(prefix)) {
     const rewritten = new URL(url);
-    rewritten.pathname = `/dashboard${url.pathname === '/' ? '/' : url.pathname}`;
+    rewritten.pathname = `${prefix}${url.pathname === '/' ? '/' : url.pathname}`;
     return context.env.ASSETS.fetch(new Request(rewritten, context.request));
   }
 

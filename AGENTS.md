@@ -199,6 +199,64 @@ The inbound-reply surface has its own guard, `scripts/test-inbox-replies.mjs`
 read capability separately from sending. Analytics shows the same truth in the
 Outreach ops area.
 
+## Three products under one identity; the root is a selection page
+
+The public site root (`/`) is a product-selection page, not the payment hero.
+It presents three options and nothing else:
+
+| Option | Destination | State |
+| --- | --- | --- |
+| Konduyt for Developers & Businesses | `/developers/` | Existing platform |
+| Konduyt for Creators | `/creators/` | In development |
+| Konduyt Payroll | none | Coming soon |
+
+- **The payment product was moved, not rewritten.** What used to be
+  `app/page.js` is now `app/developers/page.js` (same content, nav and links;
+  only its relative imports became `../`). Editing the payment marketing page
+  means editing `app/developers/page.js` from now on. `app/developers/layout.js`
+  carries its metadata.
+- **Payroll is deliberately not a link.** In `app/page.js` the product list is
+  data (`PRODUCTS`); an entry with `href: null` renders as a `<div>` with
+  `aria-disabled`, so Payroll cannot lead to a broken or unfinished page. Do not
+  give it an `href` to a route that does not exist — `/payroll/` is a 404.
+- **One identity, one auth system.** The restructure touches no authentication:
+  signup (`/signup/`), login (`/signin/`), the `kdu_token` account key and the
+  dashboard (`/dashboard/`) are unchanged, and the landing page itself carries
+  no auth code. A visitor who signs up from the root gets the same Konduyt
+  account the rest of the product uses.
+- **Creators does not route to `/dashboard/`.** That console belongs to
+  Developers & Businesses; a creator dropped there would land in an experience
+  that is not theirs. The `/creators/` page is its own entry point and offers a
+  real early-access action (an email request) instead. Do not add a dashboard
+  link back to it, and do not build a creator dashboard until that product is
+  built separately.
+- **`creators.konduyt.dev`** is rewritten to `/creators/` by
+  `functions/_middleware.js`, the same host-based pattern as
+  `dashboard.konduyt.dev` -> `/dashboard/`. If the creator workspace later ships
+  as a separate app on that host, the rewrite simply never runs.
+- `scripts/test-landing-restructure.mjs` (`npm run test:landing-restructure`,
+  wired into `npm test`) guards the three options and their copy, that Payroll
+  has no href, that the moved payment page keeps its hero/DevPanel/providers
+  rail, that the auth surfaces still use the real OAuth flow and the one token
+  key, and — following the repo's layout-variant rule — that every class the new
+  pages name has a rule in `globals.css`.
+
+## Production smoke test (read-only, on demand)
+
+`scripts/smoke-production.mjs` (`npm run smoke:production`) checks the live
+developer/payment experience against production without touching it: only GETs
+and the public demo POST, never a secret key, so it cannot create a charge or
+change data. It asserts the API health/schema, that both OAuth logins hand off
+to the real providers, that `/me` and the payment endpoints refuse
+unauthenticated callers, that webhook receivers reject unverifiable payloads
+without a 500, that the public demo prices a sandbox payment, that
+`/checkout/config` fails closed, and that the site still serves `/`,
+`/dashboard/`, `/signin/`, `/signup/` and `/docs/`.
+
+It is **not** in `npm test` — CI must not depend on a live third-party service.
+It prints what it could not exercise end to end (a real signed-in session, a
+real charge, a signed provider webhook) rather than claiming those as tested.
+
 ## Landing-page code snippets
 
 - `app/DevPanel.js` holds the 11 language tabs (JS, cURL, Python, PHP, Go,
