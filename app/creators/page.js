@@ -4,11 +4,14 @@ import MobileNav from '../MobileNav';
 import LogoMark from '../LogoMark';
 import WarmupPing from '../WarmupPing';
 
-// The Konduyt for Creators entry point. This is intentionally a real,
-// finished page rather than a placeholder: it describes the product that is
-// being built, and it routes an existing Konduyt user to the account they
-// already have (the dashboard) instead of asking them to register again. The
-// creator workspace itself is developed separately and is out of scope here.
+// The Konduyt for Creators entry point. This is intentionally a real, finished
+// page rather than a placeholder: it describes the product that is being built
+// and offers a genuine early-access action (an email request) for now.
+//
+// It deliberately does NOT send visitors to /dashboard/. That dashboard is the
+// Konduyt for Developers & Businesses console, a different product, and a
+// creator arriving there would be dropped into an experience that is not theirs.
+// The creator workspace is developed separately and is out of scope here.
 export default function Creators() {
   return (
     <>
@@ -48,20 +51,28 @@ export default function Creators() {
             <span className="product-badge product-badge-dev">In development</span>
             <p className="creators-body">
               This is the product we are actively developing. Konduyt for Creators
-              is built on the same Konduyt identity and account you already use, so
-              there is nothing new to sign up for.
+              is being built on the same Konduyt identity you already use, so there
+              will be nothing new to sign up for.
             </p>
             <p className="creators-body">
-              The workspace itself is being built separately and will appear here
-              when it is ready. Until then, your existing Konduyt account and
-              dashboard are unchanged and fully available.
+              The workspace itself is not open yet. The creator product is built
+              separately from the payment platform, and this page will become its
+              entry point when it is ready.
             </p>
             <div className="creators-cta">
-              <a href="/dashboard/" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                Go to your Konduyt account
+              <a
+                href="mailto:teamkonduyt@gmail.com?subject=Konduyt%20for%20Creators%20early%20access"
+                className="btn-primary"
+                style={{ textDecoration: 'none', display: 'inline-block' }}
+              >
+                Request early access
               </a>
               <a href="/developers/" className="link-arrow">See Developers &amp; Businesses →</a>
             </div>
+            <p className="creators-note">
+              Konduyt for Creators is not available yet. Requesting early access
+              just tells us to reach out to you when it opens.
+            </p>
           </div>
         </section>
 

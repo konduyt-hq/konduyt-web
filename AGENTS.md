@@ -222,8 +222,14 @@ It presents three options and nothing else:
 - **One identity, one auth system.** The restructure touches no authentication:
   signup (`/signup/`), login (`/signin/`), the `kdu_token` account key and the
   dashboard (`/dashboard/`) are unchanged, and the landing page itself carries
-  no auth code. The Creators entry point routes an existing user to
-  `/dashboard/` rather than asking them to register again.
+  no auth code. A visitor who signs up from the root gets the same Konduyt
+  account the rest of the product uses.
+- **Creators does not route to `/dashboard/`.** That console belongs to
+  Developers & Businesses; a creator dropped there would land in an experience
+  that is not theirs. The `/creators/` page is its own entry point and offers a
+  real early-access action (an email request) instead. Do not add a dashboard
+  link back to it, and do not build a creator dashboard until that product is
+  built separately.
 - **`creators.konduyt.dev`** is rewritten to `/creators/` by
   `functions/_middleware.js`, the same host-based pattern as
   `dashboard.konduyt.dev` -> `/dashboard/`. If the creator workspace later ships
@@ -234,6 +240,22 @@ It presents three options and nothing else:
   rail, that the auth surfaces still use the real OAuth flow and the one token
   key, and — following the repo's layout-variant rule — that every class the new
   pages name has a rule in `globals.css`.
+
+## Production smoke test (read-only, on demand)
+
+`scripts/smoke-production.mjs` (`npm run smoke:production`) checks the live
+developer/payment experience against production without touching it: only GETs
+and the public demo POST, never a secret key, so it cannot create a charge or
+change data. It asserts the API health/schema, that both OAuth logins hand off
+to the real providers, that `/me` and the payment endpoints refuse
+unauthenticated callers, that webhook receivers reject unverifiable payloads
+without a 500, that the public demo prices a sandbox payment, that
+`/checkout/config` fails closed, and that the site still serves `/`,
+`/dashboard/`, `/signin/`, `/signup/` and `/docs/`.
+
+It is **not** in `npm test` — CI must not depend on a live third-party service.
+It prints what it could not exercise end to end (a real signed-in session, a
+real charge, a signed provider webhook) rather than claiming those as tested.
 
 ## Landing-page code snippets
 

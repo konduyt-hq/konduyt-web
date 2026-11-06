@@ -86,10 +86,15 @@ check('the developers page has its own metadata layout',
 // --- Creators entry point is a real, finished page --------------------------
 check('the creators entry point exists', exists('app/creators/page.js'));
 const CREATORS = exists('app/creators/page.js') ? read('app/creators/page.js') : '';
-check('creators page routes an existing user to their account',
-  CREATORS.includes('href="/dashboard/"'));
+check('creators page offers an early-access action',
+  CREATORS.includes('Request early access'));
+check('creators page says the product is not open yet',
+  /not available yet|not open yet/.test(CREATORS));
 check('creators page points back at the developers product',
   CREATORS.includes('href="/developers/"'));
+check('creators page does NOT send creators to the developer dashboard',
+  !/href="\/dashboard/.test(CREATORS),
+  'the dashboard belongs to Developers & Businesses, not Creators');
 check('creators page has its own metadata layout', exists('app/creators/layout.js'));
 
 // --- Existing signup / login / sessions are untouched -----------------------

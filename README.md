@@ -16,13 +16,15 @@ under one Konduyt account and one authentication system:
 | Option | Destination | State |
 | --- | --- | --- |
 | Konduyt for Developers & Businesses | `/developers/` | Existing platform (the original payment product) |
-| Konduyt for Creators | `/creators/` | Actively in development |
+| Konduyt for Creators | `/creators/` | In development; early-access request |
 | Konduyt Payroll | — | Coming soon; deliberately not a link |
 
 The payment product was **moved** to `/developers/`, not rewritten: its page,
 content and links are the same as the old site root. The three options share
 the existing signup (`/signup/`), login (`/signin/`) and dashboard
-(`/dashboard/`) — nothing in the restructure touches authentication.
+(`/dashboard/`) — nothing in the restructure touches authentication. The
+Creators page is its own entry point and does not send visitors to the
+developer dashboard, which belongs to a different product.
 
 - **Live site:** [konduyt.dev](https://konduyt.dev)
 - **Docs:** [konduyt.dev/docs](https://konduyt.dev/docs)

@@ -29,7 +29,8 @@
     "test:connected-reach": "node scripts/test-connected-reach-messaging.mjs",
     "test:sending-toggle": "node scripts/test-sending-toggle.mjs",
     "test:sentinel-proposals": "node scripts/test-sentinel-proposals.mjs",
-    "test:landing-restructure": "node scripts/test-landing-restructure.mjs"
+    "test:landing-restructure": "node scripts/test-landing-restructure.mjs",
+    "smoke:production": "node scripts/smoke-production.mjs"
   },
   "dependencies": {
     "next": "14.2.5",
