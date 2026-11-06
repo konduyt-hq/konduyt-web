@@ -147,6 +147,13 @@ check('the new root keeps the LaunchBuck footer badge',
   footer.includes('href="https://launchbuck.com/p/konduyt"')
   && footer.includes('src="https://launchbuck.com/badges/card-light.png"'));
 
+// --- Responsive: the product list has a mobile breakpoint -------------------
+// The brief requires the landing page to work on desktop and mobile. The cards
+// are a flex row by default; a narrow viewport must switch them to a column.
+check('the product list has a mobile breakpoint that stacks the cards',
+  /@media \(max-width:760px\)[\s\S]{0,2000}\.product-card\{[\s\S]{0,120}flex-direction:column/.test(CSS),
+  'the brief requires the landing page to work on mobile');
+
 console.log('----------------------------------------------');
 console.log(`${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);
