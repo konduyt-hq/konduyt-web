@@ -3412,12 +3412,15 @@
     font-size:14px; line-height:1.65; color:var(--body); margin-bottom:12px;
   }
 
-  /* ---------- TOUCH TARGETS (phones only) ---------- */
+  /* ---------- TOUCH TARGETS (compact layouts) ---------- */
   /* Several controls are deliberately small on desktop -- icon copy buttons,
-     text arrows, doc nav items. That is fine with a mouse, but on a phone they
-     are hard to hit. This block gives them real tap area at <=640px only, so
-     desktop sizing and layout are untouched. */
-  @media (max-width:640px){
+     text arrows, doc nav items. That is fine with a mouse, but on a touch
+     screen they are hard to hit. This block gives them real tap area.
+     The boundary is 980px, not 640px: the nav already collapses to a
+     hamburger at 980px (see the hero block above), so the app itself treats
+     everything at or below that as the compact, touch-first layout. Using a
+     narrower bound left tablets (641-980px) with 17-18px controls. */
+  @media (max-width:980px){
     .docs-navitem{padding:11px 12px;}
     .env-platform-tab{padding:10px 14px; font-size:13px;}
     .copy-btn{padding:8px 4px; font-size:12px;}
@@ -3429,6 +3432,12 @@
     .docs-home-link{padding:8px 0; display:inline-block;}
     .docs-brand{padding:6px 0; display:inline-flex; align-items:center;}
     .pricing-logo{padding:6px 0; display:inline-block;}
+    /* The brand wordmarks and "back to Konduyt" links on the legal, labs, about
+       and demo pages were 17-23px tall -- under the 24px WCAG 2.5.8 minimum. */
+    .about-logo, .legal-logo, .labs-logo{padding:8px 0; display:inline-block;}
+    .legal-navlink, .labs-navlink, .demo-back{padding:8px 0; display:inline-block;}
+    .about-doc a{padding:8px 0; display:inline-block;}
+    .topbar-signin{padding:8px 4px; display:inline-block;}
     /* Footer link rows: gap plus padding gives each link a real tap area, and
        wrapping keeps a five-link row usable at 360px. */
     .footer-links{flex-wrap:wrap; gap:6px 18px;}
