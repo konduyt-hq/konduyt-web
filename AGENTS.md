@@ -827,3 +827,31 @@ static export with `NEXT_PUBLIC_API_URL` pointing at it and serve `out/` with
 `npx serve`. Admin JWT goes in `localStorage.kdu_token`. The growth surface
 needs the `growth_*` schema (154 tables) in Postgres; production auth is
 OAuth-only, so a local token is the only practical admin session.
+
+## Verification notes: the three-product landing (2026-11-06)
+
+The site root (`app/page.js`) is the product-selection page. The three options
+are data in `PRODUCTS`, and the shape is the contract: an option with an `href`
+renders as a link, an option with `href: null` renders as a non-interactive
+`div` with `aria-disabled="true"`. Payroll is the latter, which is what makes it
+structurally impossible for "coming soon" to lead anywhere. Developers and
+Creators are real links to `/developers/` and `/creators/`.
+
+The old payment landing page was moved, not rewritten: it is `app/developers/`
+and keeps the full hero copy, the interactive `DevPanel`, the providers rail and
+the sign-in / dashboard CTAs. Authentication is untouched -- the landing page
+does not read `kdu_token`, call `/me`, or reach `/auth/`; signup, signin and the
+dashboard keep the one existing token key (`kdu_token`).
+
+Responsive contract, checked with a headless browser across 360/390/768/1440 on
+every page: no horizontal overflow, and no control below the tap-target
+threshold. Wide code blocks scroll inside their own box (`.code-pre` has
+`overflow-x:auto`), which is correct and is not page overflow -- an audit that
+flags them must walk ancestors for a scroll container before reporting.
+
+The landing rules live in one block in `app/globals.css`
+(`PRODUCT SELECTION`, `TOUCH TARGETS`). `.product-list` is a capped, centred
+column; the phone breakpoints restack each card and enlarge small tap targets.
+`scripts/test-landing-restructure.mjs` asserts the copy, the navigation shape,
+the auth invariants and the responsive stylesheet rules; it runs in `npm test`
+with no browser and no network.
