@@ -147,12 +147,24 @@ check('the new root keeps the LaunchBuck footer badge',
   footer.includes('href="https://launchbuck.com/p/konduyt"')
   && footer.includes('src="https://launchbuck.com/badges/card-light.png"'));
 
-// --- Responsive: the product list has a mobile breakpoint -------------------
-// The brief requires the landing page to work on desktop and mobile. The cards
-// are a flex row by default; a narrow viewport must switch them to a column.
-check('the product list has a mobile breakpoint that stacks the cards',
-  /@media \(max-width:760px\)[\s\S]{0,2000}\.product-card\{[\s\S]{0,120}flex-direction:column/.test(CSS),
-  'the brief requires the landing page to work on mobile');
+// --- Responsive layout contract ---------------------------------------------
+// The product choice must survive a phone. These read the stylesheet rather
+// than a browser so they run in the normal offline test pass; the class rules
+// they depend on are asserted to exist just above.
+check('the product options stack vertically (a column, not a row)',
+  /\.product-list\{[^}]*flex-direction:column/.test(CSS));
+check('the product list is capped so cards do not stretch across a wide screen',
+  /\.product-list\{[^}]*max-width:760px/.test(CSS));
+check('the hero block and the product list share one centred axis',
+  /\.landing-head\{[^}]*margin:0 auto[^}]*text-align:center/.test(CSS)
+  && /\.product-list\{[^}]*margin:0 auto/.test(CSS));
+check('a phone breakpoint restacks each card instead of squeezing it',
+  /@media \(max-width:760px\)\{[\s\S]*?\.product-card\{[^}]*flex-direction:column/.test(CSS));
+check('the phone breakpoint shrinks the hero title',
+  /@media \(max-width:760px\)\{[\s\S]*?\.landing-title\{font-size:24px/.test(CSS));
+check('a phone breakpoint enlarges small tap targets',
+  /@media \(max-width:640px\)\{[\s\S]*?\.docs-navitem\{padding:11px/.test(CSS)
+  && /@media \(max-width:640px\)\{[\s\S]*?\.copy-icon-btn\{padding:8px/.test(CSS));
 
 console.log('----------------------------------------------');
 console.log(`${checks - failures}/${checks} checks passed`);

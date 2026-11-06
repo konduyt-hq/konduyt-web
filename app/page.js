@@ -50,7 +50,9 @@ const PRODUCTS = [
     status: 'Coming soon.',
     badge: 'Coming soon',
     badgeClass: 'product-badge product-badge-soon',
-    action: 'Coming soon',
+    // No action label: the badge and the status already say "coming soon", and
+    // repeating it a third time is noise. There is no destination to describe.
+    action: null,
     href: null,
   },
 ];
@@ -86,9 +88,7 @@ export default function Home() {
           <div className="landing-head">
             <span className="landing-eyebrow">One Konduyt account</span>
             <h1 className="landing-title">Three products, one Konduyt</h1>
-            <p className="landing-sub">
-              Same identity, same account. Pick where you want to go.
-            </p>
+            <p className="landing-sub">Same identity, same account. Pick where to go.</p>
           </div>
 
           <div className="product-list">
@@ -103,10 +103,12 @@ export default function Home() {
                     <p className="product-card-desc">{p.description}</p>
                     <p className="product-card-status">{p.status}</p>
                   </div>
-                  <span className="product-card-action">
-                    {p.action}
-                    {p.href ? ' \u2192' : ''}
-                  </span>
+                  {p.action ? (
+                    <span className="product-card-action">
+                      {p.action}
+                      {p.href ? ' \u2192' : ''}
+                    </span>
+                  ) : null}
                 </>
               );
 
