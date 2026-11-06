@@ -241,6 +241,46 @@ It presents three options and nothing else:
   key, and — following the repo's layout-variant rule — that every class the new
   pages name has a rule in `globals.css`.
 
+## The Ideas workspace is local-first; the Twin is opt-in and cannot write
+
+`app/creators/ideas/` is the private half of Konduyt for Creators: the creator's
+own writing (`page.js`), a local-first store (`store.js`) and the Twin panel
+(`TwinPanel.js`). It is reachable from `/creators/` and needs a signed-in owner.
+The public Creator Audit (`/creators/audit/`) is a different surface with no
+session; do not merge the two.
+
+- **IndexedDB is the source of truth on the device.** A document write and its
+  outbox operation go into one IndexedDB transaction in `store.js`. Never write
+  a document without queueing the op in the same transaction — that is the whole
+  reason a dropped connection cannot lose a sentence.
+- **Every queued op reuses one `op_id` across retries.** The server keys on it
+  (`creator_idea_ops.op_id` is the primary key), so replaying a batch after a
+  lost response is a no-op rather than a duplicate. Generate the id once when
+  the edit is made; do not regenerate it on retry.
+- **A pull must not clobber unsynced local work.** When server state is merged
+  in, a local document with pending or conflicting ops is left alone. Reversing
+  that turns a normal offline session into silent data loss.
+- **A conflict keeps both versions.** The server preserves the client's text
+  verbatim and the UI asks which to keep. Never resolve a conflict by picking a
+  side silently.
+- **The Twin is off until enabled and only runs on an explicit ask.** There is
+  no timer or background pass in `twin.py`; do not add one. `respond()` returns
+  text only — putting it into an idea is a separate action recorded as
+  `twin_accepted`, so AI-contributed edits stay distinguishable.
+- **No model configured is a supported state.** The deterministic handlers
+  answer from the creator's own text; a request that genuinely needs a model
+  returns `response_kind: "unavailable"` with an explanation. Do not fabricate a
+  draft to fill the gap.
+- **Sign-in reuses the platform session.** The page reads `kdu_token` and checks
+  `/me` exactly as `app/dashboard/page.js` does, and `getToken()` migrates a
+  legacy `sessionStorage` token on load. There is no second auth flow and no
+  new account; an existing creator must not be asked to sign in again.
+- `scripts/test-creatoros-ideas.mjs` (`npm run test:creatoros-ideas`, wired into
+  `npm test`) guards the local-first invariants, the Twin's opt-in/read-only
+  rules, the session reuse and the copy. The backend lives in `konduyt-api`
+  (`app/creatoros/ideas_store.py`, `ideas_routes.py`, `twin.py`, migration
+  `0080`), with `ideas_tests.py` covering the same contracts server-side.
+
 ## Production smoke test (read-only, on demand)
 
 `scripts/smoke-production.mjs` (`npm run smoke:production`) checks the live
