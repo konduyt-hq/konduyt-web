@@ -9,6 +9,8 @@ import TwinPanel from './TwinPanel';
 import {
   STATUSES, BLOCK_TYPES, listLocal, getLocal, createLocal, saveLocal,
   deleteLocal, sync, pullAndMerge, outboxCount, newBlockId,
+  restoreLocal, listDeleted,
+  fetchCalendar, fetchLinks, createLink, removeLink,
 } from './store';
 
 // KonduytCreators -- Ideas.
@@ -24,6 +26,11 @@ import {
 //     turns it on, it is only ever invoked by an explicit ask, and it cannot
 //     change a document. Accepting a suggestion is a separate edit the creator
 //     makes, and that edit is labelled `twin_accepted` in the revision history.
+//
+// Three surfaces sit on top of that editor and all of them read the same rows it
+// writes: the publishing calendar (a projection of the idea's own dates), the
+// links between ideas (explicit, creator-made), and the "keep out of the Twin"
+// control (enforced server-side). None of them is a second copy of the data.
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -67,6 +74,12 @@ export default function Ideas() {
   const [conflicts, setConflicts] = useState([]);
   const [showTwin, setShowTwin] = useState(false);
   const [twinEnabled, setTwinEnabled] = useState(false);
+  const [view, setView] = useState('write'); // write | calendar
+  const [calendar, setCalendar] = useState({ entries: [], unscheduled: [] });
+  const [links, setLinks] = useState([]);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [deleted, setDeleted] = useState([]);
+  const [linkTarget, setLinkTarget] = useState('');
   const saveTimer = useRef(null);
   const activeIdRef = useRef(null);
 
@@ -108,6 +121,8 @@ export default function Ideas() {
       const list = await reload();
       const cf = await import('./store').then((m) => m.listConflicts({ apiBase: API_BASE, token }));
       if (!cancelled) setConflicts(cf || []);
+      if (!cancelled) setDeleted(await listDeleted());
+      if (!cancelled) loadCalendar();
       if (!cancelled && list.length) openDoc(list[0].id);
     })();
     return () => { cancelled = true; };
@@ -123,13 +138,29 @@ export default function Ideas() {
     return () => { clearInterval(iv); window.removeEventListener('online', onOnline); };
   }, [status, doSync]);
 
+  // Declared before `openDoc` because `openDoc` depends on `loadLinks`: a
+  // `useCallback` dependency array is evaluated during render, so referencing a
+  // `const` declared further down would be a temporal-dead-zone error.
+  const loadCalendar = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    setCalendar(await fetchCalendar({ apiBase: API_BASE, token }));
+  }, []);
+
+  const loadLinks = useCallback(async (docId) => {
+    const token = getToken();
+    if (!token) return;
+    setLinks(await fetchLinks({ apiBase: API_BASE, token, docId }));
+  }, []);
+
   const openDoc = useCallback(async (id) => {
     const d = await getLocal(id);
     if (!d) return;
     setActiveId(id);
     activeIdRef.current = id;
     setDraft({ ...d, blocks: d.blocks && d.blocks.length ? d.blocks : [emptyBlock()] });
-  }, []);
+    loadLinks(id);
+  }, [loadLinks]);
 
   function emptyBlock(type = 'paragraph') {
     return { id: newBlockId(), type, text: '', meta: {} };
@@ -181,7 +212,24 @@ export default function Ideas() {
     queueSave({ ...draft, blocks: draft.blocks.filter((b) => b.id !== id) });
   }
 
-  function setStatusOf(id) { queueSave({ ...draft, status: id }); }
+  function setStatusOf(id) {
+    // Mirror the server's rule: leaving `scheduled` drops the schedule date, so
+    // the local copy and the server cannot disagree about whether an idea is
+    // dated. Publishing stamps a date if one is not already set.
+    const next = { ...draft, status: id };
+    if (id !== 'scheduled') next.scheduled_for = null;
+    if (id === 'published' && !next.published_at) next.published_at = new Date().toISOString();
+    if (id !== 'published') next.published_at = null;
+    queueSave(next);
+  }
+
+  function setScheduledFor(value) {
+    queueSave({
+      ...draft,
+      status: 'scheduled',
+      scheduled_for: value ? new Date(value).toISOString() : null,
+    });
+  }
 
   function togglePin() { queueSave({ ...draft, is_pinned: !draft.is_pinned }); }
 
@@ -190,6 +238,38 @@ export default function Ideas() {
     await reload();
     if (activeIdRef.current === id) { setActiveId(null); setDraft(null); }
     doSync();
+  }
+
+  // Undo a delete. The document is soft-deleted, so restoring is a normal
+  // queued edit rather than a special server call.
+  async function restoreIdea(id) {
+    await restoreLocal(id);
+    await reload();
+    setDeleted(await listDeleted());
+    doSync();
+  }
+
+  async function addLink() {
+    const token = getToken();
+    if (!token || !draft || !linkTarget) return;
+    await createLink({ apiBase: API_BASE, token, fromDocId: draft.id, toDocId: linkTarget });
+    setLinkTarget('');
+    await loadLinks(draft.id);
+  }
+
+  async function dropLink(otherId) {
+    const token = getToken();
+    if (!token || !draft) return;
+    await removeLink({ apiBase: API_BASE, token, fromDocId: draft.id, toDocId: otherId });
+    await loadLinks(draft.id);
+  }
+
+  // Keep the open idea out of the Twin's context. The server enforces it; this
+  // only records the creator's intent, and it travels with the document so the
+  // setting survives a reload on another device.
+  async function toggleExcludeFromTwin() {
+    if (!draft) return;
+    queueSave({ ...draft, exclude_from_twin: !draft.exclude_from_twin });
   }
 
   // The Twin hands back text; inserting it is an explicit creator action that
@@ -295,6 +375,16 @@ export default function Ideas() {
         <aside className="ideas-side">
           <div className="ideas-side-head">
             <button className="ideas-new" onClick={newIdea}>+ New idea</button>
+            <div className="ideas-views">
+              <button
+                className={`ideas-view ${view === 'write' ? 'is-active' : ''}`}
+                onClick={() => setView('write')}
+              >Write</button>
+              <button
+                className={`ideas-view ${view === 'calendar' ? 'is-active' : ''}`}
+                onClick={() => { setView('calendar'); loadCalendar(); }}
+              >Calendar</button>
+            </div>
             <span className={`ideas-sync ${syncState.pending ? 'is-pending' : 'is-ok'}`}>
               {syncState.online === false
                 ? 'Offline — changes saved on this device'
@@ -368,10 +458,34 @@ export default function Ideas() {
               </li>
             )}
           </ul>
+
+          {deleted.length > 0 && (
+            <div className="ideas-deleted">
+              <button className="ideas-deleted-toggle"
+                      onClick={() => setShowDeleted((v) => !v)}>
+                {showDeleted ? 'Hide' : 'Show'} deleted ({deleted.length})
+              </button>
+              {showDeleted && (
+                <ul className="ideas-deleted-list">
+                  {deleted.map((d) => (
+                    <li key={d.id}>
+                      <span className="ideas-deleted-title">{d.title || 'Untitled'}</span>
+                      <button onClick={() => restoreIdea(d.id)}>Restore</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </aside>
 
         <main className="ideas-main">
-          {!draft ? (
+          {view === 'calendar' ? (
+            <CalendarView
+              calendar={calendar}
+              onOpen={(id) => { setView('write'); openDoc(id); }}
+            />
+          ) : !draft ? (
             <div className="ideas-blank">
               <h2>Your ideas workspace</h2>
               <p>
@@ -399,9 +513,25 @@ export default function Ideas() {
                   >
                     {STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                   </select>
+                  <input
+                    className="ideas-date"
+                    type="date"
+                    title="Schedule this idea for a day"
+                    value={draft.scheduled_for ? String(draft.scheduled_for).slice(0, 10) : ''}
+                    onChange={(e) => setScheduledFor(e.target.value)}
+                  />
                   <button className="ideas-icon-btn" onClick={togglePin}
                           title={draft.is_pinned ? 'Unpin' : 'Pin'}>
                     {draft.is_pinned ? '★' : '☆'}
+                  </button>
+                  <button
+                    className={`ideas-icon-btn ${draft.exclude_from_twin ? 'is-on' : ''}`}
+                    onClick={toggleExcludeFromTwin}
+                    title={draft.exclude_from_twin
+                      ? 'The Twin cannot see this idea — click to allow it'
+                      : 'Keep this idea out of the Twin'}
+                  >
+                    {draft.exclude_from_twin ? 'Private to Twin' : 'Twin can see'}
                   </button>
                   <button className="ideas-icon-btn"
                           onClick={() => setShowTwin((v) => !v)}
@@ -450,6 +580,44 @@ export default function Ideas() {
                 ))}
                 <p className="ideas-hint">⌘/Ctrl + Enter adds a block below.</p>
               </div>
+
+              {/* Links connect two of the creator's own ideas. They are made
+                  here, explicitly, and stored server-side with an owner on the
+                  row, so a link can never point at another creator's idea. */}
+              <div className="ideas-links">
+                <span className="ideas-links-title">Connected ideas</span>
+                {links.length === 0 ? (
+                  <p className="ideas-links-note">
+                    Nothing connected yet. Link an idea when it belongs with this one.
+                  </p>
+                ) : (
+                  <ul className="ideas-links-list">
+                    {links.map((l) => {
+                      const otherId = l.from_doc_id === draft.id ? l.to_doc_id : l.from_doc_id;
+                      const other = ideas.find((x) => x.id === otherId);
+                      return (
+                        <li key={l.id}>
+                          <button className="ideas-link-open" onClick={() => openDoc(otherId)}>
+                            {other ? (other.title || 'Untitled') : otherId}
+                          </button>
+                          <button className="ideas-link-x"
+                                  onClick={() => dropLink(otherId)}
+                                  title="Remove this link">×</button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="ideas-link-add">
+                  <select value={linkTarget} onChange={(e) => setLinkTarget(e.target.value)}>
+                    <option value="">Link another idea…</option>
+                    {ideas.filter((x) => x.id !== draft.id).map((x) => (
+                      <option key={x.id} value={x.id}>{x.title || 'Untitled'}</option>
+                    ))}
+                  </select>
+                  <button onClick={addLink} disabled={!linkTarget}>Link</button>
+                </div>
+              </div>
             </>
           )}
         </main>
@@ -474,6 +642,86 @@ export default function Ideas() {
 function statusLabel(id) {
   const s = STATUSES.find((x) => x.id === id);
   return s ? s.label : 'Captured';
+}
+
+// The publishing calendar.
+//
+// It renders the same rows the editor writes, grouped by month, so it can never
+// disagree with an idea's own status and dates. Ideas that are ready but undated
+// are shown separately -- that list is the useful one, because an idea with no
+// date is the thing a creator is most likely to forget.
+function CalendarView({ calendar, onOpen }) {
+  const entries = (calendar && calendar.entries) || [];
+  const unscheduled = (calendar && calendar.unscheduled) || [];
+
+  const byMonth = {};
+  for (const e of entries) {
+    const key = String(e.at || '').slice(0, 7);
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(e);
+  }
+  const months = Object.keys(byMonth).sort();
+
+  return (
+    <div className="ideas-calendar">
+      <h2 className="ideas-calendar-title">Publishing calendar</h2>
+      <p className="ideas-calendar-sub">
+        Your ideas in time. A date here is the same date you set on the idea.
+      </p>
+
+      {entries.length === 0 ? (
+        <p className="ideas-calendar-empty">
+          Nothing scheduled or published yet. Set a date on an idea and it appears here.
+        </p>
+      ) : (
+        months.map((m) => (
+          <div key={m} className="ideas-calendar-month">
+            <span className="ideas-calendar-month-name">{fmtMonth(m)}</span>
+            <ul>
+              {byMonth[m].map((e) => (
+                <li key={e.id}>
+                  <button className="ideas-calendar-item" onClick={() => onOpen(e.id)}>
+                    <span className="ideas-calendar-day">{fmtDay(e.at)}</span>
+                    <span className="ideas-calendar-item-title">{e.title || 'Untitled'}</span>
+                    <span className={`ideas-calendar-kind is-${e.kind}`}>{e.kind}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
+
+      {unscheduled.length > 0 && (
+        <div className="ideas-calendar-unscheduled">
+          <span className="ideas-calendar-month-name">Ready, no date yet</span>
+          <ul>
+            {unscheduled.map((e) => (
+              <li key={e.id}>
+                <button className="ideas-calendar-item" onClick={() => onOpen(e.id)}>
+                  <span className="ideas-calendar-item-title">{e.title || 'Untitled'}</span>
+                  <span className="ideas-calendar-kind">{statusLabel(e.status)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fmtMonth(key) {
+  const [y, m] = String(key).split('-');
+  const d = new Date(Number(y), Number(m) - 1, 1);
+  if (isNaN(d.getTime())) return key;
+  return d.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+}
+
+function fmtDay(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function placeholderFor(type) {

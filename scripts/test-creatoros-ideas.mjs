@@ -106,9 +106,13 @@ check('the Twin never writes to the document directly',
 check('inserting Twin text is an explicit creator action',
   !!twinPanel && /onClick=\{\(\) => onInsert\(m\.text\)\}/.test(twinPanel));
 check('the panel shows what the Twin can see',
-  !!twinPanel && /What does my Twin know\?/.test(twinPanel) && /twin\/context/.test(twinPanel));
+  !!twinPanel && /What does my Twin know\?/.test(twinPanel)
+  && /fetchTwinContext/.test(twinPanel)
+  && !!store && /creatoros\/twin\/context/.test(store));
 check('the creator can correct the Twin direction',
-  !!twinPanel && /twin\/profile/.test(twinPanel) && /placeholder="e\.g\. weekly long-form/.test(twinPanel));
+  !!twinPanel && /updateTwinProfile/.test(twinPanel)
+  && /placeholder="e\.g\. weekly long-form/.test(twinPanel)
+  && !!store && /creatoros\/twin\/profile/.test(store));
 check('an unavailable model is surfaced, not hidden',
   !!twinPanel && /No model configured — this needed one/.test(twinPanel)
   && /No AI provider is set up for this deployment/.test(twinPanel));
@@ -116,6 +120,63 @@ check('the panel states that it does not change the creator\'s words',
   !!twinPanel && /it never changes your words/.test(twinPanel));
 check('the Twin can be turned off again',
   !!twinPanel && /Turn off/.test(twinPanel) && /disable/.test(twinPanel));
+
+console.log('\nIdeas workspace — publishing calendar');
+check('the calendar reads the server projection, not a local copy',
+  !!store && /export async function fetchCalendar/.test(store)
+  && /creatoros\/ideas\/calendar/.test(store));
+check('a scheduled idea is dated on the idea itself',
+  !!store && /scheduled_for: local\.scheduled_for/.test(store));
+check('leaving `scheduled` clears the schedule date locally, matching the server',
+  !!page && /if \(id !== 'scheduled'\) next\.scheduled_for = null;/.test(page));
+check('publishing stamps a publish date locally, matching the server',
+  !!page && /id === 'published' && !next\.published_at/.test(page));
+check('the calendar groups entries by month',
+  !!page && /function CalendarView/.test(page) && /byMonth/.test(page));
+check('undated ready ideas are surfaced rather than lost',
+  !!page && /Ready, no date yet/.test(page));
+check('a calendar entry opens its idea in the editor',
+  !!page && /onOpen=\{\(id\) => \{ setView\('write'\); openDoc\(id\); \}\}/.test(page));
+
+console.log('\nIdeas workspace — links and restore');
+check('links are created through the server, owner-scoped',
+  !!store && /export async function createLink/.test(store)
+  && /creatoros\/ideas\/links/.test(store));
+check('a link can be removed',
+  !!store && /export async function removeLink/.test(store)
+  && /method: 'DELETE'/.test(store));
+check('the editor shows the ideas connected to this one',
+  !!page && /Connected ideas/.test(page) && /links\.map/.test(page));
+check('a deleted idea can be restored',
+  !!store && /export async function restoreLocal/.test(store)
+  && !!page && /restoreIdea/.test(page) && /Restore/.test(page));
+
+console.log('\nCreator Twin — observations the creator controls');
+check('the panel shows the derived patterns',
+  !!twinPanel && /Patterns in your writing/.test(twinPanel)
+  && /describeObservation/.test(twinPanel));
+check('every observation carries its evidence in the copy',
+  !!twinPanel && /o\.evidence && o\.evidence\.note/.test(twinPanel));
+check('the creator can remove an observation',
+  !!twinPanel && /dismissObservation/.test(twinPanel)
+  && /onClick=\{\(\) => dismiss\(o\.kind, o\.value\)\}/.test(twinPanel));
+check('the panel can ask the server to re-derive now',
+  !!twinPanel && /observeTwin/.test(twinPanel) && /Update what it knows/.test(twinPanel));
+check('the panel offers to keep this idea out of the Twin',
+  !!twinPanel && /Keep this idea out of the Twin/.test(twinPanel)
+  && /excluded_doc_ids/.test(twinPanel));
+check('the panel says when the Twin last learned something',
+  !!twinPanel && /observed_at/.test(twinPanel) && /fmtWhen/.test(twinPanel));
+check('the panel asks about connections, repetition and angles',
+  !!twinPanel && /what does this connect to in my other ideas/.test(twinPanel)
+  && /am I repeating myself across my work/.test(twinPanel)
+  && /what other angles am I missing/.test(twinPanel));
+
+console.log('\nIdeas workspace — Twin privacy on the idea');
+check('the editor exposes the per-idea Twin privacy toggle',
+  !!page && /toggleExcludeFromTwin/.test(page) && /exclude_from_twin/.test(page));
+check('the privacy setting travels with the document on sync',
+  !!store && /exclude_from_twin: !!local\.exclude_from_twin/.test(store));
 
 console.log('\nCreator entry point');
 check('the creators page links to the Ideas workspace',

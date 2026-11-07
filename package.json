@@ -33,6 +33,8 @@
     "smoke:production": "node scripts/smoke-production.mjs",
     "test:creatoros-audit": "node scripts/test-creatoros-audit.mjs",
     "audit:responsive": "node scripts/audit-responsive.mjs",
+    "audit:creatoros-workspace": "node scripts/audit-creatoros-workspace.mjs",
+    "audit:landing-auth": "node scripts/audit-landing-auth.mjs",
     "audit:tabs": "node scripts/audit-dashboard-tabs.mjs",
     "test:creatoros-ideas": "node scripts/test-creatoros-ideas.mjs"
   },

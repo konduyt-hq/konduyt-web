@@ -33,6 +33,8 @@ const ROUTES = (process.env.ROUTES || [
   '/',
   '/developers/',
   '/creators/',
+  '/creators/ideas/',
+  '/creators/audit/',
   '/signin/',
   '/signup/',
   '/dashboard/',
