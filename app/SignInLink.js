@@ -9,7 +9,11 @@ const TOKEN_KEY = 'kdu_token';
 // component rather than merged into NavCta, since NavCta already has
 // its own single responsibility (the CTA button) and page.js renders
 // these as two distinct nav items, not one combined element.
-export default function SignInLink() {
+//
+// `next` optionally names the product this link belongs to, so a creator who
+// signs in from the Creators page returns to the creator workspace rather than
+// the Developers console. Absent (the default), behaviour is unchanged.
+export default function SignInLink({ next = null }) {
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
@@ -27,9 +31,11 @@ export default function SignInLink() {
   // a crowded nav didn't have to spare.
   if (signedIn) return null;
 
+  const href = next ? `/signin/?next=${encodeURIComponent(next)}` : '/signin/';
+
   // "topbar-signin" class exists solely so CSS can hide this specific
   // instance at the tightest phone widths (see globals.css) once
   // MobileNav's own dropdown copy takes over there -- the two are never
   // both visible at once, by width, not by JS coordination.
-  return <a href="/signin/" className="signin topbar-signin">Sign in</a>;
+  return <a href={href} className="signin topbar-signin">Sign in</a>;
 }

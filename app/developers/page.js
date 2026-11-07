@@ -3,6 +3,7 @@ import NavCta from '../NavCta';
 import SignInLink from '../SignInLink';
 import WarmupPing from '../WarmupPing';
 import MobileNav from '../MobileNav';
+import ProductSwitcher from '../ProductSwitcher';
 
 // Konduyt for Developers & Businesses -- the existing payment-infrastructure
 // product, unchanged. This is the page that used to be the site root; it moved
@@ -124,6 +125,7 @@ export default function Developers() {
           </div>
           <MobileNav />
           <div className="nav-right">
+            <ProductSwitcher />
             <SignInLink />
             <NavCta />
           </div>

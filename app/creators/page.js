@@ -1,6 +1,7 @@
 import NavCta from '../NavCta';
 import SignInLink from '../SignInLink';
 import MobileNav from '../MobileNav';
+import ProductSwitcher from '../ProductSwitcher';
 import LogoMark from '../LogoMark';
 import WarmupPing from '../WarmupPing';
 
@@ -33,8 +34,9 @@ export default function Creators() {
           </div>
           <MobileNav />
           <div className="nav-right">
-            <SignInLink />
-            <NavCta />
+            <ProductSwitcher />
+            <SignInLink next="/creators/ideas/" />
+            <NavCta next="/creators/ideas/" signedInLabel="Open your Ideas" />
           </div>
         </nav>
 

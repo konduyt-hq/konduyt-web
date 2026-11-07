@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import {
+  resolveIncomingDestination, rememberDestination, clearPendingDestination,
+} from '../authDestination';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'https://konduyt-api.onrender.com';
@@ -25,8 +28,13 @@ export default function Signin() {
     const e = params.get('error');
     if (e) setError(ERRORS[e] || 'Something went wrong. Please try again.');
 
+    // Where this person is heading, carried through the provider round trip so a
+    // creator is not dropped into the Developers console on return.
+    const destination = resolveIncomingDestination(window.location.search);
+    rememberDestination(destination);
+
     // Silent re-auth (Cloudflare-style): if a session token already exists and is
-    // still valid, skip the sign-in screen and go straight to the dashboard.
+    // still valid, skip the sign-in screen and go straight to the chosen product.
     // We validate against the API so an expired/stale token doesn't wrongly pass.
     (async () => {
       try {
@@ -36,7 +44,8 @@ export default function Signin() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
-          window.location.replace('/dashboard/');
+          clearPendingDestination();
+          window.location.replace(destination);
           return;
         }
         // Token invalid/expired — clear it and show the sign-in screen normally.
@@ -56,7 +65,11 @@ export default function Signin() {
     try {
       localStorage.setItem('kdu_last_method', provider);
     } catch (err) {}
-    window.location.href = `${API_BASE}/auth/${provider}`;
+    // Pass the chosen product to the API so the provider round trip returns here
+    // for it, rather than always to the Developers console.
+    const dest = resolveIncomingDestination(window.location.search);
+    rememberDestination(dest);
+    window.location.href = `${API_BASE}/auth/${provider}?next=${encodeURIComponent(dest)}`;
   }
 
   return (

@@ -53,10 +53,17 @@ check('a document write and its outbox entry share one transaction',
 check('the client generates its own operation ids',
   !!store && /export function newOpId/.test(store) && /op_id:\s*opId/.test(store));
 check('the same op id is reused on retry (idempotency comes from the server keying on it)',
-  !!store && /STORE_OUTBOX\)\.put\(op\)/.test(store)
+  !!store && /outbox\.put\(op\)/.test(store)
   && /const ops = await outboxAll\(\)/.test(store)
   && /ops\.map\(stripOp\)/.test(store)
   && !/newOpId\(\)[\s\S]{0,400}stripOp/.test(store));
+check('a document keeps at most one queued op (a second edit replaces the first)',
+  !!store && /function coalesceAndPut\(outbox, op\)/.test(store)
+  && /coalesceAndPut\(t\.objectStore\(STORE_OUTBOX\), op\)/.test(store)
+  && /outbox\.index\('doc_id'\)\.getAll\(op\.doc_id\)/.test(store));
+check('base_version is read from the stored doc, not the caller\'s stale copy',
+  !!store && /const serverVersion = stored && stored\.server_version != null/.test(store)
+  && /const baseVersion = serverVersion;/.test(store));
 
 console.log('\nIdeas workspace — sync behaviour');
 check('a failed sync leaves the outbox intact',
@@ -70,6 +77,10 @@ check('a pull never overwrites unsynced local edits',
 check('the sync path is not blocked on the network for a local write',
   !!store && /export async function saveLocal/.test(store)
   && !/await fetch[\s\S]{0,200}export async function saveLocal/.test(store));
+check('the open draft adopts the stored server version after a sync or pull',
+  !!page && /const refreshActiveDraft = useCallback/.test(page)
+  && /refreshActiveDraft\(\)/.test(page)
+  && /d\.id === id && d\.server_version !== stored\.server_version/.test(page));
 
 console.log('\nIdeas workspace — the editor');
 check('the editor writes locally and debounces the network',

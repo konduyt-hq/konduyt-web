@@ -36,7 +36,9 @@
     "audit:creatoros-workspace": "node scripts/audit-creatoros-workspace.mjs",
     "audit:landing-auth": "node scripts/audit-landing-auth.mjs",
     "audit:tabs": "node scripts/audit-dashboard-tabs.mjs",
-    "test:creatoros-ideas": "node scripts/test-creatoros-ideas.mjs"
+    "test:creatoros-ideas": "node scripts/test-creatoros-ideas.mjs",
+    "audit:product-routing": "node scripts/audit-product-routing.mjs",
+    "audit:ideas-sync": "node scripts/audit-ideas-sync.mjs"
   },
   "dependencies": {
     "next": "14.2.5",

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { resolveIncomingDestination, rememberDestination } from '../authDestination';
 
 // The backend base URL. Override at build time with NEXT_PUBLIC_API_URL;
 // falls back to the production API.
@@ -31,13 +32,21 @@ export default function Signup() {
       const m = localStorage.getItem('kdu_last_method');
       if (m === 'google' || m === 'github') setLastMethod(m);
     } catch (err) {}
+
+    // Remember which product this person came for, so the provider round trip
+    // can return them to it instead of the default console.
+    rememberDestination(resolveIncomingDestination(window.location.search));
   }, []);
 
   function go(provider) {
     try {
       localStorage.setItem('kdu_last_method', provider);
     } catch (err) {}
-    window.location.href = `${API_BASE}/auth/${provider}`;
+    // Pass the chosen product to the API so the provider round trip returns here
+    // for it, rather than always to the Developers console.
+    const dest = resolveIncomingDestination(window.location.search);
+    rememberDestination(dest);
+    window.location.href = `${API_BASE}/auth/${provider}?next=${encodeURIComponent(dest)}`;
   }
 
   return (
