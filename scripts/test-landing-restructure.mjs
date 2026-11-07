@@ -88,8 +88,12 @@ check('the creators entry point exists', exists('app/creators/page.js'));
 const CREATORS = exists('app/creators/page.js') ? read('app/creators/page.js') : '';
 check('creators page offers an early-access action',
   CREATORS.includes('Request early access'));
-check('creators page says the product is not open yet',
-  /not available yet|not open yet/.test(CREATORS));
+// The full workspace is not open yet, and the page must say so rather than
+// implying a finished product. Ideas and the Creator Audit are live, so the
+// wording moved from "not available yet" to "still being built"; the
+// early-access gate above is what keeps the promise honest.
+check('creators page says the product is not fully open yet',
+  /not available yet|not open yet|still being built/.test(CREATORS));
 check('creators page points back at the developers product',
   CREATORS.includes('href="/developers/"'));
 check('creators page does NOT send creators to the developer dashboard',
