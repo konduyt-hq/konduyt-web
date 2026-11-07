@@ -55,9 +55,9 @@ export default function Creators() {
               will be nothing new to sign up for.
             </p>
             <p className="creators-body">
-              The workspace itself is not open yet. The creator product is built
-              separately from the payment platform, and this page will become its
-              entry point when it is ready.
+              The workspace is opening in pieces. Your ideas workspace is live
+              now, built on the same Konduyt identity you already use — there is
+              nothing new to sign up for.
             </p>
 
             {/* The first piece of CreatorOS that actually works, so it is
@@ -73,6 +73,18 @@ export default function Creators() {
               <a href="/creators/audit/" className="link-arrow">Open the Public Creator Audit →</a>
             </div>
 
+            {/* Ideas is the private half: the creator's own writing, saved on
+                their device first and synced in the background. */}
+            <div className="creators-feature">
+              <span className="creators-feature-title">Ideas — available now</span>
+              <p className="creators-feature-body">
+                A private workspace for capturing and developing your ideas. It
+                saves on your device first, so it keeps working when your
+                connection doesn’t. Sign in with your existing Konduyt account.
+              </p>
+              <a href="/creators/ideas/" className="link-arrow">Open your Ideas workspace →</a>
+            </div>
+
             <div className="creators-cta">
               <a
                 href="mailto:teamkonduyt@gmail.com?subject=Konduyt%20for%20Creators%20early%20access"
@@ -84,8 +96,8 @@ export default function Creators() {
               <a href="/developers/" className="link-arrow">See Developers &amp; Businesses →</a>
             </div>
             <p className="creators-note">
-              Konduyt for Creators is not available yet. Requesting early access
-              just tells us to reach out to you when it opens.
+              More of the workspace is still being built. Requesting early access
+              just tells us to reach out to you when the rest opens.
             </p>
           </div>
         </section>

@@ -241,6 +241,46 @@ It presents three options and nothing else:
   key, and — following the repo's layout-variant rule — that every class the new
   pages name has a rule in `globals.css`.
 
+## The Ideas workspace is local-first; the Twin is opt-in and cannot write
+
+`app/creators/ideas/` is the private half of Konduyt for Creators: the creator's
+own writing (`page.js`), a local-first store (`store.js`) and the Twin panel
+(`TwinPanel.js`). It is reachable from `/creators/` and needs a signed-in owner.
+The public Creator Audit (`/creators/audit/`) is a different surface with no
+session; do not merge the two.
+
+- **IndexedDB is the source of truth on the device.** A document write and its
+  outbox operation go into one IndexedDB transaction in `store.js`. Never write
+  a document without queueing the op in the same transaction — that is the whole
+  reason a dropped connection cannot lose a sentence.
+- **Every queued op reuses one `op_id` across retries.** The server keys on it
+  (`creator_idea_ops.op_id` is the primary key), so replaying a batch after a
+  lost response is a no-op rather than a duplicate. Generate the id once when
+  the edit is made; do not regenerate it on retry.
+- **A pull must not clobber unsynced local work.** When server state is merged
+  in, a local document with pending or conflicting ops is left alone. Reversing
+  that turns a normal offline session into silent data loss.
+- **A conflict keeps both versions.** The server preserves the client's text
+  verbatim and the UI asks which to keep. Never resolve a conflict by picking a
+  side silently.
+- **The Twin is off until enabled and only runs on an explicit ask.** There is
+  no timer or background pass in `twin.py`; do not add one. `respond()` returns
+  text only — putting it into an idea is a separate action recorded as
+  `twin_accepted`, so AI-contributed edits stay distinguishable.
+- **No model configured is a supported state.** The deterministic handlers
+  answer from the creator's own text; a request that genuinely needs a model
+  returns `response_kind: "unavailable"` with an explanation. Do not fabricate a
+  draft to fill the gap.
+- **Sign-in reuses the platform session.** The page reads `kdu_token` and checks
+  `/me` exactly as `app/dashboard/page.js` does, and `getToken()` migrates a
+  legacy `sessionStorage` token on load. There is no second auth flow and no
+  new account; an existing creator must not be asked to sign in again.
+- `scripts/test-creatoros-ideas.mjs` (`npm run test:creatoros-ideas`, wired into
+  `npm test`) guards the local-first invariants, the Twin's opt-in/read-only
+  rules, the session reuse and the copy. The backend lives in `konduyt-api`
+  (`app/creatoros/ideas_store.py`, `ideas_routes.py`, `twin.py`, migration
+  `0080`), with `ideas_tests.py` covering the same contracts server-side.
+
 ## Production smoke test (read-only, on demand)
 
 `scripts/smoke-production.mjs` (`npm run smoke:production`) checks the live
@@ -827,3 +867,31 @@ static export with `NEXT_PUBLIC_API_URL` pointing at it and serve `out/` with
 `npx serve`. Admin JWT goes in `localStorage.kdu_token`. The growth surface
 needs the `growth_*` schema (154 tables) in Postgres; production auth is
 OAuth-only, so a local token is the only practical admin session.
+
+## Verification notes: the three-product landing (2026-11-06)
+
+The site root (`app/page.js`) is the product-selection page. The three options
+are data in `PRODUCTS`, and the shape is the contract: an option with an `href`
+renders as a link, an option with `href: null` renders as a non-interactive
+`div` with `aria-disabled="true"`. Payroll is the latter, which is what makes it
+structurally impossible for "coming soon" to lead anywhere. Developers and
+Creators are real links to `/developers/` and `/creators/`.
+
+The old payment landing page was moved, not rewritten: it is `app/developers/`
+and keeps the full hero copy, the interactive `DevPanel`, the providers rail and
+the sign-in / dashboard CTAs. Authentication is untouched -- the landing page
+does not read `kdu_token`, call `/me`, or reach `/auth/`; signup, signin and the
+dashboard keep the one existing token key (`kdu_token`).
+
+Responsive contract, checked with a headless browser across 360/390/768/1440 on
+every page: no horizontal overflow, and no control below the tap-target
+threshold. Wide code blocks scroll inside their own box (`.code-pre` has
+`overflow-x:auto`), which is correct and is not page overflow -- an audit that
+flags them must walk ancestors for a scroll container before reporting.
+
+The landing rules live in one block in `app/globals.css`
+(`PRODUCT SELECTION`, `TOUCH TARGETS`). `.product-list` is a capped, centred
+column; the phone breakpoints restack each card and enlarge small tap targets.
+`scripts/test-landing-restructure.mjs` asserts the copy, the navigation shape,
+the auth invariants and the responsive stylesheet rules; it runs in `npm test`
+with no browser and no network.
