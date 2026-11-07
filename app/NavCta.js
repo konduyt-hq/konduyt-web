@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 
 const TOKEN_KEY = 'kdu_token';
 
-export default function NavCta() {
+// `next` optionally names the product this CTA belongs to, so a signed-in
+// creator is sent to the creator workspace rather than the Developers console,
+// and a signed-out visitor starts signup already aimed at that product. Absent
+// (the default), behaviour is exactly as before.
+export default function NavCta({ next = null, signedInLabel = 'Go to console' }) {
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
@@ -17,8 +21,10 @@ export default function NavCta() {
     } catch (e) {}
   }, []);
 
-  const href = signedIn ? '/dashboard/' : '/signup/';
-  const label = signedIn ? 'Go to console' : 'Start for free';
+  const href = signedIn
+    ? (next || '/dashboard/')
+    : (next ? `/signup/?next=${encodeURIComponent(next)}` : '/signup/');
+  const label = signedIn ? signedInLabel : 'Start for free';
 
   return (
     <a href={href} className="btn-start" style={{ textDecoration: 'none', display: 'inline-block' }}>

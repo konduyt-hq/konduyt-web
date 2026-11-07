@@ -18,6 +18,7 @@ import { INTELLIGENCE_TESTING_SDK } from './intelligencesdk';
 import { ANDROID_LAYOUT_XML, IOS_STORYBOARD_XML } from './frontendfiles';
 import { FRONTEND_OPTIONS } from './frontendoptions';
 import { MERCHANT_COUNTRIES } from './countries';
+import { resolveDestination, clearPendingDestination } from '../authDestination';
 import { GLOBAL_REACH, connectedReach, joinNames } from './providerreach';
 
 const API_BASE =
@@ -494,6 +495,16 @@ export default function Dashboard() {
         });
       }
       window.history.replaceState(null, '', window.location.pathname);
+      // A creator who signed in from the Creators product lands in the creator
+      // workspace, not here. One account, and the product they chose decides the
+      // destination. The value is validated against the shared allow-list, so a
+      // crafted fragment cannot redirect off-site.
+      const next = params.get('next');
+      if (next && resolveDestination(next) !== '/dashboard/') {
+        clearPendingDestination();
+        window.location.replace(resolveDestination(next));
+        return;
+      }
     } else {
       token = getToken();
     }

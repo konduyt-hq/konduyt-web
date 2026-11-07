@@ -6,6 +6,7 @@ import SignInLink from '../../SignInLink';
 import MobileNav from '../../MobileNav';
 import LogoMark from '../../LogoMark';
 import TwinPanel from './TwinPanel';
+import ProductSwitcher from '../../ProductSwitcher';
 import {
   STATUSES, BLOCK_TYPES, listLocal, getLocal, createLocal, saveLocal,
   deleteLocal, sync, pullAndMerge, outboxCount, newBlockId,
@@ -89,6 +90,24 @@ export default function Ideas() {
     return list;
   }, []);
 
+  // Adopt the stored server version onto the OPEN draft after a sync or pull.
+  //
+  // Only `server_version` is taken, and only when the draft still belongs to the
+  // document that was refreshed: every other field is left as the creator last
+  // typed it, so a keystroke made during the sync is never overwritten. Without
+  // this, the editor posts the version it had when the idea was opened and the
+  // server -- which has since moved on -- treats the creator's own second edit
+  // as a conflict with their first.
+  const refreshActiveDraft = useCallback(async () => {
+    const id = activeIdRef.current;
+    if (!id) return;
+    const stored = await getLocal(id);
+    if (!stored) return;
+    setDraft((d) => (d && d.id === id && d.server_version !== stored.server_version
+      ? { ...d, server_version: stored.server_version }
+      : d));
+  }, []);
+
   const doSync = useCallback(async () => {
     const token = getToken();
     if (!token) return;
@@ -99,8 +118,14 @@ export default function Ideas() {
       await pullAndMerge({ apiBase: API_BASE, token });
       await reload();
     }
+    // A sync or pull can advance the server version of the idea that is open.
+    // The editor's in-memory draft would otherwise keep the old one and the next
+    // edit would post a stale base_version -- a conflict with itself. Adopt the
+    // stored version, but ONLY for the document the draft is actually editing and
+    // ONLY that one field, so a newer local edit is never overwritten.
+    await refreshActiveDraft();
     return res;
-  }, [reload]);
+  }, [reload, refreshActiveDraft]);
 
   // Boot: confirm the session, pull, then work from the local copy.
   useEffect(() => {
@@ -332,7 +357,7 @@ export default function Ideas() {
               <a href="/creators/audit/">Creator Audit</a>
             </div>
             <MobileNav />
-            <div className="nav-right"><SignInLink /><NavCta /></div>
+            <div className="nav-right"><ProductSwitcher /><SignInLink next="/creators/ideas/" /><NavCta next="/creators/ideas/" signedInLabel="Open your Ideas" /></div>
           </nav>
         </div>
         <section className="landing">
@@ -367,7 +392,7 @@ export default function Ideas() {
             <a href="/creators/ideas/" className="nav-active">Ideas</a>
           </div>
           <MobileNav />
-          <div className="nav-right"><SignInLink /><NavCta /></div>
+          <div className="nav-right"><ProductSwitcher /><SignInLink next="/creators/ideas/" /><NavCta next="/creators/ideas/" signedInLabel="Open your Ideas" /></div>
         </nav>
       </div>
 

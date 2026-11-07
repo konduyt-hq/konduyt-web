@@ -110,9 +110,12 @@ const SIGNUP = read('app/signup/page.js');
 const SIGNIN = read('app/signin/page.js');
 const NAVCTA = read('app/NavCta.js');
 check('signup still starts the real provider OAuth flow',
-  SIGNUP.includes('`${API_BASE}/auth/${provider}`'));
+  /`\$\{API_BASE\}\/auth\/\$\{provider\}/.test(SIGNUP));
 check('signin still starts the real provider OAuth flow',
-  SIGNIN.includes('`${API_BASE}/auth/${provider}`'));
+  /`\$\{API_BASE\}\/auth\/\$\{provider\}/.test(SIGNIN));
+check('signup and signin carry the chosen product through the auth round trip',
+  /\?next=\$\{encodeURIComponent\(dest\)\}/.test(SIGNUP)
+  && /\?next=\$\{encodeURIComponent\(dest\)\}/.test(SIGNIN));
 check('signin still validates the existing session token against /me',
   SIGNIN.includes('`${API_BASE}/me`'));
 check('the same account token key is used across the auth surfaces',
@@ -151,7 +154,35 @@ check('the new root keeps the LaunchBuck footer badge',
   footer.includes('href="https://launchbuck.com/p/konduyt"')
   && footer.includes('src="https://launchbuck.com/badges/card-light.png"'));
 
-// --- Responsive layout contract ---------------------------------------------
+  // --- Shared platform: switcher, pricing, destination ------------------------
+  const SWITCHER = read('app/ProductSwitcher.js');
+  const PRICING = read('app/pricing/page.js');
+  const DEST = read('app/authDestination.js');
+
+  check('the product switcher lists all three products',
+    SWITCHER.includes("label: 'Developers & Businesses'")
+    && SWITCHER.includes("label: 'Creators'")
+    && SWITCHER.includes("label: 'Payroll'"));
+  check('the switcher marks Payroll coming soon and never links it',
+    /label: 'Payroll'[\s\S]{0,80}href: null/.test(SWITCHER)
+    && SWITCHER.includes('product-switcher-item-soon'));
+  check('the switcher is on each product surface',
+    read('app/developers/page.js').includes('<ProductSwitcher />')
+    && read('app/creators/page.js').includes('<ProductSwitcher />')
+    && read('app/creators/ideas/page.js').includes('<ProductSwitcher />'));
+  check('the pricing page separates the three product models',
+    /id="developers"/.test(PRICING) && /id="creators"/.test(PRICING)
+    && /id="payroll"/.test(PRICING));
+  check('Creators is free while in beta, not billed per live project',
+    /Free while in beta/.test(PRICING));
+  check('Payroll is coming soon and sells no plan',
+    /product-badge-soon">Coming soon/.test(PRICING));
+  check('the Developers price model is unchanged',
+    /PRICE = 10/.test(PRICING) && /FREE_LIVE = 3/.test(PRICING));
+  check('the destination is validated against an allow-list, not trusted',
+    /const ALLOWED = new Set/.test(DEST) && /ALLOWED\.has\(next\) \? next : DEFAULT_DESTINATION/.test(DEST));
+
+  // --- Responsive layout contract ---------------------------------------------
 // The product choice must survive a phone. These read the stylesheet rather
 // than a browser so they run in the normal offline test pass; the class rules
 // they depend on are asserted to exist just above.

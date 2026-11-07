@@ -156,14 +156,27 @@ function nowIso() { return new Date().toISOString(); }
  * is the SERVER version the edit started from -- the value the server uses to
  * detect a conflict. It is null for a document the server has never seen, which
  * is also how `create_if_missing` is decided.
+ *
+ * `base_version` is read from the STORED document, not from the caller's copy. A
+ * sync or pull can advance the server version while the editor is open, and the
+ * editor's in-memory draft still holds the old one; trusting that stale value
+ * makes the very next edit of the same idea look like a conflict with itself.
+ * Reading the stored version keeps genuine multi-device conflicts -- where the
+ * stored base really is behind the server -- while removing the self-inflicted
+ * ones.
  */
 export async function saveLocal(doc, { origin = 'creator' } = {}) {
   const db = await openDb();
+  const stored = await reqp(db.transaction(STORE_DOCS).objectStore(STORE_DOCS).get(doc.id));
+  const serverVersion = stored && stored.server_version != null
+    ? stored.server_version
+    : (doc.server_version ?? null);
   const opId = newOpId();
-  const baseVersion = doc.server_version ?? null;
+  const baseVersion = serverVersion;
   const cid = await clientId();
   const local = {
     ...doc,
+    server_version: serverVersion,
     local_version: (doc.local_version || 0) + 1,
     updated_at: nowIso(),
     sync_state: 'pending',
@@ -193,9 +206,26 @@ export async function saveLocal(doc, { origin = 'creator' } = {}) {
   };
   await tx(db, [STORE_DOCS, STORE_OUTBOX], 'readwrite', (t) => {
     t.objectStore(STORE_DOCS).put(local);
-    t.objectStore(STORE_OUTBOX).put(op);
+    coalesceAndPut(t.objectStore(STORE_OUTBOX), op);
   });
   return { doc: local, op };
+}
+
+// Replace any pending op for this document with `op`, so at most one op per
+// document is ever queued. A second edit before the first has synced would
+// otherwise stack a second op whose `base_version` is already stale, and the
+// server would flag it as a conflict with the client's own earlier op. The
+// newest payload is a superset of the older one, so collapsing loses nothing.
+// Must be called with an open transaction: the index read, the deletes and the
+// put all run before the transaction can auto-commit.
+function coalesceAndPut(outbox, op) {
+  const existing = outbox.index('doc_id').getAll(op.doc_id);
+  existing.onsuccess = () => {
+    for (const prior of existing.result || []) {
+      if (prior.op_id !== op.op_id) outbox.delete(prior.op_id);
+    }
+    outbox.put(op);
+  };
 }
 
 export async function createLocal({ title = '', blocks = [], tags = [], status = 'captured',
@@ -225,6 +255,21 @@ export async function deleteLocal(id) {
   const db = await openDb();
   const doc = await getLocal(id);
   if (!doc) return null;
+  // Never synced: the server has no such document, so there is nothing to delete
+  // there. Drop any queued op for it and keep the deletion purely local --
+  // queueing a delete for an unknown document would sit in the outbox forever as
+  // `not_found`.
+  if (doc.server_version == null) {
+    await tx(db, [STORE_DOCS, STORE_OUTBOX], 'readwrite', (t) => {
+      t.objectStore(STORE_DOCS).put({ ...doc, deleted: true, sync_state: 'synced' });
+      const outbox = t.objectStore(STORE_OUTBOX);
+      const existing = outbox.index('doc_id').getAll(id);
+      existing.onsuccess = () => {
+        for (const prior of existing.result || []) outbox.delete(prior.op_id);
+      };
+    });
+    return null;
+  }
   const cid = await clientId();
   const op = {
     op_id: newOpId(),
@@ -237,7 +282,7 @@ export async function deleteLocal(id) {
   };
   await tx(db, [STORE_DOCS, STORE_OUTBOX], 'readwrite', (t) => {
     t.objectStore(STORE_DOCS).put({ ...doc, deleted: true, sync_state: 'pending' });
-    t.objectStore(STORE_OUTBOX).put(op);
+    coalesceAndPut(t.objectStore(STORE_OUTBOX), op);
   });
   return op;
 }
@@ -468,7 +513,7 @@ export async function restoreLocal(id) {
   };
   await tx(db, [STORE_DOCS, STORE_OUTBOX], 'readwrite', (t) => {
     t.objectStore(STORE_DOCS).put(local);
-    t.objectStore(STORE_OUTBOX).put(op);
+    coalesceAndPut(t.objectStore(STORE_OUTBOX), op);
   });
   return local;
 }

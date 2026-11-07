@@ -72,6 +72,34 @@
   }
   .nav-links a:hover{color:var(--ink);}
   .nav-right{display:flex; align-items:center; gap:22px;}
+  /* The one-platform product switcher. Shown on the landing page and on each
+     product surface, so moving between products never means going back to the
+     landing page first. */
+  .product-switcher{position:relative;}
+  .product-switcher-btn{
+    display:inline-flex; align-items:center; gap:7px; cursor:pointer;
+    font-family:inherit; font-size:14px; font-weight:600; color:var(--ink);
+    background:var(--elev); border:1px solid var(--border); border-radius:9px;
+    padding:9px 13px; white-space:nowrap;
+  }
+  .product-switcher-btn:hover{border-color:var(--ink);}
+  .product-switcher-caret{font-size:10px; opacity:0.6;}
+  .product-switcher-menu{
+    position:absolute; right:0; top:calc(100% + 8px); z-index:60; min-width:236px;
+    background:var(--elev); border:1px solid var(--border); border-radius:12px;
+    box-shadow:0 12px 34px rgba(0,0,0,0.12); padding:6px; display:flex; flex-direction:column;
+  }
+  .product-switcher-item{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 12px; border-radius:8px; text-decoration:none; color:var(--ink);
+    font-size:14px; font-weight:500;
+  }
+  .product-switcher-item:hover{background:rgba(0,0,0,0.04);}
+  .product-switcher-item.is-current{background:rgba(0,0,0,0.04); font-weight:700;}
+  .product-switcher-item-soon{color:var(--text-secondary); cursor:default;}
+  .product-switcher-item-soon:hover{background:transparent;}
+  .product-switcher-item-note{font-size:11px; font-weight:600; letter-spacing:0.04em;
+    text-transform:uppercase; color:var(--text-secondary);}
   .mobile-nav{display:none; position:relative;}
   .mobile-nav-toggle{background:none; border:1px solid var(--border); border-radius:8px;
     width:38px; height:38px; display:flex; align-items:center; justify-content:center;
@@ -1346,6 +1374,25 @@
   }
   .pricing-title{font-size:38px; font-weight:800; letter-spacing:-0.025em; color:var(--ink); margin-bottom:16px; line-height:1.1;}
   .pricing-lede{font-size:17px; line-height:1.65; color:var(--text-secondary); max-width:620px; margin:0 auto;}
+  .pricing-product-nav{
+    display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:26px;
+  }
+  .pricing-product-pill{
+    font-size:14px; font-weight:600; color:var(--ink); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:9px 18px; background:var(--elev);
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .pricing-product-pill:hover{border-color:var(--ink); transform:translateY(-1px);}
+  .pricing-product-head{text-align:center; margin:0 auto 22px; max-width:640px;}
+  .pricing-product-title{font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin:14px 0 8px;}
+  .pricing-product-sub{font-size:15.5px; line-height:1.6; color:var(--text-secondary);}
+  .pricing-product-head:not(:first-of-type){margin-top:56px;}
+  .pricing-card-creators{border-color:var(--border);}
+  .pricing-payroll-note{
+    background:var(--elev); border:1px dashed var(--border); border-radius:14px;
+    padding:22px 26px; margin-bottom:28px;
+  }
+  .pricing-payroll-note p{font-size:15px; line-height:1.65; color:var(--text-secondary); margin:0;}
   .pricing-card-main{
     display:grid; grid-template-columns:1fr 1fr; gap:0;
     background:var(--elev); border:1px solid var(--border); border-radius:18px;

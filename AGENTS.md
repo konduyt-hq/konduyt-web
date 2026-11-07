@@ -230,6 +230,25 @@ It presents three options and nothing else:
   real early-access action (an email request) instead. Do not add a dashboard
   link back to it, and do not build a creator dashboard until that product is
   built separately.
+  - **The chosen product travels through auth as a validated path.**
+    `app/authDestination.js` is the single place that decides where a signed-in
+    visitor lands. A `?next=` value is accepted only if it is on its `ALLOWED`
+    set (`/dashboard/`, `/creators/`, `/creators/ideas/`); anything else falls
+    back to `/dashboard/`, so the parameter can never become an open redirect.
+    `SignInLink`/`NavCta` take an optional `next`, and the API mirrors the same
+    allow-list in `app/main.py` (`_safe_destination`), storing the validated path
+    in a short-lived `kdu_oauth_dest` cookie and echoing it back on the OAuth
+    callback. Keep the two lists in step; the default (no `next`) must stay
+    `/dashboard/` so existing users are unaffected.
+  - **`ProductSwitcher` moves between products, but is not on the root.** A
+    signed-in visitor can switch products from the developers and creators
+    surfaces; the landing page is itself the selector and deliberately carries no
+    switcher. The switcher's Payroll entry is `href: null` and renders
+    non-interactive, same rule as the landing card.
+  - **The pricing page states three separate commercial models.** Developers
+    keeps the existing per-live-project billing flow unchanged; Creators is free
+    while in beta; Payroll is coming soon with no plan to buy. Do not merge them
+    into one plan table or introduce a price for Creators or Payroll here.
 - **`creators.konduyt.dev`** is rewritten to `/creators/` by
   `functions/_middleware.js`, the same host-based pattern as
   `dashboard.konduyt.dev` -> `/dashboard/`. If the creator workspace later ships
