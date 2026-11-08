@@ -140,29 +140,13 @@ export default function Pricing() {
         {/* Header */}
         <header className="pricing-head">
           <span className="pricing-eyebrow">Konduyt pricing</span>
-          <h1 className="pricing-title">One account. Three products. Different commercial models.</h1>
+          <h1 className="pricing-title">Simple to explain. Scales with your business.</h1>
           <p className="pricing-lede">
-            Developers &amp; Businesses pay for payment infrastructure. Creators is free
-            while it is in beta and will be priced on its own terms. Payroll is coming
-            later. There is no single plan that covers all three — each product is priced
-            for what it actually does.
+            No feature paywalls. Intelligence, routing, reconciliation.
+            All of it comes with Konduyt. You pay for access, for the volume we move,
+            and for more room when you outgrow the basics.
           </p>
-          <div className="pricing-product-nav">
-            <a href="#developers" className="pricing-product-pill">Developers &amp; Businesses</a>
-            <a href="#creators" className="pricing-product-pill">Creators</a>
-            <a href="#payroll" className="pricing-product-pill">Payroll</a>
-          </div>
         </header>
-
-        {/* Product 1: Developers & Businesses — the existing model, unchanged */}
-        <section className="pricing-product-head" id="developers">
-          <span className="product-badge product-badge-existing">Existing platform</span>
-          <h2 className="pricing-product-title">Konduyt for Developers &amp; Businesses</h2>
-          <p className="pricing-product-sub">
-            One integration to connect your business to multiple payment providers and
-            payment methods. Priced on live projects and the volume we move.
-          </p>
-        </section>
 
         {/* The single plan */}
         <section className="pricing-card-main">
@@ -334,64 +318,6 @@ export default function Pricing() {
             Not part of this pricing. It&apos;s coming on its own.
           </p>
         </Link>
-
-        {/* Product 2: Creators — a different commercial model, not a tier of the above */}
-        <section className="pricing-product-head" id="creators">
-          <span className="product-badge product-badge-dev">In development</span>
-          <h2 className="pricing-product-title">Konduyt for Creators</h2>
-          <p className="pricing-product-sub">
-            Your workspace for building, growing and running a creator business. This is
-            the product we are actively developing.
-          </p>
-        </section>
-
-        <section className="pricing-card-main pricing-card-creators">
-          <div className="pricing-free">
-            <div className="pricing-free-head">Free while in beta</div>
-            <ul className="pricing-list">
-              <li><span className="pricing-check">✓</span> The whole creator workspace. No card, no trial clock.</li>
-              <li><span className="pricing-check">✓</span> Ideas, the Creator Audit, and the Creator Twin.</li>
-              <li><span className="pricing-check">✓</span> Your existing Konduyt account. Nothing new to sign up for.</li>
-              <li><span className="pricing-check">✓</span> Payment features, when they arrive, reuse the same infrastructure.</li>
-            </ul>
-          </div>
-          <div className="pricing-paid">
-            <div className="pricing-paid-amount">
-              <span className="pricing-dollar">Free</span>
-              <span className="pricing-per">while in beta</span>
-            </div>
-            <p className="pricing-paid-note">
-              Creators is not priced like the payment platform. It is not billed per live
-              project, and there is no subscription yet. When paid creator plans arrive they
-              will be announced here first, and the beta will stay free until then.
-            </p>
-            <a
-              className="pricing-start-btn"
-              href="/creators/"
-              style={{ textDecoration: 'none', display: 'inline-block', textAlign: 'center' }}
-            >
-              Explore Konduyt for Creators
-            </a>
-          </div>
-        </section>
-
-        {/* Product 3: Payroll — a future product, marked so it cannot mislead */}
-        <section className="pricing-product-head" id="payroll">
-          <span className="product-badge product-badge-soon">Coming soon</span>
-          <h2 className="pricing-product-title">Konduyt Payroll</h2>
-          <p className="pricing-product-sub">
-            A future workspace for managing payroll and paying teams. Not available yet,
-            and not part of any price on this page.
-          </p>
-        </section>
-
-        <section className="pricing-payroll-note">
-          <p>
-            Payroll will be its own product with its own pricing when it launches. Until
-            then there is nothing to sign up for and nothing to pay — this page says so
-            rather than showing a plan that does not exist.
-          </p>
-        </section>
 
         <footer className="pricing-foot">
           <Link href={homeHref} className="pricing-navlink">← Back to Konduyt</Link>

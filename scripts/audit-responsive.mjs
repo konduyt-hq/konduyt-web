@@ -27,14 +27,12 @@ const TOKEN = process.env.AUDIT_TOKEN || '';
 const AUTH_ROUTES = new Set(
   (process.env.AUTH_ROUTES || '/dashboard/').split(',').filter(Boolean));
 
-// Routes the task names: the three landing pages, sign-in, sign-up, the
-// developer dashboard, and the supporting public pages that share the shell.
+// The public routes the site actually serves: the payment landing page (the
+// root), sign-in, sign-up, the developer dashboard, and the supporting public
+// pages that share the shell. The retired creator routes are not listed --
+// they no longer exist, so auditing them would only report the 404 page.
 const ROUTES = (process.env.ROUTES || [
   '/',
-  '/developers/',
-  '/creators/',
-  '/creators/ideas/',
-  '/creators/audit/',
   '/signin/',
   '/signup/',
   '/dashboard/',

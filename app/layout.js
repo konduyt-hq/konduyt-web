@@ -2,9 +2,9 @@ import './globals.css';
 import ServiceWorker from './ServiceWorker';
 
 export const metadata = {
-  title: 'Konduyt — payment infrastructure and creator tools',
+  title: 'Konduyt: One integration. Every payment provider.',
   description:
-    'Konduyt for Developers & Businesses: one integration to connect your business to multiple payment providers and payment methods. Konduyt for Creators: your workspace for building, growing and running a creator business. Konduyt Payroll: coming soon.',
+    'Every payment provider has a different API. Konduyt gives you one. Connect Stripe, PayPal, M-Pesa, Flutterwave and more with a few lines of code.',
   metadataBase: new URL('https://konduyt.dev'),
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -27,9 +27,9 @@ export const metadata = {
     googleBot: { index: true, follow: true },
   },
   openGraph: {
-    title: 'Konduyt — payment infrastructure and creator tools',
+    title: 'Konduyt: One integration. Every payment provider.',
     description:
-      'One integration to connect your business to multiple payment providers and payment methods — plus tools for creators. One Konduyt identity, three products.',
+      'Every payment provider has a different API. Konduyt gives you one. Connect Stripe, PayPal, M-Pesa, Flutterwave and more with a few lines of code.',
     url: 'https://konduyt.dev',
     siteName: 'Konduyt',
     type: 'website',
@@ -37,9 +37,9 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Konduyt',
+    title: 'Konduyt: One integration. Every payment provider.',
     description:
-      'One integration to connect your business to multiple payment providers and payment methods.',
+      'Every payment provider has a different API. Konduyt gives you one.',
     images: ['/icon-512.png'],
   },
   alternates: {

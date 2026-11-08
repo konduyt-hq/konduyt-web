@@ -8,23 +8,18 @@ building and maintaining a separate integration for each. This repo is the
 site and dashboard: the marketing pages, docs, and the developer dashboard
 for connecting providers, managing keys, and viewing payments.
 
-## Three products, one identity
+## One product: Konduyt Payments
 
-The public root (`/`) is a product-selection page with three options, all
-under one Konduyt account and one authentication system:
+Konduyt Payments is the only active product. The public root (`/`) is the
+payment landing page itself — the hero, the supported-providers rail and the
+interactive code panel — backed by the existing signup (`/signup/`), login
+(`/signin/`) and dashboard (`/dashboard/`), all under one Konduyt account and
+one authentication system.
 
-| Option | Destination | State |
-| --- | --- | --- |
-| Konduyt for Developers & Businesses | `/developers/` | Existing platform (the original payment product) |
-| Konduyt for Creators | `/creators/` | In development; early-access request |
-| Konduyt Payroll | — | Coming soon; deliberately not a link |
-
-The payment product was **moved** to `/developers/`, not rewritten: its page,
-content and links are the same as the old site root. The three options share
-the existing signup (`/signup/`), login (`/signin/`) and dashboard
-(`/dashboard/`) — nothing in the restructure touches authentication. The
-Creators page is its own entry point and does not send visitors to the
-developer dashboard, which belongs to a different product.
+CreatorOS (Konduyt for Creators) has been retired and Payroll is parked, so
+neither is offered anywhere in the public experience. A legacy `/developers/`
+link redirects to the root, and the retired `creators.konduyt.dev` host
+redirects to the main site.
 
 - **Live site:** [konduyt.dev](https://konduyt.dev)
 - **Docs:** [konduyt.dev/docs](https://konduyt.dev/docs)

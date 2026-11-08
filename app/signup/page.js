@@ -33,8 +33,8 @@ export default function Signup() {
       if (m === 'google' || m === 'github') setLastMethod(m);
     } catch (err) {}
 
-    // Remember which product this person came for, so the provider round trip
-    // can return them to it instead of the default console.
+    // Remember the destination for the provider round trip. Konduyt is one
+    // product again, so this always resolves to the Developers console.
     rememberDestination(resolveIncomingDestination(window.location.search));
   }, []);
 
@@ -42,8 +42,8 @@ export default function Signup() {
     try {
       localStorage.setItem('kdu_last_method', provider);
     } catch (err) {}
-    // Pass the chosen product to the API so the provider round trip returns here
-    // for it, rather than always to the Developers console.
+    // Pass the destination to the API so the provider round trip returns to the
+    // Developers console explicitly.
     const dest = resolveIncomingDestination(window.location.search);
     rememberDestination(dest);
     window.location.href = `${API_BASE}/auth/${provider}?next=${encodeURIComponent(dest)}`;

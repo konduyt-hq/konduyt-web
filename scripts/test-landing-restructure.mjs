@@ -1,18 +1,20 @@
-// Guard the three-product landing restructure.
+// Guard the return to a single-product site.
 //
-// The public root is now a product-selection page with three options, each
-// pointing at a real destination. Two things must never regress silently:
+// Konduyt Payments is the only active product again: CreatorOS (Konduyt for
+// Creators) has been retired and Payroll is parked. The site root is the
+// payment product directly, and nothing in the public experience may offer a
+// retired product or a route that no longer exists.
 //
-//   1. The three options exist, with their exact copy, and Payroll stays a
-//      coming-soon, non-interactive card -- so it can never lead to a broken or
-//      unfinished page.
-//   2. The existing payment product was moved, not rewritten: the old landing
-//      page still exists in full at /developers/, and the existing signup,
-//      login and dashboard flows are untouched.
+// Two things must never regress silently:
+//
+//   1. The root is the payment landing page itself -- the hero, the vendor rail
+//      and the interactive panel -- not a product-selection page.
+//   2. No CreatorOS or Payroll entry point survives: no links, no pages, no
+//      product cards, and no creator product surface to navigate to.
 //
 // The CSS half is the repo's own layout-variant rule (see AGENTS.md): a class
 // named in JSX with no rule in globals.css renders as full-size body text and
-// fails silently, so every class the new pages use must have a rule.
+// fails silently, so every class the root page uses must have a rule.
 //
 // Run: node scripts/test-landing-restructure.mjs
 import { readFileSync, existsSync } from 'fs';
@@ -30,76 +32,46 @@ const check = (name, ok, detail = '') => {
   console.log(`  [${ok ? 'PASS' : 'FAIL'}] ${name}` + (ok || !detail ? '' : `\n        ${detail}`));
 };
 
-console.log('Landing restructure: three product entry points');
+console.log('Single-product landing: Konduyt Payments only');
 console.log('----------------------------------------------');
 
 const HOME = read('app/page.js');
 const CSS = read('app/globals.css');
 
-// --- The three options exist, with their copy -------------------------------
-check('root page is the product-selection page, not the old hero',
-  HOME.includes('PRODUCTS') && !/import\s+DevPanel/.test(HOME) && !/vendor-row/.test(HOME));
+// --- The root is the payment product itself ---------------------------------
+check('root page is the payment product, not a product-selection page',
+  /import\s+DevPanel\s+from/.test(HOME) && /vendor-row/.test(HOME)
+  && !HOME.includes('PRODUCTS') && !HOME.includes('product-list'));
 
-check('Option 1 title: Konduyt for Developers & Businesses',
-  HOME.includes('Konduyt for Developers & Businesses'));
-check('Option 1 description',
-  HOME.includes('One integration to connect your business to multiple payment providers and payment methods.'));
-check('Option 1 status note names the existing platform',
-  HOME.includes('Existing platform. Still operational, currently undergoing major developments.'));
+check('root page keeps the payment hero copy',
+  HOME.includes('One integration.') && HOME.includes('Every payment'));
+check('root page keeps the interactive code panel', /<DevPanel\s*\/>/.test(HOME));
+check('root page keeps the supported-providers rail',
+  /vendor-row/.test(HOME) && /Stripe/.test(HOME) && /M-Pesa/.test(HOME));
+check('root page keeps sign in and the dashboard CTA',
+  /<SignInLink\s*\/>/.test(HOME) && /<NavCta\s*\/>/.test(HOME));
 
-check('Option 2 title: Konduyt for Creators', HOME.includes('Konduyt for Creators'));
-check('Option 2 description',
-  HOME.includes('Your workspace for building, growing and running a creator business.'));
-check('Option 2 status says it is the product in development',
-  HOME.includes('This is the product we are actively developing.'));
+// --- No CreatorOS or Payroll entry point survives ---------------------------
+check('root page links to no creator product', !/href="[^"]*creators/i.test(HOME));
+check('root page links to no payroll route', !/href="[^"]*payroll/i.test(HOME));
+check('root page advertises no creator or payroll card',
+  !/works-card/.test(HOME) && !/KONDUYT<\/span>creators/.test(HOME)
+  && !/KONDUYT<\/span>payroll/.test(HOME));
 
-check('Option 3 title: Konduyt Payroll', HOME.includes('Konduyt Payroll'));
-check('Option 3 description',
-  HOME.includes('A future workspace for managing payroll and paying teams.'));
-check('Option 3 is marked coming soon', /Coming soon/.test(HOME));
+check('the creators product surface is gone', !exists('app/creators'));
+check('the creators entry point is gone', !exists('app/creators/page.js'));
+check('the ideas workspace is gone', !exists('app/creators/ideas/page.js'));
+check('the public creator audit page is gone', !exists('app/creators/audit/page.js'));
+check('the three-product switcher component is gone', !exists('app/ProductSwitcher.js'));
 
-// --- Navigation between products --------------------------------------------
-check('Developers option links to the existing product at /developers/',
-  HOME.includes('href="/developers/"'));
-check('Creators option links to the creators entry point at /creators/',
-  HOME.includes('href="/creators/"'));
-check('no option links to a payroll route',
-  !/href="[^"]*payroll/i.test(HOME), 'a payroll href would be a broken destination');
-check('Payroll renders as a non-interactive card (no href)',
-  /product-card product-card-soon/.test(HOME) && /aria-disabled="true"/.test(HOME));
-
-// --- The existing payment product is preserved, not rewritten ---------------
-check('the old landing page still exists at app/developers/page.js',
-  exists('app/developers/page.js'));
-const DEV = exists('app/developers/page.js') ? read('app/developers/page.js') : '';
-check('the developers page keeps the full payment hero copy',
-  DEV.includes('One integration.') && DEV.includes('Every payment'));
-check('the developers page keeps the interactive code panel',
-  /import\s+DevPanel\s+from/.test(DEV) && /<DevPanel\s*\/>/.test(DEV));
-check('the developers page keeps the supported-providers rail',
-  /vendor-row/.test(DEV) && /Stripe/.test(DEV) && /M-Pesa/.test(DEV));
-check('the developers page keeps sign in and the dashboard CTA',
-  /<SignInLink\s*\/>/.test(DEV) && /<NavCta\s*\/>/.test(DEV));
-check('the developers page has its own metadata layout',
-  exists('app/developers/layout.js'));
-
-// --- Creators entry point is a real, finished page --------------------------
-check('the creators entry point exists', exists('app/creators/page.js'));
-const CREATORS = exists('app/creators/page.js') ? read('app/creators/page.js') : '';
-check('creators page offers an early-access action',
-  CREATORS.includes('Request early access'));
-// The full workspace is not open yet, and the page must say so rather than
-// implying a finished product. Ideas and the Creator Audit are live, so the
-// wording moved from "not available yet" to "still being built"; the
-// early-access gate above is what keeps the promise honest.
-check('creators page says the product is not fully open yet',
-  /not available yet|not open yet|still being built/.test(CREATORS));
-check('creators page points back at the developers product',
-  CREATORS.includes('href="/developers/"'));
-check('creators page does NOT send creators to the developer dashboard',
-  !/href="\/dashboard/.test(CREATORS),
-  'the dashboard belongs to Developers & Businesses, not Creators');
-check('creators page has its own metadata layout', exists('app/creators/layout.js'));
+// --- The existing payment product keeps one canonical URL -------------------
+check('the /developers/ duplicate route is gone (root is canonical)',
+  !exists('app/developers/page.js'));
+const MW = read('functions/_middleware.js');
+check('a legacy /developers/ link still resolves (redirect to the root)',
+  /RETIRED_PATHS/.test(MW) && /\/developers/.test(MW));
+check('the retired creators host no longer serves a product page',
+  /RETIRED_HOSTS/.test(MW) && /creators\.konduyt\.dev/.test(MW));
 
 // --- Existing signup / login / sessions are untouched -----------------------
 check('signup page still exists', exists('app/signup/page.js'));
@@ -113,7 +85,7 @@ check('signup still starts the real provider OAuth flow',
   /`\$\{API_BASE\}\/auth\/\$\{provider\}/.test(SIGNUP));
 check('signin still starts the real provider OAuth flow',
   /`\$\{API_BASE\}\/auth\/\$\{provider\}/.test(SIGNIN));
-check('signup and signin carry the chosen product through the auth round trip',
+check('signup and signin still carry the destination through the auth round trip',
   /\?next=\$\{encodeURIComponent\(dest\)\}/.test(SIGNUP)
   && /\?next=\$\{encodeURIComponent\(dest\)\}/.test(SIGNIN));
 check('signin still validates the existing session token against /me',
@@ -129,7 +101,17 @@ check('the root landing page does not introduce a second auth system',
   !/\/auth\//.test(HOME) && !/\bkdu_token\b/.test(HOME) && !/\/me\b/.test(HOME),
   'the landing page must not touch authentication');
 
-// --- Every class the new pages use has a CSS rule ---------------------------
+// --- The destination resolver is single-product and still safe --------------
+const DEST = read('app/authDestination.js');
+check('the destination allow-list is the Developers console only',
+  /const ALLOWED = new Set\(\[PRODUCTS\.developers\.destination\]\)/.test(DEST));
+check('a stale /creators/ value can no longer resolve to a removed route',
+  !/creators/.test(DEST.replace(/\/\/[^\n]*/g, '')),
+  'creators must appear only in explanatory comments, never in code');
+check('the destination is still validated against an allow-list, not trusted',
+  /ALLOWED\.has\(next\) \? next : DEFAULT_DESTINATION/.test(DEST));
+
+// --- Every class the root page uses has a CSS rule --------------------------
 const classesIn = (src) => {
   const out = new Set();
   for (const m of src.matchAll(/className="([^"]+)"/g)) {
@@ -142,64 +124,29 @@ const classesIn = (src) => {
 const hasRule = (cls) =>
   new RegExp(`\\.${cls.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}(?=[\\s,{:.>])`).test(CSS);
 
-const newClasses = new Set([...classesIn(HOME), ...classesIn(CREATORS)]);
+const newClasses = classesIn(HOME);
 const missing = [...newClasses].filter((c) => !hasRule(c));
-check(`every class in the new pages has a CSS rule (${newClasses.size} checked)`,
+check(`every class on the root page has a CSS rule (${newClasses.size} checked)`,
   missing.length === 0, `missing: ${missing.join(', ')}`);
 
-// --- The footer badge is preserved on the new root --------------------------
+// --- The footer badge is preserved on the root ------------------------------
 const footerMatch = HOME.match(/<footer className="site-footer">[\s\S]*?<\/footer>/);
 const footer = footerMatch ? footerMatch[0] : '';
-check('the new root keeps the LaunchBuck footer badge',
+check('the root keeps the LaunchBuck footer badge',
   footer.includes('href="https://launchbuck.com/p/konduyt"')
   && footer.includes('src="https://launchbuck.com/badges/card-light.png"'));
 
-  // --- Shared platform: switcher, pricing, destination ------------------------
-  const SWITCHER = read('app/ProductSwitcher.js');
-  const PRICING = read('app/pricing/page.js');
-  const DEST = read('app/authDestination.js');
+// --- Pricing no longer sells a retired product ------------------------------
+const PRICING = read('app/pricing/page.js');
+check('pricing no longer separates creators/payroll products',
+  !/id="creators"/.test(PRICING) && !/id="payroll"/.test(PRICING));
+check('pricing keeps the Developers price model unchanged',
+  /PRICE = 10/.test(PRICING) && /FREE_LIVE = 3/.test(PRICING));
 
-  check('the product switcher lists all three products',
-    SWITCHER.includes("label: 'Developers & Businesses'")
-    && SWITCHER.includes("label: 'Creators'")
-    && SWITCHER.includes("label: 'Payroll'"));
-  check('the switcher marks Payroll coming soon and never links it',
-    /label: 'Payroll'[\s\S]{0,80}href: null/.test(SWITCHER)
-    && SWITCHER.includes('product-switcher-item-soon'));
-  check('the switcher is on each product surface',
-    read('app/developers/page.js').includes('<ProductSwitcher />')
-    && read('app/creators/page.js').includes('<ProductSwitcher />')
-    && read('app/creators/ideas/page.js').includes('<ProductSwitcher />'));
-  check('the pricing page separates the three product models',
-    /id="developers"/.test(PRICING) && /id="creators"/.test(PRICING)
-    && /id="payroll"/.test(PRICING));
-  check('Creators is free while in beta, not billed per live project',
-    /Free while in beta/.test(PRICING));
-  check('Payroll is coming soon and sells no plan',
-    /product-badge-soon">Coming soon/.test(PRICING));
-  check('the Developers price model is unchanged',
-    /PRICE = 10/.test(PRICING) && /FREE_LIVE = 3/.test(PRICING));
-  check('the destination is validated against an allow-list, not trusted',
-    /const ALLOWED = new Set/.test(DEST) && /ALLOWED\.has\(next\) \? next : DEFAULT_DESTINATION/.test(DEST));
-
-  // --- Responsive layout contract ---------------------------------------------
-// The product choice must survive a phone. These read the stylesheet rather
-// than a browser so they run in the normal offline test pass; the class rules
-// they depend on are asserted to exist just above.
-check('the product options stack vertically (a column, not a row)',
-  /\.product-list\{[^}]*flex-direction:column/.test(CSS));
-check('the product list is capped so cards do not stretch across a wide screen',
-  /\.product-list\{[^}]*max-width:760px/.test(CSS));
-check('the hero block and the product list share one centred axis',
-  /\.landing-head\{[^}]*margin:0 auto[^}]*text-align:center/.test(CSS)
-  && /\.product-list\{[^}]*margin:0 auto/.test(CSS));
-check('a phone breakpoint restacks each card instead of squeezing it',
-  /@media \(max-width:760px\)\{[\s\S]*?\.product-card\{[^}]*flex-direction:column/.test(CSS));
-check('the phone breakpoint shrinks the hero title',
-  /@media \(max-width:760px\)\{[\s\S]*?\.landing-title\{font-size:24px/.test(CSS));
+// --- The responsive contract the kept pages rely on -------------------------
 check('a phone breakpoint enlarges small tap targets',
-  /@media \(max-width:640px\)\{[\s\S]*?\.docs-navitem\{padding:11px/.test(CSS)
-  && /@media \(max-width:640px\)\{[\s\S]*?\.copy-icon-btn\{padding:8px/.test(CSS));
+  /@media \(max-width:980px\)\{[\s\S]*?\.docs-navitem\{padding:11px/.test(CSS)
+  && /@media \(max-width:980px\)\{[\s\S]*?\.copy-icon-btn\{padding:8px/.test(CSS));
 
 console.log('----------------------------------------------');
 console.log(`${checks - failures}/${checks} checks passed`);

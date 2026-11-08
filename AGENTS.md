@@ -58,15 +58,13 @@ for the `carrier` block.
     serves requests over HTTP: the page at `/`, a bad amount must not come
     back as a successful payment, and CORS preflight must be answered.
   - `npm run test:checkout` — drives `public/checkout-page.html` through jsdom.
-  - `npm run test:landing-restructure` and `npm run test:creatoros-audit`
-    statically assert the three-product landing (Payroll carries no `href`, so it
-    cannot lead anywhere; auth stays on the existing account token key) and the
-    public audit surface.
-  - `scripts/audit-landing-auth.mjs` and `scripts/audit-product-routing.mjs` are
-    real-browser Playwright acceptance for those same criteria. They need both
-    servers up: `npx serve out -l 4173` (no `-s` — SPA fallback rewrites every
-    route to the landing page, which makes /signup/ and /signin/ look broken).
-    Run them against the production origin (`BASE=https://konduyt.dev API=...`),
+    - `npm run test:landing-restructure` statically asserts the single-product
+      landing (the root is the payment product; no CreatorOS or Payroll entry point
+      survives; auth stays on the existing account token key).
+    - `scripts/audit-landing-auth.mjs` is real-browser Playwright acceptance for
+      those same criteria. It needs both
+      servers up: `npx serve out -l 4173` (no `-s` — SPA fallback rewrites every
+    Run it against the production origin (`BASE=https://konduyt.dev API=...`),
     not `localhost`: the API CORS allow-list is strict, so a localhost origin
     makes `/health` fail with a console CORS error that looks like a regression.
   - Verification is still: `npx next build` succeeds, then grep the emitted
@@ -210,106 +208,46 @@ The inbound-reply surface has its own guard, `scripts/test-inbox-replies.mjs`
 read capability separately from sending. Analytics shows the same truth in the
 Outreach ops area.
 
-## Three products under one identity; the root is a selection page
+## One product: Konduyt Payments; the root is the payment landing page
 
-The public site root (`/`) is a product-selection page, not the payment hero.
-It presents three options and nothing else:
+Konduyt Payments is the only active product. The public site root (`/`) is the
+payment landing page itself -- the hero, the interactive `DevPanel` and the
+supported-providers rail -- not a product-selection page.
 
-| Option | Destination | State |
-| --- | --- | --- |
-| Konduyt for Developers & Businesses | `/developers/` | Existing platform |
-| Konduyt for Creators | `/creators/` | In development |
-| Konduyt Payroll | none | Coming soon |
-
-- **The payment product was moved, not rewritten.** What used to be
-  `app/page.js` is now `app/developers/page.js` (same content, nav and links;
-  only its relative imports became `../`). Editing the payment marketing page
-  means editing `app/developers/page.js` from now on. `app/developers/layout.js`
-  carries its metadata.
-- **Payroll is deliberately not a link.** In `app/page.js` the product list is
-  data (`PRODUCTS`); an entry with `href: null` renders as a `<div>` with
-  `aria-disabled`, so Payroll cannot lead to a broken or unfinished page. Do not
-  give it an `href` to a route that does not exist — `/payroll/` is a 404.
-- **One identity, one auth system.** The restructure touches no authentication:
+- **CreatorOS (Konduyt for Creators) is retired.** The `app/creators/` tree
+  (entry point, Ideas workspace, public Creator Audit) and the `ProductSwitcher`
+  are gone, and nothing in the public experience offers a creator product. Do
+  not reintroduce a creator route, card, nav link or dashboard link. The API
+  retires the same surface behind `CREATOROS_ENABLED = False` (see
+  `konduyt-api`'s `AGENTS.md`).
+- **Payroll is parked.** It is not offered anywhere: no card, no route, no
+  nav entry. `/payroll/` does not exist and must not be linked.
+- **`/developers/` is a redirect, not a page.** The payment product has one
+  canonical URL, the root. `functions/_middleware.js` redirects the legacy
+  `/developers/` path (and the retired `creators.konduyt.dev` host) to `/`, so
+  old bookmarks and links still land on the product rather than a 404.
+- **One identity, one auth system.** The retirement touches no authentication:
   signup (`/signup/`), login (`/signin/`), the `kdu_token` account key and the
-  dashboard (`/dashboard/`) are unchanged, and the landing page itself carries
-  no auth code. A visitor who signs up from the root gets the same Konduyt
-  account the rest of the product uses.
-- **Creators does not route to `/dashboard/`.** That console belongs to
-  Developers & Businesses; a creator dropped there would land in an experience
-  that is not theirs. The `/creators/` page is its own entry point and offers a
-  real early-access action (an email request) instead. Do not add a dashboard
-  link back to it, and do not build a creator dashboard until that product is
-  built separately.
-  - **The chosen product travels through auth as a validated path.**
-    `app/authDestination.js` is the single place that decides where a signed-in
-    visitor lands. A `?next=` value is accepted only if it is on its `ALLOWED`
-    set (`/dashboard/`, `/creators/`, `/creators/ideas/`); anything else falls
-    back to `/dashboard/`, so the parameter can never become an open redirect.
-    `SignInLink`/`NavCta` take an optional `next`, and the API mirrors the same
-    allow-list in `app/main.py` (`_safe_destination`), storing the validated path
-    in a short-lived `kdu_oauth_dest` cookie and echoing it back on the OAuth
-    callback. Keep the two lists in step; the default (no `next`) must stay
-    `/dashboard/` so existing users are unaffected.
-  - **`ProductSwitcher` moves between products, but is not on the root.** A
-    signed-in visitor can switch products from the developers and creators
-    surfaces; the landing page is itself the selector and deliberately carries no
-    switcher. The switcher's Payroll entry is `href: null` and renders
-    non-interactive, same rule as the landing card.
-  - **The pricing page states three separate commercial models.** Developers
-    keeps the existing per-live-project billing flow unchanged; Creators is free
-    while in beta; Payroll is coming soon with no plan to buy. Do not merge them
-    into one plan table or introduce a price for Creators or Payroll here.
-- **`creators.konduyt.dev`** is rewritten to `/creators/` by
-  `functions/_middleware.js`, the same host-based pattern as
-  `dashboard.konduyt.dev` -> `/dashboard/`. If the creator workspace later ships
-  as a separate app on that host, the rewrite simply never runs.
+  dashboard (`/dashboard/`) are unchanged. An existing user keeps their account
+  and is never asked to register again.
+  - **The destination resolver is single-product.** `app/authDestination.js`
+    accepts a `?next=` value only if it is on its `ALLOWED` set, which now holds
+    just the Developers console destination; anything else falls back to
+    `/dashboard/`, so the parameter can never become an open redirect and a
+    stale `/creators/...` value cannot resolve to a removed route. The API
+    mirrors the same allow-list in `app/main.py` (`_safe_destination`). Keep the
+    two lists in step; the default (no `next`) must stay `/dashboard/`.
+- **The pricing page sells one product.** Developers keeps the existing
+  per-live-project billing flow unchanged. Do not reintroduce a creators or
+  payroll plan, badge or section here.
 - `scripts/test-landing-restructure.mjs` (`npm run test:landing-restructure`,
-  wired into `npm test`) guards the three options and their copy, that Payroll
-  has no href, that the moved payment page keeps its hero/DevPanel/providers
-  rail, that the auth surfaces still use the real OAuth flow and the one token
-  key, and — following the repo's layout-variant rule — that every class the new
-  pages name has a rule in `globals.css`.
+  wired into `npm test`) guards the single-product shape: the root is the
+  payment product, no creator or payroll entry point survives, the retired
+  routes and duplicate `/developers/` page are gone, the auth surfaces still use
+  the real OAuth flow and the one token key, and -- following the repo's
+  layout-variant rule -- every class the root page names has a rule in
+  `globals.css`.
 
-## The Ideas workspace is local-first; the Twin is opt-in and cannot write
-
-`app/creators/ideas/` is the private half of Konduyt for Creators: the creator's
-own writing (`page.js`), a local-first store (`store.js`) and the Twin panel
-(`TwinPanel.js`). It is reachable from `/creators/` and needs a signed-in owner.
-The public Creator Audit (`/creators/audit/`) is a different surface with no
-session; do not merge the two.
-
-- **IndexedDB is the source of truth on the device.** A document write and its
-  outbox operation go into one IndexedDB transaction in `store.js`. Never write
-  a document without queueing the op in the same transaction — that is the whole
-  reason a dropped connection cannot lose a sentence.
-- **Every queued op reuses one `op_id` across retries.** The server keys on it
-  (`creator_idea_ops.op_id` is the primary key), so replaying a batch after a
-  lost response is a no-op rather than a duplicate. Generate the id once when
-  the edit is made; do not regenerate it on retry.
-- **A pull must not clobber unsynced local work.** When server state is merged
-  in, a local document with pending or conflicting ops is left alone. Reversing
-  that turns a normal offline session into silent data loss.
-- **A conflict keeps both versions.** The server preserves the client's text
-  verbatim and the UI asks which to keep. Never resolve a conflict by picking a
-  side silently.
-- **The Twin is off until enabled and only runs on an explicit ask.** There is
-  no timer or background pass in `twin.py`; do not add one. `respond()` returns
-  text only — putting it into an idea is a separate action recorded as
-  `twin_accepted`, so AI-contributed edits stay distinguishable.
-- **No model configured is a supported state.** The deterministic handlers
-  answer from the creator's own text; a request that genuinely needs a model
-  returns `response_kind: "unavailable"` with an explanation. Do not fabricate a
-  draft to fill the gap.
-- **Sign-in reuses the platform session.** The page reads `kdu_token` and checks
-  `/me` exactly as `app/dashboard/page.js` does, and `getToken()` migrates a
-  legacy `sessionStorage` token on load. There is no second auth flow and no
-  new account; an existing creator must not be asked to sign in again.
-- `scripts/test-creatoros-ideas.mjs` (`npm run test:creatoros-ideas`, wired into
-  `npm test`) guards the local-first invariants, the Twin's opt-in/read-only
-  rules, the session reuse and the copy. The backend lives in `konduyt-api`
-  (`app/creatoros/ideas_store.py`, `ideas_routes.py`, `twin.py`, migration
-  `0080`), with `ideas_tests.py` covering the same contracts server-side.
 
 ## Production smoke test (read-only, on demand)
 
@@ -898,20 +836,18 @@ static export with `NEXT_PUBLIC_API_URL` pointing at it and serve `out/` with
 needs the `growth_*` schema (154 tables) in Postgres; production auth is
 OAuth-only, so a local token is the only practical admin session.
 
-## Verification notes: the three-product landing (2026-11-06)
+## Verification notes: single-product landing (2026-11-06)
 
-The site root (`app/page.js`) is the product-selection page. The three options
-are data in `PRODUCTS`, and the shape is the contract: an option with an `href`
-renders as a link, an option with `href: null` renders as a non-interactive
-`div` with `aria-disabled="true"`. Payroll is the latter, which is what makes it
-structurally impossible for "coming soon" to lead anywhere. Developers and
-Creators are real links to `/developers/` and `/creators/`.
+The site root (`app/page.js`) is the payment landing page: the hero, the
+interactive `DevPanel` and the supported-providers rail. There is no product
+selection, and no creator or payroll entry point anywhere in the public
+experience -- CreatorOS is retired and Payroll is parked.
 
-The old payment landing page was moved, not rewritten: it is `app/developers/`
-and keeps the full hero copy, the interactive `DevPanel`, the providers rail and
-the sign-in / dashboard CTAs. Authentication is untouched -- the landing page
-does not read `kdu_token`, call `/me`, or reach `/auth/`; signup, signin and the
-dashboard keep the one existing token key (`kdu_token`).
+The payment product has one canonical URL, the root. `functions/_middleware.js`
+redirects the legacy `/developers/` path and the retired `creators.konduyt.dev`
+host to `/`, so old links keep working. Authentication is untouched -- the
+landing page does not read `kdu_token`, call `/me`, or reach `/auth/`; signup,
+signin and the dashboard keep the one existing token key (`kdu_token`).
 
 Responsive contract, checked with a headless browser across 360/390/768/1440 on
 every page: no horizontal overflow, and no control below the tap-target
@@ -919,9 +855,6 @@ threshold. Wide code blocks scroll inside their own box (`.code-pre` has
 `overflow-x:auto`), which is correct and is not page overflow -- an audit that
 flags them must walk ancestors for a scroll container before reporting.
 
-The landing rules live in one block in `app/globals.css`
-(`PRODUCT SELECTION`, `TOUCH TARGETS`). `.product-list` is a capped, centred
-column; the phone breakpoints restack each card and enlarge small tap targets.
-`scripts/test-landing-restructure.mjs` asserts the copy, the navigation shape,
-the auth invariants and the responsive stylesheet rules; it runs in `npm test`
-with no browser and no network.
+`scripts/test-landing-restructure.mjs` asserts the single-product shape, the
+retired routes, the auth invariants and the stylesheet rules; it runs in
+`npm test` with no browser and no network.

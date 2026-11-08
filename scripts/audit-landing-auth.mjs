@@ -1,4 +1,4 @@
-// Real-browser acceptance for the three-product landing page and the existing
+// Real-browser acceptance for the single-product landing page and the existing
 // authentication flows, run against the real static export and the real API.
 //
 //   BASE=http://localhost:4173 API=http://localhost:8000 \
@@ -31,52 +31,44 @@ async function open(path, width = 1440, height = 900) {
   return { ctx, page };
 }
 
-// ---- The landing page -----------------------------------------------------
+// ---- The landing page is the payment product itself -----------------------
 {
   const { ctx, page } = await open('/');
   const text = await page.locator('body').innerText();
   check('the landing page loads', text.length > 200);
-
-  const cards = page.locator('.product-card');
-  check('exactly three product options are shown', (await cards.count()) === 3,
-    String(await cards.count()));
-
-  check('Developers & Businesses is present',
-    /Konduyt for Developers & Businesses/.test(text));
-  check('Creators is present', /Konduyt for Creators/.test(text));
-  check('Payroll is present', /Konduyt Payroll/.test(text));
-
-  check('Developers & Businesses carries the existing-platform status',
-    /Existing platform\. Still operational, currently undergoing major developments\./.test(text));
-  check('Creators carries the actively-developing status',
-    /This is the product we are actively developing\./.test(text));
-  check('Payroll is marked coming soon', /Coming soon/.test(text));
-
-  const devHref = await cards.nth(0).getAttribute('href');
-  const creHref = await cards.nth(1).getAttribute('href');
-  check('Developers & Businesses links to the existing product',
-    devHref === '/developers/', String(devHref));
-  check('Creators links to the creator product', creHref === '/creators/', String(creHref));
-  check('Payroll is not a link, so it cannot lead anywhere broken',
-    (await cards.nth(2).getAttribute('href')) === null);
-  check('Payroll is marked disabled for assistive technology',
-    (await cards.nth(2).getAttribute('aria-disabled')) === 'true');
-
-  // Navigation actually works.
-  await page.locator('.product-card').nth(0).click();
-  await page.waitForLoadState('networkidle');
-  check('clicking Developers & Businesses opens the existing product',
-    /developers/.test(page.url()) && (await page.locator('body').innerText()).length > 200,
-    page.url());
+  check('the landing page is the payment product (hero copy present)',
+    /One integration\./.test(text) && /Every payment/.test(text));
+  check('the landing page shows the supported providers',
+    /Stripe/.test(text) && /M-Pesa/.test(text));
+  check('the landing page does not offer a product selection',
+    (await page.locator('.product-card').count()) === 0);
+  check('no CreatorOS entry point is offered', !/Konduyt for Creators/.test(text));
+  check('no Payroll entry point is offered', !/Konduyt Payroll/.test(text));
   await ctx.close();
 }
 
-{
-  const { ctx, page } = await open('/');
-  await page.locator('.product-card').nth(1).click();
-  await page.waitForLoadState('networkidle');
-  check('clicking Creators opens the creator entry point',
-    /creators/.test(page.url()) && /Creators/.test(await page.locator('body').innerText()),
+// ---- The retired creator routes are gone ----------------------------------
+for (const path of ['/creators/', '/creators/ideas/', '/creators/audit/']) {
+  const { ctx, page } = await open(path);
+  const text = await page.locator('body').innerText();
+  const status = await page.evaluate(() => document.title);
+  check(`${path} no longer serves a creator product`,
+    !/Your workspace for building/.test(text) && !/Creator Audit/i.test(text),
+    `title=${status}`);
+  await ctx.close();
+}
+
+// ---- The export itself serves no /developers/ or creator route ------------
+// The /developers/ -> / redirect is a Cloudflare Pages Function
+// (functions/_middleware.js), applied at the CDN edge, not by the static
+// export. A plain static server cannot run it, so the redirect is asserted
+// statically in scripts/test-landing-restructure.mjs rather than here. What the
+// export must show is that neither route is emitted as a page of its own.
+for (const path of ['/developers/', '/creators/', '/creators/ideas/']) {
+  const { ctx, page } = await open(path);
+  const text = await page.locator('body').innerText();
+  check(`the export emits no page at ${path}`,
+    !/One integration\./.test(text) && !/Your workspace for building/.test(text),
     page.url());
   await ctx.close();
 }
@@ -90,11 +82,8 @@ async function open(path, width = 1440, height = 900) {
   }));
   check('the landing page does not overflow horizontally on a phone',
     overflow.scrollW <= overflow.clientW + 2, JSON.stringify(overflow));
-  const cards = page.locator('.product-card');
-  check('all three product options are still shown on a phone',
-    (await cards.count()) === 3);
-  check('Payroll is still not a link on a phone',
-    (await cards.nth(2).getAttribute('href')) === null);
+  check('no product-selection cards on a phone either',
+    (await page.locator('.product-card').count()) === 0);
   await ctx.close();
 }
 
@@ -141,16 +130,35 @@ async function open(path, width = 1440, height = 900) {
   await ctx.close();
 }
 
-// ---- Existing product surface still reachable ---------------------------
-for (const path of ['/developers/', '/docs/', '/pricing/']) {
+// ---- Existing product surfaces still reachable ---------------------------
+for (const path of ['/docs/', '/pricing/']) {
   const { ctx, page } = await open(path);
   const t = await page.locator('body').innerText();
   check(`the existing ${path} page still loads`, t.length > 200, t.slice(0, 120));
   await ctx.close();
 }
 
+// The dashboard is a signed-in surface. An anonymous visit must land on the
+// existing sign-in gate -- a working page that sends the visitor to the real
+// auth flow -- not a broken or blank console.
+{
+  const { ctx, page } = await open('/dashboard/');
+  const t = await page.locator('body').innerText();
+  check('the existing dashboard gates an anonymous visitor behind sign-in',
+    /not signed in|sign in/i.test(t), t.slice(0, 160));
+  const signInHref = await page.locator('a[href*="/signin"]').first().getAttribute('href').catch(() => null);
+  check('the dashboard sign-in gate points at the existing sign-in page',
+    !!signInHref && /\/signin/.test(signInHref), String(signInHref));
+  await ctx.close();
+}
+
+// The API CORS allow-list is strict: a localhost origin makes /health and
+// /admin/whoami fail with a console CORS error that is an environment artifact,
+// not a page error (see AGENTS.md). Run against the production origin for a
+// clean pass.
 const realErrors = errors.filter((e) =>
-  !/favicon|React DevTools|manifest|Failed to load resource/i.test(e));
+  !/favicon|React DevTools|manifest|Failed to load resource/i.test(e)
+  && !/CORS policy|Access-Control-Allow-Origin/i.test(e));
 check('no page errors across the session', realErrors.length === 0,
   realErrors.slice(0, 3).join(' | '));
 

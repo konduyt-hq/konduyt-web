@@ -28,8 +28,8 @@ export default function Signin() {
     const e = params.get('error');
     if (e) setError(ERRORS[e] || 'Something went wrong. Please try again.');
 
-    // Where this person is heading, carried through the provider round trip so a
-    // creator is not dropped into the Developers console on return.
+    // Where this person is heading, carried through the provider round trip.
+    // Konduyt is one product again, so this always resolves to the console.
     const destination = resolveIncomingDestination(window.location.search);
     rememberDestination(destination);
 

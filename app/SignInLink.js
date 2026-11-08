@@ -10,9 +10,10 @@ const TOKEN_KEY = 'kdu_token';
 // its own single responsibility (the CTA button) and page.js renders
 // these as two distinct nav items, not one combined element.
 //
-// `next` optionally names the product this link belongs to, so a creator who
-// signs in from the Creators page returns to the creator workspace rather than
-// the Developers console. Absent (the default), behaviour is unchanged.
+// `next` optionally names a destination to carry through the auth round trip.
+// Konduyt is one product again, so nothing passes it now and the default
+// behaviour (the Developers console) is what everyone gets; it is kept as the
+// generic seam signin already understands.
 export default function SignInLink({ next = null }) {
   const [signedIn, setSignedIn] = useState(false);
 
