@@ -58,6 +58,17 @@ for the `carrier` block.
     serves requests over HTTP: the page at `/`, a bad amount must not come
     back as a successful payment, and CORS preflight must be answered.
   - `npm run test:checkout` — drives `public/checkout-page.html` through jsdom.
+  - `npm run test:landing-restructure` and `npm run test:creatoros-audit`
+    statically assert the three-product landing (Payroll carries no `href`, so it
+    cannot lead anywhere; auth stays on the existing account token key) and the
+    public audit surface.
+  - `scripts/audit-landing-auth.mjs` and `scripts/audit-product-routing.mjs` are
+    real-browser Playwright acceptance for those same criteria. They need both
+    servers up: `npx serve out -l 4173` (no `-s` — SPA fallback rewrites every
+    route to the landing page, which makes /signup/ and /signin/ look broken).
+    Run them against the production origin (`BASE=https://konduyt.dev API=...`),
+    not `localhost`: the API CORS allow-list is strict, so a localhost origin
+    makes `/health` fail with a console CORS error that looks like a regression.
   - Verification is still: `npx next build` succeeds, then grep the emitted
     `out/_next/static/chunks/app/page-*.js` for expected snippet text. Snippet
     content is split across chunks — a string may live in `app/page-*.js`
