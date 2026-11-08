@@ -37,6 +37,32 @@ function fmtNum(v) {
   return new Intl.NumberFormat().format(v);
 }
 
+// Read a measurement out of a metrics section by key. The report carries its
+// numbers with their sample sizes already attached; this only fetches them, and
+// returns the explicit "not computed" marker rather than a zero so a missing
+// measurement never renders as a real value.
+function metricValue(section, key, unit = '') {
+  const ms = (section?.measurements || []).find((x) => x.key === key);
+  if (!ms || ms.value === null || ms.value === undefined) {
+    return <span className="audit-missing">not computed</span>;
+  }
+  return `${fmtNum(ms.value)}${unit ? ` ${unit}` : ''}`;
+}
+
+function fmtCompact(v) {
+  if (v === null || v === undefined) return '—';
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(v);
+}
+
+function fmtDate(v) {
+  if (!v) return null;
+  try {
+    return new Date(v).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return null;
+  }
+}
+
 export default function CreatorAudit() {
   const [caps, setCaps] = useState(null);
   const [platform, setPlatform] = useState('youtube');
@@ -299,13 +325,24 @@ function Report({ report, onReset }) {
   return (
     <div className="audit-report">
       <div className="audit-report-head">
-        <div>
-          <h2 className="audit-report-name">
-            {p.display_name || p.handle || 'Creator'}
-          </h2>
-          <p className="audit-report-meta">
-            {p.platform} {p.handle ? `· @${p.handle}` : ''} · {report.content_count} public items
-          </p>
+        <div className="audit-report-id">
+          {p.profile_image_url && (
+            <img
+              className="audit-report-avatar"
+              src={p.profile_image_url}
+              alt={p.display_name || p.handle || 'Creator'}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          )}
+          <div>
+            <h2 className="audit-report-name">
+              {p.display_name || p.handle || 'Creator'}
+            </h2>
+            <p className="audit-report-meta">
+              {p.platform} {p.handle ? `· @${p.handle}` : ''} · {report.content_count} public items
+            </p>
+          </div>
         </div>
         <button type="button" className="audit-btn-ghost" onClick={onReset}>
           New audit
@@ -325,7 +362,15 @@ function Report({ report, onReset }) {
           <span className="audit-stat-label">Total views</span>
           <AvailabilityValue field={p.total_views} />
         </div>
+        <div className="audit-stat">
+          <span className="audit-stat-label">Median likes / view</span>
+          <span className="audit-value">
+            {metricValue(metrics.content, 'median_engagement_rate_per_view', '%')}
+          </span>
+        </div>
       </div>
+
+      <ReportPulse metrics={metrics} content={report.content || []} />
 
       {report.assessment && (
         <section className="audit-section">
@@ -421,6 +466,10 @@ function Report({ report, onReset }) {
         </section>
       )}
 
+      <ContentIntelligence insights={report.insights} />
+
+      <PostTable content={report.content} />
+
       {(report.recommendations || []).length > 0 && (
         <section className="audit-section">
           <h3 className="audit-section-title">Recommendations</h3>
@@ -459,5 +508,462 @@ function Report({ report, onReset }) {
         <p className="audit-score-note">{report.scoring?.reason}</p>
       </section>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The report's richer, more visual halves.
+//
+// The report below the findings is meant to be readable by a creator, not only
+// by an analyst: a pulse of the account's own numbers, the content-intelligence
+// results as plain-language cards, and the full post list with its real
+// thumbnails. All three obey the same rule as the rest of the page — a number is
+// only ever shown when it was genuinely measured, and a withheld analysis says
+// why rather than rendering as an empty box.
+// ---------------------------------------------------------------------------
+
+// An SVG sparkline over the posts in publication order. It shows shape, not
+// precise values; the posts themselves are in the table below, so this does not
+// need axes or labels to be honest.
+function Sparkline({ points, width = 260, height = 56 }) {
+  const vals = points.filter((v) => v !== null && v !== undefined);
+  if (vals.length < 2) return null;
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const span = max - min || 1;
+  const step = width / Math.max(1, points.length - 1);
+  const xy = points.map((v, i) => {
+    const y = v === null || v === undefined
+      ? null
+      : height - ((v - min) / span) * (height - 6) - 3;
+    return [i * step, y];
+  });
+  // Only draw the segments where both ends were measured, so a missing count
+  // breaks the line instead of being interpolated across.
+  const segs = [];
+  let cursor = null;
+  for (let i = 0; i < xy.length; i++) {
+    if (xy[i][1] === null) { cursor = null; continue; }
+    if (cursor === null) {
+      segs.push(`M ${xy[i][0].toFixed(1)} ${xy[i][1].toFixed(1)}`);
+    } else {
+      segs.push(`L ${xy[i][0].toFixed(1)} ${xy[i][1].toFixed(1)}`);
+    }
+    cursor = i;
+  }
+  return (
+    <svg
+      className="audit-spark"
+      viewBox={`0 0 ${width} ${height}`}
+      width="100%"
+      height={height}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path d={segs.join(' ')} className="audit-spark-line" />
+    </svg>
+  );
+}
+
+function ReportPulse({ metrics, content }) {
+  const posts = (content || [])
+    .filter((c) => c.published_at)
+    .slice()
+    .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
+  const viewSeries = posts.map((c) => c.views);
+  const likeSeries = posts.map((c) => c.likes);
+  const viewVals = viewSeries.filter((v) => v !== null && v !== undefined);
+  const likeVals = likeSeries.filter((v) => v !== null && v !== undefined);
+
+  const trend = metrics.consistency?.measurements?.find((x) => x.key === 'recent_view_trend');
+  const postsPerWeek = metrics.consistency?.measurements?.find((x) => x.key === 'posts_per_week');
+
+  const showViews = viewVals.length >= 2;
+  const showLikes = likeVals.length >= 2;
+  if (!showViews && !showLikes && !postsPerWeek && !trend) return null;
+
+  return (
+    <section className="audit-section">
+      <h3 className="audit-section-title">
+        Account pulse
+        <span className="audit-section-note">in publication order</span>
+      </h3>
+      {(showViews || showLikes) && (
+        <div className="audit-pulse">
+          {showViews && (
+            <div className="audit-pulse-chart">
+              <div className="audit-pulse-chart-head">
+                <span className="audit-pulse-chart-label">Views per post</span>
+                <span className="audit-pulse-chart-note">
+                  {fmtCompact(Math.min(...viewVals))}–{fmtCompact(Math.max(...viewVals))}
+                </span>
+              </div>
+              <Sparkline points={viewSeries} />
+            </div>
+          )}
+          {showLikes && (
+            <div className="audit-pulse-chart">
+              <div className="audit-pulse-chart-head">
+                <span className="audit-pulse-chart-label">Likes per post</span>
+                <span className="audit-pulse-chart-note">where reported</span>
+              </div>
+              <Sparkline points={likeSeries} />
+            </div>
+          )}
+        </div>
+      )}
+      <div className="audit-pulse-facts">
+        {postsPerWeek && (
+          <span className="audit-pulse-fact">
+            <strong>{postsPerWeek.value}</strong> posts / week
+          </span>
+        )}
+        {trend && (
+          <span className="audit-pulse-fact">
+            recent trend <strong>{trend.value > 0 ? '+' : ''}{trend.value}%</strong>
+          </span>
+        )}
+        <span className="audit-pulse-fact">
+          <strong>{posts.length}</strong> posts with dates
+        </span>
+      </div>
+      <p className="audit-pulse-caveat">
+        The sparklines show the order and shape of the account’s posts, not precise
+        values — each point is one post, and a gap is a post whose count was not
+        available.
+      </p>
+    </section>
+  );
+}
+
+// One card per content-intelligence analysis. A card renders its result when
+// there is one and its stated reason when there is not, so a withheld analysis
+// never looks like a blank or a bug.
+function ContentIntelligence({ insights }) {
+  if (!insights || Object.keys(insights).length === 0) return null;
+
+  const cards = [];
+
+  const o = insights.outliers;
+  if (o) {
+    cards.push({
+      key: 'outliers',
+      title: 'Over- and under-performers',
+      sufficient: o.sufficient,
+      reason: o.reason,
+      body: o.sufficient && (o.outliers || []).length > 0 && (
+        <>
+          <p className="audit-ci-lead">
+            Median post: <strong>{fmtNum(o.median_views)}</strong> views.
+            {o.spike ? ' The top group is a genuine spike, not a gentle slope.' : ' The top group sits close to the rest.'}
+          </p>
+          <ul className="audit-ci-posts">
+            {o.outliers.slice(0, 4).map((x) => (
+              <li key={x.id} className="audit-ci-post">
+                <Thumb item={x} />
+                <div className="audit-ci-post-text">
+                  <a href={x.url} target="_blank" rel="noreferrer" className="audit-ci-post-title">
+                    {x.title || x.id}
+                  </a>
+                  <span className="audit-ci-post-metric">{fmtNum(x.value)} views</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {(o.distinguishing || []).length > 0 && (
+            <p className="audit-ci-foot">
+              What they share: {o.distinguishing.slice(0, 3).map((d) => d.attribute).join(', ')}.
+            </p>
+          )}
+        </>
+      ),
+    });
+  }
+
+  const e = insights.engagement_vs_reach;
+  if (e) {
+    cards.push({
+      key: 'engagement',
+      title: 'Reach against engagement',
+      sufficient: e.sufficient,
+      reason: e.reason,
+      body: e.sufficient && (
+        <>
+          <p className="audit-ci-lead">{e.interpretation}</p>
+          <div className="audit-ci-method">
+            <span className="audit-ci-method-label">Method</span>
+            <span className="audit-ci-method-body">
+              {e.method}. The raw likes-per-view correlation is shown only as a
+              cross-check: views appear in both quantities, which pushes that
+              number down on its own, so it is not used for the conclusion.
+            </span>
+          </div>
+          <div className="audit-ci-numbers">
+            <span className="audit-ci-number">
+              exponent <strong>{e.exponent}</strong>
+            </span>
+            {e.exponent_ci && (
+              <span className="audit-ci-number">
+                95% interval <strong>{e.exponent_ci[0]}–{e.exponent_ci[1]}</strong>
+              </span>
+            )}
+            <span className="audit-ci-number">
+              ratio cross-check <strong>{e.ratio_rho}</strong>
+              {e.ratio_p_value !== null && e.ratio_p_value !== undefined
+                ? ` (p=${e.ratio_p_value})` : ''}
+            </span>
+            <span className="audit-ci-number">
+              <strong>{e.sample}</strong> posts
+            </span>
+          </div>
+        </>
+      ),
+    });
+  }
+
+  const c = insights.clusters;
+  if (c && c.sufficient && (c.clusters || []).length > 0) {
+    cards.push({
+      key: 'clusters',
+      title: 'Content themes',
+      sufficient: true,
+      body: (
+        <>
+          <p className="audit-ci-lead">
+            Repeated words from the titles, with each theme’s median against the
+            account’s overall median of {fmtNum(c.account_median_views)} views.
+          </p>
+          <div className="audit-ci-themes">
+            {c.clusters.slice(0, 6).map((cl) => (
+              <div key={cl.label} className="audit-ci-theme">
+                <div className="audit-ci-theme-head">
+                  <span className="audit-ci-theme-label">{cl.label}</span>
+                  <span className="audit-ci-theme-count">{cl.count} posts</span>
+                </div>
+                <div className="audit-ci-theme-bar">
+                  <span
+                    className="audit-ci-theme-fill"
+                    style={{
+                      width: `${Math.max(4, Math.min(100, (cl.median_views / (c.account_median_views || cl.median_views)) * 50))}%`,
+                    }}
+                  />
+                  <span
+                    className="audit-ci-theme-mid"
+                    title="the account's overall median"
+                  />
+                </div>
+                <div className="audit-ci-theme-meta">
+                  <span>median {fmtNum(cl.median_views)}</span>
+                  {cl.reliable
+                    ? <span>range {fmtCompact(cl.min_views)}–{fmtCompact(cl.max_views)}</span>
+                    : <span className="audit-ci-theme-thin">too few posts to rank</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ),
+    });
+  }
+
+  const v = insights.velocity;
+  if (v) {
+    cards.push({
+      key: 'velocity',
+      title: 'How fast recent posts are accumulating views',
+      sufficient: v.sufficient,
+      reason: v.reason,
+      body: v.sufficient && (v.fastest || []).length > 0 && (
+        <>
+          <p className="audit-ci-lead">
+            Median <strong>{fmtNum(v.median_views_per_day)}</strong> views per day
+            since publication.
+          </p>
+          <ul className="audit-ci-posts">
+            {v.fastest.slice(0, 3).map((x) => (
+              <li key={x.id} className="audit-ci-post">
+                <Thumb item={x} />
+                <div className="audit-ci-post-text">
+                  <a href={x.url} target="_blank" rel="noreferrer" className="audit-ci-post-title">
+                    {x.title || x.id}
+                  </a>
+                  <span className="audit-ci-post-metric">
+                    {fmtNum(x.views_per_day)} views / day · {x.days_live} days live
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {v.caveat && <p className="audit-ci-foot">{v.caveat}</p>}
+        </>
+      ),
+    });
+  }
+
+  const t = insights.title_features;
+  if (t && t.sufficient && (t.features || []).length > 0) {
+    cards.push({
+      key: 'titles',
+      title: 'Title features',
+      sufficient: true,
+      body: (
+        <ul className="audit-ci-features">
+          {t.features.slice(0, 5).map((f) => (
+            <li key={f.feature} className="audit-ci-feature">
+              <span className="audit-ci-feature-label">{f.label}</span>
+              <span className="audit-ci-feature-meta">
+                {f.direction === 'higher' ? 'higher' : f.direction === 'lower' ? 'lower' : 'similar'}
+                {f.relative_difference !== null && f.relative_difference !== undefined
+                  ? `: ${Math.round(Math.abs(f.relative_difference) * 100)}%` : ''}
+                {f.posts_with ? ` · ${f.posts_with} of ${f.posts_with + (f.posts_without || 0)} posts` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
+
+  const g = insights.gap_effect;
+  if (g && g.sufficient) {
+    cards.push({
+      key: 'gaps',
+      title: 'Posting gaps',
+      sufficient: true,
+      body: (
+        <p className="audit-ci-lead">
+          Posts after a long break differ from the rest by{' '}
+          <strong>
+            {g.relative_difference > 0 ? '+' : ''}{Math.round(g.relative_difference * 100)}%
+          </strong>.
+          {g.median_gap_days ? ` A break is over ${g.median_gap_days} days here.` : ''}
+        </p>
+      ),
+    });
+  }
+
+  const h = insights.history;
+  if (h && h.sufficient && (h.deltas || []).length > 0) {
+    cards.push({
+      key: 'history',
+      title: 'Change since the previous audit',
+      sufficient: true,
+      body: (
+        <ul className="audit-ci-features">
+          {h.deltas.slice(0, 5).map((d, i) => (
+            <li key={i} className="audit-ci-feature">
+              <span className="audit-ci-feature-label">{d.label || d.key}</span>
+              <span className="audit-ci-feature-meta">
+                {d.previous} → {d.current}
+                {d.change_pct !== null && d.change_pct !== undefined
+                  ? ` (${d.change_pct > 0 ? '+' : ''}${Math.round(d.change_pct * 100)}%)` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
+
+  if (cards.length === 0) return null;
+
+  return (
+    <section className="audit-section">
+      <h3 className="audit-section-title">
+        Content intelligence
+        <span className="audit-section-note">exploratory — associations, not causes</span>
+      </h3>
+      <div className="audit-ci-grid">
+        {cards.map((card) => (
+          <div key={card.key} className="audit-ci-card">
+            <h4 className="audit-ci-title">{card.title}</h4>
+            {card.sufficient
+              ? card.body
+              : (
+                <p className="audit-ci-withheld">
+                  {card.reason || 'Not enough data for this analysis.'}
+                </p>
+              )}
+          </div>
+        ))}
+      </div>
+      <p className="audit-ci-note">
+        These are associations in one sample of one account’s recent posts. They
+        describe what has happened on this account, not what would happen if a
+        style or schedule were changed deliberately.
+      </p>
+    </section>
+  );
+}
+
+// A post's thumbnail where one can be derived, and a neutral placeholder where
+// it cannot — never a broken image, which would read as a fault in the audit.
+function Thumb({ item, size = 'sm' }) {
+  const thumb = item && item.thumbnail_url;
+  if (!thumb) {
+    return <span className={`audit-thumb audit-thumb-${size} audit-thumb-empty`} aria-hidden="true" />;
+  }
+  return (
+    <img
+      className={`audit-thumb audit-thumb-${size}`}
+      src={thumb}
+      alt=""
+      loading="lazy"
+      referrerPolicy="no-referrer"
+    />
+  );
+}
+
+// The whole collected set, so the reader can sort and scan the same posts every
+// finding was drawn from.
+function PostTable({ content }) {
+  if (!content || content.length === 0) return null;
+  const rows = content.slice().sort((a, b) => (b.views || -1) - (a.views || -1));
+  return (
+    <section className="audit-section">
+      <h3 className="audit-section-title">
+        All collected posts
+        <span className="audit-section-note">{content.length} items · by views</span>
+      </h3>
+      <ul className="audit-posts">
+        {rows.map((c) => {
+          const likesPerView = c.views && c.likes !== null && c.likes !== undefined
+            ? (c.likes / c.views) * 100 : null;
+          return (
+            <li key={c.id} className="audit-post">
+              <a href={c.url} target="_blank" rel="noreferrer" className="audit-post-thumb-link">
+                <Thumb item={c} size="md" />
+              </a>
+              <div className="audit-post-main">
+                <a href={c.url} target="_blank" rel="noreferrer" className="audit-post-title">
+                  {c.title || c.id}
+                </a>
+                <span className="audit-post-date">{fmtDate(c.published_at) || 'date unavailable'}</span>
+              </div>
+              <div className="audit-post-numbers">
+                <span className="audit-post-num">
+                  <span className="audit-post-num-label">views</span>
+                  {c.views === null || c.views === undefined
+                    ? <span className="audit-missing">—</span>
+                    : fmtNum(c.views)}
+                </span>
+                <span className="audit-post-num">
+                  <span className="audit-post-num-label">likes</span>
+                  {c.likes === null || c.likes === undefined
+                    ? <span className="audit-missing">—</span>
+                    : fmtNum(c.likes)}
+                </span>
+                <span className="audit-post-num">
+                  <span className="audit-post-num-label">likes / view</span>
+                  {likesPerView === null
+                    ? <span className="audit-missing">—</span>
+                    : `${likesPerView.toFixed(2)}%`}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
