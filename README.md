@@ -21,6 +21,15 @@ neither is offered anywhere in the public experience. A legacy `/developers/`
 link redirects to the root, and the retired `creators.konduyt.dev` host
 redirects to the main site.
 
+## Konduyt Labs: Phone Number Simulator
+
+The landing page links a separate application — the [Phone Number
+Simulator](https://github.com/konduyt-hq/phone-number-simulator) — in the nav, the
+footer and an "Open Simulator" band. It is a test harness for synthetic
+Kenyan-format identifiers (`+254 999`, unallocated), simulated inbound SMS and
+controllable OTPs. Its address is set once in `app/simulator.js`; override it at
+build time with `NEXT_PUBLIC_SIMULATOR_URL`.
+
 - **Live site:** [konduyt.dev](https://konduyt.dev)
 - **Docs:** [konduyt.dev/docs](https://konduyt.dev/docs)
 - **Stack:** Next.js, Cloudflare Pages
