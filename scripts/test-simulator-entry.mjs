@@ -44,6 +44,12 @@ check('the URL is overridable at build time',
   'expected process.env.NEXT_PUBLIC_SIMULATOR_URL fallback');
 check('the default points at an https deployment',
   /https:\/\/[^'"\s]+/.test(CONFIG), 'no https default URL in app/simulator.js');
+check('the default is the permanent host',
+  CONFIG.includes("'https://simulator.konduyt.dev/'"),
+  'the fallback in app/simulator.js must be https://simulator.konduyt.dev/');
+check('no tracked source points at a session host',
+  ![CONFIG, HOME].join('\n').includes('prod-runtime'),
+  'a preview/session hostname survived in the sources');
 
 // --- desktop nav -----------------------------------------------------------
 const navMatch = HOME.match(/<div className="nav-links">[\s\S]*?<\/div>/);
