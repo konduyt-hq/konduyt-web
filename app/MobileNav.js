@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { SIMULATOR_URL } from './simulator';
 
 const TOKEN_KEY = 'kdu_token';
 
@@ -14,6 +15,8 @@ const LINKS = [
   { href: '/pricing/', label: 'Pricing' },
   { href: 'https://github.com/konduyt-hq', label: 'GitHub', external: true },
   { href: '/labs/', label: 'Labs' },
+  // External by design: the simulator is its own deployed application.
+  { href: SIMULATOR_URL, label: 'Simulator', external: true },
 ];
 
 export default function MobileNav() {

@@ -3,6 +3,7 @@ import NavCta from './NavCta';
 import SignInLink from './SignInLink';
 import WarmupPing from './WarmupPing';
 import MobileNav from './MobileNav';
+import { SIMULATOR_URL } from './simulator';
 
 // Konduyt -- payment infrastructure. This is the original site root, restored:
 // Konduyt Payments is the only active product again, so the root is the payment
@@ -122,6 +123,7 @@ export default function Home() {
             <a href="/pricing/">Pricing</a>
             <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
             <a href="/labs/">Labs</a>
+            <a href={SIMULATOR_URL} target="_blank" rel="noreferrer">Simulator</a>
           </div>
           <MobileNav />
           <div className="nav-right">
@@ -204,8 +206,34 @@ export default function Home() {
           <DevPanel />
         </div>
 
-        {/* SIGN-UP CTA — after the test panel, before "In the works".
-            New visitors are invited to sign up; returning users see console+sign in. */}
+        {/* KONDUYT LABS — PHONE NUMBER SIMULATOR
+            A separate application, linked rather than reimplemented here. The
+            band states what it is (test data only) and opens the deployed app. */}
+        <section className="sim-band">
+          <div className="sim-card">
+            <div className="sim-copy-block">
+              <span className="hero-eyebrow">Konduyt Labs</span>
+              <h2 className="sim-title">Phone Number Simulator</h2>
+              <p className="sim-desc">
+                Synthetic Kenyan-format test numbers, simulated inbound SMS and
+                controllable OTPs for exercising signup and verification flows.
+                Identifiers use the unallocated +254 999 range and are never real
+                Kenyan telephone numbers.
+              </p>
+              <div className="sim-meta">
+                <span className="sim-tag">Test data</span>
+                <span className="sim-tag">Simulated SMS</span>
+                <span className="sim-tag">OTP expiry</span>
+              </div>
+            </div>
+            <div className="sim-action">
+              <a className="sim-open" href={SIMULATOR_URL} target="_blank" rel="noreferrer">
+                Open Simulator →
+              </a>
+              <span className="sim-note">Opens the dedicated simulator app</span>
+            </div>
+          </div>
+        </section>
 
         {/* FOOTER */}
         <footer className="site-footer">
@@ -310,6 +338,7 @@ export default function Home() {
             <a href="/docs/">Docs</a>
             <a href="/pricing/">Pricing</a>
             <a href="/labs/">Labs</a>
+            <a href={SIMULATOR_URL} target="_blank" rel="noreferrer">Simulator</a>
             <a href="https://github.com/konduyt-hq" target="_blank" rel="noreferrer">GitHub</a>
             <a href="/terms/">Terms</a>
           </div>

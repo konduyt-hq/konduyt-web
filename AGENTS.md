@@ -858,3 +858,29 @@ flags them must walk ancestors for a scroll container before reporting.
 `scripts/test-landing-restructure.mjs` asserts the single-product shape, the
 retired routes, the auth invariants and the stylesheet rules; it runs in
 `npm test` with no browser and no network.
+
+## The Phone Number Simulator entry (2026-11-24)
+
+The simulator is a **separate application** (`konduyt-hq/phone-number-simulator`)
+with its own deploy. This repo links to it; it does not reimplement any of it.
+Do not add number, message or OTP code here.
+
+- Its address lives in exactly one place: `app/simulator.js`
+  (`NEXT_PUBLIC_SIMULATOR_URL`, defaulting to the deployment that exists today).
+  The desktop nav, the mobile nav, the footer and the "Open Simulator" button all
+  read that constant, so moving the app is a one-line build-time change.
+- The entry is a link out, always `target="_blank" rel="noreferrer"`; there is no
+  in-app route, no `/simulator/` page, and no shared session with
+  `kdu_token`. The simulator has its own accounts.
+- The band states the identifiers are synthetic (`+254 999`, never real Kenyan
+  lines). That sentence is a product requirement, not decoration — the tool must
+  never present test data as reachable numbers.
+- Every `sim-*` class has a rule in `globals.css` (the layout-variant rule is
+  enforced by the test, which also checks the 760px breakpoint).
+- `scripts/test-simulator-entry.mjs` guards the nav, mobile nav, footer, button,
+  styling and the untouched payment landing; it runs in `npm test` as
+  `test:simulator`.
+
+Konduyt Payments remains untouched: hero copy, `<DevPanel />`, the provider rail,
+`<SignInLink />` and `<NavCta />` are all still asserted by
+`test:landing-restructure` and by the simulator-entry test.
